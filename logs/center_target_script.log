@@ -1,0 +1,76 @@
+Loading config 'd:\IOTA3\config\observatory.cfg'
+Loading config 'd:\IOTA3\config\wcs.cfg'
+Connecting to mount SiTech.Telescope
+Reading latitude and longitude from mount driver
+Latitude = 31.665574
+Longitude = -110.601667
+Launching MaxIm.Application
+Launching MaxIm.CCDCamera
+Connecting to camera
+Connected to camera 'DL Imaging'
+Filters:
+ 0: L
+ 1: 8
+ 2: V
+ 3: B
+ 4: H
+ 5: W
+ 6: O
+ 7: 1
+ 8: I
+ 9: 9
+ 10: G
+ 11: R
+ 12: Filter 13
+ 13: Filter 14
+ 14: Filter 15
+ 15: Filter 16
+ 16: Filter 17
+ 17: Filter 18
+ 18: Filter 19
+ 19: Filter 20
+ 20: Filter 21
+ 21: Filter 22
+ 22: Filter 23
+ 23: Filter 24
+ 24: Filter 25
+ 25: Filter 26
+ 26: Filter 27
+ 27: Filter 28
+ 28: Filter 29
+ 29: Filter 30
+ 30: Filter 31
+ 31: Filter 32
+Running center_target_script for 1E 0754+39.3...
+Looking up 1E 0754+39.3 in SIMBAD...
+Found 1E 0754+39.3 - RA: 7:58:00.05, Dec: 39:20:29.0 (J2000)
+Attempting to put RA: 07:58:00.05, Dec 39:20:29.00 (J2000) on unbinned pixel 2048.00,2048.00
+Attempt 1 of 5
+Slewing to J2000 07:58:00.05, 39:20:29.00
+Settling for 1 seconds...
+Taking 5 second exposure...
+Exposing with filter index 0
+Image complete
+Searching for Pinpoint solution...
+Pinpoint solution found! Continuing...
+FITSFixedWarning: RADECSYS= 'FK5 ' / Equatorial coordinate system 
+the RADECSYS keyword is deprecated, use RADESYSa.
+Latest image J2000 Ra/Dec at target pixel 07:57:59.45, 39:21:08.03
+Latest image pixel location of target Ra/Dec: 2035.11, 2120.32
+Latest image position error: 12.89 pixels X, -72.32 pixels Y
+RA error: 9.04 arcsec, Dec error: -39.03 arcsec
+Offsetting slew coordinates...
+Attempt 2 of 5
+Slewing to J2000 07:58:00.65, 39:19:49.97
+Settling for 1 seconds...
+Taking 5 second exposure...
+Exposing with filter index 0
+Image complete
+Searching for Pinpoint solution...
+Pinpoint solution found! Continuing...
+Latest image J2000 Ra/Dec at target pixel 07:58:00.04, 39:20:28.99
+Latest image pixel location of target Ra/Dec: 2047.68, 2048.02
+Latest image position error: 0.32 pixels X, -0.02 pixels Y
+RA error: 0.21 arcsec, Dec error: 0.01 arcsec
+Target is now in position after 2 attempts
+FINAL RESULT: Recentering succeeded
