@@ -1,0 +1,143 @@
+# Telrun process configuration
+# This config file is parsed as a Python file, so any valid Python
+# syntax (if statements, string formatting, etc) is allowed.
+
+# Length of each exposure in the focus run, in seconds.
+# Should be long enough to get at least 10 clear stars in a typical exposure
+autofocus_exposure_length_seconds = 5
+
+# Index position for the filter to use when running autofocus.
+# Should normally use the "clearest" filter that will result in
+# the most stars being detected; for example: an empty slot, Clear,
+# or Luminance.
+# NOTE: This filter will also be used for taking images that recenter
+# the telescope via WCS.
+# The first filter index is 0
+autofocus_filter_index = 1
+
+# Set the approximate focus position for the filter that will be used for autofocus.
+# If the focuser is more than autofocus_starting_focus_position_tolerance counts 
+# away from this position when starting the focus run, the focuser will be moved
+# to this position first. (If we are too far from best focus when starting out,
+# the focus run will fail.)
+autofocus_starting_focus_position = 15000
+
+# If the focuser is more than this many counts from the estimated autofocus_starting_focus_position, 
+# the focuser will be moved to autofocus_starting_focus_position before starting the
+# focus run. By having some tolerance, the starting positions of focus positions
+# will be allowed to wander slightly as focus drifts throughout the night, but 
+# if we get too far off we can get back in range and have a shot at the focus
+# run actually succeeding. This number should be larger than the expected
+# deviation of best-focus throughout the night, but small enough that 
+# autofocus will still succeed even if we are this far off from best focus.
+autofocus_starting_focus_position_tolerance = 1000
+
+# telrun will automatically do a focus run if one has not been
+# performed in this many seconds. If the value is 0 or negative, no automatic
+# autofocus runs will be performed
+autofocus_interval_seconds = 60*30
+
+# If True, an autofocus will be performed before running the first observation
+# of a telrun file. If False, an autofocus will be performed only after
+# autofocus_interval_seconds have elapsed
+autofocus_before_first_observation = True
+
+# If greater than zero, telrun will abort if more than this many seconds have passed
+# while trying to perform an autofocus (which may indicate a hardware problem, such
+# as a connection issue with the camera)
+autofocus_timeout_seconds = 600
+
+
+# Set the camera cooler setpoint to this value, in degrees C.
+camera_cooler_celsius = -30
+
+# Only allow exposures to be taken if the actual CCD temperature
+# is within this many degrees C of the "camera_cooler_celsius" value.
+# If you do not want to wait for the camera to cool, set this to a 
+# large value.
+camera_cooler_tolerance = 1.0
+
+# If True, telrun will wait until the specified start time for
+# a scan (within lstdelta tolerance) before continuing.
+# If False, telrun will run through each scan consecutively as
+# soon as possible, skipping any scans that are not observable at
+# the time they are encountered (e.g. because the target is below the
+# horizon).
+# Generally this should be set to True except when doing software testing.
+wait_for_scan_start_time = True
+
+# If True, telrun will wait until the Sun is below the configured
+# elevation limit before starting any scans.
+# If False, telrun will start attempting to process scans immediately,
+# even during the day. (In practice, if wait_for_scan_start_time is
+# True and the telrun.sls file was generated from a sensibly-configured
+# instance of telsched, it probably won't start observing the first scan
+# until after sunset anyway.)
+# Generally this should be set to True except when doing software testing.
+wait_for_sun = True
+
+# If True, telrun will write the appropriate status code to the telrun.sls
+# file after processing each scan. This way, if telrun is stopped and
+# then started again, it can continue with the latest scan that has
+# not yet been run, and the updated telrun.sls file can be sent back
+# to the server in order to generate summary information on the status
+# of the observing session.
+# Generally this should be set to True except when doing software testing.
+update_sls_status_codes = True
+
+# If True, the mount will be homed when telrun is first started
+home_mount_at_start = True
+
+# If this many seconds elapse after the time an exposure is expected
+# to finish and the exposure is still not ready, report an error.
+# In some cases, this can be caused by an actual problem with the camera.
+# In other cases, it can be caused by a "File Open" window being left
+# open in the Maxim application.
+camera_timeout_seconds = 60
+
+# If the camera cooler takes more than this many minutes to reach
+# the setpoint, send a warning e-mail
+camera_cooler_warning_minutes = 30
+
+# resync_mount_after_interval_seconds = 60*60*14 # TODO
+
+# When taking a test exposure to recenter the telescope, expose
+# for this many seconds. Should be long enough to reliably get
+# at least 10 good star detections.
+recenter_exposure_seconds = 3.0
+
+# When taking a test exposure to recenter the telescope, set
+# the binning to this. Higher binning values will generally
+# read out faster, but might reduce accuracy slightly.
+recenter_exposure_binning = 3
+
+# If True, the coordinate system of the mount will be permanently offset
+# (at least until the next sync is performed) using a Sync operation.
+# In other words, the offset calculated at this point will be carried
+# forward to future slews automatically. Note that if the target pixel
+# is someplace other than the center of the camera, future blind slews
+# will target this same pixel position.
+recenter_using_sync = True
+
+# This function is called each time a scan is about to run, and
+# is given the scan object as an argument. If the function returns
+# True, pointing will be refined before performing the scan.
+# Refer to the TelrunScan class in iotalib/telrunfile.py to
+# see what fields are available for a given scan.
+#
+# Examples of the method body:
+# 
+# Example 1:
+#    # Recenter every single image
+#    return True
+# Example 2:
+#    # Recenter V-filter images only
+#    return scan.filter == "V"
+# Example 3:
+#    # Recenter V-filter images, or exposures more than 3 minutes long
+#    if scan.filter == "V": return True
+#    if scan.dur > 180: return True
+#    return False
+def recenter_if_returns_true(scan):
+    return scan.filter == "3" or scan.filter == "6" or scan.filter == "A"
+

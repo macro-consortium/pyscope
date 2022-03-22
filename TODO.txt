@@ -1,0 +1,16 @@
+Monitor roof
+IR preflash exposures
+Recognize specific autofocus jobs in telsched
+Pause / resume automated run through GUI
+Allow "fitsheader" ext act values, such as those used for SSON:
+  18   Extended Action: CMDLINE
+  19  Ext. Act. Values: fitsheader USERNAME=DDJ
+Create datestampped log files
+Send datestampped log files back to deimos
+Pre-slew to target and wait for start time
+Slew to next target during camera readout
+
+X Syncfiles: don't get caught up on duplicate files
+X Telrun: Detect duplicate filenames in .sls file
+X Pick up new telrun.new files automatically; telrun should keep running continuously and not need to be restarted each day
+X Park scope at end of night?
