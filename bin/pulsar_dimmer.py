@@ -11,7 +11,7 @@ import sys
 
 def dimmer(Intensity):
 	# TCP port of light dimmer
-	TCP_IP = '192.168.2.22'
+	TCP_IP = '192.168.1.22'
 	TCP_PORT = 2101
 	BUFFER_SIZE = 1024
 
