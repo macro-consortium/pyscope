@@ -360,7 +360,7 @@ def run_scans(telrun_file):
 
     for scan_index in range(num_scans):
         scan = telrun_file.scans[scan_index]
-		 	
+
         telrun_status.current_scan_number = scan_index+1
         telrun_status.current_scan = scan
         if scan_index < num_scans-1:
@@ -498,7 +498,7 @@ def run_scans(telrun_file):
                         
                 observatory.mount.SlewToCoordinatesAsync(target_ra_app_hours, target_dec_app_degs)
                 while observatory.mount.Slewing:
-                     time.sleep(0.2)
+                    time.sleep(0.2)
 
                 telrun_status.mount_state = "SETTLING"
 
@@ -540,13 +540,13 @@ def run_scans(telrun_file):
             # TODO: Are subframes specified in binned or native pixel coordinates?
 
             logging.info("Setting subframe to %dx%d starting at x=%d, y=%d, binning %dx%d",
-                   scan.sw,
-                   scan.sh,
-                   scan.sx,
-                   scan.sy,
-                   scan.binx,
-                   scan.biny
-                   )
+                    scan.sw,
+                    scan.sh,
+                    scan.sx,
+                    scan.sy,
+                    scan.binx,
+                    scan.biny
+                    )
 
             observatory.camera.set_binning(scan.binx, scan.biny)
             observatory.camera.set_subframe(scan.sx, scan.sy, scan.sw, scan.sh)
@@ -606,8 +606,7 @@ def run_scans(telrun_file):
             
             # check if grism image, if not, run pinpoint solution
             logging.info("Attempting a plate solve via Pinpoint...")
-            if (observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] != '8' and 
-                observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] != '9'):
+            if (observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] != '6'):
                 observatory.camera.run_pinpoint()
                 try:
                     while observatory.camera.pinpoint_status() == 3:
