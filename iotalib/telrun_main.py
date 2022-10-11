@@ -759,6 +759,9 @@ def run_scans(telrun_file):
             set_scan_status(telrun_file, scan, "D")
             break
         continue
+
+    observatory.camera.start_exposure(0.01, False) # Take a dark at the end of the night to close the shutter
+
     return True # Full telrun file has been processed
         
 
