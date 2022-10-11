@@ -128,4 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.images/
+*.fts*
+logs/*.log*
+telrun.new
+schedules/telrun.sls
