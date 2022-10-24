@@ -7,6 +7,7 @@ import time
 import astropy.io.fits as fits
 import numpy
 
+import relimport
 from iotalib import convert
 from iotalib import talonwcs
 from iotalib import rst

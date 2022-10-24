@@ -2,7 +2,7 @@ D:\Archive_Calibration\{Timestamp}			#SAVE_DATA_PATH
 86.96717						#TARGET_AZ
 30.09397						#TARGET_ALT
 3							#SETTLE_TIME_SECONDS
-1							#BINNING  
+2							#BINNING  
 25							#NUMBER_FLATS				
 0							#NUMBER_DARKS				
 0							#NUMBER_BIAS				
