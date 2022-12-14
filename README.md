@@ -1,2 +1,2 @@
-# iota
-The Iowa Optical Telescope Automation software for control of the Gemini telescope located at Winer Observatory. The complete implementation is known as the Iowa Robotic Observatory. 
+# pyScope
+This is a Python package for robotic control of small optical telescopes. The MACRO Consortium maintains a working production version of this package as implemented to control the Robert L. Mutel Telescope located at the Winer Observatory in Sonoita, Arizona.
