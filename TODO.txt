@@ -14,3 +14,5 @@ X Syncfiles: don't get caught up on duplicate files
 X Telrun: Detect duplicate filenames in .sls file
 X Pick up new telrun.new files automatically; telrun should keep running continuously and not need to be restarted each day
 X Park scope at end of night?
+
+X Telrun: Add option to not slew to next target until camera readout is complete
