@@ -1,0 +1,166 @@
+#!/bin/csh -f
+# script run when system is booted.
+# this is expected to be run from, say, /etc/rc.d/rc.local like this:
+#   export TELHOME=/usr/local/telescope
+#   $TELHOME/bin/boot | 2>&1 tee -a $TELHOME/archive/logs/boot.log
+# we in turn use $TELHOME/archive/config/boot.cfg for config info.
+# if found and executable, we also run archive/config/boot.{pre,post}
+# exit with 0 if everything goes ok, else with 1.
+
+# initial indication of life
+echo ""
+echo -n "Starting Talon on "; date -u
+
+# confirm TELHOME is set
+if ( ! $?TELHOME ) then
+    echo no TELHOME
+    exit 1
+endif
+
+# base dir is now wrt TELHOME
+cd $TELHOME
+
+# path starts with stuff in TELHOME in case there are others elsewhere
+set path = ($TELHOME/bin $path)
+
+# prehaps run pre-install script
+if ( -x archive/config/boot.pre ) then
+    echo "Running boot.pre"
+    archive/config/boot.pre
+    if ($status) exit $status
+endif
+
+# source the options list
+if (! -r archive/config/boot.cfg ) then
+    echo no boot.cfg
+    exit 1
+endif
+echo Reading archive/config/boot.cfg
+source archive/config/boot.cfg
+
+# confirm telUser is set
+if ( ! $?telUser ) then
+    echo no telUser
+    exit 1
+endif
+
+
+# perhaps load apogee driver
+if ( $?telApogee ) then
+    echo "Loading Apogee driver"
+    # do NOT use quotes so insapogee sees two args
+    insapogee -v $telApogee
+    if ($status) exit 1
+endif
+
+
+# perhaps load modules
+if ( $?telModules ) then
+    echo "Loading modules"
+    set nm = $#telModules
+    set mi = 1
+    while ($mi <= $nm)
+	echo "   " "$telModules[$mi]"
+	/sbin/insmod -f dev/$telModules[$mi]
+	if ($status) exit 1
+	@ mi ++
+    end
+    unset nm mi
+endif
+
+
+# perhaps start daemons
+if ( $?telDaemons ) then
+    # clear old stuff from comm and insure telUser can add new
+    touch comm/x.in comm/x.out comm/x.pid
+    rm comm/*.in comm/*.out comm/*.pid
+    chown $telUser comm
+
+    # start each of telDaemons
+    set nd = $#telDaemons
+    set di = 1
+    while ($di <= $nd)
+	set dcmd = ($telDaemons[$di])
+	set dname = $dcmd[1]
+	killp -q "$dname"
+	echo "Starting $dcmd"
+	if ("$dname" == "gpsd") then
+	    # run gpsd as root so it can set the time
+	    su root -c "rund $dcmd"
+	    if ($status) exit 1
+	else
+	    # run other daemons as telUser but at better priority
+	    nice -5 su $telUser -c "rund $dcmd"
+	    if ($status) exit 1
+	endif
+	@ di ++
+	unset dcmd dname
+    end
+    unset nd di
+endif
+
+
+# perhaps home the telescope
+if ( $?telHomeTel ) then
+    # send each the home message
+    set homeFifos = (Tel Focus Filter Dome)
+    echo -n "Starting Homing at "; date
+    # clean out any pending stuff, sow home commands, reap exit statii
+    foreach hf ($homeFifos)
+	fio -qmrt 5 2 $hf
+	(echo home | fio -ts $telHomeTel $hf; echo $status > /tmp/es.$hf) &
+    end
+
+    # wait for all to finish
+    wait
+    echo -n "Checking Homing at "; date
+
+    # see how it went
+    set homeStatus = 0
+    foreach hf ($homeFifos)
+	set ws = `awk '{print $1}' /tmp/es.$hf`
+	rm -f /tmp/es.$hf
+	if ($ws != 0) then
+	    echo trouble with $hf -- sending Stop
+	    echo Stop | fio -w $hf
+	endif
+	@ homeStatus += $ws;
+    end
+    if ($homeStatus) exit 1
+    unset homeFifos
+endif
+
+
+# perhaps start telrun
+# N.B. always do this *after* we have had a chance to home scope
+if ( $?telStartTelrun ) then
+    echo "Starting telrun"
+    su $telUser -c "rund telrun"
+    if ($status) exit 1
+endif
+
+
+# perhaps log in and start the GUI
+if ( $?telStartGUI ) then
+    echo "Starting GUI"
+    set log = archive/logs/GUI.log
+    su $telUser -c "touch $log"
+    su $telUser -c 'echo -n "Starting GUI at "; date -u' >> $log
+    (/bin/su - $telUser &) >>& $log
+    if ($status) exit 1
+endif
+
+
+# perhaps run post-install script
+if ( -x archive/config/boot.post ) then
+    echo "Running boot.post"
+    archive/config/boot.post
+    if ($status) exit $status
+endif
+
+
+# ok
+echo Talon startup complete.
+
+# For RCS Only -- Do Not Edit
+# @(#) $RCSfile: boot,v $ $Date: 2002/05/09 06:42:24 $ $Revision: 1.2 $ $Name:  $

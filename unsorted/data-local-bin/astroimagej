@@ -1,0 +1,4 @@
+#!/bin/sh
+cd /usr/local/AstroImageJ/
+java -Xmx8192m -jar /usr/local/AstroImageJ/ij.jar
+exit

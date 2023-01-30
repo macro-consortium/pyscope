@@ -1,0 +1,133 @@
+Common keys (file1=maxim_basic.fit, file2=talon_image.fts):
+1: SIMPLE  =                    T
+2: SIMPLE  =                    T / Standard FITS
+
+1: BITPIX  =                   16 /8 unsigned int, 16 & 32 int, -32 & -64 real
+2: BITPIX  =                   16 / Bits per pixel
+
+1: NAXIS   =                    2 /number of axes
+2: NAXIS   =                    2 / Number of dimensions
+
+1: NAXIS1  =                 2048 /fastest changing axis
+2: NAXIS1  =                 2048 / Number of columns
+
+1: NAXIS2  =                 2048 /next to fastest changing axis
+2: NAXIS2  =                 2048 / Number of rows
+
+1: BSCALE  =   1.0000000000000000 /physical = BZERO + BSCALE*array_value
+2: BSCALE  =                    1 / Pixel scale factor
+
+1: BZERO   =   32768.000000000000 /physical = BZERO + BSCALE*array_value
+2: BZERO   =                32768 / Real = Pixel*BSCALE + BZERO
+
+1: DATE-OBS= '2015-10-11T23:30:00' /YYYY-MM-DDThh:mm:ss observation start, UT
+2: DATE-OBS= '2015-03-06T08:18:40.373' / UTC, start of exposure
+
+1: EXPTIME =   2.0000000000000000 /Exposure time in seconds
+2: EXPTIME =                   60 / Exposure time, seconds
+
+1: FILTER  = 'N       ' /          Filter used when taking image
+2: FILTER  = 'I       '           / Filter code
+
+1: JD      =   2457307.4791666665 /Julian Date at start of exposure
+2: JD      =    2457087.846300617 / Julian Date, start of exposure
+
+1: OBJECT  = '        '
+2: OBJECT  = 'NGC 4666'           / Object name
+
+1: TELESCOP= '        ' /          telescope used to acquire this image
+2: TELESCOP= 'Rigel System'
+
+1: INSTRUME= 'PlaneWave Virtual Sky Camera'
+2: INSTRUME= 'FLI ProLine PL16803 Rev 1.01'
+
+1: OBSERVER= '        '
+2: OBSERVER= 'robert-mutel@uiowa.edu' / Investigator(s)
+
+
+Keys in maxim_basic.fit only:
+EXPOSURE=   2.0000000000000000 /Exposure time in seconds
+CCD-TEMP=  0.00000000000000000 /CCD temperature at start of exposure in C
+XPIXSZ  =   9.0000000000000000 /Pixel Width in microns (after binning)
+YPIXSZ  =   9.0000000000000000 /Pixel Height in microns (after binning)
+XBINNING=                    1 /Binning factor in width
+YBINNING=                    1 /Binning factor in height
+XORGSUBF=                    0 /Subframe X position in binned pixels
+YORGSUBF=                    0 /Subframe Y position in binned pixels
+IMAGETYP= 'Light Frame' /       Type of image
+SITELAT = '33 52 13' /          Latitude of the imaging location
+SITELONG= '-118 14 51' /        Longitude of the imaging location
+FOCALLEN=   4560.0000000000000 /Focal length of telescope in mm
+APTDIA  =  0.00000000000000000 /Aperture diameter of telescope in mm
+APTAREA =  0.00000000000000000 /Aperture area of telescope in mm^2
+EGAIN   =   1.0000000000000000 /Electronic gain in e-/ADU
+SWCREATE= 'MaxIm DL Version 5.24 130921 0YEC4' /Name of software that created
+         the image
+SBSTDVER= 'SBFITSEXT Version 1.0' /Version of SBFITSEXT standard in effect
+NOTES   = '        '
+FLIPSTAT= '        '
+ANMISCH = '1 arc sec'
+ANMISLE = '400     '
+ANMISLG = '1       '
+CSTRETCH= 'Medium  ' /          Initial display stretch mode
+CBLACK  =                  998 /Initial display black level in ADUs
+CWHITE  =                 1011 /Initial display white level in ADUs
+PEDESTAL=                    0 /Correction to add for zero-based ADU
+SWOWNER = 'CALTECH Astronomy' / Licensed owner of software
+ANM00000= '"<Measurements version=%221%22></Measurements>"'
+
+Keys in talon_image.fts only:
+OFFSET1 =                    0 / Camera upper left frame x
+OFFSET2 =                    0 / Camera upper left frame y
+XFACTOR =                    2 / Camera x binning factor
+YFACTOR =                    2 / Camera y binning factor
+ORIGIN  = 'Univ. of Iowa'
+COMMENT SN in NGC4666 (AT #6795), Comet Lovejoy
+PRIORITY=                   10 / Scheduling priority
+CDELT1  =     -0.0002029826398 / RA step right, degrees/pixel
+CDELT2  =     -0.0002031311508 / Dec step down, degrees/pixel
+LST     = '11:51:17'           / Local sidereal time at exposure start
+POSANGLE= ' -20:22:29'         / Position angle, degrees, +W
+LATITUDE= ' 31:39:56'          / Site Latitude, degrees +N
+LONGITUD= '-110:36:05'         / Site Longitude, degrees +E
+ELEVATIO= ' 55:22:54'          / Degrees above horizon
+AZIMUTH = '155:54:26'          / Degrees E of N
+HA      = ' -0:53:39.31'       / Local Hour Angle
+AIRMASS =          1.214250523 / Kasten-Young airmass computation
+MOONANGL=               36.551 / Angular separation to Moon, Degrees
+MOONPHAS=                99.67 / Percentage of full moon
+RAEOD   = ' 12:45:56.25'       / Nominal center Apparent RA
+DECEOD  = ' -0:32:53.3'        / Nominal center Apparent Dec
+RA      = ' 12:45:08.16'       / Nominal center J2000 RA
+DEC     = ' -0:27:47.2'        / Nominal center J2000 Dec
+OBJRA   = ' 12:45:08.2'        / Target center J2000 RA
+OBJDEC  = ' -0:27:48.0'        / Target center J2000 Dec
+EPOCH   =                 2000 / RA/Dec epoch, years (obsolete)
+EQUINOX =                 2000 / RA/Dec equinox, years
+CAMTEMP =                  -36 / Camera temp, C
+RAWHENC =           0.23997018 / HA Encoder, rads from home
+RAWDENC =          -0.80912306 / Dec Encoder, rads from home
+RAWOSTP =            2818.1971 / Focus Motor, rads from home
+FOCUSPOS=            3812.5069 / Focus pos from home, um
+RAWISTP =                    0 / Filter Motor, rads from home
+COMMENT SN in NGC4666 (AT #6795), Comet Lovejoy
+WXTEMP  =                 19.1 / Ambient air temp, C
+WXPRES  =                 1000 / Atm pressure, mB
+WXWNDSPD=                    0 / Wind speed, kph
+WXWNDDIR=                    0 / Wind dir, degs E of N
+WXHUMID =                    0 / Outdoor humidity, percent
+CTYPE1  = 'RA---TAN'           / Columns are RA
+CRVAL1  =          191.2967369 / RA at CRPIX1, degrees
+CRPIX1  =                 1024 / RA reference pixel index, 1-based
+CROTA1  =                    0
+CTYPE2  = 'DEC--TAN'           / Rows are Dec
+CRVAL2  =        -0.4474354895 / Dec at CRPIX2, degrees
+CRPIX2  =                 1024 / Dec reference pixel index, 1-based
+CROTA2  =          1.865663816 / Rotation N through E, degrees
+FWHMH   =               4.9191 / Horizontal FWHM median, pixels
+FWHMHS  =               0.8826 / Horizontal FWHM std dev, pixels
+FWHMV   =               4.5614 / Vertical FWHM median, pixels
+FWHMVS  =              0.82938 / Vertical FWHM std dev, pixels
+HCOMSCAL=                    1
+HCOMSTAT= 'UNHCOMP '
+

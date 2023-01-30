@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+# Converts Maxim/DL photometry output file to format compatible with Exoplanet site http://var2.astro.cz/ETD/protocol.php
+# RLM 26 Oct 2014
+
+import sys, os
+
+# Get input csv filename, check that it exists
+if len(sys.argv) != 2:
+	f_in = raw_input('Enter csv filename: ')
+else:
+	f_in = sys.argv[1]
+if not os.path.isfile(f_in): sys.exit('%s does not exist, try again' % f_in)
+
+# Create output filename, open files
+fname,fext = os.path.splitext(f_in)
+f_out = '%s.edt' % fname
+fin = open(f_in,'r')
+fout = open(f_out,'w')
+
+# grab all lines with JD start, peel off JD and differential magnitude of target star, write to output file
+lines = fin.readlines()
+for line in lines:
+	line = line.split(',')
+	if line[0][0] == '2':
+		X = [float(x) for x in line]
+		jd = X[0]; mag = X[1]
+		fout.write('%.5f %.3f\n' % (jd,mag))
+
+# Close and inform user
+fin.close(); fout.close()
+print 'Wrote %s' % f_out

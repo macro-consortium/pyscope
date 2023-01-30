@@ -1,0 +1,9 @@
+#!/bin/csh -f
+# secure the remote sight for the night by killing telrun with SIGTERM
+# and sending close to Shutter.in.
+
+killp -TERM telrun
+/bin/echo "Close" >> /usr/local/telescope/comm/Shutter.in &
+
+# For RCS Only -- Do Not Edit
+# @(#) $RCSfile: telsecure,v $ $Date: 2001/04/19 21:12:21 $ $Revision: 1.1.1.1 $ $Name:  $

@@ -1,0 +1,65 @@
+#!/bin/csh -f
+
+# working room
+set tmpdir = /tmp/$$.tmp
+mkdir $tmpdir
+set tmpfts = $tmpdir/tmp.fts
+onintr cleanup
+
+# build up the basic command
+set cmd = "fitstopnm -quiet $tmpfts"
+
+# get args
+while ("$1" =~ -*)
+    switch ($1)
+    case "-size":
+	set cmd = "$cmd | pnmscale -xy $2 $2"
+	shift; shift
+	breaksw;
+    case "-invert":
+	set cmd = "$cmd | pnminvert"
+	shift
+	breaksw;
+    default:
+	echo "Usage: $0:t [-size size] [-invert] [*.ft[sh]]"
+	echo "Purpose: convert FITS to .gif"
+	echo "  -size s: set size of output image to s x s pixels"
+	echo "  -invert: produce inverse-video image"
+	echo "With no files it converts stdin (which must be .fts) to stdout."
+	echo "With files it creates *.gif for each *.ft[sh]"
+	exit 1
+	breaksw
+    endsw
+end
+
+# finish the command
+set cmd = "$cmd | ppmtogif -quiet"
+
+if ($#argv == 0) then
+    fitswindow > $tmpfts
+    eval "$cmd"
+else
+    foreach f ($argv)
+	set gifname = $f:r.gif
+
+	# uncompress if necessary
+	if ($f =~ *.fth) then
+	    cp $f $tmpdir/x.fth
+	    fdecompress -r $tmpdir/x.fth
+	    set fitsf = $tmpdir/x.fts
+	else
+	    set fitsf = $f
+	endif
+
+	fitswindow < $fitsf > $tmpfts
+	set gcmd = "$cmd > $gifname"
+	eval "$gcmd"
+    end
+endif
+
+cleanup:
+
+rm -fr $tmpdir
+
+# For RCS Only -- Do Not Edit
+# @(#) $RCSfile: fitstogif,v $ $Date: 2001/04/19 21:12:17 $ $Revision: 1.1.1.1 $ $Name:  $
