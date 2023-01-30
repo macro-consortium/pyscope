@@ -132,3 +132,4 @@ dmypy.json
 logs/*.log*
 telrun.new
 telrun.sls
+iota_gemini.ppk
