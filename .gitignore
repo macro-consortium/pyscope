@@ -131,4 +131,4 @@ dmypy.json
 *.fts*
 logs/*.log*
 telrun.new
-schedules/telrun.sls
+telrun.sls
