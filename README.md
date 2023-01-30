@@ -1,2 +1,10 @@
 # pyScope
-This is a Python package for robotic control of small optical telescopes. The MACRO Consortium maintains a working production version of this package as implemented to control the Robert L. Mutel Telescope located at the Winer Observatory in Sonoita, Arizona.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+This is the implementation of the [pyScope](https://github.com/WWGolay/pyScope) package specific to the [MACRO Consortium](http://macroconsortium.org/) (Macalester-Augustana-Coe Robotic Observatory). pyScope is a pure-Python package for robotic scheduling, operation, and control of small optical telescopes. The MACRO Consortium operates the Robert L. Mutel Telescope (RLMT) located at the [Winer Observatory](https://winer.org/) in Sonoita, Arizona. The RLMT is a Planewave CDK-20, 0.5m f/6.8 Corrected Dall-Kirkham tekescope with an SBIG Alum AC-4040 CMOS camera. With 11 filters and a miniature grating-prism (grism) spectrometer, the RLMT is capable of a wide variety of science. 
+
+## Quick Start
+[TBD]
+
+## Issues
+Please post any issues you find [here](https://github.com/macro-consortium/pyScope/issues).

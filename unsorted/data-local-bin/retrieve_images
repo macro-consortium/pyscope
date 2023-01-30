@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+import glob,sys, os
+from astropy.io import fits
+from shutil import copyfile
+from optparse import OptionParser
+
+# Perfomn recursive search of FITS files (*.fts) from specfified directory by object name; 
+# list, and optionally copy to a destination directory.
+vers = '1.0 ides of March 2021'
+
+def get_args():
+    parser = OptionParser(description='Program %prog',version = vers)
+    parser.add_option('-s', dest = 'source', metavar='Source', action = 'store', default = '', help = 'Source name [no default]') 
+    parser.add_option('-p', dest = 'path', metavar='Path', action = 'store', default = '.', help = 'Search path [default "."]')    
+    parser.add_option('-d', dest = 'destination', metavar='Destination', action = 'store', default = '', help = 'Destination path [default no copy]') 
+    parser.add_option('-f', dest = 'filter', metavar='Filter', action = 'store', default = '', help = 'Filter [default any]') 
+    parser.add_option('-v', dest = 'verbose', metavar = 'Verbose', action ='store_true', default = False, help = 'verbose, default  False')
+    return parser.parse_args()
+
+# Parse options
+(opts, args) = get_args()
+objname = opts.source
+if objname =='': sys.exit('Source must be specified, try again')
+src_path = opts.path
+dest_path = opts.destination
+do_copy = not dest_path == ''
+filter = opts.filter.upper()
+verbose = opts.verbose
+print (verbose)
+
+# Generate list of FITS images with 
+print ('Searching recursively for FITS images starting at folder %s' % src_path)
+ftsfiles = glob.glob(src_path + '/**/*.fts', recursive=True)
+if filter == '':
+    print ('Found %i fts images, now searching for object %s ...' % (len(ftsfiles),objname))
+else:
+    print ('Found %i fts images, now searching for object %s and filter %s' % (len(ftsfiles),objname,filter))
+N = 0
+for ftsfile in ftsfiles:
+    # Ignore FITS files with corrupt headers
+    try:
+        im,hdr = fits.getdata(ftsfile,0,header=True)
+    except:
+        continue
+    try:
+        D = hdr['DATE-OBS']; Date = D[0:10]; UT = D[11:]; JD = float(hdr['JD'])
+        RA = hdr['RA']; DEC = hdr['DEC']; obj = hdr['OBJECT']
+        fil = hdr['FILTER'][0] ; exptime = hdr['EXPOSURE']
+        filter_ok = filter == '' or filter == fil
+        if obj == objname and filter_ok:
+            N +=1
+            if N ==1: print ('File    Source.   Date      Filter.   Exp. time[s]')
+            fname = os.path.basename(ftsfile)
+            print('%-25s  %-7s  %s   %1s  %5.1f' % (fname, obj,D, fil, exptime))
+            if do_copy:
+                d = '%s%s' % (dest_path,fname)
+                copyfile(ftsfile, d)
+                if verbose: print ('Copied %s to %s' % (os.path.basename(ftsfile),d))
+    except:
+        if verbose: print('%s: header does not have required keywords, skipping' % ftsfile)
+if do_copy:
+    print ('Copied %i images to %s' % (N,dest_path))
