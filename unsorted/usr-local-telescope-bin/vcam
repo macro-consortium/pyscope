@@ -1,0 +1,429 @@
+#!/usr/bin/perl
+
+# script-level driver for a Talon ccdcamera interface
+# that provides a "virtual" camera to receive images
+# from the STScI database.
+
+# last edit: 11/09, sto 
+# This version introduces some changes.
+# You should now create a copy of vcam under the name
+# you wish to identify your aux cam script.  You should
+# then have a config script of the same base name in the 
+# $TELHOME/archive/config directory.  See the vcam.cfg
+# file for a template.
+# For example, a vcam script name vcam-dss1 will
+# look to load a vcam-dss1.cfg file from the config directory.
+# This allows for multiple vcam versions to be used
+# at the same time, for different purposes.
+#
+# get params from $TELHOME/archive/config/vcam.cfg
+# send errors to $TELHOME/archive/logs/vcam.log
+# see &usage() for command summary.
+
+# +++ These first values may be adjusted in cfg script
+
+# cropping adjustments
+$cropX = 0;
+$cropY = 0;
+
+# set $traceon to 1 if want trace info
+$traceon = 1;
+
+# set to simulate a bad column
+$applyBadColumn = 1;
+# set to simulate focusing
+$applyFocus = 1;
+
+# exposure notation on closed shutter images
+$expStamp = 0;
+
+# ---
+
+$pname = substr($0,rindex($0,"/")+1);
+# get parameters
+$TELHOME = $ENV{TELHOME};
+do "$TELHOME/archive/config/$pname.cfg";
+
+# sync output
+$| = 1;
+
+# get command
+$cmd = (@ARGV > 0 and $ARGV[0] =~ /^-[^h]/) ? $ARGV[0] : &usage();
+
+# return current temp
+if ($cmd eq "-T") {
+    &errlog ("@ARGV") if @ARGV != 1;
+    print "$faketemp\n";
+    exit 0;
+}
+
+# return maxen
+if ($cmd eq "-f") {
+    &errlog ("@ARGV") if @ARGV != 1;
+    print "$imw $imh $maxbx $maxby\n";
+    exit 0;
+}
+
+# -g: check exp args
+if ($cmd eq "-g") {
+    &errlog ("@ARGV") if @ARGV != 2;
+    my ($x,$y,$w,$h,$bx,$by,$shtr) = split (/:/, $ARGV[1]);
+#    if ($x != 0 or $y != 0 or $w != $imw or $h != $imh) {
+#	print ("Subframing is not supported...yet\n");
+#	exit 1;
+#    }
+    if ($bx < 1 || $bx > $maxbx) {
+	print ("X binning must be 1..$maxbx\n");
+	exit 1;
+    }
+    if ($by < 1 || $by > $maxby) {
+	print ("Y binning must be 1..$maxby\n");
+	exit 1;
+    }
+    if ($shtr < -1 || $shtr > 3) {
+	print ("Shtr must be -1..3\n");
+	exit 1;
+    }
+    exit 0;
+}
+
+# camera id string
+if ($cmd eq "-i") {
+	&trace("ID $id");
+    &errlog ("@ARGV") if @ARGV != 1;
+    print "$id\n";
+    exit 0;
+}
+
+# kill exposure.
+if ($cmd eq "-k") {
+    &errlog ("@ARGV") if @ARGV != 1;
+    #print "Can not stop Vcam expose\n";
+    # oh yeah?
+	my @s = reverse split("/",$0);
+	my $nm = @s[0];
+    &trace("Killing $nm");
+    system("killall $nm");
+    exit 1;
+}
+
+# open or close shutter
+if ($cmd eq "-s") {
+    &errlog ("@ARGV") if @ARGV != 2;
+    #&shutter ($ARGV[1]);
+    exit 0;
+}
+
+# -x: start exp, hang around until get image, send 1 byte when see something,
+# rest of file to stdout, then exit.
+# N.B. any error messages should have extra leading char.
+if ($cmd eq "-x") {
+    &errlog ("@ARGV") if @ARGV < 2 || @ARGV > 3; # allow for the time stamp to be passed, but we don't use it here
+    my ($ms,$x,$y,$w,$h,$bx,$by,$shtr) = split (/:/, $ARGV[1]);
+	&trace("Exposing $ms,$x,$y,$w,$h,$bx,$by,$shtr");
+
+    # exposure time needed later for name stamp of closed shutter exposures.
+    # just record this as a global...
+    $expStamp = $ms/100;
+
+    # sanity check parameters
+#    if ($x != 0 or $y != 0 or $w != $imw or $h != $imh) {
+#	print ("Subframing is not supported\n");
+#	exit 1;
+#   }
+    if ($bx > $maxbx or $by > $maxby) {
+	print ("Binning too high\n");
+	exit 1;
+    }
+
+	# time this "exposure" to be at least as long as desired
+	$expStart = `date +%s`;
+
+    # stamp the header for this exposure
+    &trace("stampfits -R $fitsnow $ms $w $h $bx $by");
+    system("stampfits -R $fitsnow $ms $w $h $bx $by");
+
+    &getNetImage($shtr, $x, $y, $w, $h, $bx, $by);
+
+    # 9/2002: Implement focus simulation
+    if($shtr > 0 && $applyFocus) {
+	    &focusImage($w, $h);
+	}
+    if($applyBadColumn) {
+        &doBadColumn();
+    }
+
+    doForceCrop($w, $h);
+
+	$t = `date +%s`;
+	while($t - $expStart < $ms/1000)
+	{
+		sleep(1);
+		$t = `date +%s`;
+	}
+	
+    my $sz = $imw/$bx*$imh/$by*2;
+    print "\n";							# one dummy char to signal end of exp
+    &rdImFile($sfim, $sz, $shtr);		# then copy image to EOF
+    exit 0;
+}
+
+# print usage summary and exit
+sub usage
+{
+    my $me = $0;
+    $me =~ s#.*/##;
+    print "Usage: $me {options}\n";
+    print "Purpose: operate a Virtual camera from Talon via share file interface\n";
+    print "Options:\n";
+    print " -g x:y:w:h:bx:by:shtr      test if given exp params are ok\n";
+    print " -x ms:x:y:w:h:bx:by:shtr   start the specified exposure\n";
+    print "                            shtr: -1= Flat 0=Close 1=Open 2=OOCO 3=OOCOCO\n";
+    print " -k                         kill current exp, if any\n";
+    print " -t temp                    set temp to given degrees C\n";
+    print " -T                         current temp on stdout in C\n";
+    print " -s open                    immediate shutter open or close\n";
+    print " -i                         1-line camera id string on stdout\n";
+    print " -f                         max `w h bx by' on stdout\n";
+
+    exit 1;
+}
+
+sub getNetImage
+{
+	my $shtr = $_[0];
+    my $startX = $_[1];
+    my $startY = $_[2];
+	my $width = $_[3];
+	my $height = $_[4];
+	my $bx = $_[5];
+	my $by = $_[6];
+
+	my $size = $width/$bx * $height/$by * 2;
+	
+	&trace("GetNetImage: $startX, $startY, $width x $height, $shtr, $bx:$by");
+			
+	if($shtr > 0) {
+		
+	    # get the image from our friends at the STScI
+
+    	# Get the coordinates that we are pointing at from the header we just stamped
+	    my $nmstr = `stampfits -c $fitsnow`;
+    	&trace("start name $nmstr");
+	    my $rah = substr($nmstr,0,3);
+    	my $ram = substr($nmstr,4,2);
+	    my $ras = substr($nmstr,7,5);
+    	my $dcd = substr($nmstr,13,3);
+	    my $dcm = substr($nmstr,17,2);
+    	my $dcs = substr($nmstr,20,4);
+
+        # note: we don't support positional subframing here...
+        # just smaller areas about the center
+        # To support positional subframing, we need to astrometrically offset
+        # our position by startX, startY (doable, but not worth it in the context we use this in)
+
+        # get the filter code
+        my $filter = `stampfits -f $fitsnow`;
+
+        # call url request function embedded in config file
+        my $rqst = formatURLRequest($rah, $ram, $ras, $dcd, $dcm, $dcs, $width, $height, $filter);
+
+        # if it's the same image, return the last one
+        my $lastRqst = `cat $TELHOME/archive/lastRqst_$pname`;
+        chomp($lastRqst);
+        if($lastRqst eq $rqst) {
+        	&trace("Repeating image");
+        	`cp $TELHOME/archive/lastimg_$pname $sfim`;
+        	return;
+        }
+        &trace("$lastRqst != $rqst");
+        `echo "$rqst" > $TELHOME/archive/lastRqst_$pname`;
+
+        unlink($sfim);
+		unlink($sfim.gz);
+
+#		# frame request
+#		my $hminrq = ($width + 0.5) / $harcmin ;  # arc minutes horizontal requested
+#		my $vminrq = ($height + 0.5) / $varcmin;  # arc minutes vertical requested
+#
+#		my $rqst = sprintf("%s?v=%d&r=%02d+%02d+%02d&d=%02d+%02d+%02d&e=J2000&h=%.2f&w=%.2f&f=fits&c=none&fov=NONE&v3=",
+#    		               $url,$survey,$rah,$ram,$ras,$dcd,$dcm,$dcs,$vminrq,$hminrq);
+
+		&trace(sprintf("%s\n",$rqst));
+
+		# download the image
+		`lynx -dump "$rqst" > $sfim.gz`;
+		# now unzip it
+		`gzip -d $sfim.gz`;
+
+	    `cp $sfim $TELHOME/archive/lastimg_$pname`;
+	
+		# see if we're the expected size.  If not, return error
+		my $fsz =  -s ( $sfim );
+		if($fsz < $size) {
+			if($fsz < 2000) {
+			&errlog("Net error: See $sfim for clues.\n");
+			} else {
+			&errlog("Downloaded file returned short: $fsz / $size\n");
+			}
+		}
+	}
+	else
+	{
+		$pixH = 0;
+		$pixL = 100 + int ($expStamp/16);
+		my $cnt = $size/2;
+		if($shtr < 0) { $pixL += 32; } # a fakier fake flat...
+		# closed shutter returns all zeros	
+		&trace(sprintf("Closed shutter. Filling $sfim with $cnt 0x%02x%02x pixels",$pixH,$pixL));
+		open F, ">$sfim" or &errlog("Can't open $sfim to write fill");
+		#        0         1         2         3         4         5         6         7         8
+		#        012345678901234567890123456789012345678901234567890123456789012345678901234567890
+		print F "SIMPLE  =                    T                                                  ";
+		print F "BITPIX  =                   16                                                  ";
+		print F "NAXIS   =                    2                                                  ";
+		my $n1f = sprintf("%-4d",$width);
+		my $n2f = sprintf("%-4d",$height);		
+		print F "NAXIS1  =                 $n1f                                                  ";
+		print F "NAXIS2  =                 $n2f                                                  ";
+		print F "END                                                                             ";
+		for(my $i=0; $i<36-6; $i++) {
+		print F "                                                                                ";
+		}
+		# simulate a camera with a moderate problem with hot pixels
+		while($cnt--) {
+			print F chr($pixH + int(rand 2) * int(rand 2) * int(rand 2) * int(rand 2) *
+								int(rand 2) * int(rand 2) * int(rand 2) * int(rand 2) *
+								int(rand 2) * int(rand 2) * int(rand 48/(($expStamp/16)+1))); # occasional hot pixel
+			print F chr($pixL + int(rand 6 + $expStamp/16)); # minor flux
+		}
+		close F;
+	}
+}
+
+# copy image pixels from file to stdout.
+# N.B. be patient, it might still be coming in
+# N.B. skip the header
+sub rdImFile
+{
+    my $fhdr = 2880;			# EXPECTED (minimum) bytes in FITS header
+    my $fn = $_[0];				# file name
+    my $sz = $_[1];				# size
+    my $shtr = $_[2];			# shutter. If zero (closed) we handle differently (calib)
+    my $nrd = 0;
+    my $buf;
+    my $tot;
+   	
+    # skip FITS header
+    &trace ("skipping FITS header of $fn");
+    open F, "<$fn" or &errlog ("$fn: $!");
+	
+	my $ln = 0;
+	my $xit = 0;
+
+	while(!$xit) {
+		for($i=0; $i< 36; $i++) {
+   			$nrd = read(F, $lntxt, 80);
+			&errlog ("$fn: $!") if (!defined($nrd));
+   	   		#   &trace(sprintf("%d) %s\n", $i, $lntxt));
+	   		$ln += 80;
+  			if(substr($lntxt,0,3) eq "END") { $xit=1; }
+    	}
+	}
+
+	$tot = $ln;
+
+    # all the rest are pixels
+    &trace ("sending pixels after skipping $tot");
+    for (; $tot < $sz; $tot += $nrd) {
+		$nrd = read (F, $buf, 16384);
+		&errlog ("$fn: $!") if (!defined($nrd));
+		&errlog ("Bad print @ $tot/$sz") unless print $buf;
+    }
+    close F;
+
+    # ccdcamera lib kills us when gets all pixels so ok if never see this
+    &trace ("$fn complete");
+}
+
+#
+# Simulate an out of focus image.
+#
+sub focusImage
+{
+	my $width = $_[0];
+	my $height = $_[1];
+	
+	&trace("Focusing...");
+	my $secondary = .25;
+
+	my $focusLine = `telshow | grep Focus`;
+	chomp($focusLine);
+	&trace("FocusLine = $focusLine");
+	my $focusAmt = 1000-substr($focusLine,16,12);
+	$focusAmt /= 10; #/# depth of field per tweak
+	$focusAmt = int(abs($focusAmt));
+    if($focusAmt > 7) {
+        $focusAmt = 7; # Max tweak allowed
+    }
+	&trace("FocusAmt = $focusAmt");
+	my $secamt = int(abs($focusAmt * $secondary));
+
+	my $amt1 = 1+$focusAmt;
+	my $amt2 = int($secamt * 0.5);
+
+	if($focusAmt > 0) {
+		my $cmd1 = "convert -blur $amt1".'x'."$amt1 $sfim blur1.fts";
+		my $cmd2 = "convert -gaussian $amt2".'x'."$amt2 $sfim blur2.fts";	
+		my $cmd3 = "convert -draw 'image Minus 0,0 $width,$height blur1.fts' blur2.fts $sfim";
+
+		&trace($cmd1);
+		`$cmd1`;
+		if($amt2 > 0) {
+			&trace($cmd2);
+			`$cmd2`;
+			&trace($cmd3);
+			`$cmd3`;
+		}else{
+			`cp blur1.fts $sfim`;
+		}
+	}
+}
+
+sub doBadColumn
+{
+	my $bcCmd = "convert -fill '#777777' -draw 'line 410,200 410,500' $sfim $sfim";
+	&trace($bcCmd);
+	`$bcCmd`;
+}
+
+sub doForceCrop
+{
+	my $width = $_[0];
+	my $height = $_[1];
+	my $cmd = "convert -crop $width".'x'."$height+$cropX+$cropY $sfim $sfim";
+	&trace($cmd);
+	`$cmd`;
+}
+
+# append $_[0] to STDOUT and timestamp + $_[0] to $elog and exit
+sub errlog
+{
+	print " $_[0]";
+	open EL, ">>$elog";
+	$ts = `jd -t`;
+	print EL "$ts: $_[0]\n";
+	close EL;
+	exit 1;
+}
+
+# if $trace: append $_[0] to $elog
+sub trace
+{
+	return unless ($traceon);
+	open TL, ">>$elog";
+	$ts = `jd -t`;
+	print TL "$ts: $_[0]\n";
+	close TL;
+}
+

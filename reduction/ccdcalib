@@ -1,0 +1,265 @@
+#!/usr/bin/env python
+
+'''
+Fully calibrate a raw science image using master calibration images [bias, dark, flat] 
+Optionally, purge hot pixels, correct bad columns 
+
+Scheme:
+R= raw science frame
+B = master bias (median averaged)
+D = master dark (median averaged)
+T = scaled thermal = (D - B) * t/t0 (per pixel multiply, where t = science exp. time, t0 = thermal exp. time)
+F = master flat (filter specfic, median averaged)
+NF = (F-B)/mean(F-B): normalized flat 
+
+calibrated frame = (R - B - T) / NF
+
+N.B. 
+1. This assumes the flat exposure time is small so no dark correction is needed).
+2. Output is 16-bit for compatibility with Talon software
+3. Does not use border pixels to calculate mean (outer 20 rows,columns)
+4. Uses the cosmics library to removed hot pixels
+
+RLM 31 Oct  2013
+09 Nov 2013: change normalziation so the minimum pixel value is added to all pixels after divide by flat
+15 Apr 2015:  replace bad column fix algorithm with fix_badcolumns()
+28 Oct 2015: update calibration image names for Gemini
+22 Nov 2015: Maxim-generated 'dark' images are actually thermals, so don't subtract bias 
+15 Feb 2016: support nxn binning, get imsize etc from header
+16 Feb 2016: Correct dark subtraction: remove bias first
+25 Apr 2016: Switch to OptionParser for inputs
+13 May 2016 - fix problem with 500 offset (remove!)
+13 Nov 2016 - v2.1 match only on first letter of filter name; add bad column correction for SBIG
+18 Nov 2016 add PEDESTAL offsets back to biases, darks, enforce that dark is actually a thermal
+08 Feb 2017 - v.2.2 Change so keyword Flipstat = Flip/Mirror enforces a up-down flip in addition to a left-right flip!
+09 Oct 2017 - Check for CALSTAT keyword: if it exists and contains D dark is a thermal, of not, it's a dark
+16 Oct 2017 - v. 2.3 add CALSTAT keyword to calibrated images, so calib-images recognizes previously calibrated images
+06 Feb 2018 - v. 2.4 add Flipstat = 'Rotate 90 CCW'; Fixed problem recognizing thermal images ('B' in CALSTAT)
+27 Feb 2018 - v. 2.5 change default on hot pixel removal to 0 (no correction): cosmics broken as of Feb 26 after updating libs
+27 Apr 2018 - v. 2.6 Fixed cosmics problem, reset param -H default back to 1
+09 Feb 2020 - v. 2.7 Fixed case where a thermal pixel < bias pixel; path to cosmics changed to /data/local/bin/
+26 Feb 2020  -v.2.8 Froced alla rrays to floats (Python 3 cannot do math on mixed numpy arrays) 
+'''
+
+# import needed modules
+import sys, os, time
+import astropy.io.fits as pyfits
+from optparse import OptionParser
+import numpy as np
+sys.path.append("/data/local/bin/") # The directory that contains cosmics.py
+import cosmics
+
+# Default directory for calibration images
+calib_dir = '/usr/local/telescope/archive/calib/'
+
+def get_args():
+    d_txt = 'Program ccdcalib calibrates raw FITS images by applying bias, dark, flat corrections, \
+    and optionally removing hot pixels using Cosmics. Default calibration images are retrieved from  %s' % calib_dir
+    parser = OptionParser(description=d_txt, version = '%prog v. 2.7 (9 Feb 2020)' )
+    
+    parser.add_option('-H', dest = 'Hot_pixel'  , type=int, default = 1, action='store', metavar="Hot pixel removal", help="Number of hot pixel removal iterations [1]")      
+    
+    parser.add_option('-b', dest = 'bias_frame' , metavar='Bias frame', action = 'store',  default = '', help='Bias frame' )
+    parser.add_option('-d', dest = 'dark_frame' , metavar='Dark frame', action = 'store',  default = '', help='Dark frame' )
+    parser.add_option('-f', dest = 'flat_frame' , metavar='Flat frame', action = 'store',  default = '', help='Flat frame' )
+    parser.add_option('-c', dest = 'cal_image'  , metavar='Calibrated image' , action = 'store',  default = '', help='Calibrated image [default: overwrites input image]' )
+    parser.add_option('-C', dest = 'bad_columns', metavar='Bad columns',action='store', default ='', help ='Bad column list [default none]' )
+    parser.add_option('-v', dest = 'verbose'    , metavar='Verbose'   , action = 'store_true',  default = 'False', help='Verbose output' )
+    return parser.parse_args()    
+    
+
+def fix_badcolumns(im,badcolumns):
+    ''' 
+    Fixes user-specfified bad columns in FITS images 
+    Affected columns are repaired by replacing column values with mean of adjacent columns.
+    Returns corrected image and list of fixed columns 
+    '''
+    
+    window = 5; min_diff = 5  
+    for n in range(border,imsize-border): 
+        win_median= np.median(im[:,n-window:n+window])
+        diff = np.median(im[:,n]) - win_median
+        if abs(diff) > min_diff: badcols.append(n)
+    for bc in badcolumns: 
+        m1 = im[:,bc-1]
+        m2 = im[:,bc+1] 
+        im[:,bc] = (m1 + m2)/2.
+    return im
+   
+    
+# ====== main program  ======= 
+
+# Get command  line arguments, assign parameter values
+(opts, args) = get_args()
+N_iter =      opts.Hot_pixel
+bias_image =  opts.bias_frame
+dark_image =  opts.dark_frame
+flat_image =  opts.flat_frame
+cal_image =   opts.cal_image
+if opts.bad_columns != '':
+    bad_columns = [int(x) for x in opts.bad_columns.split(',')]
+else:
+    bad_columns = ''
+verbose = opts.verbose
+raw_image = args[0]
+
+# Retrieve camera-specific parameters 
+hdr = pyfits.getheader(raw_image)
+nbin = hdr['XBINNING']
+xpixels = hdr['NAXIS1']; ypixels = hdr['NAXIS2']
+pmax = 2**16 -1  # Hack for now, should get from header info
+
+# Set xmin, xmax, ymin ,ymax for calculating means etc ( i.e., do not use borders) 
+border = 16
+xmin = ymin  = border
+xmax = xpixels - border
+ymax = ypixels - border
+
+# Set default file names using binning
+
+bias_master =  '%smaster-bias-%ix%i.fts' % (calib_dir, nbin, nbin)
+dark_master = '%smaster-dark-%ix%i.fts' % (calib_dir, nbin, nbin)
+
+# set bias, dark, flat, outout image defaults if filenames not specified
+if bias_image == '' : bias_image = bias_master
+if dark_image == '' : dark_image = dark_master
+if flat_image == '':
+    hdr_raw = pyfits.getheader(raw_image)
+    filter_raw = hdr_raw['filter'][0].upper()
+    flat_image = '%smaster-flat-%s-%ix%i.fts'% (calib_dir,filter_raw.upper(), nbin, nbin)
+if cal_image == '' : cal_image = raw_image
+
+# Check for existence of user-specified calibration and science images
+if not os.path.isfile(raw_image) : sys.exit('Raw image %s does not exist, exiting'  % raw_image)
+if not os.path.isfile(bias_image): sys.exit('Bias image %s does not exist, exiting' % bias_image)
+if not os.path.isfile(dark_image): sys.exit('Dark image %s does not exist, exiting' % dark_image)
+if not os.path.isfile(flat_image): sys.exit('Flat image %s does not exist, exiting' % flat_image)
+
+# set variables
+im_raw =  pyfits.getdata(raw_image)  ; hdr_raw =  pyfits.getheader(raw_image)
+im_bias = pyfits.getdata(bias_image) ; hdr_bias = pyfits.getheader(bias_image)
+im_dark = pyfits.getdata(dark_image) ; hdr_dark = pyfits.getheader(dark_image)
+im_flat = pyfits.getdata(flat_image) ; hdr_flat = pyfits.getheader(flat_image)
+
+# Ensure all images arrays are floats
+im_raw = im_raw.astype (float)
+im_bias = im_bias.astype(float)
+im_dark = im_dark.astype(float)
+im_flat = im_flat.astype(float)
+
+# add pedestal back to dark, bias if we find PEDESTAL keyword 
+if 'PEDESTAL' in hdr_bias: im_bias += hdr_bias['PEDESTAL']
+if 'PEDESTAL' in hdr_dark: im_dark += hdr_dark['PEDESTAL']
+
+# Check if flat image has a filter matched to science image
+filter_raw = hdr_raw['filter']; filter_flat = hdr_flat['filter']
+if filter_raw[0] != filter_flat[0]: sys.exit('Raw (%s), flat (%s) filters do not match, exiting' % (filter_raw, filter_flat) )
+
+# Flat: Normalize by subtracting the bias and normalizing to one
+#im_flat -= im_bias
+if verbose:
+    print('User flat image %s' % flat_image)
+    print('min = %5.1f, median = %5.1f, max = %5.1f' % (np.min(im_flat), np.median(im_flat), np.max(im_flat) ))
+im_flat = im_flat / np.median(im_flat[xmin:xmax,ymin:ymax])
+
+# Limit correction to avoid dividing by bad pixels 
+im_flat[im_flat < 0.1] = 0.1
+
+# Dark: Check for CALSTAT keyword: If found and there's a D in it, the dark is actually a thermal. If not, subtract bias
+dark_is_thermal = False
+
+if 'CALSTAT' in hdr_dark:
+    if 'B' in hdr_dark['CALSTAT']:
+        dark_is_thermal = True
+        if verbose: print('Note: Dark is a thermal image (bias has been removed)')
+        
+if not dark_is_thermal:
+    im_dark -= im_bias
+    im_dark[im_dark>10000]=0  # avoid situation where dark<bias
+
+# Dark:  scale for ratio of exposure times
+t_ratio = float(hdr_raw['exptime']) / float(hdr_dark['exptime'])
+im_thermal = im_dark * t_ratio
+if verbose: print('Thermal ratio = %5.2f' % (t_ratio))
+
+# Print all files to log
+if verbose:
+    print('Calibrating %s using %s, %s,%s' % (raw_image,bias_image, dark_image,flat_image))
+    print('Raw image, bias, thermal medians = %.1f,  %.1f , %.1f' % (np.median(im_raw), np.median(im_bias), np.median(im_thermal) ))
+
+# If image is mirror flipped, flip cal images before applying
+if  hdr_raw['flipstat'] == 'Flip/Mirror':
+    if verbose: print('Image flipped, adjusting calibration images')
+    im_bias = np.fliplr(im_bias)
+    im_bias = np.flipud(im_bias)
+    im_thermal= np.fliplr(im_thermal)
+    im_thermal= np.flipud(im_thermal)
+    im_flat = np.fliplr(im_flat)
+    im_flat = np.flipud(im_flat)
+if  hdr_raw['flipstat'] == 'Rotate 90 CCW':
+    if verbose: print('Image rotated 90 CCW, adjusting calibration images')
+    im_bias = np.rot90(im_bias, k=1)
+    im_thermal= np.rot90(im_thermal, k=1)
+    im_flat = np.rot90(im_flat, k=1)
+
+# Do image arithmetic: subtract bias and scaled thermal, divide by normalized flat
+im_cal = (im_raw - im_bias - im_thermal) / im_flat
+# restrict  pixel  range to 16 bits [0, pmax]
+im_cal[im_cal<0] = 0; im_cal[im_cal > pmax] = pmax 
+# Fix bad columns 
+#im_cal, badcols = fix_badcolumns(im_cal, imsize, border)
+if len(bad_columns) != 0:
+    for badcol in bad_columns:
+        im_cal[:,badcol] = (im_cal[:,badcol-1] + im_cal[:,badcol+1])/2.
+
+# Add comments to header documenting calibration
+hdr_cal = pyfits.getheader(raw_image)
+s0 = 'Calibrated using ccdcalib'
+s1 = 'Bias frame = %s' % bias_image
+s2 = 'Dark frame = %s' % dark_image 
+s3 = 'Flat frame = %s' % flat_image
+hdr_cal.add_comment(s0); hdr_cal.add_comment(s1)
+hdr_cal.add_comment(s2); hdr_cal.add_comment(s3)
+#hdr_cal.add_comment('Replaced bad columns: %s' % badcols)
+
+# Add CALSTAT keyword to calibrate images, so other programs realize this image is already calibrated
+hdr_cal.insert('INSTRUME',('CALSTAT','BDF','CCDcalib run'))
+
+# Remove hot pixels if requested
+if N_iter > 0:
+    t0 = time.time()
+    #array, header = cosmics.fromfits(fname)  # array is a 2D numpy array
+    # Build the object using nominal values for FLI 16803 camera (NB there are more options):
+    c = cosmics.cosmicsimage(im_cal, gain=1.4, readnoise=14.0, sigclip = 5.0, sigfrac = 0.3, objlim = 5.0)
+    # Run the full artillery :
+    c.run(maxiter = N_iter)
+    # Write the cleaned image into a new FITS file, conserving the original header :
+    #outfile = os.path.splitext(raw_image)[0]+'-clean.fts'
+    outfile = cal_image
+    hdr_cal.add_comment('Removed hot pixels using cosmics, %i iterations' % N_iter)
+    #cosmics.tofits(outfile,c.cleanarray, hdr_cal)
+    hdu = pyfits.PrimaryHDU(c.cleanarray,hdr_cal)
+    # Convert to 16-bit for Talon (camera,etc)
+    hdu.scale('int16','',bzero=32768)
+    # write FITS file
+    hdulist = pyfits.HDUList([hdu])
+    # write file
+    hdulist.writeto(outfile, overwrite=True, output_verify='ignore')
+    if verbose: print('Wrote %s' % (outfile))
+    t1 = time.time()
+    if verbose: print('Hot pixel removal took: %.1f sec' % (t1-t0))
+
+else:
+    # Construct new header from original raw image, adding appropriate comments
+    hdu = pyfits.PrimaryHDU(im_cal,hdr_cal)
+    # Convert to 16-bit for Talon (camera,etc)
+    hdu.scale('int16','',bzero=32768)
+    # write FITS file
+    hdulist = pyfits.HDUList([hdu])
+    #outfile = os.path.splitext(raw_image)[0]+'-cal.fts'
+    outfile = cal_image
+    # write file
+    hdulist.writeto(outfile, overwrite=True, output_verify='ignore')
+    if verbose: print('Wrote %s' % (outfile))
+    hdulist.close()
+

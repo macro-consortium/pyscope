@@ -1,0 +1,61 @@
+#!/bin/csh -f
+# given one .fts or .fth file, pull out some fields and print each
+# separated by pipes (|) to form a simple database entry. The fields are, in
+# order: FILTER|JD|EXPTIME|RA|DEC|ELEVATION|OBJECT|filename
+# 22 Jul 96  Begin
+# 25 Jul 96  Always print all the |, even if one or more fields are blank.
+# 29 Oct 96  Allow for UTC-DATE and UTC-TIME too (only in circa 1994 files)
+# 7  Oct 98  Switch to just JD, add ELEVATION, convert RA to hrs, Dec to degs.
+
+# exactly one arg is required .. namely, the filename
+if ($#argv != 1) then
+    set col = \:
+    echo "$0$col fits_file"
+    exit 1
+endif
+
+# store filename in fn
+set fn = $argv[1]
+
+# must use a ugly tmp files so we can scan for fields in specific order.
+set tmpi = /tmp/$$.fli
+set tmpo = /tmp/$$.flo
+
+# can't get an apostrophe directly inside a string
+set ap = \'
+
+# remove tmp files if killed early
+onintr out
+
+# read the header once into tmpi
+# this handles .fts and .fth
+fitshdr -p $fn > $tmpi
+
+# extract the desired fields in the desired order into tmpo.
+# N.B. add the field separators even if the field does not exist.
+
+awk -F$ap '/^FILTER  / {printf "%.1s", $2} END {printf "|";}' < $tmpi >> $tmpo
+
+awk -F=   '/^JD      / {printf "%.5f", $2} END {printf "|";}'< $tmpi>> $tmpo
+
+awk -F=   '/^EXPTIME / {printf "%4d", $2} END {printf "|";}' < $tmpi >> $tmpo
+
+awk -F$ap '/^RA      / {split($2,r,":"); printf "%9.6f", r[3]/3600+r[2]/60+r[1];} END {printf "|";}' < $tmpi >> $tmpo
+
+awk -F$ap '/^DEC     / {s=sub("-","",$2)?-1:1; split($2,r,":"); printf "%10.6f", s*(r[3]/3600+r[2]/60+r[1]);} END {printf "|";}' < $tmpi >> $tmpo
+
+awk -F$ap '/^ELEVATIO/ {s=sub("-","",$2)?-1:1; split($2,r,":"); printf "%10.6f", s*(r[3]/3600+r[2]/60+r[1]);} END {printf "|";}' < $tmpi >> $tmpo
+
+
+awk -F$ap '/^OBJECT  / {printf "%s", $2} END {printf "|";}' < $tmpi >> $tmpo
+
+echo $fn >> $tmpo
+
+# preen off extra stuff and print
+sed -e "s/$ap//g" -e 's/ *|/|/g' < $tmpo
+
+out:
+rm -f $tmpi $tmpo
+
+# For RCS Only -- Do Not Edit
+# @(#) $RCSfile: fitslog,v $ $Date: 2001/04/19 21:12:19 $ $Revision: 1.1.1.1 $ $Name:  $

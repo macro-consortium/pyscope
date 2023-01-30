@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+
+# Calculates celestial coordinates of user-specified ra,dec [or loopup by name] at user-specified date or JD
+# applies proper motion, parallax (doesn't do precession)
+
+# RLM Dec 17 2016
+
+vers ='%prog 1.0 12 Dec 2016'
+
+from math import *
+import re,  sys, string
+import numpy as np 
+from optparse import OptionParser
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+
+usage = 'Calculates heliocentric, geocentric coords at given date/jd using input ICRF coords/name, proper motion, parallax'
+def get_args():
+	parser = OptionParser(description='Program %prog',version = vers, usage=usage)
+	parser.add_option('-S', dest = 'star_name', metavar = 'Star name', action ='store', default = '', help = 'Object name: SIMBAD lookup, specify or use -r,d')
+	parser.add_option('-r', dest = 'ra', metavar='RA (J2000,ICRF)', action = 'store', help = 'Right ascension (J2000) heliocentric hh:mm:ss.ss') 
+	parser.add_option('-d', dest = 'dec', metavar='Dec (J2000,ICRF)', action = 'store', help = 'Declination (J2000) heliocentric dd:mm:ss.ss') 
+	parser.add_option('-p', dest = 'parallax', metavar='Parallax', action = 'store', type = float, default = 0.0, help = 'Parallax (mas)') 
+	parser.add_option('-m', dest = 'proper_motion', metavar='Proper motion', default ='0,0', action = 'store', help = 'Annual proper motion (mas, mas)') 
+	parser.add_option('-j', dest = 'jd', metavar='Julian date', action = 'store', type=float, default = 0, help = 'Julian date, specify or use -D')
+	parser.add_option('-D', dest = 'date', metavar='Date' , action = 'store', default = '', help = 'UT date [format: yyyy-mm-dd hh:mm:ss]')
+	return parser.parse_args()
+
+def parallax(ra,dec,par,jd):
+	'''
+	Calculates parallax at given jd [input, output in radians]
+	add results to go from heliocentric to geocentric
+	'''
+	n = jd - 2451545.0
+	L = radians(280.466 + 0.9856474*n)
+	g = radians(357.528 + 0.9856003*n)
+	lam = L + radians(1.915)*sin(g) + radians(0.02)*sin(2*g)
+	epsilon = radians(23.439 - 0.00000004*n)
+	R = 1.00014 - 0.01671*cos(g) - 0.00014*cos(2*g)
+	X = -R*cos(lam)
+	Y = -R*sin(lam)*np.cos(epsilon)
+	Z = -R*sin(lam)*sin(epsilon)
+	dra = par*(X*sin(ra) - Y*cos(ra))
+	ddec = par*(X*cos(ra)*sin(dec) +Y*sin(ra)*sin(dec) - Z*cos(dec))
+	return dra, ddec	
+
+def pm(jd,jd0,pm_ra,pm_dec):
+    '''
+    Calculates total proper motion from jd0 to jd
+    pm_ra, pm_dec = annual p.m.
+    output angles in same units as input (e.g. radians)
+    '''
+    dyr = (jd - jd0)/365.25
+    dra = pm_ra * dyr; ddec = pm_dec * dyr
+    return dra, ddec 
+
+# ===== MAIN Start main program	=====
+
+# Useful constants, conversions
+mas = np.pi/(180.*3600.*1000.)
+jd_2000 = 2451545.0
+
+# Crack parser values, add to astropy coords, time structures
+(opts, args) = get_args()
+star_name = opts.star_name
+
+if star_name =='':
+	coords_icrf = '%s %s' % (opts.ra,opts.dec)
+	c_hel_2000 = SkyCoord(coords_icrf, unit=(u.hourangle, u.deg))
+else: 
+	c_hel_2000 = SkyCoord.from_name(star_name)
+jd = opts.jd; date = opts.date
+ok_date = jd != 0 or date != ''
+if ok_date:
+	if jd != 0   : t = Time(opts.jd, format='jd')
+	if date != '': t = Time(opts.date, format='iso')
+else:
+	sys.exit('Date not specified (use -j or -D option), exiting')
+	
+# parallax, p.pm corrections
+par = float(opts.parallax) * mas
+mu_ra, mu_dec = [float(x)*mas for x in opts.proper_motion.split(',')]
+dra_pm, ddec_pm = pm(t.jd,jd_2000,mu_ra,mu_dec)
+
+# 2000.0
+dra_par, ddec_par = parallax(c_hel_2000.ra.radian,c_hel_2000.dec.radian, par, jd_2000)
+ra_geo_2000  =  c_hel_2000.ra.radian  + dra_par
+dec_geo_2000 =  c_hel_2000.dec.radian + ddec_par
+coords_geo_2000 = '%s %s' % (ra_geo_2000, dec_geo_2000)
+c_geo_2000 = SkyCoord(coords_geo_2000, unit=(u.radian, u.radian))
+
+# Observing date
+ra_hel_date  = c_hel_2000.ra.radian  + dra_pm/np.cos(dec_geo_2000)
+dec_hel_date = c_hel_2000.dec.radian + ddec_pm
+coords_hel_date = '%s %s' % (ra_hel_date, dec_hel_date)
+c_hel_date = SkyCoord(coords_hel_date, unit=(u.radian, u.radian))
+
+dra_par, ddec_par = parallax(ra_hel_date, dec_hel_date, par, t.jd)
+ra_geo_date   =  ra_hel_date + dra_par
+dec_geo_date  = dec_hel_date + ddec_par
+coords_geo_date = '%s %s' % (ra_geo_date,dec_geo_date)
+c_geo_date = SkyCoord(coords_geo_date, unit=(u.radian, u.radian))
+
+coords_hel_2000_str  =  c_hel_2000.to_string(style ='hmsdms', precision=4, sep=':', decimal =False)
+coords_geo_2000_str  =  c_geo_2000.to_string(style ='hmsdms', precision=4, sep=':', decimal =False)
+coords_hel_date_str  =  c_hel_date.to_string(style ='hmsdms', precision=4, sep=':', decimal =False)
+coords_geo_date_str  =  c_geo_date.to_string(style ='hmsdms', precision=4, sep=':', decimal =False)
+
+print() 
+if star_name != '': print('Object: %s' % star_name)
+print('Proper motions: %5.2f mas/yr, %5.2f mas/yr, Parallax: %.2f mas' % (mu_ra/mas,mu_dec/mas, par/mas))
+print('Parallax corrections at observing date: (%.2f mas, %.2f mas)' % (dra_par/mas, ddec_par/mas))
+print('UT date: %s (JD %9.3f)' % (t.iso, t.jd))
+print()
+print('  Date            JD              Heliocentric                   Geocentric')  
+print('---------------------------------------------------------------------------------------')   
+print('2000-01-01  %8.3f    %s    %s' % (jd_2000,              coords_hel_2000_str,  coords_geo_2000_str))
+print('%10s %8.3f    %s    %s'   % (t.iso[0:11], t.jd, coords_hel_date_str, coords_geo_date_str))
+
+
+
+
