@@ -133,3 +133,4 @@ dmypy.json
 telrun.new
 telrun.sls
 pyscope_chronos.*
+.vscode
