@@ -9,7 +9,7 @@ import binascii
 import sys
  
 # TCP port of light dimmer
-TCP_IP = '192.168.2.22'
+TCP_IP = '192.168.1.22'
 TCP_PORT = 2101
 BUFFER_SIZE = 1024
 
@@ -34,6 +34,7 @@ try:
     s.send(my_bytes)
 finally:
     data = s.recv(BUFFER_SIZE)
-    if data != 'U': print('Failed')
+    print(f'Lighting controller returned {data}')
+#    if data != 'U': print('Failed')
     s.close()
 

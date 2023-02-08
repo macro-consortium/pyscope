@@ -89,6 +89,8 @@ def ssh_command(remote_command, remote_user, remote_host, remote_port=22, ssh_ex
     if identity_file is not None:
         args.append(private_key_flag)
         args.append(identity_file)
+    
+    args.append("-batch")
 
     args.append(remote_user + "@" + remote_host)
     args.append(remote_command)
