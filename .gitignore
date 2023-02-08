@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 *.fts*
-logs/*.log*
+*.log*
 telrun.new
 telrun.sls
-iota_gemini.ppk
+*.ppk
