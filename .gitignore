@@ -132,4 +132,4 @@ dmypy.json
 *.log*
 telrun.new
 telrun.sls
-*.ppk
+pyscope_chronos.*
