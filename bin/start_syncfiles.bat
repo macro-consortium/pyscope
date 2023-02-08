@@ -1,0 +1,2 @@
+python syncfiles.py
+pause
