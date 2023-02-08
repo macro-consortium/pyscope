@@ -1,0 +1,71 @@
+#!/bin/csh -f
+# script to start all or a basic set of tools.
+
+# check for -all
+if ($#argv > 0) then
+    if ("$argv[1]" != "-all") then
+	echo "$0:t"':'" [-all]"
+	exit 1
+    endif
+    set all;
+endif
+
+echo -n "Cleaning comm"
+rm -f $TELHOME/comm/*.pid >& /dev/null 
+echo -n "."
+rm -f $TELHOME/comm/*.in >& /dev/null 
+echo -n "."
+rm -f $TELHOME/comm/*.out >& /dev/null
+echo -n "."
+echo "OK"
+
+echo -n "Starting: "
+
+echo -n "telescoped "
+rund telescoped
+set n = 40
+while ($n > 0)
+    sleep 1
+    if (-p $TELHOME/comm/Dome.in) break
+    echo -n "."
+    @ n --
+end
+if ($n == 0) then
+    echo ""
+    echo telescoped failed to start
+    tail $TELHOME/archive/logs/telescoped.log
+    exit 1
+endif
+
+if (-e $TELHOME/bin/wxdwebgrab) then
+    echo -n "sso wxd "
+    (wxdwebgrab -t $TELHOME/archive/weatherdat.txt www.sierrastars.com/weatherstation/CurrentWeather.aspx &) >& /dev/null
+    (wxd -s -t $TELHOME/archive/weatherdat.txt &) >& /dev/null
+endif
+
+sleep 1
+
+echo -n "xobs "
+(xobs &) >& /dev/null
+
+# that's it if just want the basic set
+if (! $?all) goto done
+
+echo -n "camerad "
+rund camerad
+
+echo -n "shm "
+(shm -lq &) >& /dev/null
+
+echo -n "camera "
+(camera &) >& /dev/null
+
+echo -n "xephem "
+(xephem &) >& /dev/null
+
+# echo -n "telsched "
+(telsched &) >& /dev/null
+
+done:
+echo ""
+

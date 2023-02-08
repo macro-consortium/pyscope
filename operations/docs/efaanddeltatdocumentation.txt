@@ -1,0 +1,14 @@
+EFA controls:
+- Focuser
+- Fans
+- Primary mirror and ambient temp sensors (NOT heaters)
+
+
+Delta-T adds heater capability:
+- Primary heater
+- Secondary heater
+- Backplate temp sensor
+- Secondary temp sensor
+
+
+Stellaris USB-Serial port

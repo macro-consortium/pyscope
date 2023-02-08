@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+'''
+  Creates date-stamped directory for daily raw images, then CCD calibrates them in place
+RLM 31 Oct 2013
+28 Oct, 1 Nov 2015 Add wcs solution, fwhm [no longer done at telescope)
+13 February 2016: change date checking:use glob, day_nr; use pyfits to check if calibrated; add option 2 (use USNO-A2) to wcs 
+01 May 2016 - do not try wcs solution if filter = T (grism)
+03 Jun 2016 - run calc-zmag on G,R,W filter images ; run remove-hot-pixels on grism (T) images
+29 Oct 2016 - only run calc-zmag on foc images; rum remove-hot-pixels on grsim (6,3,A) images
+13 Nov 2016 - add -C option to ccdcalib : correct bad colum on SBIG6303E 
+01 Dec 2016 - add try/except so it doesn't die on bad FITS file
+02 Feb 2017 - fix path to remove-hot-pixels
+09 Oct 2017 - add option to specify a day number on command line16 Oct 2017 - check for already ccd-calibrated image by looking  for CALSTAT keyword (was previously CRVAL1)
+27 Feb 2018 - Change option -H to 0, turning off cosmics hot pixel removal (broken after libs update Feb 26)
+17 May 2018 - Change -H back to 1 (had fixed the hot pixel problem a month ago, but forgot to change script!
+29 Oct 2018 - replace filter W with i for calc-zmag calc, also check if RA is in Sloan catalog at dec = +30
+30 Oct 2018 - add CALSTART keyword to avoid multiple calibrations
+03 Nov 2018 - Change day number routine to use utcnow
+19 Jun 2021 - add grism boolean to provent wcs,fwhm on grism images
+03 Nov 2021 - Change ccdcalib to cmos_calib
+20 Jan 2022 - 1. Change wcs search radius to 0.1 deg to speed up failed search on bad images (was 1.0,deg => 90sec, now 20 sec)
+			2. Add > /dev/null 2>&1 to avoid adding lengthly output from wcs in log file
+			3. Add timestamp for each file processed
+'''
+import ftplib, os, sys, traceback, time, glob
+import datetime as dt
+from datetime import datetime
+from fnmatch import fnmatch
+import astropy.io.fits as pyfits
+
+def datestr():
+	y4 = time.strftime("%Y")
+	y2 = y4[2:4]
+	dm = time.strftime("%d-%B-")
+	return dm+y4
+
+#MAIN
+
+# Directories
+image_dir = '/usr/local/telescope/user/images/'
+archive_root_dir = '/exports/images/rawimage_archive/'
+bindir = '/usr/local/telescope/bin/'
+
+#  Create time-stamped directory for raw images
+archive_dir = "%s%s" % (archive_root_dir,datestr())
+if not os.path.exists(archive_dir): os.mkdir(archive_dir)
+
+# Get current day number
+day_nr = dt.datetime.utcnow().timetuple().tm_yday
+day_nr =str( '%03i' % day_nr)
+
+# Check if user has specified a day number on command line. If so, use it instead of current day_nr
+if len(sys.argv) > 1:
+	day_nr = str( '%03i' % int(sys.argv[1]))
+
+date_str = str(datetime.now())[0:19]
+print('Starting calib-images for day %s at %s' % (day_nr, date_str))
+print('============================================')
+# Generate a list of FITS files in image_dir with current day_nr that have not been previously calibrated
+full_names = []
+names = glob.glob('%s???%s*.ft[sh]' % (image_dir,day_nr))
+for name in names:
+	hdu = pyfits.open(name); header = hdu[0].header
+	if    ('CALSTART' in header) or ('CALSTAT' in header):
+		continue
+	else:
+		date_str = str(datetime.now())[0:19]
+		header.insert('LST',('CALSTART',date_str,'Calibration start time [MST]'))
+		hdu.writeto(name,overwrite=True)
+		full_names.append(name)
+	hdu.close()
+
+print('Starting calibration of %i files from day number %s' % (len(full_names),day_nr))
+
+sloan_ra = [22,23,0,1,2,8,9,10,11,12,13,14,15,16,17] # RA's in Sloan catalog at 30 deg Dec
+
+# Copy raw image to archive directory, decompress if needed, calibrate
+for full_name in full_names:
+	date_str = str(datetime.now())[0:19]
+	fname = os.path.basename(full_name)
+	print('Start calibration of %s at  %s' % (full_name,date_str) )
+	fil   = pyfits.getval(full_name,'FILTER')[0]
+	grism = fil == '8' or fil == '9'
+	ra =  int( round( float(pyfits.getval(full_name,'RA')[0:2]) ))
+	froot,fext = os.path.splitext(fname) 
+	# copy image to archive dir
+	os.system('cp %s %s' % (full_name, archive_dir) )
+	# decompress if needed
+	if fext == '.fth':  os.system('%sfdecompress -r %s' % (bindir,full_name))
+	# calibrate
+	os.system('/usr/local/bin/cmos_calib -H 1 %s' % full_name)
+	# Don't do wcs, fwhm on grism or spectroscopy images
+	if not grism and fil != 'S':
+		os.system('/usr/local/telescope/bin/wcs  -u 0.1 -o2w %s > /dev/null 2>&1' % full_name)
+		os.system('/usr/local/telescope/bin/fwhm -ow %s' % full_name)
+	# Optional hot pixel removal (normally run as part of ccdcalib)
+	# os.system('/usr/local/bin/remove-hot-pixels -o %s' % full_name)
+	# Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
+	if froot[0:3] == 'foc':
+		if fil == 'G' and ra in sloan_ra:
+			os.system('/usr/local/bin/calc-zmag -f g -w %s' % full_name)
+		if fil == 'R' and ra in sloan_ra:
+			os.system('/usr/local/bin/calc-zmag -f r -w %s' % full_name)
+		if fil == 'I' and ra in sloan_ra:
+			os.system('/usr/local/bin/calc-zmag -f i -w %s' % full_name)
+	date_str = str(datetime.now())[0:19]
+	print('Finished calibration of %s at  %s' % (full_name,date_str))
