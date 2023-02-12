@@ -9,6 +9,7 @@ N.B. libraries astroplan, pywebio, jplephem must be installed.
 v. 0.9 3 Feb 2022 RLM
 '''
 
+import os
 import numpy as np
 from astropy.time import Time
 from obsplanner_lib import obs_planner
@@ -42,15 +43,15 @@ else:
 warning_style = 'color:red'
  
 # Set title that appears in web tab
-@config(title='Iowa Robotic Observatory Observing Planner',theme=theme) 
+#@config(title='Iowa Robotic Observatory Observing Planner',theme=theme) 
+@config(title='MACRO Consortium Observing Planner',theme=theme) 
 def main():
     
     # Define constants
     arcsec = np.pi/(180*3600)
     
     # Add a banner
-    iro_banner = '/home/www/cgi-bin/astrolab/iro-banner.png'
-    #iro_banner= 'iro-banner.png'
+    iro_banner = os.path.dirname(os.path.abspath(__file__))+'/macro-banner.png'  
     put_image( open(iro_banner, 'rb').read() )  
     
     # TBD Add link to JPL Horizons web tool 
@@ -64,7 +65,7 @@ def main():
     time = Time(obsdate, scale='utc')
     
     # Set camera and gain mode
-    if 'Gemini' in telescope:
+    if 'RLMT' in telescope:
         camera = 'AC4040'
         mode = 'Spro'  # Fixed mode (for now) to  Spro only
     else:
@@ -130,13 +131,13 @@ def main():
     if detailed:
         put_text(' ')
         put_text('Clear Sky predicted observing conditions for next several nights').style(title_style)
-        if 'Gemini' in telescope:
+        if 'RLMT' in telescope:
             clearsky_image = 'https://www.cleardarksky.com/c/WnrObAZcsk.gif?c=1159225'
             clearsky_webpage ='http://www.cleardarksky.com/c/WnrObAZkey.html'
             put_image(clearsky_image)
         else:
-            clearsky_image = 'https://www.cleardarksky.com/c/IwCtyIAcsk.gif?c=1764035'
-            clearsky_webpage ='http://www.cleardarksky.com/c/IwCtyIAkey.html'
+            clearsky_image = 'https://www.cleardarksky.com/c/StPaulNMcsk.gif?c=648012'
+            clearsky_webpage ='https://www.cleardarksky.com/c/StPaulNMkey.html'
             put_image(clearsky_image)
         put_link('Click to visit ClearSky webpage for more details',url=clearsky_webpage,new_window=True)
 

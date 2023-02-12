@@ -50,8 +50,8 @@ def check_form(ans):
 def get_inputs():
         
 
-        radio_dict = [ {'label':'VAO', 'value':'VAO'},
-        {'label':'Gemini', 'value':'Gemini', 'selected':True}  ]
+        radio_dict = [ {'label':'Macalester', 'value':'Macalester'},
+        {'label':'RLMT', 'value':'RLMT', 'selected':True}  ]
         seeing_dict = [ 
         {'label':'Poor (>3")'      , 'value':3.0},
         {'label':'Fair (2.5")'     , 'value':2.5,'selected':True},

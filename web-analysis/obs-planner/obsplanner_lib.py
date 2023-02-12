@@ -55,30 +55,30 @@ class obs_planner:
     def __init__(self, telescope, camera, object_name, myfilter, fwhm, time):
         ''' Methods for calculating coordinates,rise/set times, airmass plot, etc 
         given object name and observing site. '''
-        self.telescope = telescope # Name of telescope (Gemini or VAO)
+        self.telescope = telescope # Name of telescope (RLMT or Macalester)
         self.camera = camera
         self.myfilter = myfilter
         self.fwhm = fwhm
         self.time = time
         self.object_name = object_name
         
-        if telescope == 'Gemini':
+        if telescope == 'RLMT':
             longitude = '-110d36m06.42s' ; latitude = '+31d39m56.08s' ; elevation = 1500 * u.m
             location = EarthLocation.from_geodetic(longitude, latitude, elevation)
-            obsname = 'Iowa Robotic Telescope (Gemini)'
+            obsname = 'Robert L. Mutel Telescope (Winer Observatory)'
             observer = Observer(name = obsname, location=location, timezone=timezone('US/Arizona'))
-            description="Iowa Robotic Telescope at Winer Observatory"
+            description="Robert L. Mutel Telescope at Winer Observatory"
             obscode = '857' ; self.obscode = obscode
             self.night_adu = 0.2  # Pseudo ADU/pixel/sec in G or R filter; night sky, no Moon
             self.min_elevation = 20*u.degree
             D = 0.51; f = 6.8
             self.plate_scale = D*f
         else:
-            longitude = '-91d31m48.6s' ; latitude = '+41d39m40.1s' ; elevation = 200 * u.m
+            longitude = '-93d10m08.76s' ; latitude = '+44d56m16.44s' ; elevation = 200 * u.m
             location = EarthLocation.from_geodetic(longitude, latitude, elevation)
-            obsname = 'Van Allen Observatory'
+            obsname = 'Macalester Observatory'
             observer = Observer(name = obsname, location=location, timezone=timezone('US/Central'))
-            description="Van Allen Observatory at Iowa City"
+            description="Macalester Observatory"
             obscode = '748' ; self.obscode = obscode
             self.night_adu = 1.0 # Total guess: measure this
             self.min_elevation = 25*u.degree
@@ -110,10 +110,10 @@ class obs_planner:
             self.saturation_adu = {'Default':55000}
             self.gains = {'Default':1} # True??
          
-        if telescope == 'Gemini':
+        if telescope == 'RLMT':
                 self.ZPmag   = {'B':21.25, 'W':22.0, 'G':22.14, 'R':21.93, 'I':21.0, 
                  'V':21.56, 'H':18.2, 'O':18.2, 'L':23.25, '1':22.00,'8':11.1,'9':10.6,'W':21.0} # Needs verification
-        elif telescope == 'VAO':
+        elif telescope == 'Macalester':
                 self.ZPmag   = {'B':20.1, 'V':20.1, 'G':21.4, 'R':21.1, 'I':20.2, 
                  'V':20.1, 'H':17.6, 'O':17.6, 'L':21.8,'1':21.1,'8':9.5,'9':10.0} # Guesses ! Needs verification
         
@@ -336,7 +336,7 @@ class obs_planner:
         fig,ax = plt.subplots()
         plt.axis('off')
         try:
-            ax,hdu = plot_finder_image(self.target,reticle = True,fov_radius=fov_radius, style_kwargs =style_kwargs)
+            ax,hdu = plot_finder_image(self.target,log=True,reticle = True,fov_radius=fov_radius, style_kwargs =style_kwargs)
             ax.patch.set_edgecolor('black')  
             ax.patch.set_linewidth('1')  
             buf = io.BytesIO()
