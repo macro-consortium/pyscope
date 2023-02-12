@@ -48,7 +48,7 @@ def find_dest(src):
         exit()
 
 opts, args = get_args()
-src = check_args(args)
+src = check_src(args)
 dest = find_dest(src)
 
 print('You are about to copy %s to %s' % (gh_repo_path+src, dest))
