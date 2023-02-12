@@ -18,6 +18,8 @@ def get_args():
     parser = OptionParser(description = d_txt, version = 'push-chronos %s' % version)
     #parser.add_option('-s', '--sync', dest = 'sync', action = 'store_true', default = False, 
     #    help = 'Syncronize local copy of GitHub repository with remote repository located at %s' % gh_url)
+    parser.add_option('-d', '--directory', dest='directory', action='store_true', default = False,
+        help = 'Whether the argument is a directory or a file. If a directory, all files in the directory will be copied.')
 
     return parser.parse_args()
 
@@ -33,7 +35,7 @@ def check_src(args):
 
 def find_dest(src):
     if 'web-analysis' in src:
-        return '/var/www/cgi-bin/'
+        return '/var/www/cgi-bin/' + src.split('/')[1]
     elif 'analysis' in src or 'reduction' in src or 'scheduling' in src:
         return '/usr/local/telescope/bin/' + src.split('/')[-1] 
     elif 'utilities' in src:
@@ -57,7 +59,10 @@ if rusure == 'y':
     # print('Copying backup to /tmp')
     # shutil.copy(dest+src, '/tmp/'+src)
     print('Copying %s to %s' % (gh_repo_path+src, dest))
-    shutil.copy2(gh_repo_path+src, dest)
+    if opts.directory:
+        shutil.copytree(gh_repo_path+src, dest)
+    else:
+        shutil.copy2(gh_repo_path+src, dest)
     print('Copy complete')
 else: 
     print('Nothing copied')
