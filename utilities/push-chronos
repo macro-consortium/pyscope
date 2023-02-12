@@ -25,9 +25,6 @@ def check_src(args):
     if len(args) == 0:
         print('No arguments provided')
         exit()
-    elif os.path.isdir(gh_repo_path+args[0]):
-        print('You have provided a directory name. Please provide a file name.')
-        exit()
     elif os.path.exists(gh_repo_path+args[0]):
         return args[0]
     else:
@@ -37,8 +34,8 @@ def check_src(args):
 def find_dest(src):
     if 'analysis' in src or 'reduction' in src or 'scheduling' in src:
         return '/usr/local/telescope/bin/' + src.split('/')[-1]
-    # elif 'web-analysis' in src:
-        # return '/var/www/cgi-bin/' 
+    elif 'web-analysis' in src:
+        return '/var/www/cgi-bin/' 
     elif 'utilities' in src:
         if 'push-chronos' in src:
             return '/usr/local/telescope/bin/' + src.split('/')[-1]
@@ -60,7 +57,7 @@ if rusure == 'y':
     # print('Copying backup to /tmp')
     # shutil.copy(dest+src, '/tmp/'+src)
     print('Copying %s to %s' % (gh_repo_path+src, dest))
-    shutil.copyfile(gh_repo_path+src, dest)
+    shutil.copy(gh_repo_path+src, dest)
     print('Copy complete')
 else: 
     print('Nothing copied')
