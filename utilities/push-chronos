@@ -9,7 +9,7 @@ from optparse import OptionParser
 
 version = '1.0.0'
 gh_url = 'https://github.com/macro-consortium/pyScope'
-gh_repo_path = '/home/talon/pyScope/'
+gh_repo_path = '/usr/local/telescope/pyScope-dev/'
 
 def get_args():
     d_txt = 'Program push-chronos will duplicate the requested file from the local copy of the GitHub repository \
