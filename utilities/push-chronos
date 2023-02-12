@@ -57,8 +57,8 @@ print('You are about to copy %s to %s' % (gh_repo_path+src, dest))
 rusure = input('Are you sure? This will overwrite any files in the destination (y/n)')
 
 if rusure == 'y':
-    print('Copying backup to /tmp')
-    shutil.copy(dest+src, '/tmp/'+src)
+    # print('Copying backup to /tmp')
+    # shutil.copy(dest+src, '/tmp/'+src)
     print('Copying %s to %s' % (gh_repo_path+src, dest))
     shutil.copy(gh_repo_path+src, dest)
     print('Copy complete')
