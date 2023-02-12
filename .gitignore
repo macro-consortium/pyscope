@@ -134,3 +134,4 @@ telrun.new
 telrun.sls
 pyscope_chronos.*
 .vscode
+.DS_Store

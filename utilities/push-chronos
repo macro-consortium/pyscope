@@ -1,0 +1,62 @@
+import os
+import shutil
+import subprocess
+from optparse import OptionParser
+
+# 11 Feb 2023 WWG: First version of push-chronos
+
+version = '1.0.0'
+gh_url = 'https://github.com/macro-consortium/pyScope'
+gh_repo_path = ''
+
+def get_args():
+    d_txt = 'Program push-chronos will duplicate the requested file from the local copy of the GitHub repository \
+    located at %s and push it to the production location on the Chronos server.' % gh_repo_path
+
+    parser = OptionParser(description = d_txt, version = 'push-chronos %s' % version)
+    #parser.add_option('-s', '--sync', dest = 'sync', action = 'store_true', default = False, 
+    #    help = 'Syncronize local copy of GitHub repository with remote repository located at %s' % gh_url)
+
+    return parser.parse_args()
+
+def check_src(args):
+    if len(args) == 0:
+        print('No arguments provided')
+        exit()
+    elif os.path.isdir(gh_repo_path+args[0]):
+        print('You have provided a directory name. Please provide a file name.')
+        exit()
+    elif os.path.exists(gh_repo_path+args[0]):
+        return args[0]
+    else:
+        print('File %s does not exist' % args[0])
+        exit()
+
+def find_dest(src):
+    if 'analysis' in src or 'reduction' in src or 'scheduling' in src:
+        return '/usr/local/telescope/bin/'
+    elif 'web-analysis' in src:
+        return '/var/www/cgi-bin/'
+    elif 'utilities' in src:
+        if 'push-chronos' in src:
+            return '/usr/local/telescope/bin/'
+        else:
+            print('No known destination for %s' % src)
+            exit()
+    else:
+        print('No known destination for %s' % src)
+        exit()
+
+opts, args = get_args()
+src = check_args(args)
+dest = find_dest(src)
+
+print('You are about to copy %s to %s' % (gh_repo_path+src, dest))
+rusure = input('Are you sure? This will overwrite any files in the destination (y/n)')
+
+if rusure == 'y':
+    shutil.copy(dest+src, '/tmp/'+src)
+    shutil.copy(gh_repo_path+src, dest)
+    print('%s copied to %s' % (gh_repo_path+src, dest))
+else: 
+    print('Nothing copied')
