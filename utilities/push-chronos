@@ -62,7 +62,7 @@ if rusure == 'y':
     if opts.directory:
         shutil.copytree(gh_repo_path+src, dest, dirs_exist_ok=True)
     else:
-        shutil.copy2(gh_repo_path+src, dest)
+        shutil.copyfile(gh_repo_path+src, dest)
     print('Copy complete')
 else: 
     print('Nothing copied')
