@@ -32,10 +32,10 @@ def check_src(args):
         exit()
 
 def find_dest(src):
-    if 'analysis' in src or 'reduction' in src or 'scheduling' in src:
-        return '/usr/local/telescope/bin/' + src.split('/')[-1]
-    elif 'web-analysis' in src:
-        return '/var/www/cgi-bin/' 
+    if 'web-analysis' in src:
+        return '/var/www/cgi-bin/'
+    elif 'analysis' in src or 'reduction' in src or 'scheduling' in src:
+        return '/usr/local/telescope/bin/' + src.split('/')[-1] 
     elif 'utilities' in src:
         if 'push-chronos' in src:
             return '/usr/local/telescope/bin/' + src.split('/')[-1]
