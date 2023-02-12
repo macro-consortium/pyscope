@@ -7,7 +7,7 @@ from optparse import OptionParser
 
 version = '1.0.0'
 gh_url = 'https://github.com/macro-consortium/pyScope'
-gh_repo_path = ''
+gh_repo_path = '/home/talon/pyScope/'
 
 def get_args():
     d_txt = 'Program push-chronos will duplicate the requested file from the local copy of the GitHub repository \
@@ -55,8 +55,10 @@ print('You are about to copy %s to %s' % (gh_repo_path+src, dest))
 rusure = input('Are you sure? This will overwrite any files in the destination (y/n)')
 
 if rusure == 'y':
-    shutil.copy(dest+src, '/tmp/'+src)
+    print('Copying backup to /tmp')
+    # shutil.copy(dest+src, '/tmp/'+src)
+    print('Copying %s to %s' % (gh_repo_path+src, dest))
     shutil.copy(gh_repo_path+src, dest)
-    print('%s copied to %s' % (gh_repo_path+src, dest))
+    print('Copy complete')
 else: 
     print('Nothing copied')
