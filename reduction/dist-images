@@ -123,7 +123,7 @@ end
 
 # Move files more than $age days old to archive directory 
 echo "Moving images more than $age days old to $archive_dir ..."    
-find `$fromdir/images` -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
+find $fromdir/images -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
 
 # Run fecompression (batch mode) on all class images
 # nohup $telhome/bin/decomp &
