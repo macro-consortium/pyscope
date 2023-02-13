@@ -1,0 +1,135 @@
+#!/bin/csh -f
+
+# Distributes astrolab, general, modern, internet images and logs
+# from $telhome/user(images/logs) to appropriate directories
+# Also moves images older than $age from $telhome/user/images to archive dir
+
+# 06 Nov 2002 RLM/KMI - new renaming scheme; easier to move between Rigel/IRO
+# 06 Oct 2003 RLm/KMI - removed TELCODE and verified paths for Fall03
+# 3.2: 2005 May 09 RLM - add script: OBJCTRA, OBJCTDEC keywords for Maxim/DL astrometry
+# Change age to 14 days; fix rewriting all days RLM 5 Dec 07
+# Add s group 2011 OCt 17 RLM
+# 13 Feb 2023 WWG - modify for chronos support
+umask 2
+
+set TELGRP = 'talon'
+set HOSTNAME = 'chronos'
+set telhome = '/usr/local/telescope'
+set fromdir = "$telhome/user"
+set todirbase = "/mnt/images"
+
+# Directory names for each group
+set groupdirs = "macalester augustana coe knox iowa external"
+set cn = (m a c k i x)     # Letter codes corresponding to group names above
+
+# Set archive dir and age (days) for moving images from $telhome/user/images 
+# to archive directory
+set archive_dir = '/mnt/images/archive/'
+
+# Set max age before images are moved to $archive_dir
+set age = 14
+
+########################################################################
+
+echo "Distimages version 3.4"
+set day = `date`
+echo $day
+
+# Make sure we are newgrp'ed to the correct group (talon)
+set idgrp = `id -gn`
+if ($idgrp != $TELGRP) then
+  echo "You are currently in group $idgrp. Please newgrp $TELGRP, then rerun"
+  exit
+endif
+
+# Make sure we are running from correct system
+set hostnm = `uname -n`
+if ($hostnm:r:r:r != $HOSTNAME) then
+  echo "You are logged into $hostnm. Please run only from $HOSTNAME"
+  exit
+endif
+
+
+# Don't exit script if no matching images on foreach loops
+set nonomatch
+
+# Add OBJCTRA, OBJCTDEC keywords to images taken within last 24 hours
+#foreach fn (`find $fromdir/images -mtime 0 -name \*.ft\[sh\]`)
+#  set ra = `fitsvalue $fn RA | sed 's/:/ /g'`
+#  set dec = `fitsvalue $fn DEC | sed 's/:/ /g'`
+#  fitshdr -s OBJCTRA "$ra" $fn
+#  fitshdr -s OBJCTDEC "$dec" $fn
+#end
+
+#Distribute images to image directories by code
+@ codeindex = 1
+foreach fname ($groupdirs)
+  @ n = 0
+  set todir = "$todirbase/$fname"
+  echo "Copying $fname ($cn[$codeindex]*) images to $todir"
+  set filelist = `ls $fromdir/images/ | grep "^$cn[$codeindex].*\.ft[sh]" | grep '^[a-z][a-z][a-z][0-9][0-9][0-9]'`
+  echo "filelist: " $filelist
+  foreach ffull ($filelist)
+    set ffull = "$fromdir/images/$ffull"
+    echo "Working with $ffull"
+    set fname = $ffull:t
+    set fpath = $ffull:h
+
+    set fnPrefix = `echo $fname | sed 's/^\(...\).*/\1/'`
+    set fnDay = `echo $fname | sed 's/^...\(...\).*/\1/'`
+    set fnSeq = `echo $fname | sed 's/^......\([^.]*\)\.ft[sh]/\1/'`
+    set fnSeq = `printf %03x 0x$fnSeq`
+    set fnExt = `echo $fname | sed 's/.*\(...\)$/\1/'`
+    set fnYear = `date +%y | sed 's/^.//'`
+    echo "We have $fnPrefix $fnDay $fnSeq $fnExt $fnYear"
+    set newname = "${fnPrefix}${fnYear}${fnDay}${fnSeq}.${fnExt}"
+
+    if (-e $ffull) then
+      echo $fname > /tmp/t.tmp
+      set fcode = `gawk '{print substr($1,1,3)}' /tmp/t.tmp`
+      if (! -e $todir/$fcode) then
+        mkdir $todir/$fcode
+        chmod 755 $todir/$fcode
+      endif
+
+      set year = `date +"%Y"`
+      if (! -e $todir/$fcode/$year) then
+        echo "Making year directory $year"
+        mkdir $todir/$fcode/$year
+      endif
+      if (! -e $todir/$fcode/$year/$fnDay) then
+        echo "Making day directory $fnDay"
+        mkdir $todir/$fcode/$year/$fnDay
+      endif
+      set f1 = $todir/$fcode/$year/$fnDay/$newname:r.fth
+      set f2 = $todir/$fcode/$year/$fnDay/$newname:r.fts
+      if (! -e $f1 && ! -e $f2) then
+        echo "Copying $f1"
+        cp -u $ffull $todir/$fcode/$year/$fnDay/$newname
+        @ n++
+      endif
+    endif
+  end
+
+  foreach ffull ($fromdir/logs/$cn[$codeindex]*.log)
+  set fname = $ffull:t
+    if (! -e $todir/logs/$fname) then
+      cp -u $ffull $todir/logs
+    endif
+  end
+  echo "Copied $n images"
+  @ codeindex++
+end
+
+# Move files more than $age days old to archive directory 
+echo "Moving images more than $age days old to $archive_dir ..."    
+find `$imdir/images` -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
+
+# Run fecompression (batch mode) on all class images
+# nohup $telhome/bin/decomp &
+
+# Move images to proper daynumber directories
+echo "Moving images in archive to numbered subdirectories"
+./mvToDate
+
+echo "Done"
