@@ -40,7 +40,7 @@ def datestr():
 
 # Directories
 image_dir = '/usr/local/telescope/user/images/'
-archive_root_dir = '/mnt/images/raw-archive/'
+archive_root_dir = '/mnt/imagesbucket/rawimage'
 
 #  Create time-stamped directory for raw images
 archive_dir = "%s%s" % (archive_root_dir,datestr())
@@ -87,7 +87,7 @@ for full_name in full_names:
 	# copy image to archive dir
 	os.system('cp %s %s' % (full_name, archive_dir) )
 	# decompress if needed
-	if fext == '.fth':  os.system('fdecompress -r %s' % (bindir,full_name))
+	if fext == '.fth':  os.system('fdecompress -r %s' % full_name)
 	# calibrate
 	os.system('/usr/local/bin/cmos_calib -H 1 %s' % full_name)
 	# Don't do wcs, fwhm on grism or spectroscopy images
