@@ -16,7 +16,7 @@ set TELGRP = 'talon'
 set HOSTNAME = 'chronos'
 set telhome = '/usr/local/telescope'
 set fromdir = "$telhome/user"
-set todirbase = "/mnt/images"
+set todirbase = "/mnt/imagesbucket"
 
 # Directory names for each group
 set groupdirs = "macalester augustana coe knox iowa external"
@@ -24,14 +24,15 @@ set cn = (m a c k i x)     # Letter codes corresponding to group names above
 
 # Set archive dir and age (days) for moving images from $telhome/user/images 
 # to archive directory
-set archive_dir = '/mnt/images/archive/'
+# Files will no longer be moved to a separate archive
+#set archive_dir = '/mnt/images/archive/'
 
 # Set max age before images are moved to $archive_dir
-set age = 14
+#set age = 14
 
 ########################################################################
 
-echo "Distimages version 3.4"
+echo "Distimages version 3.5"
 set day = `date`
 echo $day
 
@@ -122,8 +123,9 @@ foreach fname ($groupdirs)
 end
 
 # Move files more than $age days old to archive directory 
-echo "Moving images more than $age days old to $archive_dir ..."    
-find $fromdir/images -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
+# Files will no longer be moved to a separate archive
+#echo "Moving images more than $age days old to $archive_dir ..."    
+#find $fromdir/images -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
 
 # Run fecompression (batch mode) on all class images
 # nohup $telhome/bin/decomp &
