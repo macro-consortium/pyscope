@@ -102,13 +102,14 @@ foreach fname ($groupdirs)
         echo "Making day directory $fnDay"
         mkdir $todir/$fcode/$year/$fnDay
       endif
-      set f1 = $todir/$fcode/$year/$fnDay/$newname:r.fth
-      set f2 = $todir/$fcode/$year/$fnDay/$newname:r.fts
-      if (! -e $f1 && ! -e $f2) then
-        echo "Copying $f1"
+      # not using .fth - seems reduntant -- BMP
+#      set f1 = $todir/$fcode/$year/$fnDay/$newname:r.fth
+#      set f2 = $todir/$fcode/$year/$fnDay/$newname:r.fts
+#      if (! -e $f1 && ! -e $f2) then
+        echo "Copying $ffull -> $todir/$fcode/$year/$fnDay/$newname"
         cp -u $ffull $todir/$fcode/$year/$fnDay/$newname
         @ n++
-      endif
+#      endif
     endif
   end
 
@@ -131,7 +132,7 @@ end
 # nohup $telhome/bin/decomp &
 
 # Move images to proper daynumber directories
-echo "Moving images in archive to numbered subdirectories"
-mvToDate
+#echo "Moving images in archive to numbered subdirectories"
+#mvToDate
 
 echo "Done"
