@@ -40,7 +40,7 @@ def datestr():
 
 # Directories
 image_dir = '/usr/local/telescope/user/images/'
-archive_root_dir = '/mnt/imagesbucket/rawimage'
+archive_root_dir = '/mnt/imagesbucket/rawimage/'
 
 #  Create time-stamped directory for raw images
 archive_dir = "%s%s" % (archive_root_dir,datestr())
