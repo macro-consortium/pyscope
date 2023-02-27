@@ -36,7 +36,7 @@ groups = dict(m='macalester',
               x='external')
 
 # Make sure we are newgrp'ed to the correct group
-currentgroup = grp.getgrgid(getgid()).name
+currentgroup = grp.getgrgid(getgid()).gr_name
 if (currentgroup != TELGRP):
     print(f"You are currently in group {currentgroup}. Please newgrp {TELGRP}, then rerun")
     exit
