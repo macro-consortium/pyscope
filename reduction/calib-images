@@ -28,7 +28,6 @@ RLM 31 Oct 2013
 from sys import argv
 from datetime import datetime as dt
 from pathlib import Path
-from shutil import copy
 from subprocess import run
 import astropy.io.fits as pyfits
 
@@ -65,21 +64,21 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
     hdu.writeto(img, overwrite=True)
     hdu.close()
 
-    # make a copy of the uncalibrated image
-    copy(img, rawimage_dir)
+    # make a copy of the uncalibrated image if there isn't one already
+    run(['cp', '-n', img, rawimage_dir])
     
     # decompress if needed
     if img.suffix == '.fth':
-        run('fdecompress', '-r', img)
+        run(['fdecompress', '-r', img])
     
     # calibrate
-    run('cmos_calib', '-H', '1', img)
+    run(['cmos_calib', '-H', '1', img])
 
     # wcs and fwhm
     fil = pyfits.getval(img, 'FILTER')[0]
     if fil not in ('8', '9', 'S'): # don't do wcs, fwhm on grism or spectroscopy images
         #run(f'wcs -u 0.1 -o2w {img} > /dev/null 2>&1', shell=True) ## Pinpoint run on TCC
-        run('fwhm', '-ow', img)
+        run(['fwhm', '-ow', img])
 
     # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
     # NB overwrite switch on to override ZAG solution from Pinpoint
