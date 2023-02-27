@@ -46,15 +46,15 @@ if (currenthost != HOSTNAME):
     print(f"You are logged into {currenthost}. Please run only from {HOSTNAME}")
     exit
 
-current_day = format(dt.utcnow().timetuple().tm_yday, '03d')
+current_day = dt.utcnow().timetuple().tm_yday
 
 # Distribute images
 n=0
 for img in (fromdir / 'images').glob('*.ft[sh]'):
     yr_obs = pyfits.getval(Path(img), 'DATE-OBS')[:4]
     obs_code = img.name[0:3]
-    day_nr = img.name[3:6]
-    target = Path(todir, groups[obs_code[0]], obs_code, yr_obs, day_nr, img.name)
+    day_code = img.name[3:6]
+    target = Path(todir, groups[obs_code[0]], obs_code, yr_obs, day_code, img.name)
 
     # create the image directory and its parents if needed
     if not target.parent.exists():
@@ -66,6 +66,7 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
     run(['cp', '-u', img, target])
 
     # delete the image if it's older than maxdays
+    day_nr = int(day_code)
     if (current_day < day_nr): day_nr -= 365
     if (current_day - day_nr > maxdays):
         print(f"Deleting {img}")
