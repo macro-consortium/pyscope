@@ -83,7 +83,7 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
     # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
     # NB overwrite switch on to override ZAG solution from Pinpoint
     if img.name[:3] == 'foc':
-        ra = int(round(float(pyfits.getval(full_name, 'RA')[0:2])))
+        ra = int(round(float(pyfits.getval(img, 'RA')[0:2])))
         if fil == 'G' and ra in sloan_ra:
             run(f'calc-zmag -f g -ow {img}', shell=True)
         if fil == 'R' and ra in sloan_ra:
