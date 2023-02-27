@@ -72,7 +72,7 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
         run(['fdecompress', '-r', img])
     
     # calibrate
-    run(['cmos_calib', '-H', '1', img])
+    run(['cmos-calib', '-H', '1', img])
 
     # wcs and fwhm
     fil = pyfits.getval(img, 'FILTER')[0]
