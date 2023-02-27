@@ -75,5 +75,5 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
 print(f"Copied {n} images")    
 
 # Copy logs (is this still needed?)
-for logfile in (fromdir / 'logs').glob(*.log):
+for logfile in (fromdir / 'logs').glob('*.log'):
     run('cp', '-u', logfile, Path(todir, 'logs'))
