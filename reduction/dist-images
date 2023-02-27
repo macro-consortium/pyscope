@@ -42,7 +42,7 @@ if (currentgroup != TELGRP):
     exit
 
 # Make sure we are running from correct system
-currenthost hostnm = os.uname().nodename
+currenthost = os.uname().nodename
 if (currenthost != HOSTNAME):
     print(f"You are logged into {currenthost}. Please run only from {HOSTNAME}")
     exit
