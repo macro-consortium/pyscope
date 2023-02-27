@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/usr/bin/env python
 
 # Distributes astrolab, general, modern, internet images and logs
 # from $telhome/user(images/logs) to appropriate directories
@@ -10,129 +10,70 @@
 # Change age to 14 days; fix rewriting all days RLM 5 Dec 07
 # Add s group 2011 OCt 17 RLM
 # 13 Feb 2023 WWG - modify for chronos support
-umask 2
+# 26 Feb 2023 BMP - port to Python, copy/delete images in fromdir older than X days
 
-set TELGRP = 'talon'
-set HOSTNAME = 'chronos'
-set telhome = '/usr/local/telescope'
-set fromdir = "$telhome/user"
-set todirbase = "/mnt/imagesbucket"
+import astropy.io.fits as pyfits
+import grp
+from os import umask, getgid, uname
+from pathlib import Path
+from subprocess import run
+from datetime import datetime as dt
 
-# Directory names for each group
-set groupdirs = "macalester augustana coe knox iowa external"
-set cn = (m a c k i x)     # Letter codes corresponding to group names above
+umask(0o002)
 
-# Set archive dir and age (days) for moving images from $telhome/user/images 
-# to archive directory
-# Files will no longer be moved to a separate archive
-#set archive_dir = '/mnt/images/archive/'
+TELGRP = 'talon'
+HOSTNAME = 'chronos'
+fromdir = Path('/usr/local/telescope/user')
+todir = Path('/mnt/imagesbucket')
+maxdays = 7
 
-# Set max age before images are moved to $archive_dir
-#set age = 14
+# image prefixes and group names
+groups = dict(m='macalester',
+              a='augustana',
+              c='coe',
+              k='knox',
+              i='iowa',
+              x='external')
 
-########################################################################
-
-echo "Distimages version 3.5"
-set day = `date`
-echo $day
-
-# Make sure we are newgrp'ed to the correct group (talon)
-set idgrp = `id -gn`
-if ($idgrp != $TELGRP) then
-  echo "You are currently in group $idgrp. Please newgrp $TELGRP, then rerun"
-  exit
-endif
+# Make sure we are newgrp'ed to the correct group
+currentgroup = grp.getgrgid(getgid()).name
+if (currentgroup != TELGRP):
+    print(f"You are currently in group {currentgroup}. Please newgrp {TELGRP}, then rerun")
+    exit
 
 # Make sure we are running from correct system
-set hostnm = `uname -n`
-if ($hostnm:r:r:r != $HOSTNAME) then
-  echo "You are logged into $hostnm. Please run only from $HOSTNAME"
-  exit
-endif
+currenthost hostnm = os.uname().nodename
+if (currenthost != HOSTNAME):
+    print(f"You are logged into {currenthost}. Please run only from {HOSTNAME}")
+    exit
 
+current_day = format(dt.utcnow().timetuple().tm_yday, '03d')
 
-# Don't exit script if no matching images on foreach loops
-set nonomatch
+# Distribute images
+n=0
+for img in (fromdir / 'images').glob('*.ft[sh]'):
+    yr_obs = pyfits.getval(Path(img), 'DATE-OBS')[:4]
+    obs_code = img.name[0:3]
+    day_nr = img.name[3:6]
+    target = Path(todir, groups[obs_code[0]], obs_code, yr_obs, day_nr, img.name)
 
-# Add OBJCTRA, OBJCTDEC keywords to images taken within last 24 hours
-#foreach fn (`find $fromdir/images -mtime 0 -name \*.ft\[sh\]`)
-#  set ra = `fitsvalue $fn RA | sed 's/:/ /g'`
-#  set dec = `fitsvalue $fn DEC | sed 's/:/ /g'`
-#  fitshdr -s OBJCTRA "$ra" $fn
-#  fitshdr -s OBJCTDEC "$dec" $fn
-#end
+    # create the image directory and its parents if needed
+    if not target.parent.exists():
+        print("Creating directory", target.parent)
+        target.parent.mkdir(mode=0o775, parents=True)
 
-#Distribute images to image directories by code
-@ codeindex = 1
-foreach fname ($groupdirs)
-  @ n = 0
-  set todir = "$todirbase/$fname"
-  echo "Copying $fname ($cn[$codeindex]*) images to $todir"
-  set filelist = `ls $fromdir/images/ | grep "^$cn[$codeindex].*\.ft[sh]" | grep '^[a-z][a-z][a-z][0-9][0-9][0-9]'`
-  echo "filelist: " $filelist
-  foreach ffull ($filelist)
-    set ffull = "$fromdir/images/$ffull"
-    echo "Working with $ffull"
-    set fname = $ffull:t
-    set fpath = $ffull:h
+    # copy the image if target doesn't exist or is older
+    print(f"Copying {img} -> {target}")
+    run('cp', '-u', img, target')
 
-    set fnPrefix = `echo $fname | sed 's/^\(...\).*/\1/'`
-    set fnDay = `echo $fname | sed 's/^...\(...\).*/\1/'`
-    set fnSeq = `echo $fname | sed 's/^......\([^.]*\)\.ft[sh]/\1/'`
-    set fnSeq = `printf %03x 0x$fnSeq`
-    set fnExt = `echo $fname | sed 's/.*\(...\)$/\1/'`
-    set fnYear = `date +%y | sed 's/^.//'`
-    echo "We have $fnPrefix $fnDay $fnSeq $fnExt $fnYear"
-    set newname = "${fnPrefix}${fnYear}${fnDay}${fnSeq}.${fnExt}"
+    # delete the image if it's older than maxdays
+    if (current_day < day_nr): day_nr -= 365
+    if (current_day - day_nr > maxdays):
+        print(f"Deleting {img}")
+        run('rm', img)
+    n+=1
+print(f"Copied {n} images")    
 
-    if (-e $ffull) then
-      echo $fname > /tmp/t.tmp
-      set fcode = `gawk '{print substr($1,1,3)}' /tmp/t.tmp`
-      if (! -e $todir/$fcode) then
-        mkdir $todir/$fcode
-        chmod 755 $todir/$fcode
-      endif
-
-      set year = `date +"%Y"`
-      if (! -e $todir/$fcode/$year) then
-        echo "Making year directory $year"
-        mkdir $todir/$fcode/$year
-      endif
-      if (! -e $todir/$fcode/$year/$fnDay) then
-        echo "Making day directory $fnDay"
-        mkdir $todir/$fcode/$year/$fnDay
-      endif
-      # not using .fth - seems reduntant -- BMP
-#      set f1 = $todir/$fcode/$year/$fnDay/$newname:r.fth
-#      set f2 = $todir/$fcode/$year/$fnDay/$newname:r.fts
-#      if (! -e $f1 && ! -e $f2) then
-        echo "Copying $ffull -> $todir/$fcode/$year/$fnDay/$newname"
-        cp -u $ffull $todir/$fcode/$year/$fnDay/$newname
-        @ n++
-#      endif
-    endif
-  end
-
-  foreach ffull ($fromdir/logs/$cn[$codeindex]*.log)
-  set fname = $ffull:t
-    if (! -e $todir/logs/$fname) then
-      cp -u $ffull $todir/logs
-    endif
-  end
-  echo "Copied $n images"
-  @ codeindex++
-end
-
-# Move files more than $age days old to archive directory 
-# Files will no longer be moved to a separate archive
-#echo "Moving images more than $age days old to $archive_dir ..."    
-#find $fromdir/images -maxdepth 1 -name \*.ft\[sh\] -mtime +$age -exec mv {} $archive_dir \;
-
-# Run fecompression (batch mode) on all class images
-# nohup $telhome/bin/decomp &
-
-# Move images to proper daynumber directories
-#echo "Moving images in archive to numbered subdirectories"
-#mvToDate
-
-echo "Done"
+# Copy logs (is this still needed?)
+for logfile in (fromdir / 'logs').glob(*.log):
+    run('cp', '-u', logfile, Path(todir, 'logs'))
