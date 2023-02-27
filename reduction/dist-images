@@ -64,7 +64,7 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
 
     # copy the image if target doesn't exist or is older
     print(f"Copying {img} -> {target}")
-    run('cp', '-u', img, target')
+    run('cp', '-u', img, target)
 
     # delete the image if it's older than maxdays
     if (current_day < day_nr): day_nr -= 365
