@@ -13,10 +13,9 @@
 # 26 Feb 2023 BMP - port to Python, copy/delete images in fromdir older than X days
 
 import astropy.io.fits as pyfits
-import grp
-from os import umask, getgid, uname
+from os import umask
 from pathlib import Path
-from subprocess import run
+from subprocess import run, check_output
 from datetime import datetime as dt
 
 umask(0o002)
@@ -36,13 +35,13 @@ groups = dict(m='macalester',
               x='external')
 
 # Make sure we are newgrp'ed to the correct group
-currentgroup = grp.getgrgid(getgid()).gr_name
+currentgroup = check_output('id -gn', shell=True, text=True).strip()
 if (currentgroup != TELGRP):
     print(f"You are currently in group {currentgroup}. Please newgrp {TELGRP}, then rerun")
     exit
 
 # Make sure we are running from correct system
-currenthost = os.uname().nodename
+currenthost = check_output('uname -n', shell=True, text=True).strip()
 if (currenthost != HOSTNAME):
     print(f"You are logged into {currenthost}. Please run only from {HOSTNAME}")
     exit
@@ -64,16 +63,16 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
 
     # copy the image if target doesn't exist or is older
     print(f"Copying {img} -> {target}")
-    run('cp', '-u', img, target)
+    run(['cp', '-u', img, target])
 
     # delete the image if it's older than maxdays
     if (current_day < day_nr): day_nr -= 365
     if (current_day - day_nr > maxdays):
         print(f"Deleting {img}")
-        run('rm', img)
+        run(['rm', img])
     n+=1
 print(f"Copied {n} images")    
 
 # Copy logs (is this still needed?)
 for logfile in (fromdir / 'logs').glob('*.log'):
-    run('cp', '-u', logfile, Path(todir, 'logs'))
+    run(['cp', '-u', logfile, Path(todir, 'logs')])
