@@ -54,7 +54,8 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
     yr_obs = pyfits.getval(Path(img), 'DATE-OBS')[:4]
     obs_code = img.name[0:3]
     day_code = img.name[3:6]
-    target = Path(todir, groups[obs_code[0]], obs_code, yr_obs, day_code, img.name)
+    groupdir = groups.get(obs_code[0], 'other')
+    target = Path(todir, groupdir, obs_code, yr_obs, day_code, img.name)
 
     # create the image directory and its parents if needed
     if not target.parent.exists():
