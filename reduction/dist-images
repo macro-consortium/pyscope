@@ -59,21 +59,22 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
 
     # create the image directory and its parents if needed
     if not target.parent.exists():
-        print("Creating directory", target.parent)
         target.parent.mkdir(mode=0o775, parents=True)
+        print("Created directory", target.parent)
 
     # copy the image if target doesn't exist or is older
-    print(f"Copying {img} -> {target}")
-    run(['cp', '-u', img, target])
+    x = run(['cp', '-u', img, target])
+    print(f"Copied {img} -> {target}, returncode={x.returncode}")
 
     # delete the image if it's older than maxdays
-    day_nr = int(day_code)
-    if (current_day < day_nr): day_nr -= 365
-    if (current_day - day_nr > maxdays):
-        print(f"Deleting {img}")
-        run(['rm', img])
+    if x.returncode == 0:
+        day_nr = int(day_code)
+        if (current_day < day_nr): day_nr -= 365
+        if (current_day - day_nr > maxdays):
+            run(['rm', img])
+            print(f"Deleted {img}")
     n+=1
-print(f"Copied {n} images")    
+print(f"Copied {n} images")
 
 # Copy logs (is this still needed?)
 for logfile in (fromdir / 'logs').glob('*.log'):
