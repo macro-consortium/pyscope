@@ -267,76 +267,76 @@ for ftsfile in glob.glob(Ftsfiles):
     bkgrnd_mean, bkgrnd_median, bkgrnd_std = sigma_clipped_stats(im, sigma=3.0)
 
     # Run sextractor
-	sexname = os.path.abspath(ftsfile).split('.')[0] + '.sexout'
-	if verbose: print('Running sextractor on %s with detection threshold = %.1f sigma' % (ftsfile, detect_threshold))
-	os.system('sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET' \
-	% (ftsfile, sex_path, sexname, detect_threshold) )
-	
-	# Get position, magnitude info for each listed star in output file
-	Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err = get_sexinfo(sexname, exptime, arcsec_pixel)
-	nobs = len(Ra_obs)
-	if verbose: print('Sextractor found %i stars' % nobs)
-	
-	# For each star in sextractor list retrieve SDSS photometry
-	Mag_ref = np.full(nobs, np.nan); Color = np.full(nobs, np.nan)
-	if verbose: print('Looking up observed stars in SDSS database...')
-	for j in range(nobs):
-		u1, g, r, i, z = get_sdss_magnitudes(Ra_obs[j], Dec_obs[j])
-		Color[j] = g - r
-		if sloan_filter == 'U': Mag_ref[j] = u1
-		if sloan_filter == 'B': Mag_ref[j] = b
-		if sloan_filter == 'G': Mag_ref[j] = g
-		if sloan_filter == 'R': Mag_ref[j] = r
-		if sloan_filter == 'I': Mag_ref[j] = i
-		if sloan_filter == 'Z': Mag_ref[j] = z
-			
-	# Remove stars that weren't found in SDSS
-	A = [Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color]
-	indices = np.where(np.isnan(Mag_ref))[0]
-	Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color = trim(indices, A)
-	if verbose: print('Found %i stars in SDSS lookup' % len(Ra_obs))
-	if len(Ra_obs) == 0:
-		print('No stars found in SDSS, skipping')
-		continue
-	
-	# Correct for extinction
-	'''
-	if filter == 'G':
-		Mag_obs -= k_g * airmass - k_color_g * Color
-	elif filter == 'R':
-		Mag_obs -= k_r * airmass - k_color_r * Color
-	'''
-	
-	# Solve for zero-point magnitude, assign RMS 
-	zp, success, chi = solve_zp(Mag_ref, Mag_obs, Mag_obs_err)
-	zperr = (1./len(Mag_ref)) *np.sqrt( np.sum( (Mag_obs - Mag_ref)**2) ) # RMS difference
-	
-	'''
-	# find color correction coefficient using initial zp solution
-	k_color_g, success_k = solve_k_color(Mag_obs + zp, Mag_obs_err, Mag_ref, Color)
-	if not success_k:
-		print 'Warning: Color correction failed, ignoring correction'
-		k_color_g = 0.0
-	else:
-		print 'k_color_g = %.2f' % k_color_g
-	
-	'''
-	
-	# Remove outliers (>3 sigma)
-	A = [Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color]
-	indices = np.where(np.abs(Mag_ref - (Mag_obs+zp) ) > outlier_threshold *Mag_obs_err)[0]
-	Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color = trim(indices, A)
-	if verbose: print('Removed %i outlier stars exceeding %.1f sigma' % (len(indices), outlier_threshold))
-	fwhm = np.median(Fwhm_obs)
-	nstar = len(Mag_ref)
-	
-	# Re-solve of ZP, apply to observed raw magnitudes
-	zp, success, chi = solve_zp(Mag_ref, Mag_obs, Mag_obs_err)
-	
-	Mag_obs += zp
-	zperr = (1./nstar) *np.sqrt( np.sum( (Mag_obs - Mag_ref)**2) ) # RMS difference
-	Zp.append(zp); Zperr.append(zperr)
-	Diff = Mag_obs - Mag_ref
+    sexname = os.path.abspath(ftsfile).split('.')[0] + '.sexout'
+    if verbose: print('Running sextractor on %s with detection threshold = %.1f sigma' % (ftsfile, detect_threshold))
+    os.system('sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET' \
+    % (ftsfile, sex_path, sexname, detect_threshold) )
+    
+    # Get position, magnitude info for each listed star in output file
+    Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err = get_sexinfo(sexname, exptime, arcsec_pixel)
+    nobs = len(Ra_obs)
+    if verbose: print('Sextractor found %i stars' % nobs)
+    
+    # For each star in sextractor list retrieve SDSS photometry
+    Mag_ref = np.full(nobs, np.nan); Color = np.full(nobs, np.nan)
+    if verbose: print('Looking up observed stars in SDSS database...')
+    for j in range(nobs):
+        u1, g, r, i, z = get_sdss_magnitudes(Ra_obs[j], Dec_obs[j])
+        Color[j] = g - r
+        if sloan_filter == 'U': Mag_ref[j] = u1
+        if sloan_filter == 'B': Mag_ref[j] = b
+        if sloan_filter == 'G': Mag_ref[j] = g
+        if sloan_filter == 'R': Mag_ref[j] = r
+        if sloan_filter == 'I': Mag_ref[j] = i
+        if sloan_filter == 'Z': Mag_ref[j] = z
+            
+    # Remove stars that weren't found in SDSS
+    A = [Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color]
+    indices = np.where(np.isnan(Mag_ref))[0]
+    Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color = trim(indices, A)
+    if verbose: print('Found %i stars in SDSS lookup' % len(Ra_obs))
+    if len(Ra_obs) == 0:
+        print('No stars found in SDSS, skipping')
+        continue
+    
+    # Correct for extinction
+    '''
+    if filter == 'G':
+        Mag_obs -= k_g * airmass - k_color_g * Color
+    elif filter == 'R':
+        Mag_obs -= k_r * airmass - k_color_r * Color
+    '''
+    
+    # Solve for zero-point magnitude, assign RMS 
+    zp, success, chi = solve_zp(Mag_ref, Mag_obs, Mag_obs_err)
+    zperr = (1./len(Mag_ref)) *np.sqrt( np.sum( (Mag_obs - Mag_ref)**2) ) # RMS difference
+    
+    '''
+    # find color correction coefficient using initial zp solution
+    k_color_g, success_k = solve_k_color(Mag_obs + zp, Mag_obs_err, Mag_ref, Color)
+    if not success_k:
+        print 'Warning: Color correction failed, ignoring correction'
+        k_color_g = 0.0
+    else:
+        print 'k_color_g = %.2f' % k_color_g
+    
+    '''
+    
+    # Remove outliers (>3 sigma)
+    A = [Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color]
+    indices = np.where(np.abs(Mag_ref - (Mag_obs+zp) ) > outlier_threshold *Mag_obs_err)[0]
+    Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err, Mag_ref, Color = trim(indices, A)
+    if verbose: print('Removed %i outlier stars exceeding %.1f sigma' % (len(indices), outlier_threshold))
+    fwhm = np.median(Fwhm_obs)
+    nstar = len(Mag_ref)
+    
+    # Re-solve of ZP, apply to observed raw magnitudes
+    zp, success, chi = solve_zp(Mag_ref, Mag_obs, Mag_obs_err)
+    
+    Mag_obs += zp
+    zperr = (1./nstar) *np.sqrt( np.sum( (Mag_obs - Mag_ref)**2) ) # RMS difference
+    Zp.append(zp); Zperr.append(zperr)
+    Diff = Mag_obs - Mag_ref
 
     # Solve for sky brightness,
     mag_sky, success_sky = solve_mag_sky(Snr)
