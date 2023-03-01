@@ -69,7 +69,7 @@ for img in image_dir.glob(patt):
         continue
     # write calibration timestamp into FITS header
     print(f'Started processing {img.name} at {timestamp()}')
-    header.insert('LST', ('CALSTART', timestamp(), 'Calibration start time [MST]'))
+    header['LST'] = ('CALSTART', timestamp(), 'Calibration start time [MST]')
     hdu.writeto(img, overwrite=True)
     hdu.close()
 
