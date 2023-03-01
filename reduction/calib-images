@@ -49,6 +49,9 @@ if len(argv) > 1:
         day_nr = format(int(argv[1]), '03d')
         file_list = image_dir.glob(f"???{day_nr}*.ft[sh]")
         print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
+    elif '*' in argv[1]: # wildcard didn't get expanded by shell (e.g. run by crontab)
+        file_list = image_dir.glob(argv[1])
+        print('Running calib-images on %s at %s' % (' '.join(argv[1:]), timestamp()))        
     else:
         file_list = [Path(x) for x in argv[1:]]
         print('Running calib-images on %s at %s' % (' '.join(argv[1:]), timestamp()))
