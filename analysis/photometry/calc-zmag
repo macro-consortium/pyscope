@@ -341,7 +341,7 @@ for ftsfile in glob.glob(Ftsfiles):
 =======
     sexname = os.path.abspath(ftsfile).split('.')[0] + '.sexout'
     if verbose: print('Running sextractor on %s with detection threshold = %.1f sigma' % (ftsfile, detect_threshold))
-    os.system('/usr/local/bin/sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET' \
+    os.system('sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET' \
     % (ftsfile, sex_path, sexname, detect_threshold) )
     
     # Get position, magnitude info for each listed star in output file
