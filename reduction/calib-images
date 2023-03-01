@@ -76,9 +76,9 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
 
     # wcs and fwhm
     fil = pyfits.getval(img, 'FILTER')[0]
-    if fil not in ('8', '9', 'S'): # don't do wcs, fwhm on grism or spectroscopy images
+#    if fil not in ('8', '9', 'S'): # don't do wcs, fwhm on grism or spectroscopy images
         #run(f'wcs -u 0.1 -o2w {img} > /dev/null 2>&1', shell=True) ## Pinpoint run on TCC
-        run(['fwhm', '-ow', img])
+        #run(['fwhm', '-ow', img]) ## not needed acc'ing to WWGolay
 
     # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
     # NB overwrite switch on to override ZAG solution from Pinpoint
@@ -90,5 +90,5 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
             run(f'calc-zmag -f r -ow {img}', shell=True)
         if fil == 'I' and ra in sloan_ra:
             run(f'calc-zmag -f i -ow {img}', shell=True)
-            
+
     print(f'Finished processing of {img.name} at {timestamp()}')
