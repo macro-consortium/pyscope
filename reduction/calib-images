@@ -28,7 +28,7 @@ RLM 31 Oct 2013
 from sys import argv
 from datetime import datetime as dt
 from pathlib import Path
-from subprocess import run
+from subprocess import run, check_output
 import astropy.io.fits as pyfits
 
 def timestamp():
@@ -60,19 +60,20 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
     if ('CALSTAT' in header) or ('CALSTART' in header):
         continue
     # write calibration timestamp into FITS header
+    print(f'Started processing {img.name} at {timestamp()}')
     header.insert('LST', ('CALSTART', timestamp(), 'Calibration start time [MST]'))
     hdu.writeto(img, overwrite=True)
     hdu.close()
 
     # make a copy of the uncalibrated image if there isn't one already
-    run(['cp', '-n', img, rawimage_dir])
+    run(f'cp -n {img} {rawimage_dir}', shell=True)
     
     # decompress if needed
     if img.suffix == '.fth':
-        run(['fdecompress', '-r', img])
+        print(check_output(f'fdecompress -r {img}', shell=True))
     
     # calibrate
-    run(['cmos-calib', '-H', '1', img])
+    print(check_output(f'cmos-calib -H 1 {img}', shell=True))
 
     # wcs and fwhm
     fil = pyfits.getval(img, 'FILTER')[0]
@@ -85,10 +86,10 @@ for img in image_dir.glob(f"???{day_nr}*.ft[sh]"):
     if img.name[:3] == 'foc':
         ra = int(round(float(pyfits.getval(img, 'RA')[0:2])))
         if fil == 'G' and ra in sloan_ra:
-            run(f'calc-zmag -f g -ow {img}', shell=True)
+            print(check_output(f'calc-zmag -f g -ow {img}', shell=True))
         if fil == 'R' and ra in sloan_ra:
-            run(f'calc-zmag -f r -ow {img}', shell=True)
+            print(check_output(f'calc-zmag -f r -ow {img}', shell=True))
         if fil == 'I' and ra in sloan_ra:
-            run(f'calc-zmag -f i -ow {img}', shell=True)
+            print(check_output(f'calc-zmag -f i -ow {img}', shell=True))
 
-    print(f'Finished processing of {img.name} at {timestamp()}')
+    print(f'...finished processing of {img.name} at {timestamp()}')
