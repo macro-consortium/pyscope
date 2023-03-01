@@ -159,11 +159,13 @@ def get_sdss_magnitudes(ra,dec):
     ids = SDSS.query_region(pos,radius=5*u.arcsec, cache=False, fields=['ra','dec','clean','u','g','r','i','z']) # defaults to 2 arcsec search
     u1 = g = r = i = z= np.nan
     
-    if ids.size != 0:
+    try: # query_region returns a Table object or None
         for id in ids:
             if id['clean'] == 1 and id['g'] < 21.0:     # Only accept photometry with clean flags and assume faint stars are incorrect ID's
                 u1 = id['u']; g = id['g']; r = id['r']; i = id['i']; z = id['z']
                 return u1, g, r, i, z
+    except:
+        pass
     return u1,g,r,i,z
 
 def trim(indices,A):
