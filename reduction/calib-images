@@ -78,10 +78,10 @@ for img in image_dir.glob(patt):
     
     # decompress if needed
     if img.suffix == '.fth':
-        print(check_output(f'fdecompress -r {img}', shell=True))
+        print(check_output(f'fdecompress -r {img}', shell=True, encoding='ascii'))
     
     # calibrate
-    print(check_output(f'cmos-calib -H 1 {img}', shell=True))
+    print(check_output(f'cmos-calib -H 1 {img}', shell=True, encoding='ascii'))
 
     # wcs and fwhm
     fil = pyfits.getval(img, 'FILTER')[0]
@@ -94,10 +94,10 @@ for img in image_dir.glob(patt):
     if img.name[:3] == 'foc':
         ra = int(round(float(pyfits.getval(img, 'RA')[0:2])))
         if fil == 'G' and ra in sloan_ra:
-            print(check_output(f'calc-zmag -f g -ow {img}', shell=True))
+            print(check_output(f'calc-zmag -f g -ow {img}', shell=True, encoding='ascii'))
         if fil == 'R' and ra in sloan_ra:
-            print(check_output(f'calc-zmag -f r -ow {img}', shell=True))
+            print(check_output(f'calc-zmag -f r -ow {img}', shell=True, encoding='ascii'))
         if fil == 'I' and ra in sloan_ra:
-            print(check_output(f'calc-zmag -f i -ow {img}', shell=True))
+            print(check_output(f'calc-zmag -f i -ow {img}', shell=True, encoding='ascii'))
 
     print(f'...finished processing of {img.name} at {timestamp()}')
