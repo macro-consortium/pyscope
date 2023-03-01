@@ -65,7 +65,7 @@ for img in image_dir.glob(patt):
 
     hdu = pyfits.open(img)
     header = hdu[0].header
-    if ('CALSTAT' in header) or ('CALSTART' in header):
+    if ('CALSTAT' in header): # has been calibrated
         continue
     # write calibration timestamp into FITS header
     print(f'Started processing {img.name} at {timestamp()}')
