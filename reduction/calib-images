@@ -28,7 +28,7 @@ RLM 31 Oct 2013
 from sys import argv
 from datetime import datetime as dt
 from pathlib import Path
-from subprocess import run, check_output
+from subprocess import run, PIPE, STDOUT
 import astropy.io.fits as pyfits
 
 def timestamp():
