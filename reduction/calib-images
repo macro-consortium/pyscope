@@ -43,25 +43,23 @@ if not rawimage_dir.exists(): rawimage_dir.mkdir()
 
 sloan_ra = [22,23,0,1,2,8,9,10,11,12,13,14,15,16,17] # RA's in Sloan catalog at 30 deg Dec
 
-# If provided, use day number from command line. Otherwise find current day_nr
+# Can specify a day number or file(s) on command line
 if len(argv) > 1:
     if argv[1].isdigit():
+        print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
         day_nr = format(int(argv[1]), '03d')
+        file_list = img_dir.glob(f"???{day_nr}*.ft[sh]")
     else:
-        day_nr = -1
-        patt = argv[1]
+        print('Running calib-images on %s at %s' % (' '.join(file_list), timestamp()))
+        file_list = argv[1:]
 else:
-    day_nr = format(dt.utcnow().timetuple().tm_yday, '03d')
-
-if day_nr > -1:
     print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
-    patt = f"???{day_nr}*.ft[sh]"
-else:
-    print('Running calib-images on %s at %s' % (patt, timestamp()))    
+    day_nr = format(dt.utcnow().timetuple().tm_yday, '03d')
+    file_list = img_dir.glob(f"???{day_nr}*.ft[sh]")
 print('============================================')
 
 # Process images for day_nr that require it
-for img in image_dir.glob(patt):
+for img in file_list:
 
     hdu = pyfits.open(img)
     header = hdu[0].header
@@ -78,7 +76,7 @@ for img in image_dir.glob(patt):
     
     # decompress if needed
     if img.suffix == '.fth':
-        print(check_output(f'fdecompress -r {img}', shell=True, encoding='ascii'))
+        run(f'fdecompress -r {img}', shell=True, encoding='ascii')
     
     # calibrate
     print(check_output(f'cmos-calib -H 1 {img}', shell=True, encoding='ascii'))
