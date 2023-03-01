@@ -51,7 +51,7 @@ if len(argv) > 1:
         print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
     else:
         file_list = [Path(x) for x in argv[1:]]
-        print('Running calib-images on %s at %s' % (' '.join(file_list), timestamp()))
+        print('Running calib-images on %s at %s' % (' '.join(argv[1:]), timestamp()))
 else:
     day_nr = format(dt.utcnow().timetuple().tm_yday, '03d')
     file_list = img_dir.glob(f"???{day_nr}*.ft[sh]")
