@@ -51,7 +51,11 @@ current_day = dt.utcnow().timetuple().tm_yday
 # Distribute images
 n=0
 for img in (fromdir / 'images').glob('*.ft[sh]'):
-    yr_obs = pyfits.getval(Path(img), 'DATE-OBS')[:4]
+    try:
+        yr_obs = pyfits.getval(Path(img), 'DATE-OBS')[:4]
+    except OSError as e:
+        print(f"Corrupt FITS file error: {str(e)}")
+        continue
     obs_code = img.name[0:3]
     day_code = img.name[3:6]
     groupdir = groups.get(obs_code[0], 'other')
