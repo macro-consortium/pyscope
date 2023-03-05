@@ -13,6 +13,7 @@
 # 26 Feb 2023 BMP - port to Python, copy/delete images in fromdir older than X days
 
 import astropy.io.fits as pyfits
+import shutil
 from os import umask
 from pathlib import Path
 from subprocess import run, check_output
@@ -67,16 +68,18 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
         print("Created directory", target.parent)
 
     # copy the image if target doesn't exist or is older
-    x = run(['cp', '-u', img, target])
-    print(f"Copied {img} -> {target}, returncode={x.returncode}")
+    x = run(['cp', '-u', img, target], encoding='ascii', stdout=PIPE, stderr=STDOUT)
+    if not target.exists():
+        print(f"Failed to copy {img.name}: {x.stdout}")
+        continue
+    print(f"Copied {img.name} -> {target}")
 
     # delete the image if it's older than maxdays
-    if x.returncode == 0:
-        day_nr = int(day_code)
-        if (current_day < day_nr): day_nr -= 365
-        if (current_day - day_nr > maxdays):
-            run(['rm', img])
-            print(f"Deleted {img}")
+    day_nr = int(day_code)
+    if (current_day < day_nr): day_nr -= 365
+    if (current_day - day_nr > maxdays):
+        img.unlink
+        print(f"Deleted {img}")
     n+=1
 print(f"Copied {n} images")
 
