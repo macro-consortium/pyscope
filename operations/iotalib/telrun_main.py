@@ -449,8 +449,8 @@ def run_scans(telrun_file):
                 logging.info("Refining telescope pointing for this scan...")
                 centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
                         target_dec_j2k_deg=target_dec_j2000_degs, 
-                        target_pixel_x_unbinned=observatory.camera.get_ccd_width_pixels() / 2.0, 
-                        target_pixel_y_unbinned=observatory.camera.get_ccd_height_pixels() / 2.0, 
+                        target_pixel_x_unbinned=2038, # observatory.camera.get_ccd_width_pixels() / 2.0, 
+                        target_pixel_y_unbinned=2038, # observatory.camera.get_ccd_height_pixels() / 2.0, 
                         initial_offset_dec_arcmin=0, 
                         check_and_refine=True,
                         max_attempts=3, 
