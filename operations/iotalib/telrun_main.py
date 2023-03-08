@@ -447,10 +447,27 @@ def run_scans(telrun_file):
                 telrun_status.mount_state = "SLEWING"
                 
                 logging.info("Refining telescope pointing for this scan...")
-                centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
+                if scan.filter != '6':
+                    centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
                         target_dec_j2k_deg=target_dec_j2000_degs, 
                         target_pixel_x_unbinned=2038, # observatory.camera.get_ccd_width_pixels() / 2.0, 
                         target_pixel_y_unbinned=2038, # observatory.camera.get_ccd_height_pixels() / 2.0, 
+                        initial_offset_dec_arcmin=0, 
+                        check_and_refine=True,
+                        max_attempts=3, 
+                        tolerance_pixels=1.33, 
+                        exposure_length=config_telrun.values.recenter_exposure_seconds,
+                        binning=config_telrun.values.recenter_exposure_binning, 
+                        save_images=True, 
+                        save_path_template=r'{MyDocuments}\CenterTargetData\{Timestamp}', 
+                        console_output=False,
+                        search_radius_degs=1, 
+                        sync_mount=config_telrun.values.recenter_using_sync)
+                else: 
+                    centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
+                        target_dec_j2k_deg=target_dec_j2000_degs, 
+                        target_pixel_x_unbinned=observatory.camera.get_ccd_width_pixels() / 2.0, 
+                        target_pixel_y_unbinned=observatory.camera.get_ccd_height_pixels() / 2.0, 
                         initial_offset_dec_arcmin=0, 
                         check_and_refine=True,
                         max_attempts=3, 
