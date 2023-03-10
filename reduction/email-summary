@@ -49,7 +49,7 @@ def writeline(s,face,color,n):
 
 def SendMail(Images, html_file, Mail_list):
     msg = MIMEMultipart()
-    msg['Subject'] = 'Robert L Mutel Telescope summary: %s' % datestamp
+    msg['Subject'] = 'Robert L Mutel Telescope summary: %s' % date_now()
     msg['From'] = 'macroconsortium@gmail.com'
     msg['To'] = 'macroconsortium@gmail.com'
 
