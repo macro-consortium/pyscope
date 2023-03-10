@@ -40,7 +40,9 @@ image_dir = '/usr/local/telescope/user/images/'
 email_dir = '/home/talon/summary_email'                      # Folder contianing email summary daemon  and data files
 html_name = '%s/observing_summary' % email_dir     # Summary date (one created each day with -daynr suffix
 email_txt ='%s/email-msg.txt' % email_dir                    # General information text
-email_all = '%s/gemini-emails.dat' % email_dir             # Email list  of people who always receive daily summary 
+email_all = '%s/daily_emails.txt' % email_dir             # Email list  of people who always receive daily summary 
+with open(f'{email_dir}/email_key.txt') as f:             # don't want app password in the clear on github
+    app_passwd = f.read().strip()
 
 def writeline(s,face,color,n):
     hfile.write( '<font face="%s", font color ="%s", font size = %ipx>%s</font><p>' % (face,color,n,s) )
@@ -48,9 +50,9 @@ def writeline(s,face,color,n):
 
 def SendMail(Images, html_file, Mail_list):
     msg = MIMEMultipart()
-    msg['Subject'] = 'Iowa Robotic Telescope summary: %s' % date_now()
-    msg['From'] = 'robert-mutel@uiowa.edu'
-    msg['To'] = 'robert-mutel@uiowa.edu'
+    msg['Subject'] = 'Robert L Mutel Telescope summary: %s' % datestamp
+    msg['From'] = 'macroconsortium@gmail.com'
+    msg['To'] = 'macroconsortium@gmail.com'
 
     # Read summary file
     email_msg = open(html_file,'r')
@@ -65,8 +67,9 @@ def SendMail(Images, html_file, Mail_list):
             image = MIMEImage(img_data, name=os.path.basename(image))
             msg.attach(image)
 
-    s = smtplib.SMTP('localhost')
-    From = 'robert-mutel@uiowa.edu'
+    s = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    s.login('macroconsortium', app_passwd)
+    From = 'macroconsortium@gmail.com'
     
     s.sendmail(From, Mail_list, msg.as_string())
     s.quit()
@@ -207,9 +210,23 @@ html_file = '%s-day%03d.html' % (html_name,daynr)
 hfile = open(html_file,'w')
 
 # Print some summary data
-s = 'Iowa Robotic Telescope daily report  %s (day %i)' % (date_now(), daynr) ; writeline(s,'arial','blue',4)
-hfile.write('<font face="arial">%s</font><p>' % email_msg)
-s = '<b>Observing statistics</b>'; writeline(s,'arial','blue',2)
+s = 'Robert L Mutel Telescope daily report  %s (day %i)' % (date_now(), daynr) ; writeline(s,'arial','blue',4)
+hfile.write('''<font face="arial">
+<p>This message is generated automatically by the Robert L Mutel Telescope, run by the MACRO Consortium (http://macronsortium.org),
+and stationed at Winer Observatory near Sonoita Arizona. Instrument details about the Robert L. Mutel telescope
+can be found at http://macroconsortium.org/equipment/).
+
+<p>The images  taken last night include those generated from your observing request and are now available for download.
+They are in 16-bit FITS format, They are fully calibrated (bias, dark, and flat-corrected) and have WCS astrometric solutions.
+Observers who wish to obtain uncalibrated images can obtain them and the corresponding calibration frames, on request.
+
+<p>Images can be downloaded from https://macroconsortium.org/images. The images are stored in a sub-folder structure
+based on the observer code (the first three letters of the filename), the year, and the day of the year (the second
+three numbers in each filename).
+
+<p><i>Note</i>: Attached is a plot of the FWHM seeing for the night, corrected to one airmass (zenith), using 2-d Gaussian fits to stars.
+</font>''')
+s = '<p><b>Observing statistics</b>'; writeline(s,'arial','blue',2)
 s = 'Total number of observing projects: %i' % len(unique_codes); writeline(s,'arial','black',2)
 s = 'Total number of images: %i' % len(Obs_codes); writeline(s,'arial','black',2)
 s =  'Moon phase range: %.0f%% - %.0f%%' % ( min(Moonphase), max(Moonphase) ); writeline(s,'arial','black',2)
@@ -254,10 +271,8 @@ s = 'You are receiving this email either because you had completed observations 
 writeline(s,'arial','black',2)
 h = html()
 with h:
-    p('Caroline Roberts AT uiowa.edu', href = 'mailto:caroline-roberts@uiowa.edu')
+    p('macroconsortium@gmail.com', href = 'mailto:macroconsortium@gmail.com')
 htmlcode = str(h)[9:-8]
-#print(htmlcode)
-#htmlcode=HTML.link('Robert-Mutel AT uiowa.edu', 'mailto:robert-mutel@uiowa.edu')
 hfile.write(htmlcode)
 hfile.close()
 
