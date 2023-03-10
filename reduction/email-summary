@@ -39,7 +39,6 @@ from email.mime.multipart import MIMEMultipart
 image_dir = '/usr/local/telescope/user/images/'
 email_dir = '/home/talon/summary_email'                      # Folder contianing email summary daemon  and data files
 html_name = '%s/observing_summary' % email_dir     # Summary date (one created each day with -daynr suffix
-email_txt ='%s/email-msg.txt' % email_dir                    # General information text
 email_all = '%s/daily_emails.txt' % email_dir             # Email list  of people who always receive daily summary 
 with open(f'{email_dir}/email_key.txt') as f:             # don't want app password in the clear on github
     app_passwd = f.read().strip()
@@ -129,11 +128,6 @@ day_nr = dt.datetime.now().timetuple().tm_yday
 day_nr =str( '%03i' % day_nr)
 daynr = int(day_nr)
 #print(day_nr)
-
-# Read message file
-fmsg = open(email_txt,'r')
-email_msg = fmsg.read()
-fmsg.close()
 
 # Read  email_all  for email addresses of administrative receipients
 f = open(email_all,'r')
