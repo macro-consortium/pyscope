@@ -128,7 +128,10 @@ sson_prefix = '7_'
 day_nr = dt.datetime.now().timetuple().tm_yday
 day_nr =str( '%03i' % day_nr)
 daynr = int(day_nr)
-#print(day_nr)
+# Can specify a different daynr on command line
+if len(sys.argv) > 1:
+    daynr = int(sys.argv[1])
+    day_nr = format(daynr, '03d')
 
 # Read  email_all  for email addresses of administrative receipients
 f = open(email_all,'r')
