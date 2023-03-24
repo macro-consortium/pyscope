@@ -37,11 +37,11 @@ from email.mime.multipart import MIMEMultipart
 
 # Define paths for images, html output file, text message
 image_dir = '/usr/local/telescope/user/images/'
-email_dir = '/home/talon/summary_email'                      # Folder contianing email summary daemon  and data files
-html_name = '%s/observing_summary' % email_dir     # Summary date (one created each day with -daynr suffix
+email_dir = '/home/talon/summary_email'                   # Folder contianing email summary daemon  and data files
+html_name = '%s/observing_summary' % email_dir            # Summary date (one created each day with -daynr suffix
 email_all = '%s/daily_emails.txt' % email_dir             # Email list  of people who always receive daily summary 
 with open(f'{email_dir}/email_key.txt') as f:             # don't want app password in the clear on github
-    app_passwd = f.read().strip()
+    mail_passwd = f.read().strip()
 
 def writeline(s,face,color,n):
     hfile.write( '<font face="%s", font color ="%s", font size = %ipx>%s</font><p>' % (face,color,n,s) )
@@ -50,8 +50,8 @@ def writeline(s,face,color,n):
 def SendMail(Images, html_file, Mail_list):
     msg = MIMEMultipart()
     msg['Subject'] = 'Robert L Mutel Telescope summary: %s' % date_now()
-    msg['From'] = 'macroconsortium@gmail.com'
-    msg['To'] = 'macroconsortium@gmail.com'
+    msg['From'] = 'observing@macroconsortium.org'
+    msg['To'] = 'observing@macroconsortium.org'
 
     # Read summary file
     email_msg = open(html_file,'r')
@@ -66,9 +66,10 @@ def SendMail(Images, html_file, Mail_list):
             image = MIMEImage(img_data, name=os.path.basename(image))
             msg.attach(image)
 
-    s = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-    s.login('macroconsortium', app_passwd)
-    From = 'macroconsortium@gmail.com'
+    s = smtplib.SMTP('macroconsortium.org', 587)
+    s.starttls()
+    s.login('observing@macroconsortium.org', mail_passwd)
+    From = 'observing@macroconsortium.org'
     
     s.sendmail(From, Mail_list, msg.as_string())
     s.quit()
@@ -265,7 +266,7 @@ s = 'You are receiving this email either because you had completed observations 
 writeline(s,'arial','black',2)
 h = html()
 with h:
-    p('macroconsortium@gmail.com', href = 'mailto:macroconsortium@gmail.com')
+    p('macro@macalester.edu', href = 'mailto:macro@macalester.edu')
 htmlcode = str(h)[9:-8]
 hfile.write(htmlcode)
 hfile.close()
@@ -273,10 +274,9 @@ hfile.close()
 #  FWHM vs UT plot
 pltname = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
 
-# Send mail, attaching images if desired (stub for now)
+# Send mail, attaching images if desired
 Images = [pltname]
-#Mail_list = ['jua.kamp451@gmail.com']
-#Mail_list = ['rmutel@gmail.com']
+#Mail_list = ['albedozero@gmail.com'] ## testing
 Mail_list = all_email
 SendMail(Images, html_file, Mail_list)
 print('Emailed %s to users: %s' % (html_file,Mail_list))
