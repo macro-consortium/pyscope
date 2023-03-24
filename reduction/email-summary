@@ -61,7 +61,7 @@ def SendMail(Images, html_file, Mail_list):
 
     text = MIMEText(message,'html')
     msg.attach(text)
-    if Images[0] != '':
+    if Images:
         for image in Images:
             img_data = open(image, 'rb').read()
             image = MIMEImage(img_data, name=os.path.basename(image))
