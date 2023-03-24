@@ -78,7 +78,7 @@ for img in (fromdir / 'images').glob('*.ft[sh]'):
     day_nr = int(day_code)
     if (current_day < day_nr): day_nr -= 365
     if (current_day - day_nr > maxdays):
-        img.unlink
+        img.unlink()
         print(f"Deleted {img}")
     n+=1
 print(f"Copied {n} images")
