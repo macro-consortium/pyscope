@@ -265,6 +265,12 @@ for n in range(len(unique_codes)):
     code = unique_codes[n]; src_list = ', '.join(sources[n])
     s =  '<b>%s</b>: %s' % (code, src_list) ; writeline(s,'arial','black',2)
 
+#  FWHM vs UT plot
+pltname = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
+# embed SVG plot in html
+with open(pltname) as svgplot:
+    hfile.write(svgplot.read())
+
 # Supply email for list removal
 s = 'You are receiving this email either because you had completed observations or you are on the telescope notification list. If you wish to be removed from this list, or have any questions or comments, please email: '
 writeline(s,'arial','black',2)
@@ -275,13 +281,10 @@ htmlcode = str(h)[9:-8]
 hfile.write(htmlcode)
 hfile.close()
 
-#  FWHM vs UT plot
-pltname = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
-
 # Send mail, attaching images if desired
-Images = [pltname]
-#Mail_list = ['albedozero@gmail.com'] ## testing
+Images = []
 Mail_list = all_email
+#Mail_list = ['albedozero@gmail.com'] ## testing
 SendMail(Images, html_file, Mail_list)
 print('Emailed %s to users: %s' % (html_file,Mail_list))
 
