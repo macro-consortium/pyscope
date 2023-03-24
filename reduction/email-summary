@@ -109,7 +109,7 @@ def plot_stats(UT_fwhm, FWHM, UT_zmag, D_zmag, daynr):
     
     plt.axhline(y=0,linestyle='dashed')
     
-    pltname = '%s/fwhm-ut-%s.svg' % (email_dir, daynr)
+    pltname = '%s/fwhm-ut-%s.png' % (email_dir, daynr)
     plt.savefig(pltname)
     print('Created %s' % pltname)
     return pltname
@@ -266,10 +266,7 @@ for n in range(len(unique_codes)):
     s =  '<b>%s</b>: %s' % (code, src_list) ; writeline(s,'arial','black',2)
 
 #  FWHM vs UT plot
-pltname = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
-# embed SVG plot in html
-with open(pltname) as svgplot:
-    hfile.write(svgplot.read())
+fwhm_ut_plot = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
 
 # Supply email for list removal
 s = 'You are receiving this email either because you had completed observations or you are on the telescope notification list. If you wish to be removed from this list, or have any questions or comments, please email: '
@@ -282,7 +279,7 @@ hfile.write(htmlcode)
 hfile.close()
 
 # Send mail, attaching images if desired
-Images = []
+Images = [fwhm_ut_plot]
 Mail_list = all_email
 #Mail_list = ['albedozero@gmail.com'] ## testing
 SendMail(Images, html_file, Mail_list)
