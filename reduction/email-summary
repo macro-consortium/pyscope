@@ -29,6 +29,7 @@ import matplotlib as mpl
 mpl.use('Agg') # Needed to use matplotlib in cron jobs
 import matplotlib.pyplot as plt
 plt.rcParams['axes.grid'] = True
+plt.rcParams['svg.fonttype'] = 'none'
 
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -108,7 +109,7 @@ def plot_stats(UT_fwhm, FWHM, UT_zmag, D_zmag, daynr):
     
     plt.axhline(y=0,linestyle='dashed')
     
-    pltname = '%s/fwhm-ut-%s.png' % (email_dir,daynr)
+    pltname = '%s/fwhm-ut-%s.svg' % (email_dir, daynr)
     plt.savefig(pltname)
     print('Created %s' % pltname)
     return pltname
