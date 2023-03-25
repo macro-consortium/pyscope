@@ -9,9 +9,6 @@
 # 31 May 2021 WWG | Notebook version, general cleanup for better compatability with telrun
 # 17 Mar 2022 WWG | Pinpoint used to generate WCS headers instead of old WCS routine
 
-# In[1]:
-
-
 from datetime import datetime
 import logging,os,time,tempfile,math
 
@@ -21,12 +18,7 @@ from . import convert
 from . import observatory
 from . import astropy_wcs
 
-
 # ##### Function to parse a filepath entry
-
-# In[ ]:
-
-
 def parse_filepath_template(template):
     my_documents_path = os.path.expanduser(r'~\My Documents')
     timestamp = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
@@ -40,10 +32,6 @@ def parse_filepath_template(template):
 # ##### Main function, default parameters used as standalone
 # Take one or more images at a target, solve with WCS, and tweak the telescope pointing
 # to put a particular RA/Dec near a particular pixel on the CCD.
-
-# In[ ]:
-
-
 def center_coordinates_on_pixel(target_ra_j2k_hrs=0, # ra coordinates of target in j2k
     target_dec_j2k_deg=0, # dec coordinates of target in j2k
     target_pixel_x_unbinned=2048, # target x pixel
@@ -172,10 +160,3 @@ def center_coordinates_on_pixel(target_ra_j2k_hrs=0, # ra coordinates of target 
 
     logging.info('Target is now in position after %d attempts' % (attempt_number+1))
     return True
-
-
-# %%
-
-# %%
-
-# %%
