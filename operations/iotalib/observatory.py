@@ -208,20 +208,16 @@ def set_filter_and_offset_focuser(filter_prefix_or_index):
     # This could lead to double focus offsets being applied to filters. Repeatedly
     # try changing filters until we read back that the new filter has been set
 
-    filter_change_attempt = 1
-    while filter_change_attempt <= 3:
-        logging.info("Setting filter, attempt %d", filter_change_attempt)
+    filter_condition = False
+    while not filter_condition:
+        logging.info("Setting filter")
         camera.set_active_filter(next_filter_index)
-        time.sleep(2)
         active_filter = camera.get_active_filter()
         logging.info("Expect filter = %d, got filter = %d",
                 next_filter_index,
                 active_filter)
-        #if active_filter != next_filter_index:
-        #    filter_change_attempt += 1
-        #else:
-        #    break
-        filter_change_attempt += 1
+        filter_condition = (active_filter == next_filter_index)
+        
 
     focus_offset = get_relative_focus_offset(current_filter_index, next_filter_index)
     if focus_offset == 0:
