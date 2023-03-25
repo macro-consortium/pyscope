@@ -374,7 +374,7 @@ def xparse_schfile(schfile):
         scan_dict['frame_position'] = get_keyvalue('frame_position',scan) # New December 2021
         
         if scan_dict['cmosmode']   == None : scan_dict['cmosmode'] = 3
-        if scan_dict['positioning'] == None : scan_dict['positioning'] = None
+        if scan_dict['positioning'] == '' : scan_dict['positioning'] = ''
         if scan_dict['binning']    == None : scan_dict['binning'] = '1x1'
         if scan_dict['frame_size'] == None : scan_dict['frame_size'] = '4096x4096'
         if scan_dict['frame_position'] == None : scan_dict['frame_position'] = '0+0'
@@ -576,7 +576,7 @@ for line in lines:
 # Each scan request has its own dictionary with these keywords/values
 default_scan_dict = {'obscode':'','jdstart':'','status':False, 'schedname':'','comment':'', 'lststart':'', 'utstart':'',\
 'seq':0, 'tit':'',  'obs':'',    'pri':100, 'sou':'',  'ra':'',  'dec':'', 'edb':'', 'fil':'',\
-'dur':'','airmass':0,'cmosmode':3, 'positioning':None, 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
+'dur':'','airmass':0,'cmosmode':3, 'positioning':'', 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
 
 # Parse the sch files, filling in keyvalues for each scan dictionary
 allscans = []
