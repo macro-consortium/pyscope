@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 
 *.fts*
+*.fit
 *.log*
 telrun.new
 telrun.sls
