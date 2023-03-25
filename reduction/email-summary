@@ -29,6 +29,7 @@ import matplotlib as mpl
 mpl.use('Agg') # Needed to use matplotlib in cron jobs
 import matplotlib.pyplot as plt
 plt.rcParams['axes.grid'] = True
+plt.rcParams['svg.fonttype'] = 'none'
 
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -37,10 +38,11 @@ from email.mime.multipart import MIMEMultipart
 
 # Define paths for images, html output file, text message
 image_dir = '/usr/local/telescope/user/images/'
-email_dir = '/home/talon/summary_email'                      # Folder contianing email summary daemon  and data files
-html_name = '%s/observing_summary' % email_dir     # Summary date (one created each day with -daynr suffix
-email_txt ='%s/email-msg.txt' % email_dir                    # General information text
-email_all = '%s/gemini-emails.dat' % email_dir             # Email list  of people who always receive daily summary 
+email_dir = '/home/talon/summary_email'                   # Folder contianing email summary daemon  and data files
+html_name = '%s/observing_summary' % email_dir            # Summary date (one created each day with -daynr suffix
+email_all = '%s/daily_emails.txt' % email_dir             # Email list  of people who always receive daily summary 
+with open(f'{email_dir}/email_key.txt') as f:             # don't want app password in the clear on github
+    mail_passwd = f.read().strip()
 
 def writeline(s,face,color,n):
     hfile.write( '<font face="%s", font color ="%s", font size = %ipx>%s</font><p>' % (face,color,n,s) )
@@ -48,9 +50,9 @@ def writeline(s,face,color,n):
 
 def SendMail(Images, html_file, Mail_list):
     msg = MIMEMultipart()
-    msg['Subject'] = 'Iowa Robotic Telescope summary: %s' % date_now()
-    msg['From'] = 'robert-mutel@uiowa.edu'
-    msg['To'] = 'robert-mutel@uiowa.edu'
+    msg['Subject'] = 'Robert L Mutel Telescope summary: %s' % date_now()
+    msg['From'] = 'observing@macroconsortium.org'
+    msg['To'] = 'observing@macroconsortium.org'
 
     # Read summary file
     email_msg = open(html_file,'r')
@@ -59,14 +61,16 @@ def SendMail(Images, html_file, Mail_list):
 
     text = MIMEText(message,'html')
     msg.attach(text)
-    if Images[0] != '':
+    if Images:
         for image in Images:
             img_data = open(image, 'rb').read()
             image = MIMEImage(img_data, name=os.path.basename(image))
             msg.attach(image)
 
-    s = smtplib.SMTP('localhost')
-    From = 'robert-mutel@uiowa.edu'
+    s = smtplib.SMTP('macroconsortium.org', 587)
+    s.starttls()
+    s.login('observing@macroconsortium.org', mail_passwd)
+    From = 'observing@macroconsortium.org'
     
     s.sendmail(From, Mail_list, msg.as_string())
     s.quit()
@@ -105,7 +109,7 @@ def plot_stats(UT_fwhm, FWHM, UT_zmag, D_zmag, daynr):
     
     plt.axhline(y=0,linestyle='dashed')
     
-    pltname = '%s/fwhm-ut-%s.png' % (email_dir,daynr)
+    pltname = '%s/fwhm-ut-%s.png' % (email_dir, daynr)
     plt.savefig(pltname)
     print('Created %s' % pltname)
     return pltname
@@ -125,12 +129,10 @@ sson_prefix = '7_'
 day_nr = dt.datetime.now().timetuple().tm_yday
 day_nr =str( '%03i' % day_nr)
 daynr = int(day_nr)
-#print(day_nr)
-
-# Read message file
-fmsg = open(email_txt,'r')
-email_msg = fmsg.read()
-fmsg.close()
+# Can specify a different daynr on command line
+if len(sys.argv) > 1:
+    daynr = int(sys.argv[1])
+    day_nr = format(daynr, '03d')
 
 # Read  email_all  for email addresses of administrative receipients
 f = open(email_all,'r')
@@ -207,9 +209,23 @@ html_file = '%s-day%03d.html' % (html_name,daynr)
 hfile = open(html_file,'w')
 
 # Print some summary data
-s = 'Iowa Robotic Telescope daily report  %s (day %i)' % (date_now(), daynr) ; writeline(s,'arial','blue',4)
-hfile.write('<font face="arial">%s</font><p>' % email_msg)
-s = '<b>Observing statistics</b>'; writeline(s,'arial','blue',2)
+s = 'Robert L Mutel Telescope daily report  %s (day %i)' % (date_now(), daynr) ; writeline(s,'arial','blue',4)
+hfile.write('''<font face="arial">
+<p>This message is generated automatically by the Robert L Mutel Telescope, run by the MACRO Consortium (http://macronsortium.org),
+and stationed at Winer Observatory near Sonoita Arizona. Instrument details about the Robert L. Mutel telescope
+can be found at http://macroconsortium.org/equipment/).
+
+<p>The images  taken last night include those generated from your observing request and are now available for download.
+They are in 16-bit FITS format, They are fully calibrated (bias, dark, and flat-corrected) and have WCS astrometric solutions.
+Observers who wish to obtain uncalibrated images can obtain them and the corresponding calibration frames, on request.
+
+<p>Images can be downloaded from https://macroconsortium.org/images. The images are stored in a sub-folder structure
+based on the observer code (the first three letters of the filename), the year, and the day of the year (the second
+three numbers in each filename).
+
+<p><i>Note</i>: Attached is a plot of the FWHM seeing for the night, corrected to one airmass (zenith), using 2-d Gaussian fits to stars.
+</font>''')
+s = '<p><b>Observing statistics</b>'; writeline(s,'arial','blue',2)
 s = 'Total number of observing projects: %i' % len(unique_codes); writeline(s,'arial','black',2)
 s = 'Total number of images: %i' % len(Obs_codes); writeline(s,'arial','black',2)
 s =  'Moon phase range: %.0f%% - %.0f%%' % ( min(Moonphase), max(Moonphase) ); writeline(s,'arial','black',2)
@@ -249,26 +265,23 @@ for n in range(len(unique_codes)):
     code = unique_codes[n]; src_list = ', '.join(sources[n])
     s =  '<b>%s</b>: %s' % (code, src_list) ; writeline(s,'arial','black',2)
 
+#  FWHM vs UT plot
+fwhm_ut_plot = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
+
 # Supply email for list removal
 s = 'You are receiving this email either because you had completed observations or you are on the telescope notification list. If you wish to be removed from this list, or have any questions or comments, please email: '
 writeline(s,'arial','black',2)
 h = html()
 with h:
-    p('Caroline Roberts AT uiowa.edu', href = 'mailto:caroline-roberts@uiowa.edu')
+    p('macro@macalester.edu', href = 'mailto:macro@macalester.edu')
 htmlcode = str(h)[9:-8]
-#print(htmlcode)
-#htmlcode=HTML.link('Robert-Mutel AT uiowa.edu', 'mailto:robert-mutel@uiowa.edu')
 hfile.write(htmlcode)
 hfile.close()
 
-#  FWHM vs UT plot
-pltname = plot_stats(UT_fwhm, FZ,  UT_zmag, D_zmag, daynr)
-
-# Send mail, attaching images if desired (stub for now)
-Images = [pltname]
-#Mail_list = ['jua.kamp451@gmail.com']
-#Mail_list = ['rmutel@gmail.com']
+# Send mail, attaching images if desired
+Images = [fwhm_ut_plot]
 Mail_list = all_email
+#Mail_list = ['albedozero@gmail.com'] ## testing
 SendMail(Images, html_file, Mail_list)
 print('Emailed %s to users: %s' % (html_file,Mail_list))
 

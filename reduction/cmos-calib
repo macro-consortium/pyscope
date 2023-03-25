@@ -38,7 +38,7 @@ import astroscrappy
 calib_dir = '/usr/local/telescope/archive/calib/'
 
 def get_args():
-    d_txt = 'Program ccdcalib calibrates raw FITS images by applying bias, dark, flat corrections, \
+    d_txt = 'Program cmos-calib calibrates raw FITS images by applying bias, dark, flat corrections, \
     and optionally removing hot pixels using Cosmics. Default calibration images are retrieved from  %s' % calib_dir
     parser = OptionParser(description=d_txt, version = 'cmos_calib %s' % version )
     
@@ -179,7 +179,7 @@ if len(bad_columns) != 0:
 
 # Add comments to header documenting calibration
 hdr_cal = pyfits.getheader(raw_image)
-s0 = 'Calibrated using ccdcalib'
+s0 = 'Calibrated using cmos-calib'
 s1 = 'Dark frame = %s' % dark_image 
 s2 = 'Flat frame = %s' % flat_image
 hdr_cal.add_comment(s0); hdr_cal.add_comment(s1) ; hdr_cal.add_comment(s2)

@@ -19,89 +19,92 @@ RLM 31 Oct 2013
 19 Jun 2021 - add grism boolean to provent wcs,fwhm on grism images
 03 Nov 2021 - Change ccdcalib to cmos_calib
 20 Jan 2022 - 1. Change wcs search radius to 0.1 deg to speed up failed search on bad images (was 1.0,deg => 90sec, now 20 sec)
-			2. Add > /dev/null 2>&1 to avoid adding lengthly output from wcs in log file
-			3. Add timestamp for each file processed
+            2. Add > /dev/null 2>&1 to avoid adding lengthly output from wcs in log file
+            3. Add timestamp for each file processed
 18 Feb 2022 - Remove wcs (comment line 95, replaced by Pinpoint solution at Winer)
 21 Mar 2022 - add override switch to calc-zmag so the ZMAG keyvalue from Pinpoint is overwritten
 '''
-import ftplib, os, sys, traceback, time, glob
-import datetime as dt
-from datetime import datetime
-from fnmatch import fnmatch
+
+from sys import argv
+from datetime import datetime as dt
+from pathlib import Path
+from subprocess import run, PIPE, STDOUT
 import astropy.io.fits as pyfits
 
-def datestr():
-	y4 = time.strftime("%Y")
-	y2 = y4[2:4]
-	dm = time.strftime("%d-%B-")
-	return dm+y4
+def timestamp():
+    return str(dt.now())[:19]
+    
+def runcmd(cmd):
+    # run a command and log output/errors if any to stdout
+    # add check=True to exit on errors
+    x = run(cmd, shell=True, encoding='ascii', stdout=PIPE, stderr=STDOUT)
+    if x.stdout: print(x.stdout)
 
 #MAIN
 
 # Directories
-image_dir = '/usr/local/telescope/user/images/'
-archive_root_dir = '/mnt/images/raw-archive/'
-
-#  Create time-stamped directory for raw images
-archive_dir = "%s%s" % (archive_root_dir,datestr())
-if not os.path.exists(archive_dir): os.mkdir(archive_dir)
-
-# Get current day number
-day_nr = dt.datetime.utcnow().timetuple().tm_yday
-day_nr =str( '%03i' % day_nr)
-
-# Check if user has specified a day number on command line. If so, use it instead of current day_nr
-if len(sys.argv) > 1:
-	day_nr = str( '%03i' % int(sys.argv[1]))
-
-date_str = str(datetime.now())[0:19]
-print('Starting calib-images for day %s at %s' % (day_nr, date_str))
-print('============================================')
-# Generate a list of FITS files in image_dir with current day_nr that have not been previously calibrated
-full_names = []
-names = glob.glob('%s???%s*.ft[sh]' % (image_dir,day_nr))
-for name in names:
-	hdu = pyfits.open(name); header = hdu[0].header
-	if   ('CALSTAT' in header) or ('CALSTART' in header):
-		continue
-	else:
-		date_str = str(datetime.now())[0:19]
-		header.insert('LST',('CALSTART',date_str,'Calibration start time [MST]'))
-		hdu.writeto(name,overwrite=True)
-		full_names.append(name)
-	hdu.close()
-
-print('Starting calibration of %i files from day number %s' % (len(full_names),day_nr))
+image_dir = Path('/usr/local/telescope/user/images')
+rawimage_dir = Path('/mnt/imagesbucket/rawimage', dt.now().strftime("%d-%B-%Y"))
+if not rawimage_dir.exists(): rawimage_dir.mkdir()
 
 sloan_ra = [22,23,0,1,2,8,9,10,11,12,13,14,15,16,17] # RA's in Sloan catalog at 30 deg Dec
 
-# Copy raw image to archive directory, decompress if needed, calibrate
-for full_name in full_names:
-	date_str = str(datetime.now())[0:19]
-	fname = os.path.basename(full_name)
-	print('Start calibration of %s at  %s' % (full_name,date_str) )
-	fil   = pyfits.getval(full_name,'FILTER')[0]
-	grism = fil == '8' or fil == '9'
-	ra =  int( round( float(pyfits.getval(full_name,'RA')[0:2]) ))
-	froot,fext = os.path.splitext(fname) 
-	# copy image to archive dir
-	os.system('cp %s %s' % (full_name, archive_dir) )
-	# decompress if needed
-	if fext == '.fth':  os.system('fdecompress -r %s' % (bindir,full_name))
-	# calibrate
-	os.system('/usr/local/bin/cmos_calib -H 1 %s' % full_name)
-	# Don't do wcs, fwhm on grism or spectroscopy images
-	if not grism and fil != 'S':
-		#os.system('/usr/local/telescope/bin/wcs  -u 0.1 -o2w %s > /dev/null 2>&1' % full_name)
-		os.system('/usr/local/telescope/bin/fwhm -ow %s' % full_name)
-	# Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
-	# NB overwrite switch on to override ZAG solution from Pinpoint
-	if froot[0:3] == 'foc':
-		if fil == 'G' and ra in sloan_ra:
-			os.system('/usr/local/bin/calc-zmag -f g -ow %s' % full_name)
-		if fil == 'R' and ra in sloan_ra:
-			os.system('/usr/local/bin/calc-zmag -f r -ow %s' % full_name)
-		if fil == 'I' and ra in sloan_ra:
-			os.system('/usr/local/bin/calc-zmag -f i -ow %s' % full_name)
-	date_str = str(datetime.now())[0:19]
-	print('Finished calibration of %s at  %s' % (full_name,date_str))
+# Can specify a day number or file(s) on command line
+if len(argv) > 1:
+    if argv[1].isdigit():
+        day_nr = format(int(argv[1]), '03d')
+        file_list = image_dir.glob(f"???{day_nr}*.ft[sh]")
+        print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
+    elif '*' in argv[1]: # wildcard didn't get expanded by shell (e.g. run by crontab)
+        file_list = image_dir.glob(argv[1])
+        print('Running calib-images on %s at %s' % (' '.join(argv[1:]), timestamp()))        
+    else:
+        file_list = [Path(x) for x in argv[1:]]
+        print('Running calib-images on %s at %s' % (' '.join(argv[1:]), timestamp()))
+else:
+    day_nr = format(dt.utcnow().timetuple().tm_yday, '03d')
+    file_list = image_dir.glob(f"???{day_nr}*.ft[sh]")
+    print('Running calib-images for day %s at %s' % (day_nr, timestamp()))
+print('============================================')
+
+# Process images for day_nr that require it
+for img in file_list:
+
+    hdu = pyfits.open(img)
+    header = hdu[0].header
+    if ('CALSTAT' in header): # has been calibrated
+        continue
+    # write calibration timestamp into FITS header
+    print(f'Started processing {img.name} at {timestamp()}')
+    header.set('CALSTART', timestamp(), 'Calibration start time [MST]', before='LST')
+    hdu.writeto(img, overwrite=True)
+    hdu.close()
+
+    # make a copy of the uncalibrated image if there isn't one already
+    runcmd(f'cp -n {img} {rawimage_dir}')
+    
+    # decompress if needed
+    if img.suffix == '.fth':
+        runcmd(f'fdecompress -r {img}')
+    
+    # calibrate
+    runcmd(f'cmos-calib -H 1 {img}')
+
+    # wcs and fwhm
+    fil = pyfits.getval(img, 'FILTER')[0]
+#    if fil not in ('8', '9', 'S'): # don't do wcs, fwhm on grism or spectroscopy images
+        #run(f'wcs -u 0.1 -o2w {img} > /dev/null 2>&1', shell=True) ## Pinpoint run on TCC
+        #run(['fwhm', '-ow', img]) ## not needed acc'ing to WWGolay
+
+    # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
+    # NB overwrite switch on to override ZAG solution from Pinpoint
+    if img.name[:3] == 'foc':
+        ra = int(round(float(pyfits.getval(img, 'RA')[0:2])))
+        if fil == 'G' and ra in sloan_ra:
+            runcmd(f'calc-zmag -f g -ow {img}')
+        if fil == 'R' and ra in sloan_ra:
+            runcmd(f'calc-zmag -f r -ow {img}')
+        if fil == 'I' and ra in sloan_ra:
+            runcmd(f'calc-zmag -f i -ow {img}')
+
+    print(f'...finished processing of {img.name} at {timestamp()}')
