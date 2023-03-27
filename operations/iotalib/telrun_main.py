@@ -439,7 +439,7 @@ def run_scans(telrun_file):
             (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
             
             centering_result=False
-            if config_telrun.values.recenter_if_returns_true(scan):
+            if scan.posx is not None and scan.posy is not None:
                 filter_index = config_telrun.values.autofocus_filter_index
                 logging.info("Switching to filter %s for recentering adjustment", filter_index)
                 observatory.set_filter_and_offset_focuser(filter_index)
@@ -449,15 +449,15 @@ def run_scans(telrun_file):
                 logging.info("Refining telescope pointing for this scan...")
                 centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
                         target_dec_j2k_deg=target_dec_j2000_degs, 
-                        target_pixel_x_unbinned=observatory.camera.get_ccd_width_pixels() / 2.0, 
-                        target_pixel_y_unbinned=observatory.camera.get_ccd_height_pixels() / 2.0, 
+                        target_pixel_x_unbinned=scan.posx, 
+                        target_pixel_y_unbinned=scan.posy, 
                         initial_offset_dec_arcmin=0, 
                         check_and_refine=True,
-                        max_attempts=5, 
-                        tolerance_pixels=1, 
+                        max_attempts=3, 
+                        tolerance_pixels=1.333, 
                         exposure_length=config_telrun.values.recenter_exposure_seconds,
                         binning=config_telrun.values.recenter_exposure_binning, 
-                        save_images=True, 
+                        save_images=False, 
                         save_path_template=r'{MyDocuments}\CenterTargetData\{Timestamp}', 
                         console_output=False,
                         search_radius_degs=1, 

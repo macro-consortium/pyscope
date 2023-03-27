@@ -368,11 +368,13 @@ def xparse_schfile(schfile):
         scan_dict['lststart']   = get_keyvalue('lst', scan)
         scan_dict['utstart']    = get_keyvalue('uts', scan)
         scan_dict['cmosmode']   = get_keyvalue('cmosmode',scan)    # New October 2021
+        scan_dict['positioning'] = get_keyvalue('positioning',scan) # New March 2023
         scan_dict['binning']    = get_keyvalue('binning',scan)     # New December 2021
         scan_dict['frame_size'] = get_keyvalue('frame_size',scan) # New December 2021
         scan_dict['frame_position'] = get_keyvalue('frame_position',scan) # New December 2021
         
         if scan_dict['cmosmode']   == None : scan_dict['cmosmode'] = 3
+        if scan_dict['positioning'] == '' : scan_dict['positioning'] = ''
         if scan_dict['binning']    == None : scan_dict['binning'] = '1x1'
         if scan_dict['frame_size'] == None : scan_dict['frame_size'] = '4096x4096'
         if scan_dict['frame_position'] == None : scan_dict['frame_position'] = '0+0'
@@ -408,7 +410,7 @@ def xparse_schfile(schfile):
 def write_telrun(allscans,telfile):
     fn = open(telfile,'w')
     keys = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
-    'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Extended action', \
+    'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
     'Ext. Act. Values', 'priority','pathname'] 
     vals = [None]*22
     for scan in allscans:
@@ -438,7 +440,7 @@ def write_telrun(allscans,telfile):
         vals[15] = 'CATALOG'                                           # ccdcalib
         vals[16] = scan['fil'].upper()                                 # filter
         vals[17] = scan['cmosmode']                                    # cmosmode
-        vals[18] = ''                                                  # Extended action
+        vals[18] = scan['positioning']                                 # Positioning
         vals[19] = ''                                                  # Extended act. values
         vals[20] = 10                                                  # Priority (ignored)
         vals[21] = pathname                                            # Pathname
@@ -574,7 +576,7 @@ for line in lines:
 # Each scan request has its own dictionary with these keywords/values
 default_scan_dict = {'obscode':'','jdstart':'','status':False, 'schedname':'','comment':'', 'lststart':'', 'utstart':'',\
 'seq':0, 'tit':'',  'obs':'',    'pri':100, 'sou':'',  'ra':'',  'dec':'', 'edb':'', 'fil':'',\
-'dur':'','airmass':0,'cmosmode':3, 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
+'dur':'','airmass':0,'cmosmode':3, 'positioning':'', 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
 
 # Parse the sch files, filling in keyvalues for each scan dictionary
 allscans = []
@@ -688,7 +690,7 @@ if plot:
     plot_scans(lst_dict, airmass_dict, date_str)
     
 key_order = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
-'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Extended action', \
+'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
 'Ext. Act. Values', 'priority','pathname'] 
 
 # Sort scans by jdstart

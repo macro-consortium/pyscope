@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import os
+import shutil
+import subprocess
+from optparse import OptionParser
+
+# 11 Feb 2023 WWG: First version of push-chronos
+
+version = '1.0.0'
+gh_url = 'https://github.com/macro-consortium/pyScope'
+gh_repo_path = '/usr/local/telescope/pyScope-dev/'
+
+def get_args():
+    d_txt = 'Program push-chronos will duplicate the requested file from the local copy of the GitHub repository \
+    located at %s and push it to the production location on the Chronos server.' % gh_repo_path
+
+    parser = OptionParser(description = d_txt, version = 'push-chronos %s' % version)
+    #parser.add_option('-s', '--sync', dest = 'sync', action = 'store_true', default = False, 
+    #    help = 'Syncronize local copy of GitHub repository with remote repository located at %s' % gh_url)
+    parser.add_option('-d', '--directory', dest='directory', action='store_true', default = False,
+        help = 'Whether the argument is a directory or a file. If a directory, all files in the directory will be copied.')
+
+    return parser.parse_args()
+
+def check_src(args):
+    if len(args) == 0:
+        print('No arguments provided')
+        exit()
+    elif os.path.exists(gh_repo_path+args[0]):
+        return args[0]
+    else:
+        print('File %s does not exist' % args[0])
+        exit()
+
+def find_dest(src):
+    if 'web-analysis' in src:
+        return '/var/www/cgi-bin/' + src.split('/')[1]
+    elif 'analysis' in src or 'reduction' in src or 'scheduling' in src:
+        return '/usr/local/telescope/bin/' + src.split('/')[-1] 
+    elif 'utilities' in src:
+        if 'push-chronos' in src:
+            return '/usr/local/telescope/bin/' + src.split('/')[-1]
+        else:
+            print('No known destination for %s' % src)
+            exit()
+    else:
+        print('No known destination for %s' % src)
+        exit()
+
+opts, args = get_args()
+src = check_src(args)
+dest = find_dest(src)
+
+print('You are about to copy %s to %s' % (gh_repo_path+src, dest))
+rusure = input('Are you sure? This will overwrite any files in the destination (y/n)')
+
+if rusure == 'y':
+    # print('Copying backup to /tmp')
+    # shutil.copy(dest+src, '/tmp/'+src)
+    print('Copying %s to %s' % (gh_repo_path+src, dest))
+    if opts.directory:
+        shutil.copytree(gh_repo_path+src, dest, dirs_exist_ok=True)
+    else:
+        shutil.copyfile(gh_repo_path+src, dest)
+    print('Copy complete')
+else: 
+    print('Nothing copied')

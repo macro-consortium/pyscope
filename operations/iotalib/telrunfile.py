@@ -103,6 +103,8 @@ class TelrunScan(object):
         self.sh = 0         # SUBIMAGE height
         self.binx = 1       # BINNING in x direction
         self.biny = 1       # BINNING in y direction
+        self.posx = None      # X position of the window, -1 no WCS solution
+        self.posy = None      # Y position of the window, -1 no WCS solution
         self.dur = 1.0      # DURATION, seconds
         self.shutter = CCDSO_OPEN # how to operate shutter during exposure (one of the CCDSO_* constants)
         self.filter = ''    # FILTER, first character only
@@ -438,16 +440,16 @@ def read_next_sls(file_stream):
 
         elif lineno == 18:
             # Sample line:
-            # 18   Extended Action: 
+            # 18   Positioning 
 
-            # Modify ccdcalib if needed
-            sp.ccdcalib = ccdStr2ExtAct(bp, sp.ccdcalib)
-
-            if sp.ccdcalib == None:
-                logger.warn("Invalid extended actions '%s'; skipping to next scan",
-                        bp)
-                lineno = 0
-                continue
+            try:
+                posx_str, posy_str = bp.split("x")
+                sp.posx = int(posx_str)
+                sp.posy = int(posy_str)
+            except Exception as ex:
+                logger.info('Invalid positioning string: %s, no re-positioning will occur', bp)
+                sp.posx = None
+                sp.posy = None
 
         elif lineno == 19:
             # Sample line:

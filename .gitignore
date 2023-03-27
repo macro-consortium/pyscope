@@ -129,7 +129,10 @@ dmypy.json
 .pyre/
 
 *.fts*
-logs/*.log*
+*.fit
+*.log*
 telrun.new
 telrun.sls
-iota_gemini.ppk
+pyscope_chronos.*
+.vscode
+.DS_Store
