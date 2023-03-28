@@ -131,6 +131,7 @@ dmypy.json
 *.fts*
 *.fit
 *.log*
+!sample.log
 telrun.new
 telrun.sls
 pyscope_chronos.*
