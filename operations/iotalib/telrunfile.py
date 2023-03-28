@@ -447,7 +447,7 @@ def read_next_sls(file_stream):
                 sp.posx = int(posx_str)
                 sp.posy = int(posy_str)
             except Exception as ex:
-                logger.info('Invalid positioning string: %s, no re-positioning will occur', bp)
+                # logger.info('Invalid positioning string: %s, no re-positioning will occur', bp)
                 sp.posx = None
                 sp.posy = None
 
