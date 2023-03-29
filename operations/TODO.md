@@ -15,8 +15,6 @@
         </ul>
     <li>Resort order of functions</li>
     <li>Fix JPL horizons querying</li>
-    <li>Change stow position to park position</li>
-    <li>Take an unsaved dark at end of night to close shutter</li>
     <li>Generate summary report of scans statuses</li>
     <li>Reconsider autofocus scheme</li>
         <ul>
@@ -65,5 +63,6 @@
 # Done
 <ul>
 <li>In startup, check for overscan region</li>
-
+<li>Change stow position to park position</li>
+<li>Take an unsaved dark at end of night to close shutter</li>
 </ul>

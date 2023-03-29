@@ -261,13 +261,13 @@ def main_operation_loop():
                 completed_telrun_file_modification_time = os.path.getmtime(telrun_sls_path)
                 logging.info("FINISHED processing telrun.sls with file modification time %s", completed_telrun_file_modification_time)
 
+            logging.info("Closing exposure by taking a dark frame")
+            observatory.camera.start_exposure(0.01, False) # Take a dark at the end of the night to close the shutter
 
             logging.info("Moving telescope to park position")
             parkfunc = observatory.mount.Park
             if hasattr(parkfunc, '__call__'):
                 parkfunc()
-            logging.info("Turning tracking off")
-            observatory.mount.Tracking = False
 
             logging.info("EXITING MAIN OPERATION LOOP")
             return
@@ -769,8 +769,6 @@ def run_scans(telrun_file):
             set_scan_status(telrun_file, scan, "D")
             break
         continue
-
-    observatory.camera.start_exposure(0.01, False) # Take a dark at the end of the night to close the shutter
 
     return True # Full telrun file has been processed
         
