@@ -60,13 +60,6 @@ def read():
     global max_focuser_move_time_seconds
     max_focuser_move_time_seconds = values.require_float("max_focuser_move_time_seconds")
 
-    global stow_azimuth_degs
-    stow_azimuth_degs = values.require_float("stow_azimuth_degs")
-
-    global stow_altitude_degs
-    stow_altitude_degs = values.require_float("stow_altitude_degs")
-
-
     global valid_config
     valid_config = True
 

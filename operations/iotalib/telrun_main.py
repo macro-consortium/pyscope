@@ -262,16 +262,12 @@ def main_operation_loop():
                 logging.info("FINISHED processing telrun.sls with file modification time %s", completed_telrun_file_modification_time)
 
 
-            logging.info("Moving telescope to stow position: azimuth=%f degs, altitude=%f degs",
-                config_observatory.stow_azimuth_degs,
-                config_observatory.stow_altitude_degs)
-
-            observatory.mount.SlewToAltAz(config_observatory.stow_azimuth_degs, config_observatory.stow_altitude_degs)
+            logging.info("Moving telescope to park position")
+            parkfunc = observatory.mount.Park
+            if hasattr(parkfunc, '__call__'):
+                parkfunc()
             logging.info("Turning tracking off")
             observatory.mount.Tracking = False
-            logging.info("Telescope arrived at azimuth = %f, altitude = %f",
-                observatory.mount.Azimuth,
-                observatory.mount.Altitude)
 
             logging.info("EXITING MAIN OPERATION LOOP")
             return
