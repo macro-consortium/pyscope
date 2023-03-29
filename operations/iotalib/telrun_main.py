@@ -72,7 +72,9 @@ def exit_handler():
 
     logging.info("Stopping any in-progress slews")
     try:
-        comhelper.callmethod(observatory.mount.AbortSlew)
+        abslew = observatory.mount.AbortSlew
+        if hasattr(abslew, '__call__'):
+            abslew()
     except Exception as ex:
         logging.exception("Error aborting slew during shutdown")
 
@@ -96,7 +98,9 @@ def exit_handler():
 
     logging.info("Attempting to stop focuser...")
     try:
-        comhelper.callmethod(observatory.focuser.Halt)
+        haltfunc = observatory.focuser.Halt
+        if hasattr(haltfunc, '__call__'):
+            haltfunc()
     except:
         logging.exception("Error stopping focuser during shutdown")
 

@@ -2,7 +2,6 @@
 <ul>
 <li>telrun.py</li>
     <ul>
-    <li>In startup, check for overscan region</li>
     <li>Change how config files are read</li>
     <li>Move observatory connections into the main loop and allow for arguments</li>
     <li>Improve the exit handler</li>
@@ -65,5 +64,6 @@
 
 # Done
 <ul>
+<li>In startup, check for overscan region</li>
 
 </ul>
