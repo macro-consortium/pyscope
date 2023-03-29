@@ -110,6 +110,16 @@ def run():
     read_configs()
     setup_observatory_connections()
 
+    # Verify the overscan region is either on or off
+    if (max(observatory.camera.get_ccd_width_pixels(), observatory.camera.get_ccd_height_pixels()) > 
+        config_telrun.values.max_camera_dimension): 
+        logging.error("Mismatch between expected camera dimensions and actual camera dimensions! " +
+            "Expected: %d, Actual: %d",
+            config_telrun.values.max_camera_dimension,
+            max(observatory.camera.get_ccd_width_pixels(), observatory.camera.get_ccd_height_pixels())
+            )
+        return
+
     # Catch Ctrl-C and crashes, and try to perform some cleanup 
     # (like turning off tracking, aborting exposures, etc).
     # Now that we've connected to all devices, we should be able
