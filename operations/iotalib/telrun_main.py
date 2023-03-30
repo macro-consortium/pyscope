@@ -414,14 +414,6 @@ def run_scans(telrun_file):
             logging.info("Waiting %.2f seconds (%.3f hours) to start exposure",
                 seconds_until_starttm,
                 seconds_until_starttm/3600.0)
-        
-        if do_periodic_autofocus and time.time() > next_autofocus_time:
-            telrun_status.autofocus_state = "RUNNING"
-            do_autofocus()
-            logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
-            next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
-            telrun_status.next_autofocus_time = next_autofocus_time
-            telrun_status.autofocus_state = "Idle"
             
         while seconds_until_starttm > config_telrun.values.preslew_wait_seconds:
             time.sleep(0.1)
@@ -429,6 +421,14 @@ def run_scans(telrun_file):
         else:
             if seconds_until_starttm > 0:
                 logging.info("Scan start time is now %.2f seconds away", seconds_until_starttm)
+        
+        if do_periodic_autofocus and time.time() > next_autofocus_time and scan.interrupt_allowed:
+            telrun_status.autofocus_state = "RUNNING"
+            do_autofocus()
+            logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
+            next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
+            telrun_status.next_autofocus_time = next_autofocus_time
+            telrun_status.autofocus_state = "Idle"
         
         scan.obj.compute(observatory.get_site_now())
         if math.degrees(scan.obj.alt) < config_observatory.values.min_telescope_altitude_degs:
@@ -761,6 +761,12 @@ def remove_file_if_needed(filepath):
 
 def do_autofocus():
     logging.info("Starting an autofocus run")
+
+    logging.info("Slewing to zenith")
+    observatory.mount.SlewToAltAz(90, 0)
+    logging.info("Waiting for mount to settle")
+    time.sleep(1)
+    logging.info("Zenith slew complete")
 
     filter_index = config_telrun.values.autofocus_filter_index
     logging.info("Switching to filter %s for focus run", filter_index)

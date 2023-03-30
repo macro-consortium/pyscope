@@ -2,14 +2,9 @@
 <ul>
 <li>telrun.py</li>
     <ul>
-    <li>Separate filter switch and focuser offset functions</li>
-    <li>Reconsider autofocus scheme</li>
-        <ul>
-        <li>Perform autofocus at zenith</li>
-        <li>Allow scans of same target not to be interrupted by autofocus</li>
-        </ul>
     <li>Change how config files are read</li>
     <li>Turn all hardware into classes</li>
+    <li>Separate filter switch and focuser offset functions</li>
     <li>Move observatory connections into the main loop and allow for arguments</li>
     <li>Change the sun_elevation_func and get_weather_func access functions, telrun_status as a class</li>
     <li>Create a scan conditions section for green-lighting</li>
@@ -66,4 +61,9 @@
 <li>Change filter, set subframe, readout mode, and move focuser (if necessary) while slew is happening</li>
 <li>Don't stop tracking at end of exposure, and check if previous scan was the same target and skip slewing if it was</li>
 <li>Allow re-centering to use the current filter assuming it is not the grism, narrowbands, etc</li>
+<li>Reconsider autofocus scheme</li>
+        <ul>
+        <li>Perform autofocus at zenith</li>
+        <li>Allow scans of same target not to be interrupted by autofocus</li>
+        </ul>
 </ul>

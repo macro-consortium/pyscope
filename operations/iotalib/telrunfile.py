@@ -96,7 +96,7 @@ class TelrunScan(object):
 
         # camera settings
         self.ccdcalib = CCDCalib() # how/whether to calibrate + keyword extensions
-        self.cmosmode = 1   # 0=HDR, 1=High, 2=Low, 3=Stackpro
+        self.cmosmode = 3   # 0=HDR, 1=High, 2=Low, 3=Stackpro
         self.sx = 0         # SUBIMAGE leftmost column
         self.sy = 0         # SUBIMAGE topmost row
         self.sw = 0         # SUBIMAGE width
@@ -105,6 +105,7 @@ class TelrunScan(object):
         self.biny = 1       # BINNING in y direction
         self.posx = None      # X position of the window, -1 no WCS solution
         self.posy = None      # Y position of the window, -1 no WCS solution
+        self.interrupt_allowed = True
         self.dur = 1.0      # DURATION, seconds
         self.shutter = CCDSO_OPEN # how to operate shutter during exposure (one of the CCDSO_* constants)
         self.filter = ''    # FILTER, first character only
@@ -440,7 +441,7 @@ def read_next_sls(file_stream):
 
         elif lineno == 18:
             # Sample line:
-            # 18   Positioning 
+            # 18   Positioning 2048x2048
 
             try:
                 posx_str, posy_str = bp.split("x")
@@ -453,13 +454,9 @@ def read_next_sls(file_stream):
 
         elif lineno == 19:
             # Sample line:
-            # 19  Ext. Act. Values: 
-
-            if getExtVal(bp, sp) < 0:
-                logger.warn("Invalid extended value: '%s'; skipping to next scan",
-                        bp)
-                lineno = 0
-                continue
+            # 19    Interrupt_Allowed: 1
+            try: sp.interrupt_allowed = bool(bp)
+            except: sp.interrupt_allowed = True
 
         elif lineno == 20:
             # Sample line:

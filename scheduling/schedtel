@@ -369,12 +369,14 @@ def xparse_schfile(schfile):
         scan_dict['utstart']    = get_keyvalue('uts', scan)
         scan_dict['cmosmode']   = get_keyvalue('cmosmode',scan)    # New October 2021
         scan_dict['positioning'] = get_keyvalue('positioning',scan) # New March 2023
+        scan_dict['interrupt_allowed'] = get_keyvalue('interrupt_allowed',scan) # New March 2023
         scan_dict['binning']    = get_keyvalue('binning',scan)     # New December 2021
         scan_dict['frame_size'] = get_keyvalue('frame_size',scan) # New December 2021
         scan_dict['frame_position'] = get_keyvalue('frame_position',scan) # New December 2021
         
         if scan_dict['cmosmode']   == None : scan_dict['cmosmode'] = 3
-        if scan_dict['positioning'] == '' : scan_dict['positioning'] = ''
+        if scan_dict['positioning'] == None : scan_dict['positioning'] = ''
+        if scan_dict['interrupt_allowed'] == None : scan_dict['interrupt_allowed'] = 1
         if scan_dict['binning']    == None : scan_dict['binning'] = '1x1'
         if scan_dict['frame_size'] == None : scan_dict['frame_size'] = '4096x4096'
         if scan_dict['frame_position'] == None : scan_dict['frame_position'] = '0+0'
@@ -411,7 +413,7 @@ def write_telrun(allscans,telfile):
     fn = open(telfile,'w')
     keys = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
     'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
-    'Ext. Act. Values', 'priority','pathname'] 
+    'Interrupt_allowed', 'priority','pathname'] 
     vals = [None]*22
     for scan in allscans:
         if scan['status'] == False: continue
@@ -441,7 +443,7 @@ def write_telrun(allscans,telfile):
         vals[16] = scan['fil'].upper()                                 # filter
         vals[17] = scan['cmosmode']                                    # cmosmode
         vals[18] = scan['positioning']                                 # Positioning
-        vals[19] = ''                                                  # Extended act. values
+        vals[19] = scan['interrupt_allowed']                           # Interrupt allowed
         vals[20] = 10                                                  # Priority (ignored)
         vals[21] = pathname                                            # Pathname
         
@@ -509,14 +511,14 @@ verbose = opts.verbose
 nowstart = opts.nowstart
 
 # Set up Winer observatory, observing limits in ephem
-min_elev = '+10'        # Define minimum observable elevation in degrees
+min_elev = '+15'        # Define minimum observable elevation in degrees
 twilight_elev = '-12'  # Define solar elevation at astronomical twilight, when roof opens
 observatory  = ep.Observer()
 observatory.horizon = twilight_elev
 # Winer observatory
 observatory.lat = ep.degrees(str(0.55265/deg))
 observatory.long = ep.degrees(str(-1.93035/deg))
-obsname = 'Gemini Telescope, Winer Obs.'
+obsname = 'Robert L. Mutel Telescope, Winer Observatory'
 utdiff = -7; localtimename = 'MST'
 
 # Schedule tonight (UT) - but be careful: if it's before  midnight UT, add a day (it's the previous afternoon)
@@ -576,7 +578,7 @@ for line in lines:
 # Each scan request has its own dictionary with these keywords/values
 default_scan_dict = {'obscode':'','jdstart':'','status':False, 'schedname':'','comment':'', 'lststart':'', 'utstart':'',\
 'seq':0, 'tit':'',  'obs':'',    'pri':100, 'sou':'',  'ra':'',  'dec':'', 'edb':'', 'fil':'',\
-'dur':'','airmass':0,'cmosmode':3, 'positioning':'', 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
+'dur':'','airmass':0,'cmosmode':3, 'positioning':'', 'interrupt_allowed':1, 'frame_position':'0+0', 'frame_size':'4096x4096','binning':'1x1'}
 
 # Parse the sch files, filling in keyvalues for each scan dictionary
 allscans = []
@@ -691,7 +693,7 @@ if plot:
     
 key_order = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
 'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
-'Ext. Act. Values', 'priority','pathname'] 
+'Interrupt_allowed', 'priority','pathname'] 
 
 # Sort scans by jdstart
 #print([x for x in allscans if x['jdstart'] == ''])
