@@ -2,11 +2,6 @@
 <ul>
 <li>telrun.py</li>
     <ul>
-    <li>Change how config files are read</li>
-    <li>Turn all hardware into classes</li>
-    <li>Separate filter switch and focuser offset functions</li>
-    <li>Move observatory connections into the main loop and allow for arguments</li>
-    <li>Change the sun_elevation_func and get_weather_func access functions, telrun_status as a class</li>
     <li>Create a scan conditions section for green-lighting</li>
         <ul>
         <li>CCD temp check</li>
@@ -14,6 +9,11 @@
         <li>Roof open</li>
         <li>Sun elevation</li>
         </ul>
+    <li>Change how config files are read</li>
+    <li>Turn all hardware into classes</li>
+    <li>Separate filter switch and focuser offset functions</li>
+    <li>Move observatory connections into the main loop and allow for arguments</li>
+    <li>Change the sun_elevation_func and get_weather_func access functions, telrun_status as a class</li>
     <li>Resort order of functions</li>
     <li>Integrate re-centering and wcs solution into single function external to telrun</li>
     <li>Recentering arguments as config file variables</li>
@@ -31,10 +31,8 @@
     <li>No edb lines/ephem dependencies</li>
     <li>Remove ccdcalib argument</li>
     <li>Fix shutter options</li>
-    <li>Remove extended action values</li>
     <li>Enable priority keyword</li>
     <li>Change tracking to an argument instead of a comment</li>
-    <li>Remove external command support</li>
     </ul>
 
 <li>Standardize driver format</li>
@@ -64,6 +62,8 @@
 <li>Reconsider autofocus scheme</li>
         <ul>
         <li>Perform autofocus at zenith</li>
-        <li>Allow scans of same target not to be interrupted by autofocus</li>
+        <li>Allow scans of same target not to be interrupted by autofocus with interrupt_allowed keyword in sch files</li>
         </ul>
+<li>Remove extended action values</li>
+<li>Remove external command support</li>
 </ul>
