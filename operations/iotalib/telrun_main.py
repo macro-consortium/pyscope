@@ -377,6 +377,13 @@ def run_scans(telrun_file):
             telrun_status.next_scan = telrun_file.scans[scan_index+1]
         else:
             telrun_status.next_scan = None
+        
+        if scan_index > 0:
+            telrun_status.previous_scan = telrun_file.scans[scan_index-1]
+        else:
+            telrun_status.previous_scan = None
+        previous_scan = telrun_status.previous_scan
+
         telrun_status.next_autofocus_time = next_autofocus_time
         sun_alt_degs = observatory.get_sun_altitude_degs()
         logging.info("Sun altitude: %.3f degrees", sun_alt_degs)
@@ -394,381 +401,353 @@ def run_scans(telrun_file):
             continue
         
         seconds_until_starttm = scan.starttm - time.time()
-        if seconds_until_starttm < config_telrun.values.seconds_until_starttm:
+        if not config_telrun.values.wait_for_scan_start_time:
+            logging.info("Ignoring scan start time, starting immediately. Set by config telrun values")
+        elif seconds_until_starttm < config_telrun.values.seconds_until_starttm:
             logging.info("Skipping scan %.2f seconds late, exceeding late limit", abs(seconds_until_starttm))
+            set_scan_status(telrun_file, scan, "F")
             telrun_status.skipped_scan_count += 1
             continue
-        
-        while True:
-            if seconds_until_starttm < 0:
-                logging.info("%.2f seconds late starting scan", abs(seconds_until_starttm))
-            
-            # TODO: slew to scan early, and wait until starttm to begin exposure
-            logging.info("Waiting %.2f seconds (%.3f hours) to start scan",
+        elif seconds_until_starttm < 0:
+            logging.info("%.2f seconds late starting scan", abs(seconds_until_starttm))
+        elif seconds_until_starttm > 0: 
+            logging.info("Waiting %.2f seconds (%.3f hours) to start exposure",
                 seconds_until_starttm,
                 seconds_until_starttm/3600.0)
-            if not config_telrun.values.wait_for_scan_start_time:
-                logging.info("(not actually waiting based on config)")
-            elif seconds_until_starttm > 0: time.sleep(seconds_until_starttm)
-            
-        # TODO: Check for lstdelta
-            logging.info("scan.startdt = %s", scan.startdt)
-
-            scan.obj.compute(observatory.get_site_now())
-            if math.degrees(scan.obj.alt) < config_observatory.values.min_telescope_altitude_degs:
-                logging.warn("Skipping scan %s (%s); altitude %s below telescope limit", 
-                    scan.title,
-                    scan.observer,
-                    scan.obj.alt)
-                telrun_status.skipped_scan_count += 1
-
-                set_scan_status(telrun_file, scan, "F")
-
-                break
         
-            try:
-                logging.info("Object a_ra, a_dec: %s, %s" % (
-                    convert.to_dms(convert.rads_to_hours(scan.obj.a_ra)),
-                    convert.to_dms(convert.rads_to_degs(scan.obj.a_dec))
-                    ))
-                logging.info("Object g_ra, g_dec: %s, %s" % (
-                    convert.to_dms(convert.rads_to_hours(scan.obj.g_ra)),
-                    convert.to_dms(convert.rads_to_degs(scan.obj.g_dec))
-                    ))
-                logging.info("Object ra, dec: %s, %s" % (
-                    convert.to_dms(convert.rads_to_hours(scan.obj.ra)),
-                    convert.to_dms(convert.rads_to_degs(scan.obj.dec))
-                    ))
-            except:
-                logging.info("Error while logging debug coordinates. Continuing...")
+        if do_periodic_autofocus and time.time() > next_autofocus_time:
+            telrun_status.autofocus_state = "RUNNING"
+            do_autofocus()
+            logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
+            next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
+            telrun_status.next_autofocus_time = next_autofocus_time
+            telrun_status.autofocus_state = "Idle"
             
-        # Changed .ra, .dec to .g_ra, .g_dec RLM 13 Dec 19 (ephem problem)
-            target_ra_app_hours = convert.rads_to_hours(scan.obj.g_ra)
-            target_dec_app_degs = convert.rads_to_degs(scan.obj.g_dec)
+        while seconds_until_starttm > config_telrun.values.preslew_wait_seconds:
+            time.sleep(0.1)
+            seconds_until_starttm = scan.starttm - time.time()
+        else:
+            if seconds_until_starttm > 0:
+                logging.info("Scan start time is now %.2f seconds away", seconds_until_starttm)
+        
+        scan.obj.compute(observatory.get_site_now())
+        if math.degrees(scan.obj.alt) < config_observatory.values.min_telescope_altitude_degs:
+            logging.info("Skipping scan %s (%s); altitude %s below telescope limit", 
+                scan.title,
+                scan.observer,
+                scan.obj.alt)
+            telrun_status.skipped_scan_count += 1
+            set_scan_status(telrun_file, scan, "F")
+            continue
+    
+        try:
+            '''logging.info("Object a_ra, a_dec: %s, %s" % (
+                convert.to_dms(convert.rads_to_hours(scan.obj.a_ra)),
+                convert.to_dms(convert.rads_to_degs(scan.obj.a_dec))
+                ))
+            logging.info("Object g_ra, g_dec: %s, %s" % (
+                convert.to_dms(convert.rads_to_hours(scan.obj.g_ra)),
+                convert.to_dms(convert.rads_to_degs(scan.obj.g_dec))
+                ))'''
+            logging.info("Object ra, dec: %s, %s" % (
+                convert.to_dms(convert.rads_to_hours(scan.obj.ra)),
+                convert.to_dms(convert.rads_to_degs(scan.obj.dec))
+                ))
+        except:
+            logging.info("Error while logging debug coordinates. Continuing...")
+        
+        target_ra_app_hours = convert.rads_to_hours(scan.obj.g_ra)
+        target_dec_app_degs = convert.rads_to_degs(scan.obj.g_dec)
 
-            (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
-            
-            centering_result=False
-            if scan.posx is not None and scan.posy is not None:
+        (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
+        
+        try: do_slew = (previous_scan.ra != scan.ra or previous_scan.dec != scan.dec)
+        except: do_slew = True
+
+        centering_result = False
+        if scan.posx is not None and scan.posy is not None:
+            logging.info("Refining telescope pointing for this scan...")
+            if not scan.filter in config_telrun.values.recenter_filters:
                 filter_index = config_telrun.values.autofocus_filter_index
                 logging.info("Switching to filter %s for recentering adjustment", filter_index)
                 observatory.set_filter_and_offset_focuser(filter_index)
 
-                telrun_status.mount_state = "SLEWING"
-                
-                logging.info("Refining telescope pointing for this scan...")
-                centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
-                        target_dec_j2k_deg=target_dec_j2000_degs, 
-                        target_pixel_x_unbinned=scan.posx, 
-                        target_pixel_y_unbinned=scan.posy, 
-                        initial_offset_dec_arcmin=0, 
-                        check_and_refine=True,
-                        max_attempts=3, 
-                        tolerance_pixels=1.333, 
-                        exposure_length=config_telrun.values.recenter_exposure_seconds,
-                        binning=config_telrun.values.recenter_exposure_binning, 
-                        save_images=False, 
-                        save_path_template=r'{MyDocuments}\CenterTargetData\{Timestamp}', 
-                        console_output=False,
-                        search_radius_degs=1, 
-                        sync_mount=config_telrun.values.recenter_using_sync)
-                
-                if not centering_result:
-                    logging.info("Recentering failed. Continuing...")
-                else:
-                    logging.info("Recentering succeeded. Continuing...")
-            else:
-                # Normal blind slew
-                logging.info("Slewing to J2000 RA %s, Dec %s", 
-                        convert.to_dms(target_ra_j2000_hours),
-                        convert.to_dms(target_dec_j2000_degs)
-                        )
+            telrun_status.mount_state = "SLEWING"
 
-                # This call will block until slew is complete
-                # TODO: make these actions work in parallel
-                telrun_status.mount_state = "SLEWING"
-                # Check for lunar tracking in object comments and switch to lunar rate
-                observatory.mount.Tracking = True
-                if scan.comment == "LUNARTRACKINGRATE":
-                    observatory.mount.TrackingRate = 1
-                    logging.info("Switching to Lunar Tracking Rate")
-                elif scan.comment.lower() == "nonsidereal":            
-                    if scan.obj.name.upper() == 'MOON':
-                        object_data = query_jpl('301',id_type='majorbody')
-                    else:
-                        object_data = query_jpl(scan.obj.name)
-                    if object_data == None:
-                        logging.info("JPL Horizons lookup failed for object name %s" % scan.obj.name)
-                    else:
-                        logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
-                        ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
-                        target_ra_j2000_hours = convert.from_dms(ra_str)
-                        target_dec_j2000_degs = convert.from_dms(dec_str)
-                        (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
-                        
-                observatory.mount.SlewToCoordinatesAsync(target_ra_app_hours, target_dec_app_degs)
-                while observatory.mount.Slewing:
-                    time.sleep(0.2)
-
-                telrun_status.mount_state = "SETTLING"
-
-                logging.info("Settling for %d seconds", config_observatory.values.settle_time_secs)
-                time.sleep(config_observatory.values.settle_time_secs)
-                
-                if scan.comment.lower() == 'nonsidereal':
-                    if object_data == None:
-                        continue
-                    else:
-                        observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
-                        observatory.mount.DeclinationRate =  dec_rate 
-                        logging.info("Switching to Non-Sidereal Tracking Rates")
-                        logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
-
-            tele_ra_app_hours = observatory.mount.RightAscension
-            tele_dec_app_degs = observatory.mount.Declination
-
-            (tele_ra_j2000_hours, tele_dec_j2000_degs) = convert.jnow_to_j2000(tele_ra_app_hours, tele_dec_app_degs)
-
-            logging.info("Arrived at J2000 RA %s, Dec %s",
-                convert.to_dms(tele_ra_j2000_hours),
-                convert.to_dms(tele_dec_j2000_degs)
-                )
-
-            telrun_status.mount_state = "Tracking"
-
-            if do_periodic_autofocus and time.time() > next_autofocus_time:
-                telrun_status.autofocus_state = "RUNNING"
-                do_autofocus()
-                logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
-                next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
-                telrun_status.next_autofocus_time = next_autofocus_time
-                telrun_status.autofocus_state = "Idle"
-                
-
-            observatory.set_filter_and_offset_focuser(scan.filter)
-
-            # TODO: Are subframes specified in binned or native pixel coordinates?
-
-            logging.info("Setting subframe to %dx%d starting at x=%d, y=%d, binning %dx%d",
-                    scan.sw,
-                    scan.sh,
-                    scan.sx,
-                    scan.sy,
-                    scan.binx,
-                    scan.biny
-                    )
-
-            observatory.camera.set_binning(scan.binx, scan.biny)
-            observatory.camera.set_subframe(scan.sx, scan.sy, scan.sw, scan.sh)
+            centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
+                    target_dec_j2k_deg=target_dec_j2000_degs, 
+                    target_pixel_x_unbinned=scan.posx, 
+                    target_pixel_y_unbinned=scan.posy, 
+                    initial_offset_dec_arcmin=0, 
+                    check_and_refine=True,
+                    max_attempts=3, 
+                    tolerance_pixels=1.333, 
+                    exposure_length=config_telrun.values.recenter_exposure_seconds,
+                    binning=config_telrun.values.recenter_exposure_binning, 
+                    save_images=False, 
+                    save_path_template=r'{MyDocuments}\CenterTargetData\{Timestamp}', 
+                    console_output=False,
+                    search_radius_degs=1, 
+                    sync_mount=config_telrun.values.recenter_using_sync,
+                    do_initial_slew=do_initial_slew)
             
-            cmosmodes = ['HDR', 'High', 'Low', 'Stackpro']
-            logging.info("Setting CMOS readout mode to mode %i: %s" % (scan.cmosmode, cmosmodes[scan.cmosmode]))
-            observatory.camera.set_cmosmode(scan.cmosmode)
-
-            if scan.shutter == telrunfile.CCDSO_OPEN:
-                shutter_state = 1
-            elif scan.shutter == telrunfile.CCDSO_CLOSED:
-                shutter_state = 0
+            if not centering_result:
+                logging.info("Recentering failed. Continuing...")
             else:
-                logging.warn("Unsupported shutter mode '%s'; skipping...", scan.shutter)
-                set_scan_status(telrun_file, scan, "F")
-                break
+                logging.info("Recentering succeeded. Continuing...")
+        elif do_slew:
+            # Normal blind slew
+            logging.info("Slewing to J2000 RA %s, Dec %s", 
+                    convert.to_dms(target_ra_j2000_hours),
+                    convert.to_dms(target_dec_j2000_degs))
 
-            # Record information that will later be inserted into FITS header
-            start_exp_camera_temp = observatory.camera.get_ccd_temperature_celsius()
-            start_exp_guider_camera_temp = observatory.camera.get_ccd_guider_temperature_celsius()
-            start_exp_lst_hours = convert.rads_to_hours(observatory.get_site_now().sidereal_time())
-            scan.obj.compute(observatory.get_site_now())
-            start_exp_alt_degs = convert.rads_to_degs(scan.obj.alt)
-            start_exp_azm_degs = convert.rads_to_degs(scan.obj.az)
-            start_exp_ha_hours = start_exp_lst_hours - target_ra_app_hours
-            if start_exp_ha_hours < -12:
-                start_exp_ha_hours += 24
-            if start_exp_ha_hours > 12:
-                start_exp_ha_hours -= 24
-            start_exp_airmass = airmass.compute_airmass(start_exp_alt_degs)
-            start_exp_focuspos = observatory.focuser.Position
+            telrun_status.mount_state = "SLEWING"
+            observatory.mount.SlewToCoordinatesAsync(target_ra_app_hours, target_dec_app_degs)
+
+        observatory.set_filter_and_offset_focuser(scan.filter)
+
+        logging.info("Setting subframe to %dx%d starting at x=%d, y=%d, binning %dx%d",
+                scan.sw,
+                scan.sh,
+                scan.sx,
+                scan.sy,
+                scan.binx,
+                scan.biny)
+        observatory.camera.set_binning(scan.binx, scan.biny)
+        observatory.camera.set_subframe(scan.sx, scan.sy, scan.sw, scan.sh)
         
-            moon = ephem.Moon()
-            moon.compute(observatory.get_site_now())
-            start_exp_moon_separation_degs = convert.rads_to_degs(ephem.separation((scan.obj.az, scan.obj.alt), (moon.az, moon.alt)))
-            start_exp_moon_phase = moon.phase
+        logging.info("Setting readout mode to mode %i: %s" % scan.cmosmode)
+        observatory.camera.set_cmosmode(scan.cmosmode)
+
+        if scan.shutter == telrunfile.CCDSO_OPEN:
+            shutter_state = 1
+        elif scan.shutter == telrunfile.CCDSO_CLOSED:
+            shutter_state = 0
+        else:
+            logging.warn("Unsupported shutter mode '%s'; skipping...", scan.shutter)
+            set_scan_status(telrun_file, scan, "F")
+            continue
             
-            logging.info("Starting %.3f second exposure",
-                    scan.dur)
-            telrun_status.camera_state = "EXPOSING"
-            observatory.camera.start_exposure(scan.dur, shutter_state)
-            expected_exposure_end_time = time.time() + scan.dur
+        while observatory.mount.Slewing:
+                time.sleep(0.1)
 
-            logging.info("Waiting for image...")
-            while not observatory.camera.is_exposure_finished():
-                if time.time() - expected_exposure_end_time > config_telrun.values.camera_timeout_seconds:
-                    raise Exception("Timed out waiting for exposure from camera. Make sure there are no File Open/Save windows open in Maxim DL.")
+        telrun_status.mount_state = "SETTLING"
+        logging.info("Settling for %d seconds", config_observatory.values.settle_time_secs)
+        time.sleep(config_observatory.values.settle_time_secs)
 
-                time.sleep(0.5)
-            telrun_status.camera_state = "Idle"
-
-            # In some cases when the camera connection has failed, Maxim will not throw an
-            # exception, but will simply immediately return that the exposure is finished.
-            # If this is the case, we would end up just saving the same (last successful) image
-            # over and over again.
-            observatory.camera.verify_latest_exposure()
-            
-            # check if grism image, if not, run pinpoint solution
-            logging.info("Attempting a plate solve via Pinpoint...")
-            if (observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] != '6'):
-                observatory.camera.run_pinpoint()
-                try:
-                    while observatory.camera.pinpoint_status() == 3:
-                        time.sleep(0.01)
-                    if observatory.camera.pinpoint_status() == 2:
-                        logging.info("Pinpoint solution found! Continuing...")
-                    else:
-                        logging.info("Pinpoint solution failed, continuing...")
-                except Exception as exception:
-                    logging.info("Pinpoint error: %s" % exception)
-            
-            #Store offset rates for adding to FITS Header before changing 
-            RA_rate_offset = observatory.mount.RightAscensionRate / 0.9972695677 
-            DEC_rate_offset = observatory.mount.DeclinationRate  
-            #Check for alternative tracking rates in comment and switch back to sidereal
-            if scan.comment == "LUNARTRACKINGRATE":
-                observatory.mount.TrackingRate = 0
-                logging.info("Switching to Sidereal Tracking Rate")
-            elif scan.comment.lower() == "nonsidereal":
-                observatory.mount.RightAscensionRate = 0
-                observatory.mount.DeclinationRate = 0
-                logging.info("Switching to Sidereal Tracking Rate")
-            logging.info("Turning off telescope tracking")
-            observatory.mount.Tracking = False
-
-            image_file_path_final = os.path.abspath(os.path.join(paths.image_dir(), scan.imagefn))
-            image_file_path_tmp = image_file_path_final + ".tmp" # Camera writes raw image to this file (before Talon-style headers have been added)
-            #image_file_path_after_headers = image_file_path_final + ".after_headers" # FITS library writes modified image to this file (after Talon-style headers have been added)
-            image_file_dir = os.path.dirname(image_file_path_final)
-
-            if not os.path.isdir(image_file_dir):
-                logging.info("Image directory %s does not exist. Creating...", image_file_dir)
-                os.makedirs(image_file_dir)
-            logging.info("Saving to %s", image_file_path_tmp)
-
-            # Make sure file doesn't already exist. (Maxim may be OK with overwriting
-            # existing files, but other camera drivers may not be)
-            remove_file_if_needed(image_file_path_tmp)
-            observatory.camera.save_image_as_fits(image_file_path_tmp)
-            logging.info("Saved!")
-
-            logging.info("Adding custom FITS headers...")
-
-            # Calculate additional values to be used in FITS header
-
-            cdelt1 = config_wcs.values.arcsec_per_pixel_unbinned / 3600.0 # Convert to degrees per pixel
-            cdelt2 = cdelt1 # Assume X and Y scale is the same
-
-            cdelt1 *= scan.binx # Scale to account for binning
-            cdelt2 *= scan.biny
-
-            # Get the signs correct
-            if config_wcs.values.mirrored:
-                cdelt1 = -cdelt1 
+        observatory.mount.Tracking = True
+        # Check for lunar tracking in object comments and switch to lunar rate
+        if scan.comment == "LUNARTRACKINGRATE":
+            observatory.mount.TrackingRate = 1
+            logging.info("Switching to Lunar Tracking Rate")
+            object_data = query_jpl('301',id_type='majorbody')
+        elif scan.comment.lower() == "nonsidereal":            
+            object_data = query_jpl(scan.obj.name)
+            if object_data == None:
+                logging.info("JPL Horizons lookup failed for object name %s" % scan.obj.name)
+                continue
             else:
-                cdelt1 = -cdelt1
-                cdelt2 = -cdelt2
+                logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
+                ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
+                target_ra_j2000_hours = convert.from_dms(ra_str)
+                target_dec_j2000_degs = convert.from_dms(dec_str)
+                (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
+                
+                observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
+                observatory.mount.DeclinationRate =  dec_rate 
+                logging.info("Switching to Non-Sidereal Tracking Rates")
+                logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
+        telrun_status.mount_state = "Tracking"
 
-            weather_reading = observatory.get_latest_weather()
-            wxtemp = -999
-            wxpres = -999
-            wxwndspd = -999
-            wxwnddir = -999
-            wxhumid = -999
-            wxage = -999
-            if weather_reading.wind_speed_kph is not None:
-                wxwndspd = weather_reading.wind_speed_kph
-            if weather_reading.wind_direction_degs_east_of_north is not None:
-                wxwnddir = weather_reading.wind_direction_degs_east_of_north
-            if weather_reading.temperature_celsius is not None:
-                wxtemp = weather_reading.temperature_celsius
-            if weather_reading.pressure_millibars is not None:
-                wxpres = weather_reading.pressure_millibars
-            if weather_reading.humidity_percent is not None:
-                wxhumid = weather_reading.humidity_percent
-            if weather_reading.age_seconds() is not None:
-                wxage = weather_reading.age_seconds()
+        tele_ra_app_hours = observatory.mount.RightAscension
+        tele_dec_app_degs = observatory.mount.Declination
+
+        (tele_ra_j2000_hours, tele_dec_j2000_degs) = convert.jnow_to_j2000(tele_ra_app_hours, tele_dec_app_degs)
+        logging.info("Arrived at J2000 RA %s, Dec %s",
+            convert.to_dms(tele_ra_j2000_hours),
+            convert.to_dms(tele_dec_j2000_degs))
+
+        seconds_until_starttm = scan.starttm - time.time()
+        if seconds_until_starttm > 0:
+            logging.info("Waiting %d seconds until start time", seconds_until_starttm)
+            time.sleep(seconds_until_starttm)
+
+        # Record information that will later be inserted into FITS header
+        start_exp_camera_temp = observatory.camera.get_ccd_temperature_celsius()
+        start_exp_guider_camera_temp = observatory.camera.get_ccd_guider_temperature_celsius()
+        start_exp_lst_hours = convert.rads_to_hours(observatory.get_site_now().sidereal_time())
+        scan.obj.compute(observatory.get_site_now())
+        start_exp_alt_degs = convert.rads_to_degs(scan.obj.alt)
+        start_exp_azm_degs = convert.rads_to_degs(scan.obj.az)
+        start_exp_ha_hours = start_exp_lst_hours - target_ra_app_hours
+        if start_exp_ha_hours < -12:
+            start_exp_ha_hours += 24
+        if start_exp_ha_hours > 12:
+            start_exp_ha_hours -= 24
+        start_exp_airmass = airmass.compute_airmass(start_exp_alt_degs)
+        start_exp_focuspos = observatory.focuser.Position
+    
+        moon = ephem.Moon()
+        moon.compute(observatory.get_site_now())
+        start_exp_moon_separation_degs = convert.rads_to_degs(ephem.separation((scan.obj.az, scan.obj.alt), (moon.az, moon.alt)))
+        start_exp_moon_phase = moon.phase
+        
+        logging.info("Starting %.3f second exposure",
+                scan.dur)
+        telrun_status.camera_state = "EXPOSING"
+        observatory.camera.start_exposure(scan.dur, shutter_state)
+        expected_exposure_end_time = time.time() + scan.dur
+
+        logging.info("Waiting for image...")
+        while not observatory.camera.is_exposure_finished():
+            if time.time() - expected_exposure_end_time > config_telrun.values.camera_timeout_seconds:
+                raise Exception("Timed out waiting for exposure from camera. Make sure there are no File Open/Save windows open in Maxim DL.")
+
+            time.sleep(0.1)
+        telrun_status.camera_state = "Idle"
+
+        # In some cases when the camera connection has failed, Maxim will not throw an
+        # exception, but will simply immediately return that the exposure is finished.
+        # If this is the case, we would end up just saving the same (last successful) image
+        # over and over again.
+        observatory.camera.verify_latest_exposure()
+        
+        # check if grism image, if not, run pinpoint solution
+        logging.info("Attempting a plate solve via Pinpoint...")
+        if (observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] != '6'):
+            observatory.camera.run_pinpoint()
+            try:
+                while observatory.camera.pinpoint_status() == 3:
+                    time.sleep(0.1)
+                if observatory.camera.pinpoint_status() == 2:
+                    logging.info("Pinpoint solution found! Continuing...")
+                else:
+                    logging.info("Pinpoint solution failed, continuing...")
+            except Exception as exception:
+                logging.info("Pinpoint error: %s" % exception)
+        
+        #Store offset rates for adding to FITS Header before changing 
+        RA_rate_offset = observatory.mount.RightAscensionRate / 0.9972695677 
+        DEC_rate_offset = observatory.mount.DeclinationRate  
+        #Check for alternative tracking rates in comment and switch back to sidereal
+        if scan.comment == "LUNARTRACKINGRATE":
+            observatory.mount.TrackingRate = 0
+            logging.info("Switching to Sidereal Tracking Rate")
+        elif scan.comment.lower() == "nonsidereal":
+            observatory.mount.RightAscensionRate = 0
+            observatory.mount.DeclinationRate = 0
+            logging.info("Switching to Sidereal Tracking Rate")
+
+        image_file_path_final = os.path.abspath(os.path.join(paths.image_dir(), scan.imagefn))
+        image_file_path_tmp = image_file_path_final + ".tmp" # Camera writes raw image to this file (before Talon-style headers have been added)
+        #image_file_path_after_headers = image_file_path_final + ".after_headers" # FITS library writes modified image to this file (after Talon-style headers have been added)
+        image_file_dir = os.path.dirname(image_file_path_final)
+
+        if not os.path.isdir(image_file_dir):
+            logging.info("Image directory %s does not exist. Creating...", image_file_dir)
+            os.makedirs(image_file_dir)
+        logging.info("Saving to %s", image_file_path_tmp)
+
+        # Make sure file doesn't already exist. (Maxim may be OK with overwriting
+        # existing files, but other camera drivers may not be)
+        remove_file_if_needed(image_file_path_tmp)
+        observatory.camera.save_image_as_fits(image_file_path_tmp)
+        logging.info("Saved!")
+
+        logging.info("Adding custom FITS headers...")
+
+        # Calculate additional values to be used in FITS header
+
+        cdelt1 = config_wcs.values.arcsec_per_pixel_unbinned / 3600.0 # Convert to degrees per pixel
+        cdelt2 = cdelt1 # Assume X and Y scale is the same
+
+        cdelt1 *= scan.binx # Scale to account for binning
+        cdelt2 *= scan.biny
+
+        # Get the signs correct
+        if config_wcs.values.mirrored:
+            cdelt1 = -cdelt1 
+        else:
+            cdelt1 = -cdelt1
+            cdelt2 = -cdelt2
+
+        weather_reading = observatory.get_latest_weather()
+        wxtemp = -999
+        wxpres = -999
+        wxwndspd = -999
+        wxwnddir = -999
+        wxhumid = -999
+        wxage = -999
+        if weather_reading.wind_speed_kph is not None:
+            wxwndspd = weather_reading.wind_speed_kph
+        if weather_reading.wind_direction_degs_east_of_north is not None:
+            wxwnddir = weather_reading.wind_direction_degs_east_of_north
+        if weather_reading.temperature_celsius is not None:
+            wxtemp = weather_reading.temperature_celsius
+        if weather_reading.pressure_millibars is not None:
+            wxpres = weather_reading.pressure_millibars
+        if weather_reading.humidity_percent is not None:
+            wxhumid = weather_reading.humidity_percent
+        if weather_reading.age_seconds() is not None:
+            wxage = weather_reading.age_seconds()
 
 
-            hdulist = pyfits.open(image_file_path_tmp, mode="update")
-            header = hdulist[0].header
-            header.set("OBJECT", scan.obj.name, "Object name")
-            header.set("TELESCOP", config_observatory.values.telescope_name, "Telescope used to acquire image")
-            header.set("OBSERVER", scan.observer, "Investigator(s)")
-            header.set("OFFSET1", scan.sx, "Camera upper left frame x") # TODO: Is this in binned or unbinned coordinates?
-            header.set("OFFSET2", scan.sy, "Camera upper left frame y") # TODO: Is this in binned or unbinned coordinates?
-            header.set("XFACTOR", scan.binx, "Camera x binning factor")
-            header.set("YFACTOR", scan.biny, "Camera y binning factor")
-            header.set("ORIGIN", config_observatory.values.origin, "")
-            header["COMMENT"] = scan.title
-            header.set("PRIORITY", scan.priority, "Scheduling priority")
-            header.set("CDELT1", cdelt1, "RA step right, degrees/pixel")
-            header.set("CDELT2", cdelt2, "Dec step down, degrees/pixel")
-            header.set("RA", convert.to_dms(tele_ra_j2000_hours), "Nominal center J2000 RA")
-            header.set("DEC", convert.to_dms(tele_dec_j2000_degs), "Nominal center J2000 Dec")
-            header.set("RAEOD", convert.to_dms(tele_ra_app_hours), "Nominal center Apparent RA")
-            header.set("DECEOD", convert.to_dms(tele_dec_app_degs), "Nominal center Apparent Dec")
-            header.set("OBJRA", convert.to_dms(target_ra_j2000_hours), "Target center J2000 RA")
-            header.set("OBJDEC", convert.to_dms(target_dec_j2000_degs), "Target center J2000 Dec")
-            header.set("RARATE", RA_rate_offset, "Mount RA Offset arcsec/sec")
-            header.set("DECRATE", DEC_rate_offset, "Mount DEC Offset arcsec/sec")
-            header.set("EPOCH", 2000, "RA/Dec epoch, years (obsolete)")
-            header.set("EQUINOX", 2000, "RA/Dec equinox, years")
-            header.set("LATITUDE", convert.to_dms(config_observatory.values.latitude_degs), "Site Latitude, degrees +N")
-            header.set("LONGITUD", convert.to_dms(config_observatory.values.longitude_degs), "Site Longitude, degrees +E")
-            header.set("ELEVATIO", convert.to_dms(start_exp_alt_degs), "Degrees above horizon")
-            header.set("AZIMUTH", convert.to_dms(start_exp_azm_degs), "Degrees E of N")
-            header.set("HA", convert.to_dms(start_exp_ha_hours), "Local Hour Angle")
-            header.set("AIRMASS", start_exp_airmass, "Kasten-Young airmass computation")
-            header.set("MOONANGL", start_exp_moon_separation_degs, "Angular separation to Moon, Degrees")
-            header.set("MOONPHAS", start_exp_moon_phase, "Percentage of full moon")
-            header.set("LST", convert.to_dms(start_exp_lst_hours), "Local sidereal time at exposure start")
-            header.set("CAMTEMP", start_exp_camera_temp, "Camera temp, C")
-            header.set("FOCUSPOS", start_exp_focuspos, "Focus position from home, um")
-            header.set("WXTEMP", wxtemp, "Ambient air temp, C")
-            header.set("WXPRES", wxpres, "Atm pressure, mB")
-            header.set("WXWNDSPD", wxwndspd, "Wind speed, kph")
-            header.set("WXWNDDIR", wxwnddir, "Wind dir, degs E of N")
-            header.set("WXHUMID", wxhumid, "Outdoor humidity, percent")
-            header.set("WXAGE", wxage, "Age of weather readings, seconds")
-            header.set("CENTER", centering_result, "Result of recentering attempt")
+        hdulist = pyfits.open(image_file_path_tmp, mode="update")
+        header = hdulist[0].header
+        header.set("OBJECT", scan.obj.name, "Object name")
+        header.set("TELESCOP", config_observatory.values.telescope_name, "Telescope used to acquire image")
+        header.set("OBSERVER", scan.observer, "Investigator(s)")
+        header.set("OFFSET1", scan.sx, "Camera upper left frame x") # TODO: Is this in binned or unbinned coordinates?
+        header.set("OFFSET2", scan.sy, "Camera upper left frame y") # TODO: Is this in binned or unbinned coordinates?
+        header.set("XFACTOR", scan.binx, "Camera x binning factor")
+        header.set("YFACTOR", scan.biny, "Camera y binning factor")
+        header.set("ORIGIN", config_observatory.values.origin, "")
+        header["COMMENT"] = scan.title
+        header.set("PRIORITY", scan.priority, "Scheduling priority")
+        header.set("CDELT1", cdelt1, "RA step right, degrees/pixel")
+        header.set("CDELT2", cdelt2, "Dec step down, degrees/pixel")
+        header.set("RA", convert.to_dms(tele_ra_j2000_hours), "Nominal center J2000 RA")
+        header.set("DEC", convert.to_dms(tele_dec_j2000_degs), "Nominal center J2000 Dec")
+        header.set("RAEOD", convert.to_dms(tele_ra_app_hours), "Nominal center Apparent RA")
+        header.set("DECEOD", convert.to_dms(tele_dec_app_degs), "Nominal center Apparent Dec")
+        header.set("OBJRA", convert.to_dms(target_ra_j2000_hours), "Target center J2000 RA")
+        header.set("OBJDEC", convert.to_dms(target_dec_j2000_degs), "Target center J2000 Dec")
+        header.set("RARATE", RA_rate_offset, "Mount RA Offset arcsec/sec")
+        header.set("DECRATE", DEC_rate_offset, "Mount DEC Offset arcsec/sec")
+        header.set("EPOCH", 2000, "RA/Dec epoch, years (obsolete)")
+        header.set("EQUINOX", 2000, "RA/Dec equinox, years")
+        header.set("LATITUDE", convert.to_dms(config_observatory.values.latitude_degs), "Site Latitude, degrees +N")
+        header.set("LONGITUD", convert.to_dms(config_observatory.values.longitude_degs), "Site Longitude, degrees +E")
+        header.set("ELEVATIO", convert.to_dms(start_exp_alt_degs), "Degrees above horizon")
+        header.set("AZIMUTH", convert.to_dms(start_exp_azm_degs), "Degrees E of N")
+        header.set("HA", convert.to_dms(start_exp_ha_hours), "Local Hour Angle")
+        header.set("AIRMASS", start_exp_airmass, "Kasten-Young airmass computation")
+        header.set("MOONANGL", start_exp_moon_separation_degs, "Angular separation to Moon, Degrees")
+        header.set("MOONPHAS", start_exp_moon_phase, "Percentage of full moon")
+        header.set("LST", convert.to_dms(start_exp_lst_hours), "Local sidereal time at exposure start")
+        header.set("CAMTEMP", start_exp_camera_temp, "Camera temp, C")
+        header.set("FOCUSPOS", start_exp_focuspos, "Focus position from home, um")
+        header.set("WXTEMP", wxtemp, "Ambient air temp, C")
+        header.set("WXPRES", wxpres, "Atm pressure, mB")
+        header.set("WXWNDSPD", wxwndspd, "Wind speed, kph")
+        header.set("WXWNDDIR", wxwnddir, "Wind dir, degs E of N")
+        header.set("WXHUMID", wxhumid, "Outdoor humidity, percent")
+        header.set("WXAGE", wxage, "Age of weather readings, seconds")
+        header.set("CENTER", centering_result, "Result of recentering attempt")
 
-            # Handle SSON custom headers
-            if scan.ccdcalib.newc == telrunfile.CT_EXTCMD and scan.extcmd.startswith("fitsheader"):
-                # sample extcmd:  "fitsheader USERNAME=DDJ"
-                logging.info("Handling external command: '%s'" % scan.extcmd)
-                fitsheader_args = scan.extcmd.split(" ")[1:]
-                # Assume that there could potentially be several space-separated KW=VAL arguments given
-                # and process all of them
-                for fitsheader_arg in fitsheader_args:
-                    kwval_fields = fitsheader_arg.split("=", 1)
-                    if len(kwval_fields) == 2:
-                        keyword = kwval_fields[0]
-                        value = kwval_fields[1]
-                        logging.info("Setting custom header '%s' = '%s'", keyword, value)
-                        header.set(keyword, value, "")
+        hdulist.flush()
+        hdulist.close()
 
-            hdulist.flush()
-            hdulist.close()
+        # Move modified FITS file into final location, replacing any file
+        # that may already be there. By writing to another file and then
+        # renaming it at the last second, we make sure that other processed
+        # (like the file transfer daemon) don't see incomplete, partially-written
+        # files
+        remove_file_if_needed(image_file_path_final)
+        os.rename(image_file_path_tmp, image_file_path_final)
+        logging.info("Final file saved to %s", image_file_path_final)
 
-            # Move modified FITS file into final location, replacing any file
-            # that may already be there. By writing to another file and then
-            # renaming it at the last second, we make sure that other processed
-            # (like the file transfer daemon) don't see incomplete, partially-written
-            # files
-            remove_file_if_needed(image_file_path_final)
-            os.rename(image_file_path_tmp, image_file_path_final)
-            logging.info("Final file saved to %s", image_file_path_final)
-
-            set_scan_status(telrun_file, scan, "D")
-            break
-        continue
+        set_scan_status(telrun_file, scan, "D")
 
     return True # Full telrun file has been processed
         

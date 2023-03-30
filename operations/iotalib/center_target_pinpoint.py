@@ -47,7 +47,8 @@ def center_coordinates_on_pixel(target_ra_j2k_hrs=0, # ra coordinates of target 
     save_path_template=r'{MyDocuments}\CenterTargetData\{Timestamp}',
     console_output=True, # output from wcs will be shown in the console
     search_radius_degs=1, # search up to this far from center coordinates before giving up
-    sync_mount=False): # entire coordinate system of mount will be offset (offsets apply to future slews)
+    sync_mount=False,
+    do_initial_slew=True): # entire coordinate system of mount will be offset (offsets apply to future slews)
     
     # Not all mount drivers support turning tracking on/off.
     # For example, the ASCOM driver for TheSky does not support it.
@@ -76,14 +77,16 @@ def center_coordinates_on_pixel(target_ra_j2k_hrs=0, # ra coordinates of target 
         
         if check_and_refine:
             logging.info('Attempt %d of %d' % (attempt_number+1, max_attempts))
-        logging.info('Slewing to J2000 %s, %s' % (
-            convert.to_dms(slew_ra_j2k_hrs),
-            convert.to_dms(slew_dec_j2k_deg)))
-        observatory.mount.SlewToCoordinates(slew_ra_jnow_hrs, slew_dec_jnow_deg)
         
-        logging.info('Settling for %d seconds...' % config_observatory.settle_time_secs)
-        time.sleep(config_observatory.settle_time_secs)
-        
+        if do_initial_slew or attempt_number > 0:
+            logging.info('Slewing to J2000 %s, %s' % (
+                convert.to_dms(slew_ra_j2k_hrs),
+                convert.to_dms(slew_dec_j2k_deg)))
+            observatory.mount.SlewToCoordinates(slew_ra_jnow_hrs, slew_dec_jnow_deg)
+            
+            logging.info('Settling for %d seconds...' % config_observatory.settle_time_secs)
+            time.sleep(config_observatory.settle_time_secs)
+            
         if not check_and_refine and attempt_number > 0:
             logging.info('Single-shot recentering finished')
             return True
@@ -105,7 +108,7 @@ def center_coordinates_on_pixel(target_ra_j2k_hrs=0, # ra coordinates of target 
         observatory.camera.run_pinpoint()
         try:
             while observatory.camera.pinpoint_status() == 3:
-                time.sleep(0.01)
+                time.sleep(0.1)
             if observatory.camera.pinpoint_status() == 2:
                 logging.info("Pinpoint solution found! Continuing...")
             else:

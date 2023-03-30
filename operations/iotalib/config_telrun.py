@@ -33,7 +33,9 @@ def read():
     values.require_float("camera_timeout_seconds")
     values.require_float("camera_cooler_warning_minutes")
     #values.require_float("resync_mount_after_interval_seconds") # TODO
+    values.require_float("preslew_wait_seconds")
     values.require_float("recenter_exposure_seconds")
+    values.require_list("recenter_filters")
     values.require_int("recenter_exposure_binning")
     values.require_bool("recenter_using_sync")
     values.require("recenter_if_returns_true", types.FunctionType)
