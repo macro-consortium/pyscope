@@ -415,7 +415,7 @@ def run_scans(telrun_file):
                 seconds_until_starttm,
                 seconds_until_starttm/3600.0)
             
-        while seconds_until_starttm > config_telrun.values.preslew_wait_seconds:
+        while seconds_until_starttm > config_telrun.values.preslew_wait_seconds and config_telrun.values.wait_for_scan_start_time:
             time.sleep(0.1)
             seconds_until_starttm = scan.starttm - time.time()
         else:
@@ -568,7 +568,7 @@ def run_scans(telrun_file):
             convert.to_dms(tele_dec_j2000_degs))
 
         seconds_until_starttm = scan.starttm - time.time()
-        if seconds_until_starttm > 0:
+        if seconds_until_starttm > 0 and config_telrun.values.wait_for_scan_start_time:
             logging.info("Waiting %d seconds until start time", seconds_until_starttm)
             time.sleep(seconds_until_starttm)
 
