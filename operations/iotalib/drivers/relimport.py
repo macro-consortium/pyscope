@@ -8,4 +8,4 @@ PYTHONPATH. Hopefully prevents development code from accidentally getting
 imported in a production run.
 """
 
-sys.path.insert(0, abspath( join(dirname(abspath(__file__)), "..", "..") ))
+sys.path.insert(0, abspath( join(dirname(abspath(__file__)), "..") ))

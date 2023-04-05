@@ -252,7 +252,9 @@ def move_focuser(focus_target):
                     starting_position,
                     focus_target,
                     focuser.Position)
-            comhelper.callmethod(focuser.Halt)
+            haltfunc = focuser.Halt
+            if hasattr(haltfunc, '__call__'):
+                haltfunc()
             return False
         time.sleep(0.2)
 

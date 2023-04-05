@@ -1,3 +1,4 @@
+previous_scan = None
 current_scan = None
 next_scan = None
 

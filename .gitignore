@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/
 lib64/
 parts/
 sdist/
@@ -131,6 +131,7 @@ dmypy.json
 *.fts*
 *.fit
 *.log*
+!*sample*
 telrun.new
 telrun.sls
 pyscope_chronos.*

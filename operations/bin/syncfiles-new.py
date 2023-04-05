@@ -16,7 +16,7 @@ from iotalib import paths
 
 # Configuration. TODO - move this to a config file
 remote_username = "talon"
-remote_host = "139.144.23.12"
+remote_host = "macroconsortium.org"
 remote_port = 22
 send_sls_now_interval_seconds = 120  # Copy local telrun.sls to remote telrun.now no more frequently than this many seconds
 identity_file = paths.config_path("pyscope_chronos.ppk")
