@@ -490,7 +490,10 @@ def run_scans(telrun_file):
 
         (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
         
-        try: do_slew = (previous_scan.ra != scan.ra or previous_scan.dec != scan.dec)
+        try: 
+            do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
+                or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec)))
+            logging.info('Initial slew: %s' % str(do_slew))
         except: do_slew = True
 
         centering_result = False
