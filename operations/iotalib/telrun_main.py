@@ -508,13 +508,16 @@ def run_scans(telrun_file):
 
             telrun_status.mount_state = "SLEWING"
 
+            if not do_slew: attempt_addition = 1
+            else: attempt_addition = 0
+
             centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
                     target_dec_j2k_deg=target_dec_j2000_degs, 
                     target_pixel_x_unbinned=scan.posx, 
                     target_pixel_y_unbinned=scan.posy, 
                     initial_offset_dec_arcmin=0, 
                     check_and_refine=True,
-                    max_attempts=3, 
+                    max_attempts=3+attempt_addition, 
                     tolerance_pixels=1.333, 
                     exposure_length=config_telrun.values.recenter_exposure_seconds,
                     binning=config_telrun.values.recenter_exposure_binning, 
