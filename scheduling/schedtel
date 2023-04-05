@@ -413,7 +413,7 @@ def write_telrun(allscans,telfile):
     fn = open(telfile,'w')
     keys = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
     'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
-    'Interrupt_allowed', 'priority','pathname'] 
+    'interrupt_allowed', 'priority','pathname'] 
     vals = [None]*22
     for scan in allscans:
         if scan['status'] == False: continue
@@ -693,7 +693,7 @@ if plot:
     
 key_order = ['status','Start JD', 'lstdelta, mins','schedfn','title','observer','comment','EDB','RAOffset','DecOffset',\
 'frame position','frame size','binning','duration, secs','shutter','ccdcalib','filter','cmosmode','Positioning', \
-'Interrupt_allowed', 'priority','pathname'] 
+'interrupt_allowed', 'priority','pathname'] 
 
 # Sort scans by jdstart
 #print([x for x in allscans if x['jdstart'] == ''])

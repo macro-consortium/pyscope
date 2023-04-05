@@ -9,7 +9,6 @@ import ephem
 from win32com.client import Dispatch
 
 # iotalib imports
-from . import comhelper
 from . import config_observatory
 from . import config_focus_offsets
 from . import weather_thread

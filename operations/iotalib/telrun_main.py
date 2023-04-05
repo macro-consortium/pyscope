@@ -26,7 +26,6 @@ from astropy.coordinates import Angle
 # iotalib imports
 from . import airmass
 from . import center_target_pinpoint
-from . import comhelper
 from . import convert
 from . import config_focus_offsets
 from . import config_observatory
@@ -230,16 +229,14 @@ def main_operation_loop(telrun_file):
         time.sleep(60)
     
     # Wait for sun to set
-    sun_alt_degs = observatory.get_sun_altitude_degs()
-    if not config_telrun.values.wait_for_sun \
-        or sun_alt_degs < config_observatory.max_sun_altitude_degs:
-        logging.info("Sun altitude: %.3f (below limit; starting scans)", sun_alt_degs)
-        telrun_file_finished = run_scans(telrun_file)
-    else:
+    while observatory.get_sun_altitude_degs() > config_observatory.max_sun_altitude_degs and config_telrun.values.wait_for_sun:
         logging.info("Sun altitude: %.3f degs (above limit of %s)", 
-                sun_alt_degs,
+                observatory.get_sun_altitude_degs(),
                 config_observatory.max_sun_altitude_degs)
         time.sleep(60)
+    else:
+        logging.info("Sun altitude: %.3f (below limit; starting scans)", observatory.get_sun_altitude_degs())
+        telrun_file_finished = run_scans(telrun_file)
     
     # Check return code from run_scans
     if telrun_file_finished:
@@ -362,7 +359,7 @@ def run_scans(telrun_file):
 
     for scan_index in range(num_scans):
         # Check 1: New telrun file?
-        if os.path.isfile(telrun_new_path):
+        if os.path.isfile(paths.telrun_sls_path("telrun.new")):
             logging.info("Found telrun.new, ending early")
             return False
 
@@ -521,7 +518,7 @@ def run_scans(telrun_file):
                     console_output=False,
                     search_radius_degs=1, 
                     sync_mount=config_telrun.values.recenter_using_sync,
-                    do_initial_slew=do_initial_slew)
+                    do_initial_slew=do_slew)
             
             if not centering_result:
                 logging.info("Recentering failed. Continuing...")
@@ -548,7 +545,7 @@ def run_scans(telrun_file):
         observatory.camera.set_binning(scan.binx, scan.biny)
         observatory.camera.set_subframe(scan.sx, scan.sy, scan.sw, scan.sh)
         
-        logging.info("Setting readout mode to mode %i: %s" % scan.cmosmode)
+        logging.info("Setting readout mode to mode %i" % scan.cmosmode)
         observatory.camera.set_cmosmode(scan.cmosmode)
 
         if scan.shutter == telrunfile.CCDSO_OPEN:
