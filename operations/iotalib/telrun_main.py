@@ -140,18 +140,70 @@ def run():
     logging.info("Setting camera cooler setpoint to %.1f C", config_telrun.values.camera_cooler_celsius)
     observatory.camera.set_ccd_temperature_setpoint_celsius(config_telrun.values.camera_cooler_celsius)
 
-    # Home the mount if needed
-    if config_telrun.values.home_mount_at_start:
-        logging.info("Homing mount")
-        try:
-            homefunc = observatory.mount.FindHome
-            if hasattr(homefunc, '__call__'):
-                homefunc()
-        except:
-            logging.exception("Unable to home mount")
+    # Check for existing telrun file and load it if it exists
+    telrun_file = None
+    # If telrun.sls exists, start out by loading it. We might replace
+    # it with telrun.new later
+    if os.path.isfile(paths.telrun_sls_path("telrun.sls")):
+        logging.info("Loading existing telrun.sls")
+        telrun_file = telrunfile.TelrunFile(paths.telrun_sls_path("telrun.sls"))
+        check_telrun_file(telrun_file)
 
+    # From this point on everything should be set up, and we can hopefully operate
+    # indefinitely (or until something goes wrong)
+    while True:
+        logging.info("Starting main_operation_loop...")
+        telrun_file = main_operation_loop(telrun_file)
+
+def deg2sex(eph):
+    ra = Angle(np.array(eph['RA'])[0], u.degree)
+    ra_str = ra.to_string(unit=u.hour, sep=':',precision=2)
+    dec = Angle(np.array(eph['DEC'])[0], u.degree)
+    dec_str = dec.to_string(unit=u.degree, sep=':',precision =1)
+    ra_rate = np.array(eph['RA_rate'].to('arcsec/s'))[0]
+    dec_rate = np.array(eph['DEC_rate'].to('arcsec/s'))[0]
+    return ra_str,dec_str, ra_rate, dec_rate
+
+def query_jpl(object_id, id_type = None):
+    #Queries jpl horizon site and returns object if successful
+    if id_type == None:
+        obj = Horizons(id = object_id, id_type = 'smallbody', location = '857')
+    else:
+        obj = Horizons(id = object_id, id_type = id_type, location = '857')
+    try:
+        eph = obj.ephemerides()
+        return eph
+    except:
+        #print(obj.ephemerides())
+        return None
+
+def main_operation_loop(telrun_file):
+    if os.path.isfile(paths.telrun_sls_path("telrun.new")):
+        logging.info("Found telrun.new; renaming to telrun.sls")
+        shutil.move(paths.telrun_sls_path("telrun.new"), paths.telrun_sls_path("telrun.sls"))
+        logging.info("Loading telrun.sls")
+        telrun_file = telrunfile.TelrunFile(paths.telrun_sls_path("telrun.sls"))
+        check_telrun_file(telrun_file)
+
+    if telrun_file is None:
+        logging.debug("No active telrun file; sleeping...")
+        time.sleep(60)
+        return   
+
+    # Check on roof status    
+    if config_telrun.values.check_roof_value:
+        while True:
+            try:
+                if check_roof.checkOpen() == True:
+                    logging.info("Roof is open")
+                    break
+                else:
+                    logging.info("Roof is not open, waiting...")
+            except Exception as ex:
+                    logging.exception("Error refreshing roof info")
+            time.sleep(60)
+        
     # Wait for CCD temperature regulation
-    logging.info("Waiting for CCD to reach setpoint")
     cooler_warning_sent = False
     cooler_start_time = time.time()
     while True:
@@ -175,107 +227,37 @@ def run():
                     ccd_temperature_celsius
                     )
             cooler_warning_sent = True
-
-        time.sleep(10)
-
-    # From this point on everything should be set up, and we can hopefully operate
-    # indefinitely (or until something goes wrong)
-    while True:
-        logging.info("Starting main_operation_loop...")
-        main_operation_loop()
-
-def deg2sex(eph):
-    ra = Angle(np.array(eph['RA'])[0], u.degree)
-    ra_str = ra.to_string(unit=u.hour, sep=':',precision=2)
-    dec = Angle(np.array(eph['DEC'])[0], u.degree)
-    dec_str = dec.to_string(unit=u.degree, sep=':',precision =1)
-    ra_rate = np.array(eph['RA_rate'].to('arcsec/s'))[0]
-    dec_rate = np.array(eph['DEC_rate'].to('arcsec/s'))[0]
-    return ra_str,dec_str, ra_rate, dec_rate
-
-def query_jpl(object_id, id_type = None):
-    #Queries jpl horizon site and returns object if successful
-    if id_type == None:
-        obj = Horizons(id = object_id, id_type = 'smallbody', location = '857')
+        time.sleep(60)
+    
+    # Wait for sun to set
+    sun_alt_degs = observatory.get_sun_altitude_degs()
+    if not config_telrun.values.wait_for_sun \
+        or sun_alt_degs < config_observatory.max_sun_altitude_degs:
+        logging.info("Sun altitude: %.3f (below limit; starting scans)", sun_alt_degs)
+        telrun_file_finished = run_scans(telrun_file)
     else:
-        obj = Horizons(id = object_id, id_type = id_type, location = '857')
-    try:
-        eph = obj.ephemerides()
-        return eph
-    except:
-        #print(obj.ephemerides())
-        return None
+        logging.info("Sun altitude: %.3f degs (above limit of %s)", 
+                sun_alt_degs,
+                config_observatory.max_sun_altitude_degs)
+        time.sleep(60)
     
+    # Check return code from run_scans
+    if telrun_file_finished:
+        logging.info("FINISHED processing telrun.sls")
 
+        logging.info("Closing exposure by taking a dark frame")
+        observatory.camera.start_exposure(0.01, False) # Take a dark at the end of the night to close the shutter
 
+        logging.info("Moving telescope to park position")
+        parkfunc = observatory.mount.Park
+        if hasattr(parkfunc, '__call__'):
+            parkfunc()
 
-# Keep track of the file modification time for any 
-# telrun.sls files that we get all the way through, so
-# that we don't try to reload the same file on the next
-# pass through this loop
-completed_telrun_file_modification_time = 0
-
-def main_operation_loop():
-    global completed_telrun_file_modification_time
-
-    telrun_new_path = paths.telrun_sls_path("telrun.new")
-    telrun_sls_path = paths.telrun_sls_path("telrun.sls")
-    
-    telrun_file = None
-    # If telrun.sls exists, start out by loading it. We might replace
-    # it with telrun.new later
-    if os.path.isfile(telrun_sls_path) and os.path.getmtime(telrun_sls_path) != completed_telrun_file_modification_time:
-        logging.info("Loading existing telrun.sls")
-        telrun_file = telrunfile.TelrunFile(telrun_sls_path)
-        check_telrun_file(telrun_file)
-
-    while True:
-        if os.path.isfile(telrun_new_path):
-            logging.info("Found telrun.new; renaming to telrun.sls")
-            shutil.move(telrun_new_path, telrun_sls_path)
-            logging.info("Loading telrun.sls")
-            telrun_file = telrunfile.TelrunFile(telrun_sls_path)
-            check_telrun_file(telrun_file)
-
-        if telrun_file is None:
-            logging.debug("No active telrun file; sleeping...")
-            time.sleep(5)
-            continue            
-        sun_alt_degs = observatory.get_sun_altitude_degs()
-        if config_telrun.values.check_roof_value:
-            while True:
-                try:
-                    if check_roof.checkOpen() == True:
-                        logging.info("Roof is open")
-                        break
-                    else:
-                        logging.info("Roof is not open, waiting...")
-                except Exception as ex:
-                        logging.exception("Error refreshing roof info")
-                time.sleep(60)
-        if not config_telrun.values.wait_for_sun \
-            or sun_alt_degs < config_observatory.max_sun_altitude_degs:
-            logging.info("Sun altitude: %.3f (below limit; starting scans)", sun_alt_degs)
-            telrun_file_finished = run_scans(telrun_file)
-            if telrun_file_finished:
-                completed_telrun_file_modification_time = os.path.getmtime(telrun_sls_path)
-                logging.info("FINISHED processing telrun.sls with file modification time %s", completed_telrun_file_modification_time)
-
-            logging.info("Closing exposure by taking a dark frame")
-            observatory.camera.start_exposure(0.01, False) # Take a dark at the end of the night to close the shutter
-
-            logging.info("Moving telescope to park position")
-            parkfunc = observatory.mount.Park
-            if hasattr(parkfunc, '__call__'):
-                parkfunc()
-
-            logging.info("EXITING MAIN OPERATION LOOP")
-            return
-        else:
-            logging.info("Sun altitude: %.3f degs (above limit of %s)", 
-                    sun_alt_degs,
-                    config_observatory.max_sun_altitude_degs)
-            time.sleep(10)
+        logging.info("EXITING MAIN OPERATION LOOP")
+        return
+    else:
+        logging.info("run_scans returned False, new telrun file found!")
+        return
 
 def check_telrun_file(telrun_file):
     logging.info("Performing sanity checks on telrun.sls file...")
@@ -353,6 +335,16 @@ def run_scans(telrun_file):
     or False if scans were interrupted for some other reason (such as the sun coming up)
     """
 
+    # Home the mount if needed
+    if config_telrun.values.home_mount_at_start:
+        logging.info("Homing mount")
+        try:
+            homefunc = observatory.mount.FindHome
+            if hasattr(homefunc, '__call__'):
+                homefunc()
+        except:
+            logging.exception("Unable to home mount")
+
     # Keep track of how long it's been since we've attempted to do an autofocus run
     if config_telrun.values.autofocus_interval_seconds > 0:
         do_periodic_autofocus = True
@@ -369,7 +361,13 @@ def run_scans(telrun_file):
     telrun_status.total_scan_count = num_scans
 
     for scan_index in range(num_scans):
+        # Check 1: New telrun file?
+        if os.path.isfile(telrun_new_path):
+            logging.info("Found telrun.new, ending early")
+            return False
+
         scan = telrun_file.scans[scan_index]
+        telrun_status.next_autofocus_time = next_autofocus_time
 
         telrun_status.current_scan_number = scan_index+1
         telrun_status.current_scan = scan
@@ -384,12 +382,6 @@ def run_scans(telrun_file):
             telrun_status.previous_scan = None
         previous_scan = telrun_status.previous_scan
 
-        telrun_status.next_autofocus_time = next_autofocus_time
-        sun_alt_degs = observatory.get_sun_altitude_degs()
-        logging.info("Sun altitude: %.3f degrees", sun_alt_degs)
-        if config_telrun.values.wait_for_sun and sun_alt_degs > config_observatory.max_sun_altitude_degs:
-            logging.info("Sun is above limit of %s. Stopping...", config_observatory.max_sun_altitude_degs)
-            return False
 
         logging.info("Processing scan %d of %d:", scan_index+1, num_scans)
         logging.info(scan)
@@ -400,6 +392,7 @@ def run_scans(telrun_file):
             telrun_status.skipped_scan_count += 1
             continue
         
+        # Check 2: Do we ignore the scan time? If not, wait until preslew_wait_seconds before scan to continue
         seconds_until_starttm = scan.starttm - time.time()
         if not config_telrun.values.wait_for_scan_start_time:
             logging.info("Ignoring scan start time, starting immediately. Set by config telrun values")
@@ -422,6 +415,30 @@ def run_scans(telrun_file):
             if seconds_until_starttm > 0:
                 logging.info("Scan start time is now %.2f seconds away", seconds_until_starttm)
         
+        # Check 3: Roof status
+        if config_telrun.values.check_roof_value:
+            try: 
+                if not check_roof.checkOpen():
+                    logging.info("Roof is closed. Skipping scan...")
+                    telrun_status.skipped_scan_count += 1
+                    set_scan_status(telrun_file, scan, "F")
+                    continue
+            except Exception as ex:
+                logging.exception("Error refreshing roof info, skipping scan")
+                telrun_status.skipped_scan_count += 1
+                set_scan_status(telrun_file, scan, "F")
+                continue
+
+        # Check 4: Solar altitude
+        sun_alt_degs = observatory.get_sun_altitude_degs()
+        logging.info("Sun altitude: %.3f degrees", sun_alt_degs)
+        if config_telrun.values.wait_for_sun and sun_alt_degs > config_observatory.max_sun_altitude_degs:
+            logging.info("Sun is above limit of %s. Skipping scan...", config_observatory.max_sun_altitude_degs)
+            telrun_status.skipped_scan_count += 1
+            set_scan_status(telrun_file, scan, "F")
+            continue
+        
+        # Check 5: Autofocus necessary
         if do_periodic_autofocus and time.time() > next_autofocus_time and scan.interrupt_allowed:
             telrun_status.autofocus_state = "RUNNING"
             do_autofocus()
@@ -429,13 +446,28 @@ def run_scans(telrun_file):
             next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
             telrun_status.next_autofocus_time = next_autofocus_time
             telrun_status.autofocus_state = "Idle"
-        
+
+        # Check 6: Object altitude
         scan.obj.compute(observatory.get_site_now())
         if math.degrees(scan.obj.alt) < config_observatory.values.min_telescope_altitude_degs:
             logging.info("Skipping scan %s (%s); altitude %s below telescope limit", 
                 scan.title,
                 scan.observer,
                 scan.obj.alt)
+            telrun_status.skipped_scan_count += 1
+            set_scan_status(telrun_file, scan, "F")
+            continue
+            
+        # Check 7: Camera temperature
+        if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius()) 
+        > config_telrun.values.camera_cooler_tolerance):
+            logging.info("Trying to wait 60 seconds for camera to reach temperature of %s C", config_telrun.values.camera_cooler_celsius)
+            time.sleep(60)
+        
+        if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius())
+        > config_telrun.values.camera_cooler_tolerance):
+            logging.info("Camera temperature is %s C, but should be %s C. Skipping scan", 
+                observatory.camera.get_ccd_temperature_celsius(), config_telrun.values.camera_cooler_celsius)
             telrun_status.skipped_scan_count += 1
             set_scan_status(telrun_file, scan, "F")
             continue

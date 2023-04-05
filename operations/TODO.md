@@ -2,13 +2,6 @@
 <ul>
 <li>telrun.py</li>
     <ul>
-    <li>Create a scan conditions section for green-lighting</li>
-        <ul>
-        <li>CCD temp check</li>
-        <li>New telrun file?</li>
-        <li>Roof open</li>
-        <li>Sun elevation</li>
-        </ul>
     <li>Change how config files are read</li>
     <li>Turn all hardware into classes</li>
     <li>Separate filter switch and focuser offset functions</li>
@@ -66,4 +59,11 @@
         </ul>
 <li>Remove extended action values</li>
 <li>Remove external command support</li>
+<li>Create a scan conditions section for green-lighting</li>
+    <ul>
+    <li>CCD temp check</li>
+    <li>New telrun file?</li>
+    <li>Roof open</li>
+    <li>Sun elevation</li>
+    </ul>
 </ul>
