@@ -518,7 +518,7 @@ def run_scans(telrun_file):
                     initial_offset_dec_arcmin=0, 
                     check_and_refine=True,
                     max_attempts=3+attempt_addition, 
-                    tolerance_pixels=1.333, 
+                    tolerance_pixels=1.499, 
                     exposure_length=config_telrun.values.recenter_exposure_seconds,
                     binning=config_telrun.values.recenter_exposure_binning, 
                     save_images=False, 
