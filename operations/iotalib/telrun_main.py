@@ -150,8 +150,8 @@ def run():
 
     # From this point on everything should be set up, and we can hopefully operate
     # indefinitely (or until something goes wrong)
+    logging.info("Starting main_operation_loop...")
     while True:
-        logging.info("Starting main_operation_loop...")
         telrun_file = main_operation_loop(telrun_file)
 
 def deg2sex(eph):
@@ -249,8 +249,6 @@ def main_operation_loop(telrun_file):
         parkfunc = observatory.mount.Park
         if hasattr(parkfunc, '__call__'):
             parkfunc()
-
-        logging.info("EXITING MAIN OPERATION LOOP")
         return
     else:
         logging.info("run_scans returned False, new telrun file found!")
