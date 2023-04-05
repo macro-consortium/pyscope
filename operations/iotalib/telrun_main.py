@@ -436,9 +436,10 @@ def run_scans(telrun_file):
             continue
         
         # Check 5: Autofocus necessary
+        auto_done = None
         if do_periodic_autofocus and time.time() > next_autofocus_time and scan.interrupt_allowed:
             telrun_status.autofocus_state = "RUNNING"
-            do_autofocus()
+            auto_done = do_autofocus()
             logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
             next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
             telrun_status.next_autofocus_time = next_autofocus_time
@@ -492,7 +493,8 @@ def run_scans(telrun_file):
         
         try: 
             do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
-                or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec)))
+                or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec))
+                or auto_done)
             logging.info('Initial slew: %s' % str(do_slew))
         except: do_slew = True
 
@@ -799,6 +801,8 @@ def do_autofocus():
     logging.info("Waiting for mount to settle")
     time.sleep(1)
     logging.info("Zenith slew complete")
+    logging.info("Verify mount is tracking")
+    observatory.mount.Tracking = True
 
     filter_index = config_telrun.values.autofocus_filter_index
     logging.info("Switching to filter %s for focus run", filter_index)
