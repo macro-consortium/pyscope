@@ -436,7 +436,7 @@ def run_scans(telrun_file):
             continue
         
         # Check 5: Autofocus necessary
-        auto_done = None
+        auto_done = False
         if do_periodic_autofocus and time.time() > next_autofocus_time and scan.interrupt_allowed:
             telrun_status.autofocus_state = "RUNNING"
             auto_done = do_autofocus()
@@ -826,7 +826,7 @@ def do_autofocus():
     if best_focus_result is None:
         logging.warn("Autofocus run failed to find best-focus solution. Sky may be cloudy or telescope may be too far out of focuser.")
 
-    return best_focus_result
+    return True
 
     
 def set_scan_status(telrun_file, scan, code):
