@@ -496,7 +496,7 @@ def plot_scans(lst_dict, airmass_dict, date_str):
 # ===== MAIN =======
 
 deg = pi/180.
-slice_time  = 10*ep.second
+slice_time  = 5*ep.second
 
 # SSON code
 sson_code = '7_'
