@@ -455,7 +455,7 @@ def read_next_sls(file_stream):
         elif lineno == 19:
             # Sample line:
             # 19    Interrupt_Allowed: 1
-            try: sp.interrupt_allowed = bool(bp)
+            try: sp.interrupt_allowed = bool(int(bp))
             except: sp.interrupt_allowed = True
 
         elif lineno == 20:

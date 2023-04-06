@@ -35,7 +35,7 @@ def get_weather():
         if temperature_f is not None:
             reading.temperature_celsius = convert.fahrenheit_to_celsius(temperature_f)
         if last_update_msd is not None:
-            reading.timestamp_jd = _arizona_msd_to_jd(last_update_msd)
+            reading.timestamp_jd = last_update_msd
 
     return reading
 

@@ -26,7 +26,6 @@ from astropy.coordinates import Angle
 # iotalib imports
 from . import airmass
 from . import center_target_pinpoint
-from . import comhelper
 from . import convert
 from . import config_focus_offsets
 from . import config_observatory
@@ -151,8 +150,8 @@ def run():
 
     # From this point on everything should be set up, and we can hopefully operate
     # indefinitely (or until something goes wrong)
+    logging.info("Starting main_operation_loop...")
     while True:
-        logging.info("Starting main_operation_loop...")
         telrun_file = main_operation_loop(telrun_file)
 
 def deg2sex(eph):
@@ -230,16 +229,14 @@ def main_operation_loop(telrun_file):
         time.sleep(60)
     
     # Wait for sun to set
-    sun_alt_degs = observatory.get_sun_altitude_degs()
-    if not config_telrun.values.wait_for_sun \
-        or sun_alt_degs < config_observatory.max_sun_altitude_degs:
-        logging.info("Sun altitude: %.3f (below limit; starting scans)", sun_alt_degs)
-        telrun_file_finished = run_scans(telrun_file)
-    else:
+    while observatory.get_sun_altitude_degs() > config_observatory.max_sun_altitude_degs and config_telrun.values.wait_for_sun:
         logging.info("Sun altitude: %.3f degs (above limit of %s)", 
-                sun_alt_degs,
+                observatory.get_sun_altitude_degs(),
                 config_observatory.max_sun_altitude_degs)
         time.sleep(60)
+    else:
+        logging.info("Sun altitude: %.3f (below limit; starting scans)", observatory.get_sun_altitude_degs())
+        telrun_file_finished = run_scans(telrun_file)
     
     # Check return code from run_scans
     if telrun_file_finished:
@@ -252,8 +249,6 @@ def main_operation_loop(telrun_file):
         parkfunc = observatory.mount.Park
         if hasattr(parkfunc, '__call__'):
             parkfunc()
-
-        logging.info("EXITING MAIN OPERATION LOOP")
         return
     else:
         logging.info("run_scans returned False, new telrun file found!")
@@ -362,7 +357,7 @@ def run_scans(telrun_file):
 
     for scan_index in range(num_scans):
         # Check 1: New telrun file?
-        if os.path.isfile(telrun_new_path):
+        if os.path.isfile(paths.telrun_sls_path("telrun.new")):
             logging.info("Found telrun.new, ending early")
             return False
 
@@ -439,9 +434,10 @@ def run_scans(telrun_file):
             continue
         
         # Check 5: Autofocus necessary
+        auto_done = False
         if do_periodic_autofocus and time.time() > next_autofocus_time and scan.interrupt_allowed:
             telrun_status.autofocus_state = "RUNNING"
-            do_autofocus()
+            auto_done = do_autofocus()
             logging.info("Autofocus Mount Elevation is %s degrees" % observatory.mount.Altitude)
             next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
             telrun_status.next_autofocus_time = next_autofocus_time
@@ -493,7 +489,11 @@ def run_scans(telrun_file):
 
         (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
         
-        try: do_slew = (previous_scan.ra != scan.ra or previous_scan.dec != scan.dec)
+        try: 
+            do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
+                or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec))
+                or auto_done)
+            logging.info('Initial slew: %s' % str(do_slew))
         except: do_slew = True
 
         centering_result = False
@@ -506,14 +506,17 @@ def run_scans(telrun_file):
 
             telrun_status.mount_state = "SLEWING"
 
+            if not do_slew: attempt_addition = 1
+            else: attempt_addition = 0
+
             centering_result = center_target_pinpoint.center_coordinates_on_pixel(target_ra_j2k_hrs=target_ra_j2000_hours, 
                     target_dec_j2k_deg=target_dec_j2000_degs, 
                     target_pixel_x_unbinned=scan.posx, 
                     target_pixel_y_unbinned=scan.posy, 
                     initial_offset_dec_arcmin=0, 
                     check_and_refine=True,
-                    max_attempts=3, 
-                    tolerance_pixels=1.333, 
+                    max_attempts=3+attempt_addition, 
+                    tolerance_pixels=1.499, 
                     exposure_length=config_telrun.values.recenter_exposure_seconds,
                     binning=config_telrun.values.recenter_exposure_binning, 
                     save_images=False, 
@@ -521,7 +524,7 @@ def run_scans(telrun_file):
                     console_output=False,
                     search_radius_degs=1, 
                     sync_mount=config_telrun.values.recenter_using_sync,
-                    do_initial_slew=do_initial_slew)
+                    do_initial_slew=do_slew)
             
             if not centering_result:
                 logging.info("Recentering failed. Continuing...")
@@ -548,7 +551,7 @@ def run_scans(telrun_file):
         observatory.camera.set_binning(scan.binx, scan.biny)
         observatory.camera.set_subframe(scan.sx, scan.sy, scan.sw, scan.sh)
         
-        logging.info("Setting readout mode to mode %i: %s" % scan.cmosmode)
+        logging.info("Setting readout mode to mode %i" % scan.cmosmode)
         observatory.camera.set_cmosmode(scan.cmosmode)
 
         if scan.shutter == telrunfile.CCDSO_OPEN:
@@ -799,6 +802,8 @@ def do_autofocus():
     logging.info("Waiting for mount to settle")
     time.sleep(1)
     logging.info("Zenith slew complete")
+    logging.info("Verify mount is tracking")
+    observatory.mount.Tracking = True
 
     filter_index = config_telrun.values.autofocus_filter_index
     logging.info("Switching to filter %s for focus run", filter_index)
@@ -822,7 +827,7 @@ def do_autofocus():
     if best_focus_result is None:
         logging.warn("Autofocus run failed to find best-focus solution. Sky may be cloudy or telescope may be too far out of focuser.")
 
-    return best_focus_result
+    return True
 
     
 def set_scan_status(telrun_file, scan, code):
