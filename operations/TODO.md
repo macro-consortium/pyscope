@@ -1,35 +1,6 @@
 # TODO
 <ul>
-<li>schedtel</li>
-    <ul>
-    <li>Write comments to header</li>
-    <li>Remove ccdcalib argument</li>
-    <li>Fix shutter options</li>
-    <li>Change tracking to an argument instead of a comment</li>
-    <li>Enable priority keyword</li>
-    <li>No edb lines/ephem dependencies</li>
-    <li>Add support for multiple observers</li>
-    <li>Config file</li>
-    </ul>
-
-<li>telrun</li>
-    <ul>
-    <li>Move observatory connections into the main loop and allow for arguments</li>
-    <li>Improve the exit handler</li>
-    <li>Resort order of functions</li>
-    <li>Separate filter switch and focuser offset functions</li>
-    <li>Custom header data as config file variables</li>
-    <li>Recentering arguments as config file variables</li>
-    <li>Add timeout config options for camera, filter wheel, mount focuser, rotator, roof/dome, weather, wcs</li>
-    <li>Change how config files are read</li>
-    <li>Turn all hardware into classes</li>
-    <li>Change to astropy coordinates objects for all coordinates</li>
-    <li>Fix JPL horizons querying</li>
-    <li>Generate summary report of scans statuses</li>
-    <li>Update telrun GUI using a new telrun_status class</li>
-    </ul>
-
-<li>Standardize driver format</li>
+<li>Standardize driver format in classes</li>
     <ul>
     <li>camera_maxim driver</li>
     <li>filterwheel_maxim driver</li>
@@ -39,6 +10,34 @@
     <li>roof_winer driver</li>
     <li>wcs_pinpoint driver</li>
     </ul>
+
+<li>telrun</li>
+    <ul>
+    <li>Change how config files are read</li>
+    <li>Add timeout config options for camera, filter wheel, mount focuser, rotator, roof/dome, weather, wcs</li>
+    <li>Move observatory connections into the main loop</li>
+    <li>Improve the exit handler</li>
+    <li>Custom header data as config file variables</li>
+    <li>Recentering arguments as config file variables</li>
+    <li>Generate summary report of scans statuses</li>
+    <li>Update telrun GUI using a new telrun_status class</li>
+    <li>Change to astropy coordinates objects for all coordinates</li>
+    <li>Fix JPL horizons querying</li>
+    </ul>
+
+<li>schedtel</li>
+    <ul>
+    <li>telrunfile -> telrun_file as class with sanity checks built in</li>
+    <li>No edb lines/ephem dependencies</li>
+    <li>Write comments to header</li>
+    <li>Change ccdcalib argument</li>
+    <li>Fix shutter options</li>
+    <li>Change tracking to an argument instead of a comment</li>
+    <li>Enable priority keyword</li>
+    <li>Add support for multiple observers</li>
+    <li>Config file</li>
+    </ul>
+
 <li>Cleanup bin folder</li>
 
 <li>Write new drivers</li>
@@ -46,8 +45,7 @@
     <li>camera_ascom driver</li>
     <li>filterwheel_ascom driver</li>
     <li>mount_ascom driver</li>
-    <li>roof_ascom driver</li>
-    <li>dome_ascom driver</li>
+    <li>roof_ascom/dome_ascom driver</li>
     <li>rotator_ascom driver</li>
     <li>weather_ascom driver</li>
     <li>weather_other? driver</li>
@@ -68,7 +66,12 @@
 <li>Enable email and text notifications</li>
 </ul>
 
-# Done
+## Done (pull request 2)
+<ul>
+<li>Resort order of functions</li>
+</ul>
+
+## Done (pull request 1)
 <ul>
 <li>In startup, check for overscan region</li>
 <li>Change stow position to park position</li>
