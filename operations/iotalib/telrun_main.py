@@ -578,7 +578,7 @@ def run_scans(telrun_file):
             object_data = query_jpl('301',id_type='majorbody')
         elif scan.comment.lower() == "nonsidereal":            
             object_data = query_jpl(scan.obj.name)
-            if object_data == None:
+            if object_data is None:
                 logging.info("JPL Horizons lookup failed for object name %s" % scan.obj.name)
                 continue
             else:
