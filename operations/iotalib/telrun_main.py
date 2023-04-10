@@ -488,6 +488,21 @@ def run_scans(telrun_file):
         target_dec_app_degs = convert.rads_to_degs(scan.obj.g_dec)
 
         (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
+
+        # Check for lunar tracking in object comments and switch to lunar rate
+        if scan.comment == "LUNARTRACKINGRATE":
+            logging.info("Switching to Lunar Tracking Rate")
+            object_data = query_jpl('301',id_type='majorbody')
+        elif scan.comment.lower() == "nonsidereal":            
+            object_data = query_jpl(scan.obj.name)
+            if object_data is None:
+                logging.info("JPL Horizons lookup failed for object name %s, using coordinates from telrun file" % scan.obj.name)
+            else:
+                logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
+                ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
+                target_ra_j2000_hours = convert.from_dms(ra_str)
+                target_dec_j2000_degs = convert.from_dms(dec_str)
+                (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
         
         try: 
             do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
@@ -570,28 +585,13 @@ def run_scans(telrun_file):
         logging.info("Settling for %d seconds", config_observatory.values.settle_time_secs)
         time.sleep(config_observatory.values.settle_time_secs)
 
+        # Turn on tracking, adjust for nonsidereal rate
         observatory.mount.Tracking = True
-        # Check for lunar tracking in object comments and switch to lunar rate
-        if scan.comment == "LUNARTRACKINGRATE":
-            observatory.mount.TrackingRate = 1
-            logging.info("Switching to Lunar Tracking Rate")
-            object_data = query_jpl('301',id_type='majorbody')
-        elif scan.comment.lower() == "nonsidereal":            
-            object_data = query_jpl(scan.obj.name)
-            if object_data is None:
-                logging.info("JPL Horizons lookup failed for object name %s" % scan.obj.name)
-                continue
-            else:
-                logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
-                ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
-                target_ra_j2000_hours = convert.from_dms(ra_str)
-                target_dec_j2000_degs = convert.from_dms(dec_str)
-                (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
-                
-                observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
-                observatory.mount.DeclinationRate =  dec_rate 
-                logging.info("Switching to Non-Sidereal Tracking Rates")
-                logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
+        if object_data is not None:
+            observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
+            observatory.mount.DeclinationRate =  dec_rate 
+            logging.info("Switching to Non-Sidereal Tracking Rates")
+            logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
         telrun_status.mount_state = "Tracking"
 
         tele_ra_app_hours = observatory.mount.RightAscension
