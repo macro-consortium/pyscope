@@ -490,6 +490,7 @@ def run_scans(telrun_file):
         (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
 
         # Check for lunar tracking in object comments and switch to lunar rate
+        object_data = None
         if scan.comment == "LUNARTRACKINGRATE":
             logging.info("Switching to Lunar Tracking Rate")
             object_data = query_jpl('301',id_type='majorbody')
