@@ -56,9 +56,9 @@ class Observatory:
         self._rotator = None
         self.rotator_min_angle = None; self.rotator_max_angle = None
 
-        self._safety_monitor = []
+        self._safety_monitor = None
 
-        self._switch = []
+        self._switch = None
 
         self._telescope = None
         self.min_altitude = 10
@@ -212,23 +212,37 @@ class Observatory:
 
         # Safety monitor
         kwarg = kwargs.get('safety_monitor', self._safety_monitor)
-        if type(kwarg) is not list: self._safety_monitor = [kwarg]
-        else: self._safety_monitor = kwarg
-        for i, safety_monitor in enumerate(self._safety_monitor):
-            if safety_monitor is not None: _check_class_inheritance(safety_monitor, 'SafetyMonitor')
-            self._safety_monitor_driver[i] = safety_monitor.Name if safety_monitor is not None else ''
-            self._safety_monitor_ascom[i] = (AscomDriver in type(safety_monitor).__bases__) if safety_monitor is not None else False
-            self._config['safety_monitor']['driver_%i' % i] = (self._safety_monitor_driver[i] + ',' + str(self._safety_monitor_ascom[i])) if self._safety_monitor_driver[i] != '' else ''
+        if type(kwarg) is not list: 
+            self._safety_monitor = kwarg
+            self._safety_monitor_driver = self._safety_monitor.Name if self._safety_monitor is not None else ''
+            self._safety_monitor_ascom = (AscomDriver in type(self._safety_monitor).__bases__) if self._safety_monitor is not None else False
+            self._config['safety_monitor']['driver_0'] = (self._safety_monitor_driver + ',' + str(self._safety_monitor_ascom)) if self._safety_monitor_driver != '' else ''
+        else: 
+            self._safety_monitor = kwarg
+            self._safety_monitor_driver = [None] * len(self._safety_monitor)
+            self._safety_monitor_ascom = [None] * len(self._safety_monitor)
+            for i, safety_monitor in enumerate(self._safety_monitor):
+                if safety_monitor is not None: _check_class_inheritance(safety_monitor, 'SafetyMonitor')
+                self._safety_monitor_driver[i] = safety_monitor.Name if safety_monitor is not None else ''
+                self._safety_monitor_ascom[i] = (AscomDriver in type(safety_monitor).__bases__) if safety_monitor is not None else False
+                self._config['safety_monitor']['driver_%i' % i] = (self._safety_monitor_driver[i] + ',' + str(self._safety_monitor_ascom[i])) if self._safety_monitor_driver[i] != '' else ''
 
         # Switch
         kwarg = kwargs.get('switch', self._switch)
-        if type(kwarg) is not list: self._switch = [kwarg]
-        else: self._switch = kwarg
-        for i, switch in enumerate(self._switch):
-            if switch is not None: _check_class_inheritance(switch, 'Switch')
-            self._switch_driver[i] = switch.Name if switch is not None else ''
-            self._switch_ascom[i] = (AscomDriver in type(switch).__bases__) if switch is not None else False
-            self._config['switch']['driver_%i' % i] = (self._switch_driver[i] + ',' + str(self._switch_ascom[i])) if self._switch_driver[i] != '' else ''
+        if type(kwarg) is not list or type(kwarg) is not tuple: 
+            self._switch = kwarg
+            self._switch_driver = self._switch.Name if self._switch is not None else ''
+            self._switch_ascom = (AscomDriver in type(self._switch).__bases__) if self._switch is not None else False
+            self._config['switch']['driver_0'] = (self._switch_driver + ',' + str(self._switch_ascom)) if self._switch_driver != '' else ''
+        else: 
+            self._switch = kwarg
+            self._switch_driver = [None] * len(self._switch)
+            self._switch_ascom = [None] * len(self._switch)
+            for i, switch in enumerate(self._switch):
+                if switch is not None: _check_class_inheritance(switch, 'Switch')
+                self._switch_driver[i] = switch.Name if switch is not None else ''
+                self._switch_ascom[i] = (AscomDriver in type(switch).__bases__) if switch is not None else False
+                self._config['switch']['driver_%i' % i] = (self._switch_driver[i] + ',' + str(self._switch_ascom[i])) if self._switch_driver[i] != '' else ''
 
         # Telescope
         self._telescope = kwargs.get('telescope', self._telescope)
@@ -246,7 +260,7 @@ class Observatory:
 
         # WCS
         self._wcs = kwargs.get('wcs', self._wcs)
-        if self._wcs is None: self._wcs = self._import_driver('wcs_astrometrynet', 'WCS', ascom=False, required=True)
+        if self._wcs is None: self._wcs = WCS('wcs_astrometrynet')
         _check_class_inheritance(self._wcs, 'WCS')
         self._wcs_driver = self._wcs.Name
         self._config['wcs']['wcs_driver'] = self._wcs_driver
@@ -280,10 +294,6 @@ class Observatory:
     
     def radec_altaz(self, ra, dec):
         '''Returns the current altitude of an object'''
-        return
-    
-    def startup(self):
-        '''Starts up the observatory'''
         return
     
     def shutdown(self):
