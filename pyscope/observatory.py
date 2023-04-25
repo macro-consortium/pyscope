@@ -1,13 +1,12 @@
 from astropy import coordinates as coord
 import configparser
-import importlib
 import logging
-import os
-import sys
 
-import drivers.ascom.AscomDriver as AscomDriver
-import drivers.abstract_hardware as abs_hd
-import drivers.abstract_software as abs_sw
+from . import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservatoryConditions
+from . import Rotator, SafetyMonitor, Switch, Telescope, WCS
+from . import _check_class_inheritance
+
+import drivers._ascom.AscomDriver as AscomDriver
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides
@@ -23,10 +22,11 @@ class Observatory:
 
         self._config = configparser.ConfigParser()
         self._config['site'] = {}
-        self._config['camera'] = {}; self._config['telescope'] = {}
-        self._config['cover_calibrator'] = {}; self._config['dome'] = {}
-        self._config['filter_wheel'] = {}; self._config['focuser'] = {}
-        self._config['observatory_conditions'] = {}
+        self._config['camera'] = {}; self._config['cover_calibrator'] = {}; self._config['dome'] = {}
+        self._config['filter_wheel'] = {}; self._config['focuser'] = {}; self._config['observing_conditions'] = {}
+        self._config['rotator'] = {}; self._config['safety_monitor'] = {}; self._config['switch'] = {}
+        self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['calibration'] = {}
+        self._config['recenter'] = {}
 
         self.site_name = 'pyScope Site'
         self.instrument_name = 'pyScope Instrument' 
@@ -37,38 +37,39 @@ class Observatory:
 
         self._camera = None
         self.cooler_setpoint = None; self.cooler_tolerance = None; self.max_dimension = None
-        self.pixel_x_size = None; self.pixel_y_size = None
-        self.exposure_timeout = 30; self.cooler_timeout = 600
-
-        self._telescope = None
-        self.min_altitude = 10; self.telescope_timeout = 600
+        self.pixel_x_size = None; self.pixel_y_size = None; self.default_readout_mode = None
 
         self._cover_calibrator = None
         self.cover_calibrator_alt = None; self.cover_calibrator_az = None
-        self.cover_calibrator_timeout = 60
 
         self._dome = None
-        self.wait_for_dome_rotation = False; self.dome_timeout = 600
 
         self._filter_wheel = None
         self.filters = None; self.filter_focus_offsets = None; self.autofocus_filters = None
-        self.recentering_filters = None; self.wcs_filters = None; self.filter_wheel_timeout = 60
+        self.recentering_filters = None; self.wcs_filters = None
 
         self._focuser = None
-        self.focuser_max_error = 10; self.focuser_timeout = 60
+        self.focuser_max_error = 10
 
-        self._observatory_conditions = None
-        self.observing_conditions_timeout = 60
+        self._observing_conditions = None
+
+        self._rotator = None
+        self.rotator_min_angle = None; self.rotator_max_angle = None
+
+        self._safety_monitor = []
+
+        self._switch = []
+
+        self._telescope = None
+        self.min_altitude = 10
 
         self._autofocus = None
         self.autofocus_exposure = 10; self.autofocus_start_position = None; self.autofocus_step_number = 5;
-        self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True; self.autofocus_timeout = 600
+        self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True
 
         self.calibration_filter_exposure = None; self.calibration_filter_focus = None
 
-        self.recenter_exposure = 10; self.recenter_sync_mount = False; self.recenter_timeout = 180
-
-        self._wcs = None
+        self.recenter_exposure = 10; self.recenter_sync_mount = False
 
         if config_file_path is not None:
             logging.info('Using config file to initialize observatory: %s' % config_file)
@@ -78,70 +79,87 @@ class Observatory:
             # Camera
             self._camera_driver = self.config['camera']['camera_driver']
             self._camera_ascom = self.config['camera']['camera_ascom']
-            self._camera = self._import_driver(self.config['camera']['camera_driver'], 'Camera', ascom=self.camera_ascom, required=True)
+            self._camera = Camera(self.camera_driver, ascom=self.camera_ascom)
+
+            # Cover calibrator
+            self._cover_calibrator_driver = self.config.get('cover_calibrator', 'cover_calibrator_driver', fallback=None)
+            self._cover_calibrator_ascom = self.config.get('cover_calibrator', 'cover_calibrator_ascom', fallback=None)
+            self._cover_calibrator = CoverCalibrator(self.cover_calibrator_driver, ascom=self.cover_calibrator_ascom)
+
+            # Dome
+            self._dome_driver = self.config.get('dome', 'dome_driver', fallback=None)
+            self._dome_ascom = self.config.get('dome', 'dome_ascom', fallback=None)
+            self._dome = Dome(self.dome_driver, ascom=self.dome_ascom)
+
+            # Filter wheel
+            self._filter_wheel_driver = self.config.get('filter_wheel', 'filter_wheel_driver', fallback=None)
+            self._filter_wheel_ascom = self.config.get('filter_wheel', 'filter_wheel_ascom', fallback=None)
+            self._filter_wheel = FilterWheel(self.filter_wheel_driver, ascom=self.filter_wheel_ascom)
+
+            # Focuser
+            self._focuser_driver = self.config.get('focuser', 'focuser_driver', fallback=None)
+            self._focuser_ascom = self.config.get('focuser', 'focuser_ascom', fallback=None)
+            self._focuser = Focuser(self.focuser_driver, ascom=self.focuser_ascom)
+
+            # Observing conditions
+            self._observing_conditions_driver = self.config.get('observing_conditions', 'observing_conditions_driver', fallback=None)
+            self._observing_conditions_ascom = self.config.get('observing_conditions', 'observing_conditions_ascom', fallback=None)
+            self._observing_conditions = ObservingConditions(self.observing_conditions_driver, ascom=self.observing_conditions_ascom)
+
+            # Rotator
+            self._rotator_driver = self.config.get('rotator', 'rotator_driver', fallback=None)
+            self._rotator_ascom = self.config.get('rotator', 'rotator_ascom', fallback=None)
+            self._rotator = Rotator(self.rotator_driver, ascom=self.rotator_ascom)
+
+            # Safety monitor
+            for val in self.config['safety_monitor'].values():
+                try: 
+                    driver, ascom = val.replace(' ', '').split(',')
+                    self._safety_monitor_driver.append(driver)
+                    self._safety_monitor_ascom.append(ascom)
+                    self._safety_monitor.append(SafetyMonitor(driver, ascom=ascom))
+                except:
+                    pass
+
+            # Switch
+            for val in self.config['switch'].values():
+                try: 
+                    driver, ascom = val.replace(' ', '').split(',')
+                    self._switch_driver.append(driver)
+                    self._switch_ascom.append(ascom)
+                    self._switch.append(Switch(driver, ascom=ascom))
+                except:
+                    pass
 
             # Telescope
             self._telescope_driver = self.config['telescope']['telescope_driver']
             self._telescope_ascom = self.config['telescope']['telescope_ascom']
-            self._telescope = self._import_driver(self.telescope_driver, 'Telescope', ascom=self.telescope_ascom, required=True)
-
-            # Cover calibrator
-            self._cover_calibrator_driver = self.config.get('cover_calibrator_driver', None)
-            self._cover_calibrator_ascom = self.config.get('cover_calibrator_ascom', None)
-            self._cover_calibrator = self._import_driver(self.cover_calibrator_driver, 'CoverCalibrator', ascom=self.cover_calibrator_ascom, required=False)
-
-            # Dome
-            self._dome_driver = self.config.get('dome_driver', None)
-            self._dome_ascom = self.config.get('dome_ascom', None)
-            self._dome = self._import_driver(self.dome_driver, 'Dome', ascom=self.dome_ascom, required=False)
-
-            # Filter wheel
-            self._filter_wheel_driver = self.config.get('filter_wheel_driver', None)
-            self._filter_wheel_ascom = self.config.get('filter_wheel_ascom', None)
-            self._filter_wheel = self._import_driver(self.filter_wheel_driver, 'FilterWheel', ascom=self.filter_wheel_ascom, required=False)
-
-            # Focuser
-            self._focuser_driver = self.config.get('focuser_driver', None)
-            self._focuser_ascom = self.config.get('focuser_ascom', None)
-            self._focuser = self._import_driver(self.focuser_driver, 'Focuser', ascom=self.focuser_ascom, required=False)
-
-            # Observing conditions
-            self._observing_conditions_driver = self.config.get('observing_conditions_driver', None)
-            self._observing_conditions_ascom = self.config.get('observing_conditions_ascom', None)
-            self._observing_conditions = self._import_driver(self.observing_conditions_driver, 'ObservingConditions',
-                ascom=self.observing_conditions_ascom, required=False)
+            self._telescope = Telescope(self.telescope_driver, ascom=self.telescope_ascom)
 
             # Autofocus
-            self._autofocus_driver = self.config.get('autofocus_driver', None)
-            self._autofocus_ascom = self.config.get('autofocus_ascom', None)
-            self._autofocus = self._import_driver(self.autofocus_driver, 'Autofocus', ascom=self.autofocus_ascom, required=False)
+            self._autofocus_driver = self.config.get('autofocus', 'autofocus_driver', fallback=None)
+            self._autofocus_ascom = self.config.get('autofocus', 'autofocus_ascom', fallback=None)
+            self._autofocus = Autofocus(self.autofocus_driver, ascom=self.autofocus_ascom)
 
             # WCS
-            self._wcs_driver = self.config['recenter'].get('wcs_driver', None)
-            self._wcs = self._import_driver(self.wcs_driver, 'WCS', ascom=self.wcs_ascom, required=False)
+            self._wcs_driver = self.config.get('recenter', 'wcs_driver', fallback=None)
+            self._wcs = WCS(self.wcs_driver)
 
             # Get other keywords from config file
-            master_dict = {**self._config['site'], **self._config['camera'], **self._config['telescope'], **self._config['cover_calibrator'],
+            master_dict = {**self._config['site'], **self._config['camera'], **self._config['cover_calibrator'],
                 **self._config['dome'], **self._config['filter_wheel'], **self._config['focuser'],
-                **self._config['observing_conditions'], **self._config['autofocus'], **self._config['calibration'],
-                **self._config['recenter'], **self._config['wcs']}
+                **self._config['observing_conditions'], **self._config['rotator'], **self._config['safety_monitor'],
+                **self._config['switch'], **self._config['telescope'], **self._config['autofocus'], 
+                **self._config['calibration'], **self._config['recenter']}
             self._read_out_kwargs(master_dict)
 
         # Camera
         self._camera = kwargs.get('camera', self._camera)
-        _check_class_inheritance(self._camera, 'Camera')
+        _check_class_inheritance(type(self._camera), 'Camera')
         self._camera_driver = self._camera.Name
         self._camera_ascom = (AscomDriver in type(self._camera).__bases__)
         self._config['camera']['camera_driver'] = self._camera_driver
         self._config['camera']['camera_ascom'] = str(self._camera_ascom)
-
-        # Telescope
-        self._telescope = kwargs.get('telescope', self._telescope)
-        _check_class_inheritance(self._telescope, 'Telescope')
-        self._telescope_driver = self._telescope.Name
-        self._telescope_ascom = (AscomDriver in type(self._telescope).__bases__)
-        self._config['telescope']['telescope_driver'] = self._telescope_driver
-        self._config['telescope']['telescope_ascom'] = str(self._telescope_ascom)
 
         # Cover calibrator
         self._cover_calibrator = kwargs.get('cover_calibrator', self._cover_calibrator)
@@ -184,10 +202,45 @@ class Observatory:
         self._config['observing_conditions']['observing_conditions_driver'] = self._observing_conditions_driver
         self._config['observing_conditions']['observing_conditions_ascom'] = self._observing_conditions_ascom
 
+        # Rotator
+        self._rotator = kwargs.get('rotator', self._rotator)
+        if self._rotator is not None: _check_class_inheritance(self._rotator, 'Rotator')
+        self._rotator_driver = self._rotator.Name if self._rotator is not None else ''
+        self._rotator_ascom = (AscomDriver in type(self._rotator).__bases__) if self._rotator is not None else False
+        self._config['rotator']['rotator_driver'] = self._rotator_driver
+        self._config['rotator']['rotator_ascom'] = self._rotator_ascom
+
+        # Safety monitor
+        kwarg = kwargs.get('safety_monitor', self._safety_monitor)
+        if type(kwarg) is not list: self._safety_monitor = [kwarg]
+        else: self._safety_monitor = kwarg
+        for i, safety_monitor in enumerate(self._safety_monitor):
+            if safety_monitor is not None: _check_class_inheritance(safety_monitor, 'SafetyMonitor')
+            self._safety_monitor_driver[i] = safety_monitor.Name if safety_monitor is not None else ''
+            self._safety_monitor_ascom[i] = (AscomDriver in type(safety_monitor).__bases__) if safety_monitor is not None else False
+            self._config['safety_monitor']['driver_%i' % i] = (self._safety_monitor_driver[i] + ',' + str(self._safety_monitor_ascom[i])) if self._safety_monitor_driver[i] != '' else ''
+
+        # Switch
+        kwarg = kwargs.get('switch', self._switch)
+        if type(kwarg) is not list: self._switch = [kwarg]
+        else: self._switch = kwarg
+        for i, switch in enumerate(self._switch):
+            if switch is not None: _check_class_inheritance(switch, 'Switch')
+            self._switch_driver[i] = switch.Name if switch is not None else ''
+            self._switch_ascom[i] = (AscomDriver in type(switch).__bases__) if switch is not None else False
+            self._config['switch']['driver_%i' % i] = (self._switch_driver[i] + ',' + str(self._switch_ascom[i])) if self._switch_driver[i] != '' else ''
+
+        # Telescope
+        self._telescope = kwargs.get('telescope', self._telescope)
+        _check_class_inheritance(self._telescope, 'Telescope')
+        self._telescope_driver = self._telescope.Name
+        self._telescope_ascom = (AscomDriver in type(self._telescope).__bases__)
+        self._config['telescope']['telescope_driver'] = self._telescope_driver
+        self._config['telescope']['telescope_ascom'] = str(self._telescope_ascom)
+
         # Autofocus
         self._autofocus = kwargs.get('autofocus', self._autofocus)
-        if self._autofocus is None: self._autofocus = _Autofocus(self)
-        _check_class_inheritance(self._autofocus, 'Autofocus')
+        if self._autofocus is not None: _check_class_inheritance(self._autofocus, 'Autofocus')
         self._autofocus_driver = self._autofocus.Name
         self._config['autofocus']['autofocus_driver'] = self._autofocus_driver
 
@@ -228,41 +281,50 @@ class Observatory:
     def radec_altaz(self, ra, dec):
         '''Returns the current altitude of an object'''
         return
+    
+    def startup(self):
+        '''Starts up the observatory'''
+        return
+    
+    def shutdown(self):
+        '''Shuts down the observatory'''
+        return
+    
+    def autofocus(self):
+        '''Runs the autofocus routine'''
+        return
+
+    def take_flat_sequence(self):
+        '''Takes a sequence of flat frames defined by the calibration configuration'''
+        return
+    
+    def recenter(self):
+        '''Places an ra and dec at a given pixel'''
+        return
+    
+    def slew(self):
+        '''Slews the telescope to a given ra and dec'''
+        return
+    
+    def derotate(self):
+        '''Begin a derotation thread for the current ra and dec'''
+        return
+    
+    def stop_derotation(self):
+        '''Stops the derotation thread'''
+        return
+    
+    def safety_status(self):
+        '''Returns the status of the safety monitors'''
+        return
+    
+    def switch_status(self):
+        '''Returns the status of the switches'''
+        return
 
     def save_config(self, filename=None):
         with open(filename, 'w') as configfile:
             self.config.write(configfile)
-    
-    def _import_driver(self, driver_name, device, ascom=False, required=False):
-        '''Imports a driver'''
-        if driver_name is None or driver_name == '':
-            if required: raise ObservatoryException("Driver name is required")
-            else: return None
-        if ascom:
-            device = importlib.import_module('drivers.ascom.%s' % device)
-            return device(driver_name)
-        else:
-            try: 
-                device_object = importlib.import_module('drivers.%s.%s' % (driver_name, device))
-            except:
-                try: 
-                    driver_path, driver_module = os.path.split(driver_name)
-                    driver_module = driver_module.split('.')[0]
-                    spec = importlib.util.spec_from_file_location(driver_module, driver_path)
-                    device_module = importlib.util.module_from_spec(spec)
-                    sys.modules[module_name] = device_module
-                    spec.loader.exec_module(device_module)
-                    device_object = getattr(device_module, device)
-                except: 
-                    if required: raise ObservatoryException("Error importing driver '%s'" % driver_name)
-                    else: return None
-
-        return device_object()
-
-    def _check_class_inheritance(self, obj, device):
-        if (not getattr(abs_hd, device) in type(obj).__bases__ and 
-        not getattr(abs_sw, device) in type(obj).__bases__):
-            raise ObservatoryException('Driver %s.%s does not inherit from the required inheritence classes' % (driver_name, device))
     
     def _read_out_kwargs(self, dictionary):
         self.site_name = dictionary.get('site_name', self.site_name)
@@ -280,48 +342,35 @@ class Observatory:
         self.max_dimension = dictionary.get('max_dimension', self.max_dimension)
         self.pixel_x_size = dictionary.get('pixel_x_size', self.pixel_x_size)
         self.pixel_y_size = dictionary.get('pixel_y_size', self.pixel_y_size)
-        self.exposure_timeout = dictionary.get('exposure_timeout', self.exposure_timeout)
-        self.cooler_timeout = dictionary.get('cooler_timeout', self.cooler_timeout)
-
-        self.min_altitude = dictionary.get('min_altitude', self.min_altitude)
-        self.telescope_timeout = dictionary.get('telescope_timeout', self.telescope_timeout)
+        self.default_readout_mode = dictionary.get('default_readout_mode', self.default_readout_mode)
 
         self.cover_calibrator_alt = dictionary.get('cover_calibrator_alt', self.cover_calibrator_alt)
         self.cover_calibrator_az = dictionary.get('cover_calibrator_az', self.cover_calibrator_az)
-        self.cover_calibrator_timeout = dictionary.get('cover_calibrator_timeout', self.cover_calibrator_timeout)
-
-        self.wait_for_dome_rotation = dictionary.get('wait_for_dome_rotation', self.wait_for_dome_rotation)
-        self.dome_timeout = dictionary.get('dome_timeout', self.dome_timeout)
 
         self.filters = dictionary.get('filters', self.filters)
         self.filter_focus_offsets = dictionary.get('filter_focus_offsets', self.filter_focus_offsets)
         self.autofocus_filters = dictionary.get('autofocus_filters', self.autofocus_filters)
         self.recentering_filters = dictionary.get('recentering_filters', self.recentering_filters)
         self.wcs_filters = dictionary.get('wcs_filters', self.wcs_filters)
-        self.filter_wheel_timeout = dictionary.get('filter_wheel_timeout', self.filter_wheel_timeout)
 
         self.focuser_max_error = dictionary.get('focuser_max_error', self.focuser_max_error)
-        self.focuser_timeout = dictionary.get('focuser_timeout', self.focuser_timeout)
 
-        self.observatory_conditions_timeout = dictionary.get('observatory_conditions_timeout', self.observatory_conditions_timeout)
+        self.rotator_min_angle = dictionary.get('rotator_min_angle', self.rotator_min_angle)
+        self.rotator_max_angle = dictionary.get('rotator_max_angle', self.rotator_max_angle)
+
+        self.min_altitude = dictionary.get('min_altitude', self.min_altitude)
 
         self.autofocus_exposure = dictionary.get('autofocus_exposure', self.autofocus_exposure)
         self.autofocus_start_position = dictionary.get('autofocus_start_position', self.autofocus_start_position)
         self.autofocus_step_number = dictionary.get('autofocus_step_number', self.autofocus_step_number)
         self.autofocus_step_size = dictionary.get('autofocus_step_size', self.autofocus_step_size)
         self.autofocus_use_current_pointing = dictionary.get('autofocus_use_current_pointing', self.autofocus_use_current_pointing)
-        self.autofocus_timeout = dictionary.get('autofocus_timeout', self.autofocus_timeout)
 
         self.calibration_filter_exposure = dictionary.get('calibration_filter_exposure', self.calibration_filter_exposure)
         self.calibration_filter_timeout = dictionary.get('calibration_filter_timeout', self.calibration_filter_timeout)
 
         self.recenter_exposure = dictionary.get('recentering_exposure', self.recenter_exposure)
         self.recenter_sync_mount = dictionary.get('recentering_sync_mount', self.recenter_sync_mount)
-        self.recenter_timeout = dictionary.get('recentering_timeout', self.recenter_timeout)
-
-        self.ra_key = dictionary.get('ra_key', self.ra_key)
-        self.dec_key = dictionary.get('dec_key', self.dec_key)
-        self.wcs_timeout = dictionary.get('wcs_timeout', self.wcs_timeout)
 
     @property
     def config(self):
@@ -466,20 +515,12 @@ class Observatory:
         self._config['camera']['pixel_y_size'] = str(self._pixel_y_size) if self._pixel_y_size is not None else ''
     
     @property
-    def exposure_timeout(self):
-        return self._exposure_timeout
-    @exposure_timeout.setter
-    def exposure_timeout(self, value):
-        self._exposure_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['camera']['exposure_timeout'] = str(self._exposure_timeout) if self._exposure_timeout is not None else ''
-    
-    @property
-    def cooler_timeout(self):
-        return self._cooler_timeout
-    @cooler_timeout.setter
-    def cooler_timeout(self, value):
-        self._cooler_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['camera']['cooler_timeout'] = str(self._cooler_timeout) if self._cooler_timeout is not None else ''
+    def default_readout_mode(self):
+        return self._default_readout_mode
+    @default_readout_mode.setter
+    def default_readout_mode(self, value):
+        self._default_readout_mode = int(value) if value is not None or value !='' else None
+        self._config['camera']['default_readout_mode'] = str(self._default_readout_mode) if self._default_readout_mode is not None else ''
 
     @property
     def cover_calibrator(self):
@@ -510,14 +551,6 @@ class Observatory:
         self._config['cover_calibrator']['cover_calibrator_az'] = str(self._cover_calibrator_az) if self._cover_calibrator_az is not None else ''
 
     @property
-    def cover_calibrator_timeout(self):
-        return self._cover_calibrator_timeout
-    @cover_calibrator_timeout.setter
-    def cover_calibrator_timeout(self, value):
-        self._cover_calibrator_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['cover_calibrator']['cover_calibrator_timeout'] = str(self._cover_calibrator_timeout) if self._cover_calibrator_timeout is not None else ''
-
-    @property
     def dome(self):
         return self._dome
 
@@ -528,22 +561,6 @@ class Observatory:
     @property
     def dome_ascom(self):
         return self._dome_ascom
-    
-    @property
-    def wait_for_dome_rotation(self):
-        return self._wait_for_dome_rotation
-    @wait_for_dome_rotation.setter
-    def wait_for_dome_rotation(self, value):
-        self._wait_for_dome_rotation = bool(value)
-        self._config['dome']['wait_for_dome_rotation'] = str(self._wait_for_dome_rotation)
-    
-    @property
-    def dome_timeout(self):
-        return self._dome_timeout
-    @dome_timeout.setter
-    def dome_timeout(self, value):
-        self._dome_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['dome']['dome_timeout'] = str(self._dome_timeout) if self._dome_timeout is not None else ''
 
     @property
     def filter_wheel(self):
@@ -624,14 +641,6 @@ class Observatory:
         self._config['filter_wheel']['wcs_filters'] = ', '.join(self._wcs_filters)
     
     @property
-    def filter_wheel_timeout(self):
-        return self._filter_wheel_timeout
-    @filter_wheel_timeout.setter
-    def filter_wheel_timeout(self, value):
-        self._filter_wheel_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['filter_wheel']['filter_wheel_timeout'] = str(self._filter_wheel_timeout) if self._filter_wheel_timeout is not None else ''
-    
-    @property
     def focuser(self):
         return self._focuser
     
@@ -650,14 +659,6 @@ class Observatory:
     def focuser_max_error(self, value):
         self._focuser_max_error = max(float(value), 0) if value is not None or value !='' else None
         self._config['focuser']['focuser_max_error'] = str(self._focuser_max_error) if self._focuser_max_error is not None else ''
-    
-    @property
-    def focuser_timeout(self):
-        return self._focuser_timeout
-    @focuser_timeout.setter
-    def focuser_timeout(self, value):
-        self._focuser_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['focuser']['focuser_timeout'] = str(self._focuser_timeout) if self._focuser_timeout is not None else ''
 
     @property
     def observing_conditions(self):
@@ -670,14 +671,58 @@ class Observatory:
     @property
     def observing_conditions_ascom(self):
         return self._observing_conditions_ascom
+
+    @property
+    def rotator(self):
+        return self._rotator
+    
+    @property 
+    def rotator_driver(self):
+        return self._rotator_driver
+
+    @property
+    def rotator_ascom(self):
+        return self._rotator_ascom
     
     @property
-    def observing_conditions_timeout(self):
-        return self._observing_conditions_timeout
-    @observing_conditions_timeout.setter
-    def observing_conditions_timeout(self, value):
-        self._observing_conditions_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['observing_conditions']['observing_conditions_timeout'] = str(self._observing_conditions_timeout) if self._observing_conditions_timeout is not None else ''
+    def rotator_min_angle(self):
+        return self._rotator_min_angle
+    @rotator_min_angle.setter
+    def rotator_min_angle(self, value):
+        self._rotator_min_angle = float(value) if value is not None or value !='' else None
+        self._config['rotator']['rotator_min_angle'] = str(self._rotator_min_angle) if self._rotator_min_angle is not None else ''
+    
+    @property
+    def rotator_max_angle(self):
+        return self._rotator_max_angle
+    @rotator_max_angle.setter
+    def rotator_max_angle(self, value):
+        self._rotator_max_angle = float(value) if value is not None or value !='' else None
+        self._config['rotator']['rotator_max_angle'] = str(self._rotator_max_angle) if self._rotator_max_angle is not None else ''
+
+    @property
+    def safety_monitor(self):
+        return self._safety_monitor
+    
+    @property
+    def safety_monitor_driver(self):
+        return self._safety_monitor_driver
+    
+    @property
+    def safety_monitor_ascom(self):
+        return self._safety_monitor_ascom
+    
+    @property
+    def switch(self):
+        return self._switch
+
+    @property
+    def switch_driver(self):
+        return self._switch_driver
+    
+    @property
+    def switch_ascom(self):
+        return self._switch_ascom
     
     @property
     def telescope(self):
@@ -698,14 +743,6 @@ class Observatory:
     def min_altitude(self, value):
         self._min_altitude = min(max(float(value), 0), 90) if value is not None or value !='' else None
         self._config['telescope']['min_altitude'] = str(self._min_altitude) if self._min_altitude is not None else ''
-
-    @property
-    def telescope_timeout(self):
-        return self._telescope_timeout
-    @telescope_timeout.setter
-    def telescope_timeout(self, value):
-        self._telescope_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['telescope']['telescope_timeout'] = str(self._telescope_timeout) if self._telescope_timeout is not None else ''
 
     @property
     def autofocus(self):
@@ -756,14 +793,6 @@ class Observatory:
         self._config['autofocus']['autofocus_use_current_pointing'] = str(self._autofocus_use_current_pointing)
     
     @property
-    def autofocus_timeout(self):
-        return self._autofocus_timeout
-    @autofocus_timeout.setter
-    def autofocus_timeout(self, value):
-        self._autofocus_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['autofocus']['autofocus_timeout'] = str(self._autofocus_timeout) if self._autofocus_timeout is not None else ''
-    
-    @property
     def calibration_filter_exposure_time(self):
         return self._calibration_filter_exposure_time
     @calibration_filter_exposure_time.setter
@@ -798,48 +827,8 @@ class Observatory:
         self._config['recenter']['recenter_sync_mount'] = str(self._recenter_sync_mount)
     
     @property
-    def recenter_timeout(self):
-        return self._recenter_timeout
-    @recenter_timeout.setter
-    def recenter_timeout(self, value):
-        self._recenter_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['recenter']['recenter_timeout'] = str(self._recenter_timeout) if self._recenter_timeout is not None else ''
-    
-    @property
     def wcs_driver(self):
         return self._wcs_driver
-    
-    @property
-    def ra_key(self):
-        return self._ra_key
-    @ra_key.setter
-    def ra_key(self, value):
-        self._ra_key = str(value) if value is not None or value !='' else None
-        self._config['wcs']['ra_key'] = str(self._ra_key) if self._ra_key is not None else ''
-
-    @property
-    def dec_key(self):
-        return self._dec_key
-    @dec_key.setter
-    def dec_key(self, value):
-        self._dec_key = str(value) if value is not None or value !='' else None
-        self._config['wcs']['dec_key'] = str(self._dec_key) if self._dec_key is not None else ''
-
-    @property
-    def wcs_timeout(self):
-        return self._wcs_timeout
-    @wcs_timeout.setter
-    def wcs_timeout(self, value):
-        self._wcs_timeout = max(float(value), 0) if value is not None or value !='' else None
-        self._config['wcs']['wcs_timeout'] = str(self._wcs_timeout) if self._wcs_timeout is not None else ''
-
-class _Autofocus(abs_sw.Autofocus):
-    def __init__(self, Observatory):
-        pass
-
-class _CoverCalibrator(abs_hw.CoverCalibrator):
-    def __init__(self, Observatory):
-        pass
 
 class ObservatoryException(Exception):
     pass
