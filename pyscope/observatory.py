@@ -2,11 +2,11 @@ from astropy import coordinates as coord
 import configparser
 import logging
 
-from . import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservatoryConditions
+from . import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
 from . import Rotator, SafetyMonitor, Switch, Telescope, WCS
 from . import _check_class_inheritance
 
-import drivers._ascom.AscomDriver as AscomDriver
+import drivers._ascom.Driver as AscomDriver
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides
