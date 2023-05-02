@@ -1,6 +1,9 @@
-from astropy import coordinates as coord
+from astropy import coordinates as coord, time as Time
+import astropy.wcs, astropy.io.fits as pyfits
 import configparser
 import logging
+import tempfile
+import shutil
 
 from . import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
 from . import Rotator, SafetyMonitor, Switch, Telescope, WCS
@@ -68,8 +71,6 @@ class Observatory:
         self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True
 
         self.calibration_filter_exposure = None; self.calibration_filter_focus = None
-
-        self.recenter_exposure = 10; self.recenter_sync_mount = False
 
         if config_file_path is not None:
             logging.info('Using config file to initialize observatory: %s' % config_file)
@@ -268,10 +269,6 @@ class Observatory:
         # Get other keywords
         self._read_out_kwargs(kwargs)
 
-    def earth_location(self):
-        '''Returns the EarthLocation object for the observatory'''
-        return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
-
     def plate_scale(self):
         '''Returns the plate scale of the telescope'''
         return 
@@ -308,11 +305,176 @@ class Observatory:
         '''Takes a sequence of flat frames defined by the calibration configuration'''
         return
     
-    def recenter(self):
-        '''Places an ra and dec at a given pixel'''
+    def take_dark_sequence(self):
+        '''Takes a sequence of dark frames'''
         return
     
-    def slew(self):
+    def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
+                target_y_pixel=None, initial_offset_dec=0, check_and_refine=True, max_attempts=5, tolerance=3, 
+                exposure=10, save_images=False, save_path='.', sync_mount=False, settle_time=5, do_initial_slew=True):
+        '''Attempts to place the requested right ascension and declination at the requested pixel location
+        on the detector. 
+        
+        Parameters
+        ----------
+        obj : str or `~astropy.coordinates.SkyCoord`, optional
+            The name of the target or a `~astropy.coordinates.SkyCoord` object of the target. If a string, 
+            a query will be made to the SIMBAD database to get the coordinates. If a `~astropy.coordinates.SkyCoord`
+            object, the coordinates will be used directly. If None, the ra and dec parameters must be specified.
+        ra : `~astropy.coordinates.Longitude`-like, optional
+            The ICRS J2000 right ascension of the target that will initialize a `~astropy.coordinates.SkyCoord` 
+            object. This will override the ra value in the object parameter.
+        dec : `~astropy.coordinates.Latitude`-like, optional
+            The ICRS J2000 declination of the target that will initialize a `~astropy.coordinates.SkyCoord`
+            object. This will override the dec value in the object parameter.
+        unit : tuple, optional
+            The units of the ra and dec parameters. Default is ('hr', 'deg').
+        frame : str, optional
+            The coordinate frame of the ra and dec parameters. Default is 'icrs'.
+        target_x_pixel : float, optional
+            The desired x pixel location of the target.
+        target_y_pixel : float, optional
+            The desired y pixel location of the target.
+        initial_offset_dec : float, optional
+            The initial offset of declination in arcseconds to use for the slew. Default is 0. Ignored if
+            do_initial_slew is False.
+        check_and_refine : bool, optional
+            Whether or not to check the offset and refine the slew. Default is True.
+        max_attempts : int, optional
+            The maximum number of attempts to make to center the target. Default is 5. Ignored if
+            check_and_refine is False.
+        tolerance : float, optional
+            The tolerance in pixels to consider the target centered. Default is 3. Ignored if
+            check_and_refine is False.
+        exposure : float, optional
+            The exposure time in seconds to use for the centering images. Default is 10.
+        save_images : bool, optional
+            Whether or not to save the centering images. Default is False.
+        save_path : str, optional
+            The path to save the centering images to. Default is the current directory. Ignored if
+            save_images is False.
+        sync_mount : bool, optional
+            Whether or not to sync the mount after the target is centered. Default is False. Note that
+            if the target pixel location is not the center of the detector, the mount will be synced
+            to this offset for all future slews.
+        settle_time : float, optional
+            The time in seconds to wait after the slew before checking the offset. Default is 5.
+        do_initial_slew : bool, optional
+            Whether or not to do the initial slew to the target. Default is True. If False, the current
+            telescope position will be used as the starting point for the centering routine.
+
+        Returns
+        -------
+        success : bool
+            True if the target was successfully centered, False otherwise.
+            '''
+
+        if type(obj) is str: obj = coord.SkyCoord.from_name(obj)
+        elif type(obj) is coord.SkyCoord: pass
+        elif ra is not None and dec is not None: obj = coord.SkyCoord(ra=ra, 
+            dec=dec, unit=unit, frame=frame)
+
+        if obj is None: raise Exception('Either the object, the ra, or the dec must be specified.')
+
+        logging.info('Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)' %
+            (frame, obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2], obj.dec.dms[0], obj.dec.dms[1], obj.dec.dms[2], 
+            target_x_pixel, target_y_pixel))
+
+        if initial_offset_dec != 0 and do_initial_slew:
+            logging.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
+
+        for attempt in range(max_attempts):
+            slew_obj = obj.transform_to(coord.TETE(obstime=time.Time.now(), location=self.earth_location))
+            
+            if check_and_refine:
+                logging.info('Attempt %i of %i' % (attempt+1, max_attempts))
+            
+            if attempt == 0: 
+                if do_initial_slew:
+                    if initial_offset_dec != 0:
+                        logging.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
+                    self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg + initial_offset_dec/3600)
+            else: self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg)
+            
+            logging.info('Settling for %.2f seconds' % settle_time)
+            time.sleep(settle_time)
+
+            if not check_and_refine and attempt_number > 0:
+                logging.info('Check and recenter is off, single-shot recentering complete')
+                return True
+            
+            logging.info('Taking %.2f second exposure' % exposure)
+            self.camera.StartExposure(exposure, True)
+            while not self.camera.ImageReady: time.sleep(0.1)
+            logging.info('Exposure complete')
+
+            temp_image = tempfile.gettempdir()+'temp.fts' % attempt_number
+            self.save_image(temp_image)
+
+            logging.info('Searching for a WCS solution...')
+            solution_found = self.WCS.Solve(temp_image)
+
+            if save_images:
+                logging.info('Saving the centering image to %s' % save_path)
+                shutil.copy(temp_image, save_path)
+
+            if not solution_found:
+                logging.info('No WCS solution found, skipping this attempt')
+                continue
+            
+            logging.info('WCS solution found, solving for the pixel location of the target')
+            try:
+                hdulist = pyfits.open(temp_image)
+                w = astropy.wcs.WCS(hdulist[0].header)
+
+                center_coord = w.pixel_to_world(int(self.camera.CameraXSize/2), int(self.camera.CameraYSize/2))
+                center_ra = center_coord.ra.hour; center_dec = center_coord.dec.deg
+                logging.info('Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
+                    (center_coord.ra.hms[0], center_coord.ra.hms[1], center_coord.ra.hms[2],
+                    center_coord.dec.dms[0], center_coord.dec.dms[1], center_coord.dec.dms[2]))
+
+                coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
+                target_pixel_ra = coord.ra.hour; target_pixel_dec = coord.dec.deg
+                logging.info('Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
+                (coord.ra.hms[0], coord.ra.hms[1], coord.ra.hms[2],
+                coord.dec.dms[0], coord.dec.dms[1], coord.dec.dms[2]))
+
+                pixels = w.world_to_pixel(obj)
+                obj_x_pixel = pixels[0]; obj_y_pixel = pixels[1]
+                logging.info('Object is at pixel (%.2f, %.2f)' % (obj_x_pixel, obj_y_pixel))
+            except: 
+                logging.info('Could not solve for the pixel location of the target, skipping this attempt')
+                continue
+
+            error_ra = obj.ra.hour - target_pixel_ra; error_dec = obj.dec.deg - target_pixel_dec
+            error_x_pixels = obj_x_pixel - target_x_pixel; error_y_pixels = obj_y_pixel - target_y_pixel
+            logging.info('Error in RA is %.2f arcseconds' % (error_ra*15*3600))
+            logging.info('Error in Dec is %.2f arcseconds' % (error_dec*3600))
+            logging.info('Error in x pixels is %.2f' % error_x_pixels)
+            logging.info('Error in y pixels is %.2f' % error_y_pixels)
+
+            if max(error_x_pixels, error_y_pixels) <= max_pixel_error:
+                break
+
+            logging.info('Offsetting next slew coordinates')
+            obj = coord.SkyCoord(ra=obj.ra.hour + error_ra, dec=obj.dec.deg + error_dec, 
+                                unit=('hour', 'deg'), frame='icrs')
+        else:
+            logging.info('Target could not be centered after %d attempts' % max_attempts)
+            return False
+        
+        if sync_mount:
+                logging.info('Syncing the mount to the center ra and dec transformed to J-Now...')
+
+                sync_obj = coord.SkyCoord(ra=center_ra, dec=center_dec, unit=('hour', 'deg'), frame='icrs')
+                sync_obj = sync_obj.transform_to(coord.TETE(obstime=time.Time.now(), location=self.earth_location))
+                self.telescope.SyncToCoordinates(sync_obj.ra.hour, sync_obj.dec.deg)
+                logging.info('Sync complete')
+            
+        logging.info('Target is now in position after %d attempts' % (attempt+1))
+        return True
+    
+    def slew_to_coordinates(self, ra, dec):
         '''Slews the telescope to a given ra and dec'''
         return
     
@@ -330,6 +492,10 @@ class Observatory:
     
     def switch_status(self):
         '''Returns the status of the switches'''
+        return
+    
+    def save_image(self, filename):
+        '''Saves the current image'''
         return
 
     def save_config(self, filename=None):
@@ -379,8 +545,10 @@ class Observatory:
         self.calibration_filter_exposure = dictionary.get('calibration_filter_exposure', self.calibration_filter_exposure)
         self.calibration_filter_timeout = dictionary.get('calibration_filter_timeout', self.calibration_filter_timeout)
 
-        self.recenter_exposure = dictionary.get('recentering_exposure', self.recenter_exposure)
-        self.recenter_sync_mount = dictionary.get('recentering_sync_mount', self.recenter_sync_mount)
+    @property
+    def earth_location(self):
+        '''Returns the EarthLocation object for the observatory'''
+        return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
 
     @property
     def config(self):
