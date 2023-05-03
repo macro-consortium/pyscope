@@ -1,3 +1,5 @@
+__version__ = '0.1.0'
+
 # Current directory imports
 from ._driver_utils import _import_driver, _check_class_inheritance
 from .autofocus import Autofocus
