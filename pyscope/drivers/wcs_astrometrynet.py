@@ -1,4 +1,4 @@
-from drivers import abstract
+from . import abstract
 
 import os
 import astropy.io.fits as pyfits

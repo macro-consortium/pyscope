@@ -2,6 +2,7 @@ from .camera import Camera
 from .cover_calibrator import CoverCalibrator
 from .dome import Dome
 from .driver import Driver
+from .filter_wheel import FilterWheel
 from .focuser import Focuser
 from .observing_conditions import ObservingConditions
 from .rotator import Rotator

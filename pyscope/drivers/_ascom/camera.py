@@ -1,4 +1,4 @@
-from . import Driver
+from .driver import Driver
 from .. import abstract
 
 class Camera(Driver, abstract.Camera):

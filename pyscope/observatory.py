@@ -7,12 +7,12 @@ import tempfile
 import time
 import shutil
 
-from . import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
-from . import Rotator, SafetyMonitor, Switch, Telescope, WCS
-from . import _check_class_inheritance
-from . import __version__
+from pyscope import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
+from pyscope import Rotator, SafetyMonitor, Switch, Telescope, WCS
 
-import drivers._ascom.Driver as AscomDriver
+from pyscope._driver_utils import _check_class_inheritance
+from pyscope.drivers._ascom import Driver as AscomDriver
+from . import __version__
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides
@@ -1375,7 +1375,7 @@ class Observatory:
     @property
     def recenter_sync_mount(self):
         return self._recenter_sync_mount
-    @sync_mount.setter
+    @recenter_sync_mount.setter
     def recenter_sync_mount(self, value):
         self._recenter_sync_mount = bool(value)
         self._config['recenter']['recenter_sync_mount'] = str(self._recenter_sync_mount)

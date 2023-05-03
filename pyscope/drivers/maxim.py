@@ -10,6 +10,9 @@ the standard Camera programming interface. Alternative
 implementations can be provided by other drivers in the future.
 """
 
+class Maxim:
+    pass
+
 _maxim = None  # Reference to MaxIm.Application object
 _camera = None # Reference to MaxIm.CCDCamera object
 _last_exposure_start_datetime = None  # Used to check that the exposure returned by Maxim was generated after the call to Expose()

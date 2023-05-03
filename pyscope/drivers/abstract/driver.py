@@ -9,8 +9,8 @@ class Driver(ABC):
     @abstractmethod
     def Connected(self):
         pass
-    @abstractmethod
     @Connected.setter
+    @abstractmethod
     def Connected(self, value):
         pass
 

@@ -3,6 +3,9 @@
 import pycurl
 from io import BytesIO
 
+class SafetyMonitor:
+    pass
+
 def checkOpen():
     isOpen = False
     buffer = BytesIO()

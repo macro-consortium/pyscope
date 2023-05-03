@@ -1,7 +1,12 @@
 import logging
 import time
 
-from win32com.client import Dispatch
+# from win32com.client import Dispatch
+def Dispatch(com_object_name):
+    return None
+
+class Autofocus:
+    pass
 
 _autofocus = None # Holds a reference to the PlaneWave.AutoFocus object once initialized
 

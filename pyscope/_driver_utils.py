@@ -1,8 +1,8 @@
 import importlib
 import sys
 
-from drivers import abstract
-from . import ObservatoryException
+from pyscope.drivers import abstract
+# from .observatory import ObservatoryException
 
 def _import_driver(driver_name, device, ascom=False):
     '''Imports a driver'''
@@ -13,7 +13,8 @@ def _import_driver(driver_name, device, ascom=False):
         return device_class(driver_name)
     else:
         try: 
-            device_class = importlib.import_module('drivers.%s' % driver_name)
+            device_module = importlib.import_module('.drivers.%s' % driver_name, package='pyscope')
+            device_class = getattr(device_module, device)
         except:
             try: 
                 spec = importlib.util.spec_from_file_location(driver_name, device)
@@ -30,3 +31,6 @@ def _import_driver(driver_name, device, ascom=False):
 def _check_class_inheritance(device_class, device):
     if not getattr(abstract, device) in device_class.__bases__:
             raise ObservatoryException('Driver %s does not inherit from the required abstract classes' % driver_name)
+
+class ObservatoryException(Exception):
+    pass

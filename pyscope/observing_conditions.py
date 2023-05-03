@@ -1,4 +1,4 @@
-from . import _import_driver
+from pyscope._driver_utils import _import_driver
 
 def ObservingConditions(driver_name, ascom=True):
     '''Return an observing conditions object.

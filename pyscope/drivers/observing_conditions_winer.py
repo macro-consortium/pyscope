@@ -1,11 +1,14 @@
 import re
 import urllib.request, urllib.parse, urllib.error
 
-from . import relimport
-from iotalib import convert
-from iotalib.weather import WeatherReading
+# from . import relimport
+# from iotalib import convert
+# from iotalib.weather import WeatherReading
 
 WINER_WEATHER_URL = "https://winer.org/Site/Weather.php"
+
+class ObservingConditions:
+    pass
 
 def initialize():
     pass

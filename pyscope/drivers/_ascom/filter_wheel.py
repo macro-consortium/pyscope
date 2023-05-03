@@ -1,4 +1,4 @@
-from . import Driver
+from .driver import Driver
 from .. import abstract
 
 class FilterWheel(Driver, abstract.FilterWheel):
