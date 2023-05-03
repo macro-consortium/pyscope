@@ -783,7 +783,11 @@ class Observatory:
             self.save_last_image(temp_image)
 
             logging.info('Searching for a WCS solution...')
-            solution_found = self.WCS.Solve(temp_image)
+            solution_found = self.WCS.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                                            ra_dec_units=('hour', 'deg'), solve_timeout=60, 
+                                            scale_units='arcsecperpix', scale_type='ev',
+                                            scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                                            parity=1, crpix_center=True)
 
             if save_images:
                 logging.info('Saving the centering image to %s' % save_path)
@@ -920,7 +924,7 @@ class Observatory:
     @property
     def pixel_scale(self):
         '''Returns the pixel scale of the camera'''
-        return (self.plate_scale * self.pixel_x_size, self.plate_scale * self.pixel_y_size)
+        return (self.plate_scale * self.pixel_x_size*1e-3, self.plate_scale * self.pixel_y_size*1e-3)
 
     @property
     def config(self):
