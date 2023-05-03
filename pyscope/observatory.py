@@ -37,13 +37,13 @@ class Observatory:
         self.site_name = 'pyScope Site'
         self.instrument_name = 'pyScope Instrument' 
         self.instrument_description = 'pyScope is a pure-Python telescope control package.'
-        self.get_site_from_telescope = False
+        self.get_site_from_telescope = True
         self.latitude = None; self.longitude = None; self.elevation = None
         self.diameter = None; self.focal_length = None
 
         self._camera = None
         self.cooler_setpoint = None; self.cooler_tolerance = None; self.max_dimension = None
-        self.pixel_x_size = None; self.pixel_y_size = None; self.default_readout_mode = None
+        self.default_readout_mode = None
 
         self._cover_calibrator = None
         self.cover_calibrator_alt = None; self.cover_calibrator_az = None
@@ -271,6 +271,8 @@ class Observatory:
 
         # Get other keywords
         self._read_out_kwargs(kwargs)
+
+        if self.focal_length is None: self.focal_length = self.telescope.FocalLength
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -424,8 +426,8 @@ class Observatory:
         hdr['SET-TEMP'] = (self.camera.CoolerSetPoint, 'CCD temperature setpoint in C')
         hdr['CCD-TEMP'] = (self.camera.CCDTemperature, 'CCD temperature in C')
         if self.camera.CanGetCoolerPower: hdr['COOLERPOW'] = (self.camera.CoolerPower, 'Cooler power in percent')
-        hdr['XPIXSZ'] = (self.pixel_x_size, 'Pixel size in microns')
-        hdr['YPIXSZ'] = (self.pixel_y_size, 'Pixel size in microns')
+        hdr['XPIXSZ'] = (self.camera.PixelSizeX, 'Pixel size in microns')
+        hdr['YPIXSZ'] = (self.camera.PixelSizeY, 'Pixel size in microns')
         hdr['XBINNING'] = (self.camera.BinX, 'Binning factor in width')
         hdr['YBINNING'] = (self.camera.BinY, 'Binning factor in height')
         hdr['XORGSUBF'] = (self.camera.StartX, 'Subframe X position')
@@ -877,8 +879,6 @@ class Observatory:
         self.cooler_setpoint = dictionary.get('cooler_setpoint', self.cooler_setpoint)
         self.cooler_tolerance = dictionary.get('cooler_tolerance', self.cooler_tolerance)
         self.max_dimension = dictionary.get('max_dimension', self.max_dimension)
-        self.pixel_x_size = dictionary.get('pixel_x_size', self.pixel_x_size)
-        self.pixel_y_size = dictionary.get('pixel_y_size', self.pixel_y_size)
         self.default_readout_mode = dictionary.get('default_readout_mode', self.default_readout_mode)
 
         self.cover_calibrator_alt = dictionary.get('cover_calibrator_alt', self.cover_calibrator_alt)
@@ -924,7 +924,7 @@ class Observatory:
     @property
     def pixel_scale(self):
         '''Returns the pixel scale of the camera'''
-        return (self.plate_scale * self.pixel_x_size*1e-3, self.plate_scale * self.pixel_y_size*1e-3)
+        return (self.plate_scale * self.camera.PixelSizeX*1e-3, self.plate_scale * self.camera.PixelSizeY*1e-3)
 
     @property
     def config(self):
@@ -1051,22 +1051,6 @@ class Observatory:
         self._config['camera']['max_dimension'] = str(self._max_dimension) if self._max_dimension is not None else ''
         if self._max_dimension is not None and max(self.camera.CameraXSize, self.camera.CameraYSize) > self._max_dimension:
             raise ObservatoryException('Camera sensor size exceeds maximum dimension of %d' % self._max_dimension)
-
-    @property
-    def pixel_x_size(self):
-        return self._pixel_x_size
-    @pixel_x_size.setter
-    def pixel_x_size(self, value):
-        self._pixel_x_size = max(float(value), 0) if value is not None or value !='' else None
-        self._config['camera']['pixel_x_size'] = str(self._pixel_x_size) if self._pixel_x_size is not None else ''
-
-    @property
-    def pixel_y_size(self):
-        return self._pixel_y_size
-    @pixel_y_size.setter
-    def pixel_y_size(self, value):
-        self._pixel_y_size = max(float(value), 0) if value is not None or value !='' else None
-        self._config['camera']['pixel_y_size'] = str(self._pixel_y_size) if self._pixel_y_size is not None else ''
     
     @property
     def default_readout_mode(self):

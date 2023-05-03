@@ -1,6 +1,7 @@
 # TODO
 <ul>
-<li>Add wcs_astrometrynet driver</li>
+<li>Add get aperture, etc from telescope options</li>
+<li>In ASCOM drivers, add catches for PropertyNotImplemented and MethodNotImplemented exceptions</li>
 <li>Add observatory config option for rotator reverse</li>
 <li>Add config file defaults for autofocus, recenter, flat/dark sequence</li>
 <li>Add support for multi-color cameras</li>
