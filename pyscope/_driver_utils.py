@@ -2,6 +2,7 @@ import importlib
 import sys
 
 from pyscope.drivers import abstract
+from pyscope.drivers import _ascom
 # from .observatory import ObservatoryException
 
 def _import_driver(driver_name, device, ascom=False):
@@ -9,11 +10,11 @@ def _import_driver(driver_name, device, ascom=False):
     if driver_name is None: return None
 
     if ascom:
-        device_class = importlib.import_module('drivers._ascom.%s' % device)
+        device_class = getattr(_ascom, device)
         return device_class(driver_name)
     else:
         try: 
-            device_module = importlib.import_module('.drivers.%s' % driver_name, package='pyscope')
+            device_module = importlib.import_module('pyscope.drivers.%s' % driver_name)
             device_class = getattr(device_module, device)
         except:
             try: 
