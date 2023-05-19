@@ -38,6 +38,6 @@ def dimmer(Intensity):
 	    print('Test')
 	finally:
 	    data = s.recv(BUFFER_SIZE)
-	    if data != 'U': print('Failed')
+	    if data != b'U': print('Failed')
 	    s.close()
 
