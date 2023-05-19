@@ -785,6 +785,11 @@ def run_scans(telrun_file):
 
         set_scan_status(telrun_file, scan, "D")
 
+        if scan.filter == '6':
+            logging.info('Taking flushing images...')
+            for i in range(5):
+                observatory.camera.start_exposure(2, False)
+
     return True # Full telrun file has been processed
         
 

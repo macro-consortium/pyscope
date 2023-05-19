@@ -99,7 +99,7 @@ pmax = 2**16 -1  # Hack for now, should get from header info
 
 
 # Set xmin, xmax, ymin ,ymax for calculating means etc ( i.e., do not use borders) 
-border = 16
+border = 1024
 xmin = ymin  = border
 xmax = xpixels - border
 ymax = ypixels - border
@@ -112,11 +112,11 @@ if verbose: print('Warning: Science image has different exposure time than dark 
 
 # Set default file names using binning and readout mdoe
 if readout_mode == 'High Gain':
-    dark_master = '%smaster-dark-%s-%.1f-%ix%i.fts' % (calib_dir, 'high',tdark, nbin, nbin)
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'high',tdark, nbin, nbin)
 elif readout_mode == 'Low Gain':
-    dark_master = '%smaster-dark-%s-%.1f-%ix%i.fts' % (calib_dir, 'low', tdark, nbin, nbin)
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'low', tdark, nbin, nbin)
 elif readout_mode == 'High Gain StackPro':
-    dark_master = '%smaster-dark-%s-%.1f-%ix%i.fts' % (calib_dir, 'spro',tdark, nbin, nbin)
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'spro',tdark, nbin, nbin)
 else:
     sys.exit('Mode %s is not currently supported, exiting' % readout_mode)
 if verbose: print('Calibrating using mode %s' % readout_mode)
@@ -156,10 +156,10 @@ if filter_raw[0] != filter_flat[0]: sys.exit('Raw (%s), flat (%s) filters do not
 if verbose:
     print('User flat image %s' % flat_image)
     print('Flat image statistics:  min = %5.1f, median = %5.1f, max = %5.1f' % (np.min(im_flat), np.median(im_flat), np.max(im_flat) ))
-im_flat = im_flat / np.median(im_flat[xmin:xmax,ymin:ymax])
 
-# Limit correction to avoid dividing by bad pixels 
-im_flat[im_flat < 0.1] = 0.1
+im_flat = im_flat/np.mean(im_flat[xmin:xmax,ymin:ymax])
+im_flat[im_flat <= 0] = 1
+im_flat[im_flat >= 65535] = 65535
 
 # Print all files to log
 if verbose:
@@ -167,10 +167,11 @@ if verbose:
     print('Medians:  image = %.1f, dark = %.1f' % (np.median(im_raw),  np.median(im_dark) ))
 
 # Do image arithmetic: add pedestal, subtract dark, divide by normalized flat
-pedestal = 0
-im_cal = (im_raw + pedestal - im_dark) / im_flat
+pedestal = 100
+im_cal = (im_raw - im_dark)/im_flat + pedestal
 # restrict  pixel  range to 16 bits [0, pmax]
 im_cal[im_cal<0] = 0; im_cal[im_cal > pmax] = pmax 
+im_cal = np.floor(im_cal)
 # Fix bad columns 
 #im_cal, badcols = fix_badcolumns(im_cal, imsize, border)
 if len(bad_columns) != 0:
@@ -182,7 +183,8 @@ hdr_cal = pyfits.getheader(raw_image)
 s0 = 'Calibrated using cmos-calib'
 s1 = 'Dark frame = %s' % dark_image 
 s2 = 'Flat frame = %s' % flat_image
-hdr_cal.add_comment(s0); hdr_cal.add_comment(s1) ; hdr_cal.add_comment(s2)
+s3 = 'Pedestal added during calibration = %i' % pedestal
+hdr_cal.add_comment(s0); hdr_cal.add_comment(s1) ; hdr_cal.add_comment(s2); hdr_cal.add_comment(s3)
 #hdr_cal.add_comment('Replaced bad columns: %s' % badcols)
 
 # Add CALSTAT keyword to calibrate images, so other programs realize this image is already calibrated
