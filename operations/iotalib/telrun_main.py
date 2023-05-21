@@ -509,7 +509,7 @@ def run_scans(telrun_file):
         try: 
             do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
                 or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec))
-                or auto_done)
+                or auto_done or previous_scan.status == telrunfile.STATUS_FAIL)
             logging.info('Initial slew: %s' % str(do_slew))
         except: do_slew = True
 
