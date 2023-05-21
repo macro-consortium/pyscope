@@ -177,6 +177,9 @@ def main():
             time.sleep(2)
             print("Taking %d flat images with %d second exposure in filter %s..." % (NUMBER_FLATS,FILTER_EXPOSURE_TIME[filternum],fname))
             while flatnum < NUMBER_FLATS:
+                while camera.Temperature > -19.9:
+                    print('Waiting for camera to cooldown...')
+                    time.sleep(10)
                 camera.BinX = BINNING
                 camera.BinY = BINNING
                 camera.Expose(FILTER_EXPOSURE_TIME[filternum], 1, filternum)
@@ -194,8 +197,6 @@ def main():
                     #print "Saving image to", filepath
                     camera.SaveImage(filepath)
         filternum=filternum + 1
-        print('30 second cooldown...')
-        time.sleep(30)
     print("Turning off calibration lamps...")
     pulsar_dimmer.dimmer(0) # Turn off the flat field lamps when finished exposing
     
