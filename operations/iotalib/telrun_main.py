@@ -201,7 +201,7 @@ def main_operation_loop(telrun_file):
             except Exception as ex:
                     logging.exception("Error refreshing roof info")
             time.sleep(60)
-        
+    '''
     # Wait for CCD temperature regulation
     cooler_warning_sent = False
     cooler_start_time = time.time()
@@ -227,6 +227,7 @@ def main_operation_loop(telrun_file):
                     )
             cooler_warning_sent = True
         time.sleep(60)
+    '''
     
     # Wait for sun to set
     while observatory.get_sun_altitude_degs() > config_observatory.max_sun_altitude_degs and config_telrun.values.wait_for_sun:
@@ -462,10 +463,10 @@ def run_scans(telrun_file):
         
         if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius())
         > config_telrun.values.camera_cooler_tolerance):
-            logging.info("Camera temperature is %s C, but should be %s C. Skipping scan", 
+            logging.info("Camera temperature is %s C, but should be %s C. Continuing with scan anyway...", 
                 observatory.camera.get_ccd_temperature_celsius(), config_telrun.values.camera_cooler_celsius)
-            telrun_status.skipped_scan_count += 1
-            set_scan_status(telrun_file, scan, "F")
+            # telrun_status.skipped_scan_count += 1
+            # set_scan_status(telrun_file, scan, "F")
             continue
     
         try:
