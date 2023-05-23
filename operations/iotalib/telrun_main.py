@@ -467,7 +467,7 @@ def run_scans(telrun_file):
                 observatory.camera.get_ccd_temperature_celsius(), config_telrun.values.camera_cooler_celsius)
             # telrun_status.skipped_scan_count += 1
             # set_scan_status(telrun_file, scan, "F")
-            continue
+            # continue
     
         try:
             '''logging.info("Object a_ra, a_dec: %s, %s" % (
