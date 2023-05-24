@@ -184,6 +184,7 @@ s0 = 'Calibrated using cmos-calib'
 s1 = 'Dark frame = %s' % dark_image 
 s2 = 'Flat frame = %s' % flat_image
 s3 = 'Pedestal added during calibration = %i' % pedestal
+hdr_cal['PEDESTAL'] = pedestal
 hdr_cal.add_comment(s0); hdr_cal.add_comment(s1) ; hdr_cal.add_comment(s2); hdr_cal.add_comment(s3)
 #hdr_cal.add_comment('Replaced bad columns: %s' % badcols)
 
