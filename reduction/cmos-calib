@@ -167,7 +167,7 @@ if verbose:
     print('Medians:  image = %.1f, dark = %.1f' % (np.median(im_raw),  np.median(im_dark) ))
 
 # Do image arithmetic: add pedestal, subtract dark, divide by normalized flat
-pedestal = 100
+pedestal = 3*np.std(im_raw)
 im_cal = (im_raw - im_dark)/im_flat + pedestal
 # restrict  pixel  range to 16 bits [0, pmax]
 im_cal[im_cal<0] = 0; im_cal[im_cal > pmax] = pmax 
