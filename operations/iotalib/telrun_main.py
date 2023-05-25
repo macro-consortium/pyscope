@@ -790,6 +790,8 @@ def run_scans(telrun_file):
             logging.info('Taking flushing images...')
             for i in range(5):
                 observatory.camera.start_exposure(2, False)
+                while not observatory.camera.is_exposure_finished():
+                    time.sleep(0.1)
 
     return True # Full telrun file has been processed
         
