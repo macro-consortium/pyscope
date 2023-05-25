@@ -516,7 +516,8 @@ def run_scans(telrun_file):
         centering_result = False
         if scan.posx is not None and scan.posy is not None:
             logging.info("Refining telescope pointing for this scan...")
-            if not scan.filter in config_telrun.values.recenter_filters:
+            if (not observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] 
+                in config_telrun.values.recenter_filters):
                 filter_index = config_telrun.values.autofocus_filter_index
                 logging.info("Switching to filter %s for recentering adjustment", filter_index)
                 observatory.set_filter_and_offset_focuser(filter_index)
