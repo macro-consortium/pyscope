@@ -455,7 +455,7 @@ def run_scans(telrun_file):
             set_scan_status(telrun_file, scan, "F")
             continue
             
-        # Check 7: Camera temperature
+        '''# Check 7: Camera temperature
         if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius()) 
         > config_telrun.values.camera_cooler_tolerance):
             logging.info("Trying to wait 60 seconds for camera to reach temperature of %s C", config_telrun.values.camera_cooler_celsius)
@@ -465,9 +465,9 @@ def run_scans(telrun_file):
         > config_telrun.values.camera_cooler_tolerance):
             logging.info("Camera temperature is %s C, but should be %s C. Continuing with scan anyway...", 
                 observatory.camera.get_ccd_temperature_celsius(), config_telrun.values.camera_cooler_celsius)
-            # telrun_status.skipped_scan_count += 1
-            # set_scan_status(telrun_file, scan, "F")
-            # continue
+            telrun_status.skipped_scan_count += 1
+            set_scan_status(telrun_file, scan, "F")
+            continue'''
     
         try:
             '''logging.info("Object a_ra, a_dec: %s, %s" % (
