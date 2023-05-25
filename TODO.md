@@ -5,6 +5,8 @@
     <ul>
     <li>Add ASCOM catches for PropertyNotImplemented and MethodNotImplemented exceptions</li>
     <li>SBIG Universal driver</li>
+    <li>Maxim integration</li>
+    <li>TheSkyX integration</li>
     </ul>
 
 <li>observatory</li>
