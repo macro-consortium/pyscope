@@ -275,7 +275,16 @@ class Observatory:
         # Get other keywords
         self._read_out_kwargs(kwargs)
 
-        if self.focal_length is None: self.focal_length = self.telescope.FocalLength
+        # Non-keyword properties
+        self._last_target = None
+        self._last_camera_shutter_status = None
+
+        self.camera.OriginalStartExposure = self.camera.StartExposure
+        def NewStartExposure(self, Duration, Light):
+            self._last_camera_shutter_status = Light
+            self.camera.OriginalStartExposure(Duration, Light)
+        self.camera.StartExposure = NewStartExposure
+
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -522,6 +531,8 @@ class Observatory:
         hdr['NAXIS'] = (2, 'number of axes')
         hdr['NAXIS1'] = (self.camera.ImageArray.shape[0], 'fastest changing axis')
         hdr['NAXIS2'] = (self.camera.ImageArray.shape[1], 'next to fastest changing axis')
+        if self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Light', 'Shutter status') 
+        elif not self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Dark', 'Shutter status')
         hdr['BSCALE'] = (1, 'physical=BZERO + BSCALE*array_value')
         hdr['BZERO'] = (32768, 'physical=BZERO + BSCALE*array_value')
         hdr['SWCREATE'] = ('pyScope', 'Software used to create file')
@@ -1521,24 +1532,16 @@ class Observatory:
         self._config[take_flats]['take_flats_readout_mode'] = self._take_flats_readout_mode
     
     @property
-    def recenter_exposure(self):
-        return self._recenter_exposure
-    @recenter_exposure.setter
-    def recenter_exposure(self, value):
-        self._recenter_exposure = max(float(value), 0) if value is not None or value !='' else None
-        self._config['recenter']['recenter_exposure'] = str(self._recenter_exposure) if self._recenter_exposure is not None else ''
-    
-    @property
-    def recenter_sync_mount(self):
-        return self._recenter_sync_mount
-    @recenter_sync_mount.setter
-    def recenter_sync_mount(self, value):
-        self._recenter_sync_mount = bool(value)
-        self._config['recenter']['recenter_sync_mount'] = str(self._recenter_sync_mount)
-    
-    @property
     def wcs_driver(self):
         return self._wcs_driver
+
+    @property
+    def last_target(self):
+        return self._last_target
+
+    @property
+    def last_camera_shutter_status(self):
+        return self._last_camera_shutter_status
 
 class ObservatoryException(Exception):
     pass

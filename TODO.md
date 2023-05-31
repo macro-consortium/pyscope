@@ -12,7 +12,6 @@
 <li>observatory</li>
     <ul>
     <li>Add a current target variable</li>
-    <li>Add a last exposure shutter status variable</li>
     <li>Write take_darks method</li>
     <li>Write take_flats method</li>
     <li>Allow for take_darks, take_flats, recenter defaults in config file</li>
