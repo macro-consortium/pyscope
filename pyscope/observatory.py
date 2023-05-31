@@ -827,7 +827,7 @@ class Observatory:
     
     def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
                 target_y_pixel=None, initial_offset_dec=0, check_and_refine=True, max_attempts=5, tolerance=3, 
-                exposure=10, save_images=False, save_path='.', sync_mount=False, settle_time=5, do_initial_slew=True):
+                exposure=10, save_images=False, save_path='./', sync_mount=False, settle_time=5, do_initial_slew=True):
         '''Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector. 
         
@@ -998,9 +998,28 @@ class Observatory:
         '''Takes a sequence of flat frames defined by the calibration configuration'''
         return
     
-    def take_darks(self):
+    def take_darks(self, exposures, readouts, binnings, repeat=10, save_path='./'):
         '''Takes a sequence of dark frames'''
-        return
+
+        for exposure in exposures:
+            for readout in readouts:
+                camera.ReadoutMode = readout
+                for binning in binnings:
+                    if type(binnings[0]) is tuple: self.camera.BinX = binning[0]; self.camera.BinY = binning[1]
+                    else: self.camera.BinX = binning; self.camera.BinY = binning
+                    for i in range(repeat):
+                        while self.camera.Temperature > (self.cooler_setpoint + self.cooler_tolerance):
+                            logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                            time.sleep(10)
+                        camera.StartExposure(exposure, False)
+                        save_string = ('dark_%s_%ix%i_%4.4gs__%i.fts' % (self.camera.ReadoutModes[self.camera.ReadoutMode], 
+                                self.camera.BinX, self.camera.BinY, 
+                                exposure, i))
+                        while camera.ImageReady == False:
+                            time.sleep(0.1)
+                        self.save_last_image(os.path.join(save_path, save_string))
+
+        return True
 
     def save_config(self, filename):
         with open(filename, 'w') as configfile:
