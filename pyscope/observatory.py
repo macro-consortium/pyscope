@@ -39,6 +39,7 @@ class Observatory:
         self.instrument_description = 'pyScope is a pure-Python telescope control package.'
         self.get_site_from_telescope = True
         self.latitude = None; self.longitude = None; self.elevation = None
+        self.get_optics_from_telescope = True
         self.diameter = None; self.focal_length = None
 
         self._camera = None
@@ -873,6 +874,7 @@ class Observatory:
         self.latitude = dictionary.get('latitude', self.latitude)
         self.longitude = dictionary.get('longitude', self.longitude)
         self.elevation = dictionary.get('elevation', self.elevation)
+        self.get_optics_from_telescope = dictionary.get('get_optics_from_telescope', self.get_optics_from_telescope)
         self.diameter = dictionary.get('diameter', self.diameter)
         self.focal_length = dictionary.get('focal_length', self.focal_length)
 
@@ -994,12 +996,24 @@ class Observatory:
         if self._get_site_from_telescope: raise ObservatoryException('Cannot set elevation when get_site_from_telescope is True')
         self._elevation = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['elevation'] = str(self._elevation) if self._elevation is not None else ''
+    
+    @property
+    def get_optics_from_telescope(self):
+        return self._get_optics_from_telescope
+    @get_optics_from_telescope.setter
+    def get_optics_from_telescope(self, value):
+        self._get_optics_from_telescope = bool(value)
+        self._config['site']['get_optics_from_telescope'] = str(self._get_optics_from_telescope)
+        if self._get_optics_from_telescope:
+            self.diameter = self.telescope.ApertureDiameter
+            self.focal_length = self.telescope.FocalLength
 
     @property
     def diameter(self):
         return self._diameter
     @diameter.setter
     def diameter(self, value):
+        if self._get_optics_from_telescope: raise ObservatoryException('Cannot set diameter when get_optics_from_telescope is True')
         self._diameter = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['diameter'] = str(self._diameter) if self._diameter is not None else ''
     
@@ -1008,6 +1022,7 @@ class Observatory:
         return self._focal_length
     @focal_length.setter
     def focal_length(self, value):
+        if self._get_optics_from_telescope: raise ObservatoryException('Cannot set focal_length when get_optics_from_telescope is True')
         self._focal_length = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['focal_length'] = str(self._focal_length) if self._focal_length is not None else ''
     

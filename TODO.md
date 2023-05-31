@@ -11,7 +11,6 @@
 
 <li>observatory</li>
     <ul>
-    <li>Add get aperture, etc from telescope options</li>
     <li>Rotator reverse config variable</li>
     <li>"Status" thread for slewing, dome, focuser moving, etc.</li>
         <ul>
@@ -97,6 +96,7 @@
         <li>VAO/Iowa</li>
         <li>Macalester</li>
         <li>Augustana</li>
+        <li>Knox</li>
         <li>Harvard</li>
         <li>UConn</li>
         <li>ALFALFA-U</li>
