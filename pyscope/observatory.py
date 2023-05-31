@@ -587,13 +587,20 @@ class Observatory:
         hdr['TELENAME'] = (self.telescope.Name, 'Telescope name')
         hdr['OBJCTALT'] = (self.telescope.Altitude, 'Telescope altitude in degrees')
         hdr['OBJCTAZ'] = (self.telescope.Azimuth, 'Telescope azimuth in degrees')
-        hdr['OBJCTRA'] = (self.telescope.RightAscension, 'Telescope right ascension in degrees')
+        hdr['OBJCTRA'] = (self.telescope.RightAscension, 'Telescope right ascension in hours')
+        if type(self.last_target) is str: hdr['TARGNAME'] = (self._last_target, 'Target name')
+        elif type(self.last_target) is coord.SkyCoord: 
+            hdr['TARGNAME'] = ('', 'Target name')
+            hdr['TARGRA'] = (self.last_target.ra.hour, 'Target right ascension in hours')
+            hdr['TARGDEC'] = (self.last_target.dec.deg, 'Target declination in degrees')
+            hdr['TARGFRM'] = (self.last_target.name, 'Target coordinate reference frame')
+        else: hdr['TARGNAME'] = ('', 'Target name')
         hdr['OBJCTDEC'] = (self.telescope.Declination, 'Telescope declination in degrees')
-        hdr['RARATE'] = (self.telescope.RightAscensionRate, 'Telescope right ascension rate in degrees/sec')
-        hdr['DECRATE'] = (self.telescope.DeclinationRate, 'Telescope declination rate in degrees/sec')
+        hdr['RARATE'] = (self.telescope.RightAscensionRate, 'Telescope right ascension rate in seconds per sidereal second')
+        hdr['DECRATE'] = (self.telescope.DeclinationRate, 'Telescope declination rate in arcseconds per sidereal second')
         hdr['HA'] = (self.telescope.HourAngle, 'Telescope hour angle in degrees')
         hdr['EQSYS'] (self.telescope.EquatorialSystem, 'Telescope equatorial system')
-        hdr['TELELST'] = (self.telescope.SiderealTime, 'Telescope local sidereal time in degrees')
+        hdr['TELELST'] = (self.telescope.SiderealTime, 'Telescope local sidereal time in hours')
         hdr['REFRACTION'] = (self.telescope.DoesRefraction, 'Does telescope account for refraction')
         hdr['SITE'] = (self.site, 'Site name')
         hdr['INSTRUME'] = (self.instrument_name, 'Instrument name') 
@@ -699,7 +706,12 @@ class Observatory:
                             control_dome=False, control_rotator=False):
         '''Slews the telescope to a given ra and dec'''
 
-        obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+        if type(obj) is str: 
+            self._last_target = obj
+            obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+        else:
+            obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+            self._last_target = obj
 
         logging.info('Slewing to RA %i:%i:%.2f and Dec %i:%i:%.2f' % obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2],
             obj.dec.dms[0], obj.dec.dms[1], obj.dec.dms[2])

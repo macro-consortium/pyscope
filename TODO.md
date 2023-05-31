@@ -11,7 +11,6 @@
 
 <li>observatory</li>
     <ul>
-    <li>Add a current target variable</li>
     <li>Write take_darks method</li>
     <li>Write take_flats method</li>
     <li>Allow for take_darks, take_flats, recenter defaults in config file</li>
@@ -19,6 +18,7 @@
     <li>Write de-rotation thread method, add to header</li>
     <li>Write autofocus method</li>
     <li>Write property and method docstrings</li>
+    <li>Double check header values</li>
     <li>Add support for multiple backends</li>
     </ul>
 
