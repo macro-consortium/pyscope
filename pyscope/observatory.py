@@ -32,7 +32,7 @@ class Observatory:
         self._config['camera'] = {}; self._config['cover_calibrator'] = {}; self._config['dome'] = {}
         self._config['filter_wheel'] = {}; self._config['focuser'] = {}; self._config['observing_conditions'] = {}
         self._config['rotator'] = {}; self._config['safety_monitor'] = {}; self._config['switch'] = {}
-        self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['calibration'] = {}
+        self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['take_flats'] = {}
         self._config['recenter'] = {}
 
         self.site_name = 'pyScope Site'
@@ -75,7 +75,8 @@ class Observatory:
         self.autofocus_exposure = 10; self.autofocus_start_position = None; self.autofocus_step_number = 5;
         self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True
 
-        self.calibration_filter_exposure = None; self.calibration_filter_focus = None
+        self.take_flats_filter_exposure = None; self.take_flats_filter_brightness = None
+        self.take_flats_readout_mode = None
 
         if config_file_path is not None:
             logging.info('Using config file to initialize observatory: %s' % config_file)
@@ -156,7 +157,7 @@ class Observatory:
                 **self._config['dome'], **self._config['filter_wheel'], **self._config['focuser'],
                 **self._config['observing_conditions'], **self._config['rotator'], **self._config['safety_monitor'],
                 **self._config['switch'], **self._config['telescope'], **self._config['autofocus'], 
-                **self._config['calibration'], **self._config['recenter']}
+                **self._config[take_flats], **self._config['recenter']}
             self._read_out_kwargs(master_dict)
 
         # Camera
@@ -331,13 +332,121 @@ class Observatory:
 
         return True
     
-    def home_all(self):
-        '''Homes all devices'''
-        return
+    def disconnect_all(self):
+        '''Disconnects from the observatory'''
+
+        self.camera.Connected = False
+        if not self.camera.Connected: self.logger.info('Camera disconnected')
+        else: self.logger.warning('Camera failed to disconnect')
+
+        if self.cover_calibrator is not None:
+            self.cover_calibrator.Connected = False
+            if not self.cover_calibrator.Connected: self.logger.info('Cover calibrator disconnected')
+            else: self.logger.warning('Cover calibrator failed to disconnect')
+        
+        if self.dome is not None:
+            self.dome.Connected = False
+            if not self.dome.Connected: self.logger.info('Dome disconnected')
+            else: self.logger.warning('Dome failed to disconnect')
+        
+        if self.filter_wheel is not None:
+            self.filter_wheel.Connected = False
+            if not self.filter_wheel.Connected: self.logger.info('Filter wheel disconnected')
+            else: self.logger.warning('Filter wheel failed to disconnect')
+        
+        if self.focuser is not None:
+            self.focuser.Connected = False
+            if not self.focuser.Connected: self.logger.info('Focuser disconnected')
+            else: self.logger.warning('Focuser failed to disconnect')
+
+        if self.observing_conditions is not None:
+            self.observing_conditions.Connected = False
+            if not self.observing_conditions.Connected: self.logger.info('Observing conditions disconnected')
+            else: self.logger.warning('Observing conditions failed to disconnect')
+        
+        if self.rotator is not None:
+            self.rotator.Connected = False
+            if not self.rotator.Connected: self.logger.info('Rotator disconnected')
+            else: self.logger.warning('Rotator failed to disconnect')
+        
+        if self.safety_monitor is not None:
+            for safety_monitor in self.safety_monitor:
+                safety_monitor.Connected = False
+                if not safety_monitor.Connected: self.logger.info('Safety monitor %s disconnected' % safety_monitor.Name)
+                else: self.logger.warning('Safety monitor %s failed to disconnect' % safety_monitor.Name)
+        
+        if self.switch is not None:
+            for switch in self.switch:
+                switch.Connected = False
+                if not switch.Connected: self.logger.info('Switch %s disconnected' % switch.Name)
+                else: self.logger.warning('Switch %s failed to disconnect' % switch.Name)
+            
+        self.telescope.Connected = False
+        if not self.telescope.Connected: self.logger.info('Telescope disconnected')
+        else: self.logger.warning('Telescope failed to disconnect')
+
+        return True
     
     def shutdown(self):
         '''Shuts down the observatory'''
-        return
+
+        self.logger.info('Shutting down observatory')
+
+        logging.info('Aborting any in-progress camera exposures...')
+        try:
+            self.camera.AbortExposure()
+        except: logging.exception('Error aborting exposure during shutdown')
+
+        logging.info('Attempting to take a dark exposure to close camera shutter...')
+        try:
+            self.camera.StartExposure(0, False)
+            while self.camera.ImageReady is False:
+                time.sleep(0.1)
+        except: logging.exception('Error closing camera shutter during shutdown')
+
+        if self.dome is not None:
+            logging.info('Aborting any dome motion...')
+            try: self.dome.AbortSlew()
+            except: logging.exception('Error aborting dome motion during shutdown')
+
+            if self.dome.CanFindPark:
+                logging.info('Attempting to park dome...')
+                try: self.dome.Park()
+                except: logging.exception('Error parking dome during shutdown')
+
+            if self.dome.CanSetShutter:
+                logging.info('Attempting to close dome shutter...')
+                try: self.dome.CloseShutter()
+                except: logging.exception('Error closing dome shutter during shutdown')
+        
+        if self.focuser is not None:
+            logging.info('Aborting any in-progress filter wheel motion...')
+            try: self.focuser.Halt()
+            except: logging.exception('Error aborting filter wheel motion during shutdown')
+        
+        if self.rotator is not None:
+            logging.info('Aborting any in-progress rotator motion...')
+            try: self.rotator.Halt()
+            except: logging.exception('Error stopping rotator during shutdown')
+        
+        logging.info('Aborting any in-progress telescope slews...')
+        try: self.telescope.AbortSlew()
+        except: logging.exception('Error aborting slew during shutdown')
+
+        logging.info('Attempting to turn off telescope tracking...')
+        try: self.telescope.Tracking = False
+        except: logging.exception('Error turning off telescope tracking during shutdown')
+
+        if self.telescope.CanPark:
+            logging.info('Attempting to park telescope...')
+            try: self.telescope.Park()
+            except: logging.exception('Error parking telescope during shutdown')
+        elif self.telescope.CanFindHome:
+            logging.info('Attempting to find home position...')
+            try: self.telescope.FindHome()
+            except: logging.exception('Error finding home position during shutdown')
+
+        return True
         
     def lst(self, t=None):
         '''Returns the local sidereal time'''
@@ -406,11 +515,6 @@ class Observatory:
             logging.warning('Image array is empty.')
             return False
         
-        # TODO: Add support for multicolor cameras
-        if len(self.camera.ImageArray.shape) != 2:
-            logging.warning('Image array is not 2D, currently do not support multicolor cameras.')
-            return False
-        
         hdr = pyfits.Header()
 
         hdr['SIMPLE'] = True
@@ -420,6 +524,10 @@ class Observatory:
         hdr['NAXIS2'] = (self.camera.ImageArray.shape[1], 'next to fastest changing axis')
         hdr['BSCALE'] = (1, 'physical=BZERO + BSCALE*array_value')
         hdr['BZERO'] = (32768, 'physical=BZERO + BSCALE*array_value')
+        hdr['SWCREATE'] = ('pyScope', 'Software used to create file')
+        hdr['SWVERSIO'] = (__version__, 'Version of software used to create file')
+        hdr['ROWORDER'] = ('TOP-DOWN', 'Row order of image')
+        
         hdr['DATE-OBS'] = (self.camera.LastExposureStartTime, 'YYYY-MM-DDThh:mm:ss observation start, UT')
         hdr['JD'] = (astrotime.Time(self.camera.LastExposureStartTime).jd, 'Julian date')
         hdr['MJD'] = (astrotime.Time(self.camera.LastExposureStartTime).mjd, 'Modified Julian date')
@@ -455,9 +563,15 @@ class Observatory:
         hdr['SENSOR'] = (self.camera.SensorName, 'Name of sensor')
         try: hdr['SUBEXP'] = (self.camera.SubExposureDuration, 'Subexposure time in seconds')
         except: pass
-        hdr['SWCREATE'] = ('pyScope', 'Software used to create file')
-        hdr['SWVERSIO'] = (__version__, 'Version of software used to create file')
-        hdr['ROWORDER'] = ('TOP-DOWN', 'Row order of image')
+        match self.camera.SensorType:
+            case 1: hdr['BAYERPAT'] = ('Color', 'Sensor type')
+            case 2: hdr['BAYERPAT'] = ('RGGB', 'Sensor type')
+            case 3: hdr['BAYERPAT'] = ('CMYG', 'Sensor type')
+            case 4: hdr['BAYERPAT'] = ('CMYG2', 'Sensor type')
+            case 5: hdr['BAYERPAT'] = ('LRGB', 'Sensor type')
+        if self.camera.SensorType != 0:
+            hdr['BAYOFFX'] = (self.camera.BayerOffsetX, 'Bayer X offset')
+            hdr['BAYOFFY'] = (self.camera.BayerOffsetY, 'Bayer Y offset')
 
         hdr['TELENAME'] = (self.telescope.Name, 'Telescope name')
         hdr['OBJCTALT'] = (self.telescope.Altitude, 'Telescope altitude in degrees')
@@ -559,7 +673,7 @@ class Observatory:
             # TODO: Add whether de-rotation is on
         
         if self.safety_monitor is not None:
-            for i, safety_monitor in enumerate(self.safety_monitors):
+            for i, safety_monitor in enumerate(self.safety_monitor):
                 hdr['SAFNM%i' % i] = (safety_monitor.Name, 'Safety monitor name')
                 hdr['SAFSTAT%i' % i] = (safety_monitor.IsSafe, 'Safety monitor status')
         
@@ -581,7 +695,7 @@ class Observatory:
         slew_obj = self.get_object_slew(obj)
         altaz_obj = self.get_object_altaz(obj)
 
-        if not self.telescope.Connected: raise Exception('The telescope is not connected.')
+        if not self.telescope.Connected: raise ObservatoryException('The telescope is not connected.')
 
         if altaz_obj.alt.deg <= self.min_altitude:
             logging.warning('Target is below the minimum altitude of %.2f degrees' % self.min_altitude)
@@ -602,7 +716,7 @@ class Observatory:
         elif self.telescope.CanSlewAltAz:
             if self.telescope.CanSlewAltAzAsync: self.telescope.SlewToAltAzAsync(altaz_obj.alt.deg, altaz_obj.az.deg)
             else: self.telescope.SlewToAltAz(altaz_obj.alt.deg, altaz_obj.az.deg)
-        else: raise Exception('The telescope cannot slew to coordinates.')
+        else: raise ObservatoryException('The telescope cannot slew to coordinates.')
 
         if control_dome and self.dome is not None:
             if self.dome.ShutterState != 0 and self.CanSetShutter:
@@ -667,22 +781,25 @@ class Observatory:
 
     def safety_status(self):
         '''Returns the status of the safety monitors'''
-        return
+        safety_array = []
+        if self.safety_monitor is not None:
+            for safety_monitor in self.safety_monitor:
+                safety_array.append(safety_monitor.IsSafe)
+        return safety_array
     
     def switch_status(self):
         '''Returns the status of the switches'''
-        return
+        switch_array = []
+        if self.switch is not None:
+            for switch in self.switch:
+                temp = []
+                for i in range(switch.MaxSwitch):
+                    temp.append(switch.GetSwitch(i))
+                switch_array.append(temp)
+        return switch_array
     
     def autofocus(self):
         '''Runs the autofocus routine'''
-        return
-
-    def take_flat_sequence(self):
-        '''Takes a sequence of flat frames defined by the calibration configuration'''
-        return
-    
-    def take_dark_sequence(self):
-        '''Takes a sequence of dark frames'''
         return
     
     def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
@@ -853,6 +970,14 @@ class Observatory:
         logging.info('Target is now in position after %d attempts' % (attempt+1))
 
         return True
+    
+    def take_flats(self):
+        '''Takes a sequence of flat frames defined by the calibration configuration'''
+        return
+    
+    def take_darks(self):
+        '''Takes a sequence of dark frames'''
+        return
 
     def save_config(self, filename):
         with open(filename, 'w') as configfile:
@@ -919,8 +1044,9 @@ class Observatory:
         self.autofocus_step_size = dictionary.get('autofocus_step_size', self.autofocus_step_size)
         self.autofocus_use_current_pointing = dictionary.get('autofocus_use_current_pointing', self.autofocus_use_current_pointing)
 
-        self.calibration_filter_exposure = dictionary.get('calibration_filter_exposure', self.calibration_filter_exposure)
-        self.calibration_filter_timeout = dictionary.get('calibration_filter_timeout', self.calibration_filter_timeout)
+        self.take_flats_filter_exposure = dictionary.get('take_flats_filter_exposure', self.take_flats_filter_exposure)
+        self.take_flats_filter_brightness = dictionary.get('take_flats_filter_brightness', self.take_flats_filter_brightness)
+        self.take_flats_readout_mode = dictionary.get('take_flats_readout_mode', self.take_flats_readout_mode)
 
     @property
     def observatory_location(self):
@@ -1369,22 +1495,30 @@ class Observatory:
         self._config['autofocus']['autofocus_use_current_pointing'] = str(self._autofocus_use_current_pointing)
     
     @property
-    def calibration_filter_exposure_time(self):
-        return self._calibration_filter_exposure_time
-    @calibration_filter_exposure_time.setter
-    def calibration_filter_exposure_time(self, value, filt=None):
-        if filt is None: self._calibration_filter_exposure_time = dict(zip(self.filters, value)) if value is not None or value !='' else None
-        else: self._calibration_filter_exposure_time[filt] = float(value) if value is not None or value !='' else None
-        self._config['calibration']['calibration_filter_exposure_time'] = ', '.join(self._calibration_filter_exposure_time.values()) if self._calibration_filter_exposure_time is not None else ''
+    def take_flats_filter_exposure(self):
+        return self._take_flats_filter_exposure
+    @take_flats_filter_exposure.setter
+    def take_flats_filter_exposure(self, value, filt=None):
+        if filt is None: self._take_flats_filter_exposure_time = dict(zip(self.filters, value)) if value is not None or value !='' else None
+        else: self._take_flats_filter_exposure_time[filt] = float(value) if value is not None or value !='' else None
+        self._config[take_flats]['take_flats_filter_exposure_time'] = ', '.join(self._take_flats_filter_exposure_time.values()) if self._take_flats_filter_exposure_time is not None else ''
     
     @property
-    def calibration_filter_brightness(self):
-        return self._calibration_filter_brightness
-    @calibration_filter_brightness.setter
-    def calibration_filter_brightness(self, value):
-        if filt is None: self._calibration_filter_brightness = dict(zip(self.filters, value)) if value is not None or value !='' else None
-        else: self._calibration_filter_brightness[filt] = float(value) if value is not None or value !='' else None
-        self._config['calibration']['calibration_filter_brightness'] = ', '.join(self._calibration_filter_brightness.values()) if self._calibration_filter_brightness is not None else ''
+    def take_flats_filter_brightness(self):
+        return self._take_flats_filter_brightness
+    @take_flats_filter_brightness.setter
+    def take_flats_filter_brightness(self, value):
+        if filt is None: self._take_flats_filter_brightness = dict(zip(self.filters, value)) if value is not None or value !='' else None
+        else: self._take_flats_filter_brightness[filt] = float(value) if value is not None or value !='' else None
+        self._config[take_flats]['take_flats_filter_brightness'] = ', '.join(self._take_flats_filter_brightness.values()) if self._take_flats_filter_brightness is not None else ''
+
+    @property
+    def take_flats_readout_mode(self):
+        return self._take_flats_readout_mode
+    @take_flats_readout_mode.setter
+    def take_flats_readout_mode(self, value):
+        self._take_flats_readout_mode = value
+        self._config[take_flats]['take_flats_readout_mode'] = self._take_flats_readout_mode
     
     @property
     def recenter_exposure(self):

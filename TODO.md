@@ -11,17 +11,15 @@
 
 <li>observatory</li>
     <ul>
-    <li>"Status" thread for slewing, dome, focuser moving, etc.</li>
-        <ul>
-        <li>Add a current target variable</li>
-        <li>Add a last exposure shutter status variable</li>
-        <li>ObservingConditions updating thread</li>
-        <li>De-rotation thread, add to header</li>
-        </ul>
-    <li>Add support for multi-color cameras</li>
-    <li>Move autofocus, calibration, recentering to bin as functions</li>
-    <li>Slew to target should support solar system objects, moon</li>
-    <li>Complete other helper functions</li>
+    <li>Add a current target variable</li>
+    <li>Add a last exposure shutter status variable</li>
+    <li>Write take_darks method</li>
+    <li>Write take_flats method</li>
+    <li>Allow for take_darks, take_flats, recenter defaults in config file</li>
+    <li>Write ObservingConditions thread method</li>
+    <li>Write de-rotation thread method, add to header</li>
+    <li>Write autofocus method</li>
+    <li>Write property and method docstrings</li>
     <li>Add support for multiple backends</li>
     </ul>
 
