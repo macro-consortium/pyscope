@@ -11,7 +11,6 @@
 
 <li>observatory</li>
     <ul>
-    <li>Rotator reverse config variable</li>
     <li>"Status" thread for slewing, dome, focuser moving, etc.</li>
         <ul>
         <li>Add a current target variable</li>

@@ -61,7 +61,7 @@ class Observatory:
         self._observing_conditions = None
 
         self._rotator = None
-        self.rotator_min_angle = None; self.rotator_max_angle = None
+        self.rotator_reverse = False; self.rotator_min_angle = None; self.rotator_max_angle = None
 
         self._safety_monitor = None
 
@@ -894,6 +894,7 @@ class Observatory:
 
         self.focuser_max_error = dictionary.get('focuser_max_error', self.focuser_max_error)
 
+        self.rotator_reverse = dictionary.get('rotator_reverse', self.rotator_reverse)
         self.rotator_min_angle = dictionary.get('rotator_min_angle', self.rotator_min_angle)
         self.rotator_max_angle = dictionary.get('rotator_max_angle', self.rotator_max_angle)
 
@@ -1236,6 +1237,15 @@ class Observatory:
     @property
     def rotator_ascom(self):
         return self._rotator_ascom
+    
+    @property
+    def rotator_reverse(self):
+        return self._rotator_reverse
+    @rotator_reverse.setter
+    def rotator_reverse(self, value):
+        self._rotator_reverse = bool(value) if value is not None or value !='' else None
+        self._config['rotator']['rotator_reverse'] = str(self._rotator_reverse) if self._rotator_reverse is not None else ''
+        self.rotator.Reverse = self._rotator_reverse
     
     @property
     def rotator_min_angle(self):
