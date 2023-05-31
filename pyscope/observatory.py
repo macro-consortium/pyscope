@@ -1,5 +1,6 @@
 from astropy import coordinates as coord, time as astrotime
 import astropy.wcs, astropy.io.fits as pyfits
+from astroquery.mpc import MPC
 import numpy as np
 import configparser
 import logging
@@ -343,7 +344,7 @@ class Observatory:
 
         if t is None: t = self.observatory_time
         else: t = Time(t)
-        return t.sidereal_time('apparent', self.earth_location).to('hourangle').value
+        return t.sidereal_time('apparent', self.observatory_location).to('hourangle').value
         
     def sun_altaz(self, t=None):
         '''Returns the altitude of the sun'''
@@ -857,8 +858,20 @@ class Observatory:
         with open(filename, 'w') as configfile:
             self.config.write(configfile)
     
-    def _parse_obj_ra_dec(self, obj=None, ra=None, dec=None, unit=('hour', 'deg'), frame='icrs'):
-        if type(obj) is str: obj = coord.SkyCoord.from_name(obj)
+    def _parse_obj_ra_dec(self, obj=None, ra=None, dec=None, unit=('hour', 'deg'), frame='icrs', t=None):
+        if type(obj) is str: 
+            try: obj = coord.SkyCoord.from_name(obj)
+            except: 
+                try: 
+                    if t is None: t = self.observatory_time
+                    else: t = Time(t)
+                    eph = MPC.get_ephemeris(obj, start=t, location=self.observatory_location, 
+                        number=1, proper_motion='sky')
+                    obj = coord.SkyCoord(ra=eph['RA'], dec=eph['Dec'], unit=('deg', 'deg'), pm_ra_cosdec=eph['dRA cos(Dec)'], pm_dec=eph['dDec'], frame='icrs')
+                except:
+                    try: obj = coord.get_body(obj, t, self.observatory_location)
+                    except: raise ObservatoryException('The requested object could not be found using '+
+                        'Sesame resolver, the Minor Planet Center Query, or the astropy.coordinates get_body function.')
         elif type(obj) is coord.SkyCoord: pass
         elif ra is not None and dec is not None: obj = coord.SkyCoord(ra=ra, 
             dec=dec, unit=unit, frame=frame)
@@ -910,7 +923,7 @@ class Observatory:
         self.calibration_filter_timeout = dictionary.get('calibration_filter_timeout', self.calibration_filter_timeout)
 
     @property
-    def earth_location(self):
+    def observatory_location(self):
         '''Returns the EarthLocation object for the observatory'''
         return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
 
