@@ -3,31 +3,35 @@
 
 <li>drivers</li>
     <ul>
-    <li>Add ASCOM catches for PropertyNotImplemented and MethodNotImplemented exceptions</li>
-    <li>SBIG Universal driver</li>
-    <li>Maxim integration</li>
-    <li>TheSkyX integration</li>
+    <li>autofocus_pwi</li>
+    <li>observing_conditions_winer</li>
+    <li>safety_monitor_winerroof</li>
+    <li>SBIGUniversal</li>
+    <li>wcs_pinpoint</li>
     </ul>
 
 <li>observatory</li>
     <ul>
-    <li>Support multiple WCS solvers</li>
     <li>Write hardware info methods</li>
+    <li>Double check header values</li>
+    <li>Double check optional ASCOM methods and properties have exception handling</li>
     <li>Set a default logging and allow for init argument/config var to change</li>
     <li>Write ObservingConditions thread method</li>
+    <li>Write SafetyMonitor thread method</li>
     <li>Write de-rotation thread method, add to header</li>
     <li>Write autofocus method</li>
     <li>Write property and method docstrings</li>
-    <li>Double check header values</li>
-    <li>Add support for multiple backends</li>
+    <li>Support multiple WCS solvers</li>
+    <li>Maxim integration</li>
+    <li>TheSkyX integration</li>
+    <li>Add support for Nasymth telescopes (two backends)</li>
     </ul>
 
 <li>Write tests</li>
 
 <li>telrun</li>
     <ul>
-    <li>Add timeout config options for camera, filter wheel, mount focuser, rotator, roof/dome, weather, wcs</li>
-    <li>Improve the exit handler</li>
+    <li>Add timeout config options for camera, filter wheel, focuser, rotator, roof/dome, weather, wcs</li>
     <li>Generate summary report of scans statuses</li>
     <li>telrun_status portion of class, written to a file</li>
     <li>Update telrun GUI</li>

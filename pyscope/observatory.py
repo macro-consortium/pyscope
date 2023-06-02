@@ -1,4 +1,5 @@
 from astropy import coordinates as coord, time as astrotime
+from pprint import pprint
 import astropy.wcs, astropy.io.fits as pyfits
 from astroquery.mpc import MPC
 import numpy as np
@@ -70,8 +71,6 @@ class Observatory:
         self.min_altitude = 10
 
         self._autofocus = None
-        self.autofocus_exposure = 10; self.autofocus_start_position = None; self.autofocus_step_number = 5;
-        self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True
 
         if config_file_path is not None:
             logging.info('Using config file to initialize observatory: %s' % config_file)
@@ -140,8 +139,7 @@ class Observatory:
 
             # Autofocus
             self._autofocus_driver = self.config.get('autofocus', 'autofocus_driver', fallback=None)
-            self._autofocus_ascom = self.config.get('autofocus', 'autofocus_ascom', fallback=None)
-            self._autofocus = Autofocus(self.autofocus_driver, ascom=self.autofocus_ascom)
+            self._autofocus = Autofocus(self.autofocus_driver, ascom=False, fallback=None)
 
             # WCS
             self._wcs_driver = self.config.get('wcs', 'wcs_driver', fallback=None)
@@ -257,7 +255,7 @@ class Observatory:
         # Autofocus
         self._autofocus = kwargs.get('autofocus', self._autofocus)
         if self._autofocus is not None: _check_class_inheritance(self._autofocus, 'Autofocus')
-        self._autofocus_driver = self._autofocus.Name
+        self._autofocus_driver = self._autofocus.Name if self._autofocus is not None else ''
         self._config['autofocus']['autofocus_driver'] = self._autofocus_driver
 
         # WCS
@@ -517,7 +515,7 @@ class Observatory:
 
         return obj_slew
     
-    def save_last_image(self, filename, frametyp=None, target=None, do_wcs=False, wcs_kwargs=None, overwrite=False):
+    def save_last_image(self, filename, frametyp=None, target=None, do_wcs=False, overwrite=False, **kwargs):
         '''Saves the current image'''
 
         if not self.camera.ImageReady:
@@ -700,7 +698,7 @@ class Observatory:
         hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
-        if do_wcs: self._wcs.Solve(filename, **wcs_kwargs)
+        if do_wcs: self._wcs.Solve(filename, **kwargs)
 
         return True
     
@@ -921,7 +919,7 @@ class Observatory:
             logging.info('Exposure complete')
 
             temp_image = tempfile.gettempdir()+'%s.fts' % astrotime.Time(self.observatory_time, format='fits').value
-            self.save_last_image(temp_image)
+            self.save_last_image(temp_image, do_wcs=True,)
 
             logging.info('Searching for a WCS solution...')
             solution_found = self._wcs.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
@@ -1181,11 +1179,144 @@ class Observatory:
 
         self.min_altitude = dictionary.get('min_altitude', self.min_altitude)
 
-        self.autofocus_exposure = dictionary.get('autofocus_exposure', self.autofocus_exposure)
-        self.autofocus_start_position = dictionary.get('autofocus_start_position', self.autofocus_start_position)
-        self.autofocus_step_number = dictionary.get('autofocus_step_number', self.autofocus_step_number)
-        self.autofocus_step_size = dictionary.get('autofocus_step_size', self.autofocus_step_size)
-        self.autofocus_use_current_pointing = dictionary.get('autofocus_use_current_pointing', self.autofocus_use_current_pointing)
+    @property
+    def autofocus_info(self):
+        return {'Autofocus Driver': self.autofocus_driver}
+    
+    @property
+    def camera_info(self):
+        if not self.camera.Connected:
+            try: self.camera.Connected = True
+            except: info = {'CONNECT': (False, 'Is the camera connected')}
+        else:
+            info = {'CONNECT': (True, 'Is the camera connected'),
+                    'READY': (self.camera.ImageReady, 'Is the camera ready to download an image'),
+                    'CAMSTATE': (['Idle', 'Waiting', 'Exposing', 'Reading', 
+                                    'Download', 'Error'][self.camera.CameraState], 'Camera state'),
+                    'Percent Completed': (None, 'Function percent completed'),
+                    'DATE-OBS': (None, 'YYYY-MM-DDThh:mm:ss observation start, UT'),
+                    'JD': (None, 'Julian date'),
+                    'MJD': (None, 'Modified Julian date'),
+                    'EXPTIME': (None, 'Exposure time in seconds'),
+                    'EXPOSURE': (None, 'Exposure time in seconds'),
+                    'SUBEXP': (None, 'Subexposure time in seconds'),
+                    'XBINNING': (self.camera.BinX, 'Binning factor in width'),
+                    'YBINNING': (self.camera.BinY, 'Binning factor in height'),
+                    'XORGSUBF': (self.camera.StartX, 'Subframe X position'),
+                    'YORGSUBF': (self.camera.StartY, 'Subframe Y position'),
+                    'XPOSSUBF': (self.camera.NumX, 'Subframe X dimension'),
+                    'YPOSSUBF': (self.camera.NumY, 'Subframe Y dimension'),
+                    'READOUT': (None, 'Readout mode of image'),
+                    'READOUTM': (None, 'Readout mode of image'),
+                    'FASTREAD': (None, 'Fast readout mode'),
+                    'GAIN': (None, 'Electronic gain'),
+                    'OFFSET': (None, 'CCD offset'),
+                    'PULSEGUID': (None, 'Pulse guiding'),
+                    'SENSTYP': (None, 'Sensor type'),
+                    'BAYERPAT': (None, 'Bayer color pattern'),
+                    'BAYOFFX': (None, 'Bayer X offset'),
+                    'BAYOFFY': (None, 'Bayer Y offset'),
+                    'HSINKT': (self.camera.HeatSinkTemperature, 'Heat sink temperature in C'),
+                    'COOLERON': (None, 'Whether the cooler is on'),
+                    'COOLPOWR': (None, 'Cooler power in percent'),
+                    'SET-TEMP': (None, 'CCD temperature setpoint in C'),
+                    'CCD-TEMP': (None, 'CCD temperature in C'),
+                    'CAMNAME': (self.camera.Name, 'Name of camera'),
+                    'CAMERA': (self.camera.Name, 'Name of camera'),
+                    'CAMDRV': (self.camera.DriverVersion, 'Camera driver version'),
+                    'CAMDRVI': (self.camera.DriverInfo, 'Camera driver info'),
+                    'CAMINTF': (self.camera.InterfaceVersion, 'Camera interface version'),
+                    'CAMDESC': (self.camera.Description, 'Camera description'),
+                    'SENSOR': (self.camera.SensorName, 'Name of sensor'),
+                    'WIDTH': (self.camera.CameraXSize, 'Width of CCD in pixels'),
+                    'HEIGHT': (self.camera.CameraYSize, 'Height of CCD in pixels'),
+                    'XPIXSIZE': (self.camera.PixelSizeX, 'Pixel width in microns'),
+                    'YPIXSIZE': (self.camera.PixelSizeY, 'Pixel height in microns'),
+                    'MECHSHTR': (self.camera.HasShutter, 'Whether a mechanical shutter is present'),
+                    'ISSHUTTR': (self.camera.HasShutter, 'Whether a mechanical shutter is present'),
+                    'MINEXP': (self.camera.ExposureMin, 'Minimum exposure time in seconds'),
+                    'MAXEXP': (self.camera.ExposureMax, 'Maximum exposure time in seconds'),
+                    'EXPRESL': (self.camera.ExposureResolution, 'Exposure time resolution in seconds'),
+                    'MAXBINSX': (self.camera.MaxBinX, 'Maximum binning factor in width'),
+                    'MAXBINSY': (self.camera.MaxBinY, 'Maximum binning factor in height'),
+                    'CANASBIN': (self.camera.CanAsymmetricBin, 'Can asymmetric bin'),
+                    'CANABRT': (self.camera.CanAbortExposure, 'Can abort exposures'),
+                    'CANSTP': (self.camera.CanStopExposure, 'Can stop exposures'),
+                    'CANCOOLP': (self.camera.CanGetCoolerPower, 'Can get cooler power'),
+                    'CANSETTE': (self.camera.CanSetCCDTemperature, 'Can set CCD temperature'),
+                    'CANPULSE': (self.camera.CanPulseGuide, 'Can pulse guide'),
+                    'FULLWELL': (self.camera.FullWellCapacity, 'Full well capacity in e-'),
+                    'MAXADU': (self.camera.MaxADU, 'Maximum ADU value in image'),
+                    'E-ADU': (self.camera.ElectronsPerADU, 'e- per ADU'),
+                    'EGAIN': (self.camera.Gain, 'Electronic gain'),
+                    'CANFASTR': (self.camera.CanFastReadout, 'Can fast readout'),
+                    'READMDS': (None, 'Readout modes of image'),
+                    'GAINS': (None, 'Electronic gains'),
+                    'GAINMIN': (None, 'Minimum electronic gain'),
+                    'GAINMAX': (None, 'Maximum electronic gain'),
+                    'OFFSETS': (None, 'CCD offsets'),
+                    'OFFSETMIN': (None, 'Minimum CCD offset'),
+                    'OFFSETMAX': (None, 'Maximum CCD offset'),
+                    'SUPPACTN': (self.camera.SupportedActions, 'Supported actions'),
+                    }
+            try: info['Percent Completed'][0] = self.camera.PercentCompleted
+            except: pass
+            try: 
+                info['DATE-OBS'][0] = self.camera.LastExposureStartTime
+                info['JD'][0] = astrotime.Time(self.camera.LastExposureStartTime).jd
+                info['MJD'][0] = astrotime.Time(self.camera.LastExposureStartTime).mjd
+            except: pass
+            try: 
+                info['EXPTIME'][0] = self.camera.ExposureTime
+                info['EXPOSURE'][0] = self.camera.ExposureTime
+            except: pass
+            try: info['SUBEXP'][0] = self.camera.SubExposureDuration
+            except: pass
+            info['CANFAST'][0] = self.camera.CanFastReadout
+            if self.camera.CanFastReadout:
+                info['READOUT'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
+                info['READOUTM'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
+                info['FASTREAD'][0] = self.camera.FastReadout
+                info['READMDS'][0] = self.camera.ReadoutModes
+                info['SENSTYP'][0] = ['Monochrome, Color, \
+                    RGGB, CMYG, CMYG2, LRGB'][self.camera.SensorType]
+                if not self.camera.SensorType in (0, 1):
+                    info['BAYERPAT'][0] = self.camera.BayerPattern
+                    info['BAYOFFX'][0] = self.camera.BayerOffsetX
+                    info['BAYOFFY'][0] = self.camera.BayerOffsetY
+            try: 
+                info['GAINS'][0] = self.camera.Gains
+                info['GAIN'][0] = self.camera.Gains[self.camera.Gain]
+            except:
+                try:
+                    info['GAINMIN'][0] = self.camera.GainMin
+                    info['GAINMAX'][0] = self.camera.GainMax
+                    info['GAIN'][0] = self.camera.Gain
+                except: pass
+            try:
+                info['OFFSETS'][0] = self.camera.Offsets
+                info['OFFSET'][0] = self.camera.Offsets[self.camera.Offset]
+            except:
+                try:
+                    info['OFFSETMIN'][0] = self.camera.OffsetMin
+                    info['OFFSETMAX'][0] = self.camera.OffsetMax
+                    info['OFFSET'][0] = self.camera.Offset
+                except: pass
+            info['CANPULSE'][0] = self.camera.CanPulseGuide
+            if self.camera.CanPulseGuide:
+                info['PULSEGUID'][0] = self.camera.IsPulseGuiding
+            try: info['COOLERON'][0] = self.camera.CoolerOn
+            except: pass
+            info['CANCOOLP'][0] = self.camera.CanGetCoolerPower
+            if self.camera.CanGetCoolerPower:
+                info['COOLPOWR'][0] = self.camera.CoolerPower
+            info['CANSETTE'][0] = self.camera.CanSetCCDTemperature
+            if self.camera.CanSetCCDTemperature:
+                info['SET-TEMP'][0] = self.camera.SetCCDTemperature
+            try: info['CCD-TEMP'][0] = self.camera.CCDTemperature
+            except: pass
+
+        return info
 
     @property
     def observatory_location(self):
@@ -1544,46 +1675,6 @@ class Observatory:
     @property
     def autofocus_driver(self):
         return self._autofocus_driver
-    
-    @property
-    def autofocus_exposure(self):
-        return self._autofocus_exposure
-    @autofocus_exposure.setter
-    def autofocus_exposure(self, value):
-        self._autofocus_exposure = max(float(value), 0) if value is not None or value !='' else None
-        self._config['autofocus']['autofocus_exposure'] = str(self._autofocus_exposure) if self._autofocus_exposure is not None else ''
-    
-    @property
-    def autofocus_start_position(self):
-        return self._autofocus_start_position
-    @autofocus_start_position.setter
-    def autofocus_start_position(self, value):
-        self._autofocus_start_position = max(float(value), 0) if value is not None or value !='' else None
-        self._config['autofocus']['autofocus_start_position'] = str(self._autofocus_start_position) if self._autofocus_start_position is not None else ''
-    
-    @property
-    def autofocus_step_number(self):
-        return self._autofocus_step_number
-    @autofocus_step_number.setter
-    def autofocus_step_number(self, value):
-        self._autofocus_step_number = max(int(value), 0) if value is not None or value !='' else None
-        self._config['autofocus']['autofocus_step_number'] = str(self._autofocus_step_number) if self._autofocus_step_number is not None else ''
-    
-    @property
-    def autofocus_step_size(self):
-        return self._autofocus_step_size
-    @autofocus_step_size.setter
-    def autofocus_step_size(self, value):
-        self._autofocus_step_size = max(float(value), 0) if value is not None or value !='' else None
-        self._config['autofocus']['autofocus_step_size'] = str(self._autofocus_step_size) if self._autofocus_step_size is not None else ''
-    
-    @property
-    def autofocus_use_current_pointing(self):
-        return self._autofocus_use_current_pointing
-    @autofocus_use_current_pointing.setter
-    def autofocus_use_current_pointing(self, value):
-        self._autofocus_use_current_pointing = bool(value)
-        self._config['autofocus']['autofocus_use_current_pointing'] = str(self._autofocus_use_current_pointing)
     
     @property
     def wcs_driver(self):
