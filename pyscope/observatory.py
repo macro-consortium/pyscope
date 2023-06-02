@@ -404,6 +404,19 @@ class Observatory:
             while self.camera.ImageReady is False:
                 time.sleep(0.1)
         except: logging.exception('Error closing camera shutter during shutdown')
+    
+        if self.cover_calibrator is not None:
+            if self.cover_calibrator.CalibratorState != 'NotPresent':
+                logging.info('Attempting to turn off cover calibrator...')
+                try: self.cover_calibrator.CalibratorOff()
+                except: logging.exception('Error turning off cover calibrator during shutdown')
+            if self.cover_calibrator.CoverState != 'NotPresent':
+                logging.info('Attempting to halt any cover calibrator shutter motion...')
+                try: self.cover_calibrator.HaltCover()
+                except: logging.exception('Error closing cover calibrator shutter during shutdown')
+                logging.info('Attempting to close cover calibrator shutter...')
+                try: self.cover_calibrator.CloseCover()
+                except: logging.exception('Error closing cover calibrator shutter during shutdown')
 
         if self.dome is not None:
             logging.info('Aborting any dome motion...')
