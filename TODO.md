@@ -11,9 +11,9 @@
 
 <li>observatory</li>
     <ul>
-    <li>Write take_darks method</li>
-    <li>Write take_flats method</li>
-    <li>Allow for take_darks, take_flats, recenter defaults in config file</li>
+    <li>Support multiple WCS solvers</li>
+    <li>Write hardware info methods</li>
+    <li>Set a default logging and allow for init argument/config var to change</li>
     <li>Write ObservingConditions thread method</li>
     <li>Write de-rotation thread method, add to header</li>
     <li>Write autofocus method</li>

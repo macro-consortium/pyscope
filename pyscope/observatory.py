@@ -32,8 +32,7 @@ class Observatory:
         self._config['camera'] = {}; self._config['cover_calibrator'] = {}; self._config['dome'] = {}
         self._config['filter_wheel'] = {}; self._config['focuser'] = {}; self._config['observing_conditions'] = {}
         self._config['rotator'] = {}; self._config['safety_monitor'] = {}; self._config['switch'] = {}
-        self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['take_flats'] = {}
-        self._config['recenter'] = {}
+        self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['wcs'] = {}
 
         self.site_name = 'pyScope Site'
         self.instrument_name = 'pyScope Instrument' 
@@ -53,8 +52,7 @@ class Observatory:
         self._dome = None
 
         self._filter_wheel = None
-        self.filters = None; self.filter_focus_offsets = None; self.autofocus_filters = None
-        self.recentering_filters = None; self.wcs_filters = None
+        self.filters = None; self.filter_focus_offsets = None
 
         self._focuser = None
         self.focuser_max_error = 10
@@ -74,9 +72,6 @@ class Observatory:
         self._autofocus = None
         self.autofocus_exposure = 10; self.autofocus_start_position = None; self.autofocus_step_number = 5;
         self.autofocus_step_size = 500; self.autofocus_use_current_pointing = True
-
-        self.take_flats_filter_exposure = None; self.take_flats_filter_brightness = None
-        self.take_flats_readout_mode = None
 
         if config_file_path is not None:
             logging.info('Using config file to initialize observatory: %s' % config_file)
@@ -149,7 +144,7 @@ class Observatory:
             self._autofocus = Autofocus(self.autofocus_driver, ascom=self.autofocus_ascom)
 
             # WCS
-            self._wcs_driver = self.config.get('recenter', 'wcs_driver', fallback=None)
+            self._wcs_driver = self.config.get('wcs', 'wcs_driver', fallback=None)
             self._wcs = WCS(self.wcs_driver)
 
             # Get other keywords from config file
@@ -157,7 +152,7 @@ class Observatory:
                 **self._config['dome'], **self._config['filter_wheel'], **self._config['focuser'],
                 **self._config['observing_conditions'], **self._config['rotator'], **self._config['safety_monitor'],
                 **self._config['switch'], **self._config['telescope'], **self._config['autofocus'], 
-                **self._config[take_flats], **self._config['recenter']}
+                **self._config['wcs']}
             self._read_out_kwargs(master_dict)
 
         # Camera
@@ -276,15 +271,12 @@ class Observatory:
         self._read_out_kwargs(kwargs)
 
         # Non-keyword properties
-        self._last_target = None
         self._last_camera_shutter_status = None
-
         self.camera.OriginalStartExposure = self.camera.StartExposure
         def NewStartExposure(self, Duration, Light):
             self._last_camera_shutter_status = Light
             self.camera.OriginalStartExposure(Duration, Light)
         self.camera.StartExposure = NewStartExposure
-
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -512,7 +504,7 @@ class Observatory:
 
         return obj_slew
     
-    def save_last_image(self, filename, overwrite=False):
+    def save_last_image(self, filename, frametyp=None, target=None, do_wcs=False, wcs_kwargs=None, overwrite=False):
         '''Saves the current image'''
 
         if not self.camera.ImageReady:
@@ -531,8 +523,9 @@ class Observatory:
         hdr['NAXIS'] = (2, 'number of axes')
         hdr['NAXIS1'] = (self.camera.ImageArray.shape[0], 'fastest changing axis')
         hdr['NAXIS2'] = (self.camera.ImageArray.shape[1], 'next to fastest changing axis')
-        if self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Light', 'Shutter status') 
-        elif not self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Dark', 'Shutter status')
+        if frametyp is not None: hdr['FRAMETYP'] = (frametyp, 'Frame type')
+        elif self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Light', 'Frame type') 
+        elif not self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Dark', 'Frame type')
         hdr['BSCALE'] = (1, 'physical=BZERO + BSCALE*array_value')
         hdr['BZERO'] = (32768, 'physical=BZERO + BSCALE*array_value')
         hdr['SWCREATE'] = ('pyScope', 'Software used to create file')
@@ -585,16 +578,10 @@ class Observatory:
             hdr['BAYOFFY'] = (self.camera.BayerOffsetY, 'Bayer Y offset')
 
         hdr['TELENAME'] = (self.telescope.Name, 'Telescope name')
+        hdr['TARGET'] = (target, 'Target name')
         hdr['OBJCTALT'] = (self.telescope.Altitude, 'Telescope altitude in degrees')
         hdr['OBJCTAZ'] = (self.telescope.Azimuth, 'Telescope azimuth in degrees')
         hdr['OBJCTRA'] = (self.telescope.RightAscension, 'Telescope right ascension in hours')
-        if type(self.last_target) is str: hdr['TARGNAME'] = (self._last_target, 'Target name')
-        elif type(self.last_target) is coord.SkyCoord: 
-            hdr['TARGNAME'] = ('', 'Target name')
-            hdr['TARGRA'] = (self.last_target.ra.hour, 'Target right ascension in hours')
-            hdr['TARGDEC'] = (self.last_target.dec.deg, 'Target declination in degrees')
-            hdr['TARGFRM'] = (self.last_target.name, 'Target coordinate reference frame')
-        else: hdr['TARGNAME'] = ('', 'Target name')
         hdr['OBJCTDEC'] = (self.telescope.Declination, 'Telescope declination in degrees')
         hdr['RARATE'] = (self.telescope.RightAscensionRate, 'Telescope right ascension rate in seconds per sidereal second')
         hdr['DECRATE'] = (self.telescope.DeclinationRate, 'Telescope declination rate in arcseconds per sidereal second')
@@ -700,18 +687,15 @@ class Observatory:
         hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
+        if do_wcs: self._wcs.Solve(filename, **wcs_kwargs)
+
         return True
     
     def slew_to_coordinates(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', 
                             control_dome=False, control_rotator=False):
         '''Slews the telescope to a given ra and dec'''
 
-        if type(obj) is str: 
-            self._last_target = obj
-            obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
-        else:
-            obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
-            self._last_target = obj
+        obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
         logging.info('Slewing to RA %i:%i:%.2f and Dec %i:%i:%.2f' % obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2],
             obj.dec.dms[0], obj.dec.dms[1], obj.dec.dms[2])
@@ -923,11 +907,11 @@ class Observatory:
             while not self.camera.ImageReady: time.sleep(0.1)
             logging.info('Exposure complete')
 
-            temp_image = tempfile.gettempdir()+'%s.fts' % astrotime.Time(astropy.time.Time.now(), format='fits').value
+            temp_image = tempfile.gettempdir()+'%s.fts' % astrotime.Time(self.observatory_time, format='fits').value
             self.save_last_image(temp_image)
 
             logging.info('Searching for a WCS solution...')
-            solution_found = self.WCS.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+            solution_found = self._wcs.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
                                             ra_dec_units=('hour', 'deg'), solve_timeout=60, 
                                             scale_units='arcsecperpix', scale_type='ev',
                                             scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
@@ -994,30 +978,137 @@ class Observatory:
 
         return True
     
-    def take_flats(self):
-        '''Takes a sequence of flat frames defined by the calibration configuration'''
-        return
-    
-    def take_darks(self, exposures, readouts, binnings, repeat=10, save_path='./'):
-        '''Takes a sequence of dark frames'''
+    def take_flats(self, filter_exposure, filter_brightness=None, readouts=None, binnings=(1, 1), 
+        repeat=10, save_path=None, new_folder=None, home_telescope=False, 
+        final_telescope_position='no change'):
+        '''Takes a sequence of flat frames'''
 
-        for exposure in exposures:
+        logging.info('Taking flat frames')
+
+        if self.filter_wheel is None or self.cover_calibrator is None:
+            logging.info('Filter wheel or cover calibrator is not available, exiting')
+            return False
+
+        if len(filter_exposure) != len(self.filters):
+            logging.info('Number of filter exposures does not match the number of filters, exiting')
+            return False
+        
+        if save_path is None:
+            save_path = os.getcwd()
+            logging.info('Setting save path to current working directory: %s' % save_path)
+        
+        if type(new_folder) is bool:
+            save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
+            os.makedirs(save_path)
+            logging.info('Created new directory: %s' % save_path)
+        elif type(new_folder) is str:
+            save_path = os.path.join(save_path, new_folder)
+            os.makedirs(save_path)
+            logging.info('Created new directory: %s' % save_path)
+
+        if home_telescope and self.telescope.CanFindHome:
+            logging.info('Homing the telescope')
+            self.telescope.FindHome()
+            logging.info('Homing complete')
+
+        logging.info('Slewing to point at cover calibrator')
+        self.telescope.SlewToAltAz(self.cover_calibrator_az, self.cover_calibrator_alt)
+        self.telescope.Tracking = False
+        logging.info('Slew complete')
+
+        if self.cover_calibrator.CoverState != 'NotPresent':
+            logging.info('Opening the cover calibrator')
+            self.cover_calibrator.OpenCover()
+            logging.info('Cover open')
+
+        for i in range(len(self.filters)):
+            if filter_exposure[i] == 0: continue
             for readout in readouts:
-                camera.ReadoutMode = readout
+                self.camera.ReadoutMode = readout
                 for binning in binnings:
                     if type(binnings[0]) is tuple: self.camera.BinX = binning[0]; self.camera.BinY = binning[1]
                     else: self.camera.BinX = binning; self.camera.BinY = binning
-                    for i in range(repeat):
+                    for j in range(repeat):
+                        while self.camera.Temperature > (self.cooler_setpoint + self.cooler_tolerance):
+                            logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                            time.sleep(10)
+                        self.filter_wheel.Position = i
+                        if self.cover_calibrator.CalibratorState != 'NotPresent' or filter_brightness is not None:
+                            logging.info('Setting the cover calibrator brightness to %i' % filter_brightness[i])
+                            self.cover_calibrator.CalibratorOn(filter_brightness[i])
+                        camera.StartExposure(filter_exposure[i], False)
+                        save_string = save_path + ('flat_%s_%ix%i_%4.4f_%i_%i.fts' % 
+                            (self.filters[i], self.camera.BinX, self.camera.BinY, filter_exposure[i], 
+                            self.camera.ReadoutModes[self.camera.ReadoutMode].replace(' ', ''), j))
+                        while not camera.ImageReady:
+                            time.sleep(0.1)
+                        self.save_last_image(save_string, frametyp='Flat')
+                        logging.info('Flat %i of %i complete: %s' % (j, repeat, save_string))
+        
+        if self.cover_calibrator.CalibratorState != 'NotPresent':
+            logging.info('Turning off the cover calibrator')
+            self.cover_calibrator.CalibratorOff()
+            logging.info('Cover calibrator off')
+            
+        if self.cover_calibrator.CoverState != 'NotPresent':
+            logging.info('Closing the cover calibrator')
+            self.cover_calibrator.CloseCover()
+            logging.info('Cover closed')
+
+            if final_telescope_position == 'no change':
+                logging.info('No change to telescope position requested, exiting')
+            elif final_telescope_position == 'home' and self.telescope.CanFindHome:
+                logging.info('Homing the telescope')
+                self.telescope.FindHome()
+                logging.info('Homing complete')
+            elif final_telescope_position == 'park' and self.telescope.CanPark:
+                logging.info('Parking the telescope')
+                self.telescope.Park()
+                logging.info('Parking complete')
+            
+        logging.info('Flats complete')
+
+        return True
+    
+    def take_darks(self, exposures, readouts, binnings, repeat=10, save_path=None, new_folder=None):
+        '''Takes a sequence of dark frames'''
+
+        logging.info('Taking dark frames')
+
+        if save_path is None:
+            save_path = os.getcwd()
+            logging.info('Setting save path to current working directory: %s' % save_path)
+        
+        if type(new_folder) is bool:
+            save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
+            os.makedirs(save_path)
+            logging.info('Created new directory: %s' % save_path)
+        elif type(new_folder) is str:
+            save_path = os.path.join(save_path, new_folder)
+            os.makedirs(save_path)
+            logging.info('Created new directory: %s' % save_path)
+
+        for exposure in exposures:
+            for readout in readouts:
+                self.camera.ReadoutMode = readout
+                for binning in binnings:
+                    if type(binnings[0]) is tuple: self.camera.BinX = binning[0]; self.camera.BinY = binning[1]
+                    else: self.camera.BinX = binning; self.camera.BinY = binning
+                    for j in range(repeat):
                         while self.camera.Temperature > (self.cooler_setpoint + self.cooler_tolerance):
                             logging.info('Cooler is not at setpoint, waiting 10 seconds...')
                             time.sleep(10)
                         camera.StartExposure(exposure, False)
-                        save_string = ('dark_%s_%ix%i_%4.4gs__%i.fts' % (self.camera.ReadoutModes[self.camera.ReadoutMode], 
+                        save_string = save_path + ('dark_%s_%ix%i_%4.4gs__%i.fts' % (
+                                self.camera.ReadoutModes[self.camera.ReadoutMode].replace(' ', ''),
                                 self.camera.BinX, self.camera.BinY, 
-                                exposure, i))
-                        while camera.ImageReady == False:
+                                exposure, j))
+                        while not camera.ImageReady:
                             time.sleep(0.1)
-                        self.save_last_image(os.path.join(save_path, save_string))
+                        self.save_last_image(save_string, frametyp='Dark')
+                        logging.info('Dark %i of %i complete: %s' % (j, repeat, save_string))
+        
+        logging.info('Darks complete')
 
         return True
 
@@ -1068,9 +1159,6 @@ class Observatory:
 
         self.filters = dictionary.get('filters', self.filters)
         self.filter_focus_offsets = dictionary.get('filter_focus_offsets', self.filter_focus_offsets)
-        self.autofocus_filters = dictionary.get('autofocus_filters', self.autofocus_filters)
-        self.recentering_filters = dictionary.get('recentering_filters', self.recentering_filters)
-        self.wcs_filters = dictionary.get('wcs_filters', self.wcs_filters)
 
         self.focuser_max_error = dictionary.get('focuser_max_error', self.focuser_max_error)
 
@@ -1085,10 +1173,6 @@ class Observatory:
         self.autofocus_step_number = dictionary.get('autofocus_step_number', self.autofocus_step_number)
         self.autofocus_step_size = dictionary.get('autofocus_step_size', self.autofocus_step_size)
         self.autofocus_use_current_pointing = dictionary.get('autofocus_use_current_pointing', self.autofocus_use_current_pointing)
-
-        self.take_flats_filter_exposure = dictionary.get('take_flats_filter_exposure', self.take_flats_filter_exposure)
-        self.take_flats_filter_brightness = dictionary.get('take_flats_filter_brightness', self.take_flats_filter_brightness)
-        self.take_flats_readout_mode = dictionary.get('take_flats_readout_mode', self.take_flats_readout_mode)
 
     @property
     def observatory_location(self):
@@ -1328,54 +1412,6 @@ class Observatory:
         self._config['filter_wheel']['filter_focus_offsets'] = ', '.join(self._filter_focus_offsets.values()) if self._filter_focus_offsets is not None else ''
     
     @property
-    def autofocus_filters(self):
-        return self._autofocus_filters
-    @autofocus_filters.setter
-    def autofocus_filters(self, *args):
-        if args is None or value == '': self._autofocus_filters = None
-        for value in args:
-            if char(value) in self.filters: self._autofocus_filters.append(char(value))
-            else: raise ObservatoryException('Filter %s is not in the list of filters' % value)
-        self._config['filter_wheel']['autofocus_filters'] = ', '.join(self._autofocus_filters) if self._autofocus_filters is not None else ''
-    @autofocus_filters.deleter
-    def autofocus_filters(self, *args):
-        for value in args:
-            self._autofocus_filters.remove(char(value))
-        self._config['filter_wheel']['autofocus_filters'] = ', '.join(self._autofocus_filters)
-    
-    @property
-    def recentering_filters(self):
-        return self._recentering_filters
-    @recentering_filters.setter
-    def recentering_filters(self, *args):
-        if args is None or value == '': self._recentering_filters = None
-        for value in args:
-            if char(value) in self.filters: self._recentering_filters.append(char(value))
-            else: raise ObservatoryException('Filter %s is not in the list of filters' % value)
-        self._config['filter_wheel']['recentering_filters'] = ', '.join(self._recentering_filters) if self._recentering_filters is not None else ''
-    @recentering_filters.deleter
-    def recentering_filters(self, *args):
-        for value in args:
-            self._recentering_filters.remove(char(value))
-        self._config['filter_wheel']['recentering_filters'] = ', '.join(self._recentering_filters)
-    
-    @property
-    def wcs_filters(self):
-        return self._wcs_filters
-    @wcs_filters.setter
-    def wcs_filters(self, *args):
-        if args is None or value == '': self._wcs_filters = None
-        for value in args:
-            if char(value) in self.filters: self._wcs_filters.append(char(value))
-            else: raise ObservatoryException('Filter %s is not in the list of filters' % value)
-        self._config['filter_wheel']['wcs_filters'] = ', '.join(self._wcs_filters) if self._wcs_filters is not None else ''
-    @wcs_filters.deleter
-    def wcs_filters(self, *args):
-        for value in args:
-            self._wcs_filters.remove(char(value))
-        self._config['filter_wheel']['wcs_filters'] = ', '.join(self._wcs_filters)
-    
-    @property
     def focuser(self):
         return self._focuser
     
@@ -1537,38 +1573,8 @@ class Observatory:
         self._config['autofocus']['autofocus_use_current_pointing'] = str(self._autofocus_use_current_pointing)
     
     @property
-    def take_flats_filter_exposure(self):
-        return self._take_flats_filter_exposure
-    @take_flats_filter_exposure.setter
-    def take_flats_filter_exposure(self, value, filt=None):
-        if filt is None: self._take_flats_filter_exposure_time = dict(zip(self.filters, value)) if value is not None or value !='' else None
-        else: self._take_flats_filter_exposure_time[filt] = float(value) if value is not None or value !='' else None
-        self._config[take_flats]['take_flats_filter_exposure_time'] = ', '.join(self._take_flats_filter_exposure_time.values()) if self._take_flats_filter_exposure_time is not None else ''
-    
-    @property
-    def take_flats_filter_brightness(self):
-        return self._take_flats_filter_brightness
-    @take_flats_filter_brightness.setter
-    def take_flats_filter_brightness(self, value):
-        if filt is None: self._take_flats_filter_brightness = dict(zip(self.filters, value)) if value is not None or value !='' else None
-        else: self._take_flats_filter_brightness[filt] = float(value) if value is not None or value !='' else None
-        self._config[take_flats]['take_flats_filter_brightness'] = ', '.join(self._take_flats_filter_brightness.values()) if self._take_flats_filter_brightness is not None else ''
-
-    @property
-    def take_flats_readout_mode(self):
-        return self._take_flats_readout_mode
-    @take_flats_readout_mode.setter
-    def take_flats_readout_mode(self, value):
-        self._take_flats_readout_mode = value
-        self._config[take_flats]['take_flats_readout_mode'] = self._take_flats_readout_mode
-    
-    @property
     def wcs_driver(self):
         return self._wcs_driver
-
-    @property
-    def last_target(self):
-        return self._last_target
 
     @property
     def last_camera_shutter_status(self):
