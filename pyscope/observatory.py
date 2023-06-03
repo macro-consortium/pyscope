@@ -1443,6 +1443,128 @@ class Observatory:
             return {'FOCCONN': (False, 'Focuser connected')}
 
     @property
+    def observing_conditions_info(self):
+        if self.observing_conditions is not None:
+            try: self.observing_conditions.Connected = True
+            except: return {'WXCONN': (False, 'Observing conditions connected')}
+            self.observing_conditions.Refresh()
+            info = {'WXCONN': (True, 'Observing conditions connected'),
+                    'WXAVGTIM': (self.observing_conditions.AveragePeriod, 'Observing conditions average period'),
+                    'WXCLD': (None, 'Observing conditions cloud cover'),
+                    'WXCLDUPD': (None, 'Observing conditions cloud cover last updated'),
+                    'WCCLDD': (None, 'Observing conditions cloud cover sensor description'),
+                    'WXDEW': (None, 'Observing conditions dew point'),
+                    'WXDEWUPD': (None, 'Observing conditions dew point last updated'),
+                    'WXDEWD': (None, 'Observing conditions dew point sensor description'),
+                    'WXHUM': (None, 'Observing conditions humidity'),
+                    'WXHUMUPD': (None, 'Observing conditions humidity last updated'),
+                    'WXHUMD': (None, 'Observing conditions humidity sensor description'),
+                    'WXPRES': (None, 'Observing conditions pressure'),
+                    'WXPREUPD': (None, 'Observing conditions pressure last updated'),
+                    'WXPRESD': (None, 'Observing conditions pressure sensor description'),
+                    'WXRAIN': (None, 'Observing conditions rain rate'),
+                    'WXRAIUPD': (None, 'Observing conditions rain rate last updated'),
+                    'WXRAIND': (None, 'Observing conditions rain rate sensor description'),
+                    'WXSKY': (None, 'Observing conditions sky brightness'),
+                    'WXSKYUPD': (None, 'Observing conditions sky brightness last updated'),
+                    'WXSKYD': (None, 'Observing conditions sky brightness sensor description'),
+                    'WXSKYQ': (None, 'Observing conditions sky quality'),
+                    'WXSKYQUP': (None, 'Observing conditions sky quality last updated'),
+                    'WXSKYQD': (None, 'Observing conditions sky quality sensor description'),
+                    'WXSKYTMP': (None, 'Observing conditions sky temperature'),
+                    'WXSKTUPD': (None, 'Observing conditions sky temperature last updated'),
+                    'WXSKTD': (None, 'Observing conditions sky temperature sensor description'),
+                    'WXFWHM': (None, 'Observing conditions seeing'),
+                    'WXFWHUP': (None, 'Observing conditions seeing last updated'),
+                    'WXFWHMD': (None, 'Observing conditions seeing sensor description'),
+                    'WXTEMP': (None, 'Observing conditions temperature'),
+                    'WXTEMUPD': (None, 'Observing conditions temperature last updated'),
+                    'WXTEMPD': (None, 'Observing conditions temperature sensor description'),
+                    'WXWIND': (None, 'Observing conditions wind speed'),
+                    'WXWINUPD': (None, 'Observing conditions wind speed last updated'),
+                    'WXWINDD': (None, 'Observing conditions wind speed sensor description'),
+                    'WXWINDIR': (None, 'Observing conditions wind direction'),
+                    'WXWDIRUPD': (None, 'Observing conditions wind direction last updated'),
+                    'WXWDIRD': (None, 'Observing conditions wind direction sensor description'),
+                    'WXWDGST': (None, 'Observing conditions wind gust over last two minutes'),
+                    'WXWGDUPD': (None, 'Observing conditions wind gust last updated'),
+                    'WXWGDSTD': (None, 'Observing conditions wind gust sensor description'),
+                    'WXNAME': (self.observing_conditions.Name, 'Observing conditions name'),
+                    'WXDRVER': (self.observing_conditions.DriverVersion, 'Observing conditions driver version'),
+                    'WXDRINF': (self.observing_conditions.DriverInfo, 'Observing conditions driver info'),
+                    'WXINTFC': (self.observing_conditions.InterfaceVersion, 'Observing conditions interface version'),
+                    'WXDESC': (self.observing_conditions.Description, 'Observing conditions description'),
+                    }
+            try: 
+                info['WXCLD'][0] = self.observing_conditions.CloudCover
+                info['WXCLDUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('CloudCover')
+                info['WXCLDD'][0] = self.observing_conditions.SensorDescription('CloudCover')
+            except: pass
+            try:
+                info['WXDEW'][0] = self.observing_conditions.DewPoint
+                info['WXDEWUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('DewPoint')
+                info['WXDEWD'][0] = self.observing_conditions.SensorDescription('DewPoint')
+            except: pass
+            try: 
+                info['WXHUM'][0] = self.observing_conditions.Humidity
+                info['WXHUMUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('Humidity')
+                info['WXHUMD'][0] = self.observing_conditions.SensorDescription('Humidity')
+            except: pass
+            try:
+                info['WXPRES'][0] = self.observing_conditions.Pressure
+                info['WXPREUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('Pressure')
+                info['WXPRESD'][0] = self.observing_conditions.SensorDescription('Pressure')
+            except: pass
+            try:
+                info['WXRAIN'][0] = self.observing_conditions.RainRate
+                info['WXRAIUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('RainRate')
+                info['WXRAIND'][0] = self.observing_conditions.SensorDescription('RainRate')
+            except: pass
+            try:
+                info['WXSKY'][0] = self.observing_conditions.SkyBrightness
+                info['WXSKYUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('SkyBrightness')
+                info['WXSKYD'][0] = self.observing_conditions.SensorDescription('SkyBrightness')
+            except: pass
+            try: 
+                info['WXSKYQ'][0] = self.observing_conditions.SkyQuality
+                info['WXSKYQUP'][0] = self.observing_conditions.TimeSinceLastUpdate('SkyQuality')
+                info['WXSKYQD'][0] = self.observing_conditions.SensorDescription('SkyQuality')
+            except: pass
+            try:
+                info['WXSKYTMP'][0] = self.observing_conditions.SkyTemperature
+                info['WXSKTUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('SkyTemperature')
+                info['WXSKTD'][0] = self.observing_conditions.SensorDescription('SkyTemperature')
+            except: pass
+            try:
+                info['WXFWHM'][0] = self.observing_conditions.Seeing
+                info['WXFWHUP'][0] = self.observing_conditions.TimeSinceLastUpdate('Seeing')
+                info['WXFWHMD'][0] = self.observing_conditions.SensorDescription('Seeing')
+            except: pass
+            try:
+                info['WXTEMP'][0] = self.observing_conditions.Temperature
+                info['WXTEMUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('Temperature')
+                info['WXTEMPD'][0] = self.observing_conditions.SensorDescription('Temperature')
+            except: pass
+            try:
+                info['WXWIND'][0] = self.observing_conditions.WindSpeed
+                info['WXWINUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('WindSpeed')
+                info['WXWINDD'][0] = self.observing_conditions.SensorDescription('WindSpeed')
+            except: pass
+            try:
+                info['WXWINDIR'][0] = self.observing_conditions.WindDirection
+                info['WXWDIRUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('WindDirection')
+                info['WXWDIRD'][0] = self.observing_conditions.SensorDescription('WindDirection')
+            except: pass
+            try:
+                info['WXWDGST'][0] = self.observing_conditions.WindGust
+                info['WXWGDUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('WindGust')
+                info['WXWGDSTD'][0] = self.observing_conditions.SensorDescription('WindGust')
+            except: pass
+            return info
+        else:
+            return {'WXCONN': (False, 'Observing conditions connected')}
+
+    @property
     def observatory_location(self):
         '''Returns the EarthLocation object for the observatory'''
         return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
