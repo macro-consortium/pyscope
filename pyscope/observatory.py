@@ -1410,6 +1410,39 @@ class Observatory:
             return {'FWCONN': (False, 'Filter wheel connected')}
 
     @property
+    def focuser_info(self):
+        if self.focuser is not None:
+            try: self.focuser.Connected = True
+            except: return {'FOCCONN': (False, 'Focuser connected')}
+            info = {'FOCCONN': (True, 'Focuser connected'),
+                    'FOCPOS': (None, 'Focuser position'),
+                    'FOCMOV': (self.focuser.IsMoving, 'Focuser moving'),
+                    'TEMPCOMP': (None, 'Focuser temperature compensation'),
+                    'FOCTEMP': (None, 'Focuser temperature'),
+                    'FOCNAME': (self.focuser.Name, 'Focuser name'),
+                    'FOCDRVVER': (self.focuser.DriverVersion, 'Focuser driver version'),
+                    'FOCDRV': (self.focuser.DriverInfo, 'Focuser driver info'),
+                    'FOCINTFC': (self.focuser.InterfaceVersion, 'Focuser interface version'),
+                    'FOCDESC': (self.focuser.Description, 'Focuser description'),
+                    'FOCSTEP': (None, 'Focuser step size'),
+                    'FOCABSOL': (self.focuser.Absolute, 'Can focuser move to absolute position'),
+                    'FOCMAXIN': (self.focuser.MaxIncrement, 'Focuser maximum increment'),
+                    'FOCMAXST': (self.focuser.MaxStep, 'Focuser maximum step'),
+                    'FOCTEMPC': (self.focuser.TempCompAvailable, 'Focuser temperature compensation available'),
+                    }
+            try: info['FOCPOS'][0] = self.focuser.Position
+            except: pass
+            try: info['TEMPCOMP'][0] = self.focuser.TempComp
+            except: pass
+            try: info['FOCTEMP'][0] = self.focuser.Temperature
+            except: pass
+            try: info['FOCSTEP'][0] = self.focuser.StepSize
+            except: pass
+            return info
+        else:
+            return {'FOCCONN': (False, 'Focuser connected')}
+
+    @property
     def observatory_location(self):
         '''Returns the EarthLocation object for the observatory'''
         return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
