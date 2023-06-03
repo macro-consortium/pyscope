@@ -1189,11 +1189,11 @@ class Observatory:
             try: self.camera.Connected = True
             except: info = {'CONNECT': (False, 'Is the camera connected')}
         else:
-            info = {'CONNECT': (True, 'Is the camera connected'),
-                    'READY': (self.camera.ImageReady, 'Is the camera ready to download an image'),
+            info = {'CAMCON': (True, 'Is the camera connected'),
+                    'CAMREADY': (self.camera.ImageReady, 'Is the camera ready to download an image'),
                     'CAMSTATE': (['Idle', 'Waiting', 'Exposing', 'Reading', 
                                     'Download', 'Error'][self.camera.CameraState], 'Camera state'),
-                    'Percent Completed': (None, 'Function percent completed'),
+                    'PCNTCOMP': (None, 'Function percent completed'),
                     'DATE-OBS': (None, 'YYYY-MM-DDThh:mm:ss observation start, UT'),
                     'JD': (None, 'Julian date'),
                     'MJD': (None, 'Modified Julian date'),
@@ -1257,7 +1257,7 @@ class Observatory:
                     'OFFSETS': (None, 'CCD offsets'),
                     'OFFSETMIN': (None, 'Minimum CCD offset'),
                     'OFFSETMAX': (None, 'Maximum CCD offset'),
-                    'SUPPACTN': (self.camera.SupportedActions, 'Supported actions'),
+                    'CAMSUPAC': (self.camera.SupportedActions, 'Supported actions'),
                     }
             try: info['Percent Completed'][0] = self.camera.PercentCompleted
             except: pass
@@ -1316,6 +1316,33 @@ class Observatory:
             try: info['CCD-TEMP'][0] = self.camera.CCDTemperature
             except: pass
 
+        return info
+    
+    @property
+    def cover_calibrator_info(self):
+        if self.cover_calibrator is not None:
+            if not self.cover_calibrator.Connected:
+                try: self.cover_calibrator.Connected = True
+                except: info = {'CCALCONN': (False, 'Cover calibrator connected')}
+            else:
+                info = {'CCALCONN': (True, 'Cover calibrator connected'),
+                        'CALSTATE': (self.cover_calibrator.CalibratorState, 'Calibrator state'),
+                        'COVSTATE': (self.cover_calibrator.CoverState, 'Cover state'),
+                        'BRIGHT': (None, 'Brightness of cover calibrator'),
+                        'CCNAME': (self.cover_calibrator.Name, 'Cover calibrator name'),
+                        'COVCAL': (self.cover_calibrator.Name, 'Cover calibrator name'),
+                        'CCDRVVER': (self.cover_calibrator.DriverVersion, 'Cover calibrator driver version'),
+                        'CCDRV': (self.cover_calibrator.DriverInfo, 'Cover calibrator driver info'),
+                        'CCINTFC': (self.cover_calibrator.InterfaceVersion, 'Cover calibrator interface version'),
+                        'CCDESC': (self.cover_calibrator.Description, 'Cover calibrator description'),
+                        'MAXBRITE': (self.cover_calibrator.MaxBrightness, 'Maximum brightness'),
+                        'CCSUPAC': (self.cover_calibrator.SupportedActions, 'Supported actions'),
+                        }
+                try: info['BRIGHT'][0] = self.cover_calibrator.Brightness
+                except: pass
+        else:
+            info = {'CCALCONN': (False, 'Cover calibrator connected')}
+        
         return info
 
     @property
