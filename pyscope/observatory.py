@@ -1185,165 +1185,204 @@ class Observatory:
     
     @property
     def camera_info(self):
-        if not self.camera.Connected:
-            try: self.camera.Connected = True
-            except: info = {'CONNECT': (False, 'Is the camera connected')}
-        else:
-            info = {'CAMCON': (True, 'Is the camera connected'),
-                    'CAMREADY': (self.camera.ImageReady, 'Is the camera ready to download an image'),
-                    'CAMSTATE': (['Idle', 'Waiting', 'Exposing', 'Reading', 
-                                    'Download', 'Error'][self.camera.CameraState], 'Camera state'),
-                    'PCNTCOMP': (None, 'Function percent completed'),
-                    'DATE-OBS': (None, 'YYYY-MM-DDThh:mm:ss observation start, UT'),
-                    'JD': (None, 'Julian date'),
-                    'MJD': (None, 'Modified Julian date'),
-                    'EXPTIME': (None, 'Exposure time in seconds'),
-                    'EXPOSURE': (None, 'Exposure time in seconds'),
-                    'SUBEXP': (None, 'Subexposure time in seconds'),
-                    'XBINNING': (self.camera.BinX, 'Binning factor in width'),
-                    'YBINNING': (self.camera.BinY, 'Binning factor in height'),
-                    'XORGSUBF': (self.camera.StartX, 'Subframe X position'),
-                    'YORGSUBF': (self.camera.StartY, 'Subframe Y position'),
-                    'XPOSSUBF': (self.camera.NumX, 'Subframe X dimension'),
-                    'YPOSSUBF': (self.camera.NumY, 'Subframe Y dimension'),
-                    'READOUT': (None, 'Readout mode of image'),
-                    'READOUTM': (None, 'Readout mode of image'),
-                    'FASTREAD': (None, 'Fast readout mode'),
-                    'GAIN': (None, 'Electronic gain'),
-                    'OFFSET': (None, 'CCD offset'),
-                    'PULSEGUID': (None, 'Pulse guiding'),
-                    'SENSTYP': (None, 'Sensor type'),
-                    'BAYERPAT': (None, 'Bayer color pattern'),
-                    'BAYOFFX': (None, 'Bayer X offset'),
-                    'BAYOFFY': (None, 'Bayer Y offset'),
-                    'HSINKT': (self.camera.HeatSinkTemperature, 'Heat sink temperature in C'),
-                    'COOLERON': (None, 'Whether the cooler is on'),
-                    'COOLPOWR': (None, 'Cooler power in percent'),
-                    'SET-TEMP': (None, 'CCD temperature setpoint in C'),
-                    'CCD-TEMP': (None, 'CCD temperature in C'),
-                    'CAMNAME': (self.camera.Name, 'Name of camera'),
-                    'CAMERA': (self.camera.Name, 'Name of camera'),
-                    'CAMDRV': (self.camera.DriverVersion, 'Camera driver version'),
-                    'CAMDRVI': (self.camera.DriverInfo, 'Camera driver info'),
-                    'CAMINTF': (self.camera.InterfaceVersion, 'Camera interface version'),
-                    'CAMDESC': (self.camera.Description, 'Camera description'),
-                    'SENSOR': (self.camera.SensorName, 'Name of sensor'),
-                    'WIDTH': (self.camera.CameraXSize, 'Width of CCD in pixels'),
-                    'HEIGHT': (self.camera.CameraYSize, 'Height of CCD in pixels'),
-                    'XPIXSIZE': (self.camera.PixelSizeX, 'Pixel width in microns'),
-                    'YPIXSIZE': (self.camera.PixelSizeY, 'Pixel height in microns'),
-                    'MECHSHTR': (self.camera.HasShutter, 'Whether a mechanical shutter is present'),
-                    'ISSHUTTR': (self.camera.HasShutter, 'Whether a mechanical shutter is present'),
-                    'MINEXP': (self.camera.ExposureMin, 'Minimum exposure time in seconds'),
-                    'MAXEXP': (self.camera.ExposureMax, 'Maximum exposure time in seconds'),
-                    'EXPRESL': (self.camera.ExposureResolution, 'Exposure time resolution in seconds'),
-                    'MAXBINSX': (self.camera.MaxBinX, 'Maximum binning factor in width'),
-                    'MAXBINSY': (self.camera.MaxBinY, 'Maximum binning factor in height'),
-                    'CANASBIN': (self.camera.CanAsymmetricBin, 'Can asymmetric bin'),
-                    'CANABRT': (self.camera.CanAbortExposure, 'Can abort exposures'),
-                    'CANSTP': (self.camera.CanStopExposure, 'Can stop exposures'),
-                    'CANCOOLP': (self.camera.CanGetCoolerPower, 'Can get cooler power'),
-                    'CANSETTE': (self.camera.CanSetCCDTemperature, 'Can set CCD temperature'),
-                    'CANPULSE': (self.camera.CanPulseGuide, 'Can pulse guide'),
-                    'FULLWELL': (self.camera.FullWellCapacity, 'Full well capacity in e-'),
-                    'MAXADU': (self.camera.MaxADU, 'Maximum ADU value in image'),
-                    'E-ADU': (self.camera.ElectronsPerADU, 'e- per ADU'),
-                    'EGAIN': (self.camera.Gain, 'Electronic gain'),
-                    'CANFASTR': (self.camera.CanFastReadout, 'Can fast readout'),
-                    'READMDS': (None, 'Readout modes of image'),
-                    'GAINS': (None, 'Electronic gains'),
-                    'GAINMIN': (None, 'Minimum electronic gain'),
-                    'GAINMAX': (None, 'Maximum electronic gain'),
-                    'OFFSETS': (None, 'CCD offsets'),
-                    'OFFSETMIN': (None, 'Minimum CCD offset'),
-                    'OFFSETMAX': (None, 'Maximum CCD offset'),
-                    'CAMSUPAC': (self.camera.SupportedActions, 'Supported actions'),
-                    }
-            try: info['Percent Completed'][0] = self.camera.PercentCompleted
-            except: pass
-            try: 
-                info['DATE-OBS'][0] = self.camera.LastExposureStartTime
-                info['JD'][0] = astrotime.Time(self.camera.LastExposureStartTime).jd
-                info['MJD'][0] = astrotime.Time(self.camera.LastExposureStartTime).mjd
-            except: pass
-            try: 
-                info['EXPTIME'][0] = self.camera.ExposureTime
-                info['EXPOSURE'][0] = self.camera.ExposureTime
-            except: pass
-            try: info['SUBEXP'][0] = self.camera.SubExposureDuration
-            except: pass
-            info['CANFAST'][0] = self.camera.CanFastReadout
-            if self.camera.CanFastReadout:
-                info['READOUT'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
-                info['READOUTM'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
-                info['FASTREAD'][0] = self.camera.FastReadout
-                info['READMDS'][0] = self.camera.ReadoutModes
-                info['SENSTYP'][0] = ['Monochrome, Color, \
-                    RGGB, CMYG, CMYG2, LRGB'][self.camera.SensorType]
-                if not self.camera.SensorType in (0, 1):
-                    info['BAYERPAT'][0] = self.camera.BayerPattern
-                    info['BAYOFFX'][0] = self.camera.BayerOffsetX
-                    info['BAYOFFY'][0] = self.camera.BayerOffsetY
-            try: 
-                info['GAINS'][0] = self.camera.Gains
-                info['GAIN'][0] = self.camera.Gains[self.camera.Gain]
-            except:
-                try:
-                    info['GAINMIN'][0] = self.camera.GainMin
-                    info['GAINMAX'][0] = self.camera.GainMax
-                    info['GAIN'][0] = self.camera.Gain
-                except: pass
+        try: self.camera.Connected = True
+        except: return {'CONNECT': (False, 'Camera connection')}
+        info = {'CAMCON': (True, 'Camera connection'),
+                'CAMREADY': (self.camera.ImageReady, 'Image ready'),
+                'CAMSTATE': (['Idle', 'Waiting', 'Exposing', 'Reading', 
+                                'Download', 'Error'][self.camera.CameraState], 'Camera state'),
+                'PCNTCOMP': (None, 'Function percent completed'),
+                'DATE-OBS': (None, 'YYYY-MM-DDThh:mm:ss observation start [UT]'),
+                'JD': (None, 'Julian date'),
+                'MJD': (None, 'Modified Julian date'),
+                'EXPTIME': (None, 'Exposure time [seconds]'),
+                'EXPOSURE': (None, 'Exposure time [seconds]'),
+                'SUBEXP': (None, 'Subexposure time [seconds]'),
+                'XBINNING': (self.camera.BinX, 'Image binning factor in width'),
+                'YBINNING': (self.camera.BinY, 'Image binning factor in height'),
+                'XORGSUBF': (self.camera.StartX, 'Subframe X position'),
+                'YORGSUBF': (self.camera.StartY, 'Subframe Y position'),
+                'XPOSSUBF': (self.camera.NumX, 'Subframe X dimension'),
+                'YPOSSUBF': (self.camera.NumY, 'Subframe Y dimension'),
+                'READOUT': (None, 'Image readout mode'),
+                'READOUTM': (None, 'Image readout mode'),
+                'FASTREAD': (None, 'Fast readout mode'),
+                'GAIN': (None, 'Electronic gain'),
+                'OFFSET': (None, 'Image offset'),
+                'PULSEGUID': (None, 'Pulse guiding'),
+                'SENSTYP': (None, 'Sensor type'),
+                'BAYERPAT': (None, 'Bayer color pattern'),
+                'BAYOFFX': (None, 'Bayer X offset'),
+                'BAYOFFY': (None, 'Bayer Y offset'),
+                'HSINKT': (self.camera.HeatSinkTemperature, 'Heat sink temperature [C]'),
+                'COOLERON': (None, 'Whether the cooler is on'),
+                'COOLPOWR': (None, 'Cooler power in percent'),
+                'SET-TEMP': (None, 'Camera temperature setpoint [C]'),
+                'CCD-TEMP': (None, 'Camera temperature [C]'),
+                'CMOS-TEMP': (None, 'Camera temperature [C]'),
+                'CAMNAME': (self.camera.Name, 'Name of camera'),
+                'CAMERA': (self.camera.Name, 'Name of camera'),
+                'CAMDRV': (self.camera.DriverVersion, 'Camera driver version'),
+                'CAMDRVI': (self.camera.DriverInfo, 'Camera driver info'),
+                'CAMINTF': (self.camera.InterfaceVersion, 'Camera interface version'),
+                'CAMDESC': (self.camera.Description, 'Camera description'),
+                'SENSOR': (self.camera.SensorName, 'Name of sensor'),
+                'WIDTH': (self.camera.CameraXSize, 'Width of sensor in pixels'),
+                'HEIGHT': (self.camera.CameraYSize, 'Height of sensor in pixels'),
+                'XPIXSIZE': (self.camera.PixelSizeX, 'Pixel width in microns'),
+                'YPIXSIZE': (self.camera.PixelSizeY, 'Pixel height in microns'),
+                'MECHSHTR': (self.camera.HasShutter, 'Whether a camera mechanical shutter is present'),
+                'ISSHUTTR': (self.camera.HasShutter, 'Whether a camera mechanical shutter is present'),
+                'MINEXP': (self.camera.ExposureMin, 'Minimum exposure time [seconds]'),
+                'MAXEXP': (self.camera.ExposureMax, 'Maximum exposure time [seconds]'),
+                'EXPRESL': (self.camera.ExposureResolution, 'Exposure time resolution [seconds]'),
+                'MAXBINSX': (self.camera.MaxBinX, 'Maximum binning factor in width'),
+                'MAXBINSY': (self.camera.MaxBinY, 'Maximum binning factor in height'),
+                'CANASBIN': (self.camera.CanAsymmetricBin, 'Can asymmetric bin'),
+                'CANABRT': (self.camera.CanAbortExposure, 'Can abort exposures'),
+                'CANSTP': (self.camera.CanStopExposure, 'Can stop exposures'),
+                'CANCOOLP': (self.camera.CanGetCoolerPower, 'Can get cooler power'),
+                'CANSETTE': (self.camera.CanSetCCDTemperature, 'Can camera set temperature'),
+                'CANPULSE': (self.camera.CanPulseGuide, 'Can camera pulse guide'),
+                'FULLWELL': (self.camera.FullWellCapacity, 'Full well capacity [e-]'),
+                'MAXADU': (self.camera.MaxADU, 'Camera maximum ADU value possible'),
+                'E-ADU': (self.camera.ElectronsPerADU, 'Gain [e- per ADU]'),
+                'EGAIN': (self.camera.Gain, 'Electronic gain'),
+                'CANFASTR': (self.camera.CanFastReadout, 'Can camera fast readout'),
+                'READMDS': (None, 'Possible readout modes'),
+                'GAINS': (None, 'Possible electronic gains'),
+                'GAINMIN': (None, 'Minimum possible electronic gain'),
+                'GAINMAX': (None, 'Maximum possible electronic gain'),
+                'OFFSETS': (None, 'Possible offsets'),
+                'OFFSETMIN': (None, 'Minimum possible offset'),
+                'OFFSETMAX': (None, 'Maximum possible offset'),
+                'CAMSUPAC': (self.camera.SupportedActions, 'Camera supported actions'),
+                }
+        try: info['Percent Completed'][0] = self.camera.PercentCompleted
+        except: pass
+        try: 
+            info['DATE-OBS'][0] = self.camera.LastExposureStartTime
+            info['JD'][0] = astrotime.Time(self.camera.LastExposureStartTime).jd
+            info['MJD'][0] = astrotime.Time(self.camera.LastExposureStartTime).mjd
+        except: pass
+        try: 
+            info['EXPTIME'][0] = self.camera.ExposureTime
+            info['EXPOSURE'][0] = self.camera.ExposureTime
+        except: pass
+        try: info['SUBEXP'][0] = self.camera.SubExposureDuration
+        except: pass
+        info['CANFAST'][0] = self.camera.CanFastReadout
+        if self.camera.CanFastReadout:
+            info['READOUT'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
+            info['READOUTM'][0] = self.camera.ReadoutModes[self.camera.ReadoutMode]
+            info['FASTREAD'][0] = self.camera.FastReadout
+            info['READMDS'][0] = self.camera.ReadoutModes
+            info['SENSTYP'][0] = ['Monochrome, Color, \
+                RGGB, CMYG, CMYG2, LRGB'][self.camera.SensorType]
+            if not self.camera.SensorType in (0, 1):
+                info['BAYERPAT'][0] = self.camera.BayerPattern
+                info['BAYOFFX'][0] = self.camera.BayerOffsetX
+                info['BAYOFFY'][0] = self.camera.BayerOffsetY
+        try: 
+            info['GAINS'][0] = self.camera.Gains
+            info['GAIN'][0] = self.camera.Gains[self.camera.Gain]
+        except:
             try:
-                info['OFFSETS'][0] = self.camera.Offsets
-                info['OFFSET'][0] = self.camera.Offsets[self.camera.Offset]
-            except:
-                try:
-                    info['OFFSETMIN'][0] = self.camera.OffsetMin
-                    info['OFFSETMAX'][0] = self.camera.OffsetMax
-                    info['OFFSET'][0] = self.camera.Offset
-                except: pass
-            info['CANPULSE'][0] = self.camera.CanPulseGuide
-            if self.camera.CanPulseGuide:
-                info['PULSEGUID'][0] = self.camera.IsPulseGuiding
-            try: info['COOLERON'][0] = self.camera.CoolerOn
+                info['GAINMIN'][0] = self.camera.GainMin
+                info['GAINMAX'][0] = self.camera.GainMax
+                info['GAIN'][0] = self.camera.Gain
             except: pass
-            info['CANCOOLP'][0] = self.camera.CanGetCoolerPower
-            if self.camera.CanGetCoolerPower:
-                info['COOLPOWR'][0] = self.camera.CoolerPower
-            info['CANSETTE'][0] = self.camera.CanSetCCDTemperature
-            if self.camera.CanSetCCDTemperature:
-                info['SET-TEMP'][0] = self.camera.SetCCDTemperature
-            try: info['CCD-TEMP'][0] = self.camera.CCDTemperature
+        try:
+            info['OFFSETS'][0] = self.camera.Offsets
+            info['OFFSET'][0] = self.camera.Offsets[self.camera.Offset]
+        except:
+            try:
+                info['OFFSETMIN'][0] = self.camera.OffsetMin
+                info['OFFSETMAX'][0] = self.camera.OffsetMax
+                info['OFFSET'][0] = self.camera.Offset
             except: pass
+        info['CANPULSE'][0] = self.camera.CanPulseGuide
+        if self.camera.CanPulseGuide:
+            info['PULSEGUID'][0] = self.camera.IsPulseGuiding
+        try: info['COOLERON'][0] = self.camera.CoolerOn
+        except: pass
+        info['CANCOOLP'][0] = self.camera.CanGetCoolerPower
+        if self.camera.CanGetCoolerPower:
+            info['COOLPOWR'][0] = self.camera.CoolerPower
+        info['CANSETTE'][0] = self.camera.CanSetCCDTemperature
+        if self.camera.CanSetCCDTemperature:
+            info['SET-TEMP'][0] = self.camera.SetCCDTemperature
+        try: 
+            info['CCD-TEMP'][0] = self.camera.CCDTemperature
+            info['CMOS-TEMP'][0] = self.camera.CMOSTemperature
+        except: pass
 
         return info
     
     @property
     def cover_calibrator_info(self):
         if self.cover_calibrator is not None:
-            if not self.cover_calibrator.Connected:
-                try: self.cover_calibrator.Connected = True
-                except: info = {'CCALCONN': (False, 'Cover calibrator connected')}
-            else:
-                info = {'CCALCONN': (True, 'Cover calibrator connected'),
-                        'CALSTATE': (self.cover_calibrator.CalibratorState, 'Calibrator state'),
-                        'COVSTATE': (self.cover_calibrator.CoverState, 'Cover state'),
-                        'BRIGHT': (None, 'Brightness of cover calibrator'),
-                        'CCNAME': (self.cover_calibrator.Name, 'Cover calibrator name'),
-                        'COVCAL': (self.cover_calibrator.Name, 'Cover calibrator name'),
-                        'CCDRVVER': (self.cover_calibrator.DriverVersion, 'Cover calibrator driver version'),
-                        'CCDRV': (self.cover_calibrator.DriverInfo, 'Cover calibrator driver info'),
-                        'CCINTFC': (self.cover_calibrator.InterfaceVersion, 'Cover calibrator interface version'),
-                        'CCDESC': (self.cover_calibrator.Description, 'Cover calibrator description'),
-                        'MAXBRITE': (self.cover_calibrator.MaxBrightness, 'Maximum brightness'),
-                        'CCSUPAC': (self.cover_calibrator.SupportedActions, 'Supported actions'),
-                        }
-                try: info['BRIGHT'][0] = self.cover_calibrator.Brightness
-                except: pass
+            try: self.cover_calibrator.Connected = True
+            except: return {'CCALCONN': (False, 'Cover calibrator connected')}
+            info = {'CCALCONN': (True, 'Cover calibrator connected'),
+                    'CALSTATE': (self.cover_calibrator.CalibratorState, 'Calibrator state'),
+                    'COVSTATE': (self.cover_calibrator.CoverState, 'Cover state'),
+                    'BRIGHT': (None, 'Brightness of cover calibrator'),
+                    'CCNAME': (self.cover_calibrator.Name, 'Cover calibrator name'),
+                    'COVCAL': (self.cover_calibrator.Name, 'Cover calibrator name'),
+                    'CCDRVVER': (self.cover_calibrator.DriverVersion, 'Cover calibrator driver version'),
+                    'CCDRV': (self.cover_calibrator.DriverInfo, 'Cover calibrator driver info'),
+                    'CCINTFC': (self.cover_calibrator.InterfaceVersion, 'Cover calibrator interface version'),
+                    'CCDESC': (self.cover_calibrator.Description, 'Cover calibrator description'),
+                    'MAXBRITE': (self.cover_calibrator.MaxBrightness, 'Cover calibrator maximum possible brightness'),
+                    'CCSUPAC': (self.cover_calibrator.SupportedActions, 'Cover calibrator supported actions'),
+                    }
+            try: info['BRIGHT'][0] = self.cover_calibrator.Brightness
+            except: pass
+            return info
         else:
-            info = {'CCALCONN': (False, 'Cover calibrator connected')}
-        
-        return info
+            return {'CCALCONN': (False, 'Cover calibrator connected')}
+    
+    @property
+    def dome_info(self):
+        if self.dome is not None:
+            try: self.dome.Connected = True
+            except: return {'DOMECONN': (False, 'Dome connected')}
+            info = {'DOMECONN': (True, 'Dome connected'),
+                    'DOMEALT': (None, 'Dome altitude [deg]'),
+                    'DOMEAZ': (None, 'Dome azimuth [deg]'),
+                    'DOMESHUT': (None, 'Dome shutter status'),
+                    'DOMESLEW': (self.dome.Slewing, 'Dome slew status'),
+                    'DOMESLAV': (None, 'Dome slave status'),
+                    'DOMEHOME': (None, 'Dome home status'),
+                    'DOMEPARK': (None, 'Dome park status'),
+                    'DOMENAME': (self.dome.Name, 'Dome name'),
+                    'DOMEDRVV': (self.dome.DriverVersion, 'Dome driver version'),
+                    'DOMEDRV': (self.dome.DriverInfo, 'Dome driver info'),
+                    'DOMEINTF': (self.dome.InterfaceVersion, 'Dome interface version'),
+                    'DOMEDSC': (self.dome.Description, 'Dome description'),
+                    'DOMECALT': (self.dome.CanSetAltitude, 'Can dome set altitude'),
+                    'DOMECAZ': (self.dome.CanSetAzimuth, 'Can dome set azimuth'),
+                    'DOMECSHT': (self.dome.CanSetShutter, 'Can dome set shutter'),
+                    'DOMECSLV': (self.dome.CanSlave, 'Can dome slave to mount'),
+                    'DCANSYNC': (self.dome.CanSyncAzimuth, 'Can dome sync to azimuth value'),
+                    'DCANHOME': (self.dome.CanFindHome, 'Can dome home'),
+                    'DCANPARK': (self.dome.CanPark, 'Can dome park'),
+                    'DCANSPRK': (self.dome.CanSetPark, 'Can dome set park'),
+                    'DOMSUPAC': (self.dome.SupportedActions, 'Dome supported actions'),
+                    }
+            try: info['DOMEALT'][0] = self.dome.Altitude
+            except: pass
+            try: info['DOMEAZ'][0] = self.dome.Azimuth
+            except: pass
+            try: info['DOMESHUT'][0] = self.dome.ShutterStatus
+            except: pass
+            try: info['DOMESLAV'][0] = self.dome.Slaved
+            except: pass
+            try: info['DOMEHOME'][0] = self.dome.AtHome
+            except: pass
+            try: info['DOMEPARK'][0] = self.dome.AtPark
+            except: pass
 
     @property
     def observatory_location(self):
