@@ -1383,6 +1383,31 @@ class Observatory:
             except: pass
             try: info['DOMEPARK'][0] = self.dome.AtPark
             except: pass
+            return info
+        else:
+            return {'DOMECONN': (False, 'Dome connected')}
+
+    @property
+    def filter_wheel_info(self):
+        if self.filter_wheel is not None:
+            try: self.filter_wheel.Connected = True
+            except: return {'FWCONN': (False, 'Filter wheel connected')}
+            info = {'FWCONN': (True, 'Filter wheel connected'),
+                    'FWPOS': (self.filter_wheel.Position, 'Filter wheel position'),
+                    'FWNAME': (self.filter_wheel.Names[self.filter_wheel.Position], 'Filter wheel name (from filter wheel object configuration)'),
+                    'FILTER': (self.filters[self.filter_wheel.Position], 'Filter name (from pyscope observatory object configuration)'),
+                    'FOCOFFCG': (self.filter_wheel.FocusOffsets[self.filter_wheel.Position], 'Filter focus offset (from filter wheel object configuration)'),
+                    'FWNAME': (self.filter_wheel.Name, 'Filter wheel name'),
+                    'FWDRVVER': (self.filter_wheel.DriverVersion, 'Filter wheel driver version'),
+                    'FWDRV': (self.filter_wheel.DriverInfo, 'Filter wheel driver info'),
+                    'FWINTFC': (self.filter_wheel.InterfaceVersion, 'Filter wheel interface version'),
+                    'FWALLNAM': (self.filter_wheel.Names, 'Filter wheel names'),
+                    'FWALLOFF': (self.filter_wheel.FocusOffsets, 'Filter wheel focus offsets'),
+                    'FWSUPAC': (self.filter_wheel.SupportedActions, 'Filter wheel supported actions'),
+                    }
+            return info
+        else:
+            return {'FWCONN': (False, 'Filter wheel connected')}
 
     @property
     def observatory_location(self):
