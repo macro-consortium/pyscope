@@ -1591,14 +1591,27 @@ class Observatory:
             return {'ROTCONN': (False, 'Rotator connected')}
     
     @property
-    def safety_monitor_info(self):
-        if self.safety_monitor is not None: 
-            try: self.safety_monitor.Connected = True
-            except: return {'SMCONN': (False, 'Safety monitor connected')}
-            info = {'SMCONN': (True, 'Safety monitor connected'),
-                    }
+    def safety_monitor_info(self, index=None):
+        if self.safety_monitor is not None:
+            all_info = []
+            for safety_monitor in self.safety_monitor:
+                try: safety_monitor.Connected = True
+                except: info = {'SMCONN': (False, 'Safety monitor connected')}
+                info = {'SMCONN': (True, 'Safety monitor connected'),
+                        'SMISSAFE': (safety_monitor.IsSafe, 'Safety monitor safe'),
+                        'SMNAME': (safety_monitor.Name, 'Safety monitor name'),
+                        'SMDRVER': (safety_monitor.DriverVersion, 'Safety monitor driver version'),
+                        'SMDRV': (safety_monitor.DriverInfo, 'Safety monitor driver name'),
+                        'SMINTFC': (safety_monitor.InterfaceVersion, 'Safety monitor interface version'),
+                        'SMDESC': (safety_monitor.Description, 'Safety monitor description'),
+                        'SMSUPAC': (safety_monitor.SupportedActions, 'Safety monitor supported actions'),
+                        }
+                all_info.append(info)
         else: 
             return {'SMCONN': (False, 'Safety monitor connected')}
+        
+        if index is not None: return all_info[index]
+        else: return all_info
     
     @property
     def switch_info(self):
