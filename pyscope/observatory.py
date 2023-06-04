@@ -486,6 +486,17 @@ class Observatory:
         moon = coord.get_moon(t).transform_to(coord.AltAz(obstime=t, location=self.observatory_location))
 
         return (moon.alt.deg, moon.az.deg)
+    
+    def moon_illumination(self, t=None):
+        '''Returns the current illumination of the moon'''
+
+        if t is None: t = self.observatory_time
+        else: t = Time(t)
+
+        sun = coord.get_sun(t); moon = coord.get_moon(t)
+        elongation = sun.separation(moon)
+        phase_angle = np.arctan2(sun.distance*np.sin(elongation), moon.distance - sun.distance*np.cos(elongation))
+        return (1.0 + np.cos(phase_angle))/2.0
 
     def get_object_altaz(self, obj, ra, dec, unit=('hr', 'deg'), frame='icrs', t=None):
         '''Returns the altitude and azimuth of the requested object at the requested time'''
@@ -991,6 +1002,12 @@ class Observatory:
     def save_config(self, filename):
         with open(filename, 'w') as configfile:
             self.config.write(configfile)
+    
+    @staticmethod
+    def airmass(self, alt):
+        '''Calculates the airmass given an altitude via Pickering 2002'''
+
+        return 1/np.sin((alt/deg + 244/(165+47*(alt/deg)**1.1))*deg)
     
     def _parse_obj_ra_dec(self, obj=None, ra=None, dec=None, unit=('hour', 'deg'), frame='icrs', t=None):
         if type(obj) is str: 
@@ -1532,16 +1549,22 @@ class Observatory:
         try: self.telescope.Connected = True
         except: return {'TELCONN': (False, 'Telescope connected')}
         info = {'TELCONN': (True, 'Telescope connected'),
-                'TELALT': (None, 'Telescope altitude [degrees]'),
-                'TELAZ': (None, 'Telescope azimuth North-referenced positive East (clockwise) [degrees]'),
                 'TELHOME': (self.telescope.AtHome, 'Is telescope at home position'),
                 'TELPARK': (self.telescope.AtPark, 'Is telescope at park position'),
+                'TELALT': (None, 'Telescope altitude [degrees]'),
+                'TELAZ': (None, 'Telescope azimuth North-referenced positive East (clockwise) [degrees]'),
                 'TELRA': (self.telescope.RightAscension, 'Telescope right ascension in TELEQSYS coordinate frame [hours]'),
                 'TELDEC': (self.telescope.Declination, 'Telescope declination in TELEQSYS coordinate frame [degrees]'),
                 'TARGRA': (None, 'Target right ascension in EQSYS coordinate frame [hours]'),
                 'TARGDEC': (None, 'Target declination in EQSYS coordinate frame [degrees]'),
                 'OBJCTRA': (None, 'Object right ascension in ICRS coordinate frame [hours]'),
                 'OBJCTDEC': (None, 'Object declination in ICRS coordinate frame [degrees]'),
+                'OBJCTALT': (None, 'Object altitude [degrees]'),
+                'OBJCTAZ': (None, 'Object azimuth North-referenced positive East (clockwise) [degrees]'),
+                'OBJCTHA': (None, 'Object hour angle [hours]'),
+                'AIRMASS': (None, 'Airmass'),
+                'MOONANGL': (None, 'Angle between object and moon [degrees]'),
+                'MOONPHAS': (None, 'Moon phase [percent]'),
                 'TELSLEW': (None, 'Is telescope slewing'),
                 'TELSETT': (None, 'Telescope settling time [seconds]'),
                 'TELPIER': (None, 'Telescope pier side'),
@@ -1605,6 +1628,12 @@ class Observatory:
                 frame=coord.FK4(equinox='B1950'))
         info['OBJCTRA'][0] = obj.ra.to_string(unit=u.hour)
         info['OBJCTDEC'][0] = obj.dec.to_string(unit=u.degree)
+        info['OBJCTALT'][0] = obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).alt.to(u.degree)
+        info['OBJCTAZ'][0] = obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).az.to(u.degree)
+        info['OBJCTHA'][0] = abs(self.lst - obj.ra).to(u.hour)
+        info['AIRMASS'][0] = self.airmass(obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).alt.to(u.rad))
+        info['MOONANGL'][0] = coord.get_moon(self.observatory_time, location=self.observatory_location).separation(obj).to(u.degree)
+        info['MOONPHAS'][0] = self.moon_illumination(self.observatory_time)
         try: info['TELSLEW'][0] = self.telescope.Slewing
         except: pass
         try: info['TELSETT'][0] = self.telescope.SlewSettleTime
