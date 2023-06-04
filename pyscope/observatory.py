@@ -1209,7 +1209,7 @@ class Observatory:
                 'FASTREAD': (None, 'Fast readout mode'),
                 'GAIN': (None, 'Electronic gain'),
                 'OFFSET': (None, 'Image offset'),
-                'PULSEGUID': (None, 'Pulse guiding'),
+                'PULSGUID': (None, 'Pulse guiding'),
                 'SENSTYP': (None, 'Sensor type'),
                 'BAYERPAT': (None, 'Bayer color pattern'),
                 'BAYOFFX': (None, 'Bayer X offset'),
@@ -1219,11 +1219,11 @@ class Observatory:
                 'COOLPOWR': (None, 'Cooler power in percent'),
                 'SET-TEMP': (None, 'Camera temperature setpoint [C]'),
                 'CCD-TEMP': (None, 'Camera temperature [C]'),
-                'CMOS-TEMP': (None, 'Camera temperature [C]'),
+                'CMOS-TMP': (None, 'Camera temperature [C]'),
                 'CAMNAME': (self.camera.Name, 'Name of camera'),
                 'CAMERA': (self.camera.Name, 'Name of camera'),
-                'CAMDRV': (self.camera.DriverVersion, 'Camera driver version'),
-                'CAMDRVI': (self.camera.DriverInfo, 'Camera driver info'),
+                'CAMDRVER': (self.camera.DriverVersion, 'Camera driver version'),
+                'CAMDRV': (self.camera.DriverInfo, 'Camera driver info'),
                 'CAMINTF': (self.camera.InterfaceVersion, 'Camera interface version'),
                 'CAMDESC': (self.camera.Description, 'Camera description'),
                 'SENSOR': (self.camera.SensorName, 'Name of sensor'),
@@ -1254,8 +1254,8 @@ class Observatory:
                 'GAINMIN': (None, 'Minimum possible electronic gain'),
                 'GAINMAX': (None, 'Maximum possible electronic gain'),
                 'OFFSETS': (None, 'Possible offsets'),
-                'OFFSETMIN': (None, 'Minimum possible offset'),
-                'OFFSETMAX': (None, 'Maximum possible offset'),
+                'OFFSETMN': (None, 'Minimum possible offset'),
+                'OFFSETMX': (None, 'Maximum possible offset'),
                 'CAMSUPAC': (self.camera.SupportedActions, 'Camera supported actions'),
                 }
         try: info['Percent Completed'][0] = self.camera.PercentCompleted
@@ -1280,7 +1280,7 @@ class Observatory:
             info['SENSTYP'][0] = ['Monochrome, Color, \
                 RGGB, CMYG, CMYG2, LRGB'][self.camera.SensorType]
             if not self.camera.SensorType in (0, 1):
-                info['BAYERPAT'][0] = self.camera.BayerPattern
+                info['BAYERPAT'][0] = self.camera.SensorType
                 info['BAYOFFX'][0] = self.camera.BayerOffsetX
                 info['BAYOFFY'][0] = self.camera.BayerOffsetY
         try: 
@@ -1297,13 +1297,13 @@ class Observatory:
             info['OFFSET'][0] = self.camera.Offsets[self.camera.Offset]
         except:
             try:
-                info['OFFSETMIN'][0] = self.camera.OffsetMin
-                info['OFFSETMAX'][0] = self.camera.OffsetMax
+                info['OFFSETMN'][0] = self.camera.OffsetMin
+                info['OFFSETMX'][0] = self.camera.OffsetMax
                 info['OFFSET'][0] = self.camera.Offset
             except: pass
         info['CANPULSE'][0] = self.camera.CanPulseGuide
         if self.camera.CanPulseGuide:
-            info['PULSEGUID'][0] = self.camera.IsPulseGuiding
+            info['PULSGUID'][0] = self.camera.IsPulseGuiding
         try: info['COOLERON'][0] = self.camera.CoolerOn
         except: pass
         info['CANCOOLP'][0] = self.camera.CanGetCoolerPower
@@ -1314,7 +1314,7 @@ class Observatory:
             info['SET-TEMP'][0] = self.camera.SetCCDTemperature
         try: 
             info['CCD-TEMP'][0] = self.camera.CCDTemperature
-            info['CMOS-TEMP'][0] = self.camera.CMOSTemperature
+            info['CMOS-TMP'][0] = self.camera.CMOSTemperature
         except: pass
 
         return info
@@ -1330,9 +1330,9 @@ class Observatory:
                     'BRIGHT': (None, 'Brightness of cover calibrator'),
                     'CCNAME': (self.cover_calibrator.Name, 'Cover calibrator name'),
                     'COVCAL': (self.cover_calibrator.Name, 'Cover calibrator name'),
-                    'CCDRVVER': (self.cover_calibrator.DriverVersion, 'Cover calibrator driver version'),
+                    'CCDRVER': (self.cover_calibrator.DriverVersion, 'Cover calibrator driver version'),
                     'CCDRV': (self.cover_calibrator.DriverInfo, 'Cover calibrator driver info'),
-                    'CCINTFC': (self.cover_calibrator.InterfaceVersion, 'Cover calibrator interface version'),
+                    'CCINTF': (self.cover_calibrator.InterfaceVersion, 'Cover calibrator interface version'),
                     'CCDESC': (self.cover_calibrator.Description, 'Cover calibrator description'),
                     'MAXBRITE': (self.cover_calibrator.MaxBrightness, 'Cover calibrator maximum possible brightness'),
                     'CCSUPAC': (self.cover_calibrator.SupportedActions, 'Cover calibrator supported actions'),
@@ -1357,10 +1357,10 @@ class Observatory:
                     'DOMEHOME': (None, 'Dome home status'),
                     'DOMEPARK': (None, 'Dome park status'),
                     'DOMENAME': (self.dome.Name, 'Dome name'),
-                    'DOMEDRVV': (self.dome.DriverVersion, 'Dome driver version'),
+                    'DOMDRVER': (self.dome.DriverVersion, 'Dome driver version'),
                     'DOMEDRV': (self.dome.DriverInfo, 'Dome driver info'),
                     'DOMEINTF': (self.dome.InterfaceVersion, 'Dome interface version'),
-                    'DOMEDSC': (self.dome.Description, 'Dome description'),
+                    'DOMEDESC': (self.dome.Description, 'Dome description'),
                     'DOMECALT': (self.dome.CanSetAltitude, 'Can dome set altitude'),
                     'DOMECAZ': (self.dome.CanSetAzimuth, 'Can dome set azimuth'),
                     'DOMECSHT': (self.dome.CanSetShutter, 'Can dome set shutter'),
@@ -1398,9 +1398,10 @@ class Observatory:
                     'FILTER': (self.filters[self.filter_wheel.Position], 'Filter name (from pyscope observatory object configuration)'),
                     'FOCOFFCG': (self.filter_wheel.FocusOffsets[self.filter_wheel.Position], 'Filter focus offset (from filter wheel object configuration)'),
                     'FWNAME': (self.filter_wheel.Name, 'Filter wheel name'),
-                    'FWDRVVER': (self.filter_wheel.DriverVersion, 'Filter wheel driver version'),
+                    'FWDRVER': (self.filter_wheel.DriverVersion, 'Filter wheel driver version'),
                     'FWDRV': (self.filter_wheel.DriverInfo, 'Filter wheel driver info'),
-                    'FWINTFC': (self.filter_wheel.InterfaceVersion, 'Filter wheel interface version'),
+                    'FWINTF': (self.filter_wheel.InterfaceVersion, 'Filter wheel interface version'),
+                    'FWDESC': (self.filter_wheel.Description, 'Filter wheel description'),
                     'FWALLNAM': (self.filter_wheel.Names, 'Filter wheel names'),
                     'FWALLOFF': (self.filter_wheel.FocusOffsets, 'Filter wheel focus offsets'),
                     'FWSUPAC': (self.filter_wheel.SupportedActions, 'Filter wheel supported actions'),
@@ -1420,9 +1421,9 @@ class Observatory:
                     'TEMPCOMP': (None, 'Focuser temperature compensation'),
                     'FOCTEMP': (None, 'Focuser temperature'),
                     'FOCNAME': (self.focuser.Name, 'Focuser name'),
-                    'FOCDRVVER': (self.focuser.DriverVersion, 'Focuser driver version'),
+                    'FOCDRVER': (self.focuser.DriverVersion, 'Focuser driver version'),
                     'FOCDRV': (self.focuser.DriverInfo, 'Focuser driver info'),
-                    'FOCINTFC': (self.focuser.InterfaceVersion, 'Focuser interface version'),
+                    'FOCINTF': (self.focuser.InterfaceVersion, 'Focuser interface version'),
                     'FOCDESC': (self.focuser.Description, 'Focuser description'),
                     'FOCSTEP': (None, 'Focuser step size'),
                     'FOCABSOL': (self.focuser.Absolute, 'Can focuser move to absolute position'),
@@ -1445,7 +1446,7 @@ class Observatory:
     @property
     def observatory_info(self):
         return {'OBSNAME': (self.site_name, 'Observatory name'),
-                'OBSINSTNM': (self.instrument_name, 'Instrument name'),
+                'OBSINSTN': (self.instrument_name, 'Instrument name'),
                 'OBSINSTD': (self.instrument_description, 'Instrument description'),
                 'OBSSITET': (self.get_site_from_telescope, 'Get site coordinates from telescope'),
                 'OBSLAT': (self.latitude, 'Observatory latitude'),
@@ -1498,15 +1499,15 @@ class Observatory:
                     'WXWINUPD': (None, 'Observing conditions wind speed last updated'),
                     'WXWINDD': (None, 'Observing conditions wind speed sensor description'),
                     'WXWINDIR': (None, 'Observing conditions wind direction'),
-                    'WXWDIRUPD': (None, 'Observing conditions wind direction last updated'),
+                    'WXWDIRUP': (None, 'Observing conditions wind direction last updated'),
                     'WXWDIRD': (None, 'Observing conditions wind direction sensor description'),
                     'WXWDGST': (None, 'Observing conditions wind gust over last two minutes'),
                     'WXWGDUPD': (None, 'Observing conditions wind gust last updated'),
                     'WXWGDSTD': (None, 'Observing conditions wind gust sensor description'),
                     'WXNAME': (self.observing_conditions.Name, 'Observing conditions name'),
                     'WXDRVER': (self.observing_conditions.DriverVersion, 'Observing conditions driver version'),
-                    'WXDRINF': (self.observing_conditions.DriverInfo, 'Observing conditions driver info'),
-                    'WXINTFC': (self.observing_conditions.InterfaceVersion, 'Observing conditions interface version'),
+                    'WXDRIV': (self.observing_conditions.DriverInfo, 'Observing conditions driver info'),
+                    'WXINTF': (self.observing_conditions.InterfaceVersion, 'Observing conditions interface version'),
                     'WXDESC': (self.observing_conditions.Description, 'Observing conditions description'),
                     }
             try: 
@@ -1566,7 +1567,7 @@ class Observatory:
             except: pass
             try:
                 info['WXWINDIR'][0] = self.observing_conditions.WindDirection
-                info['WXWDIRUPD'][0] = self.observing_conditions.TimeSinceLastUpdate('WindDirection')
+                info['WXWDIRUP'][0] = self.observing_conditions.TimeSinceLastUpdate('WindDirection')
                 info['WXWDIRD'][0] = self.observing_conditions.SensorDescription('WindDirection')
             except: pass
             try:
@@ -1616,7 +1617,7 @@ class Observatory:
                         ('SM%iNAME' % i): (self.safety_monitor[i].Name, 'Safety monitor name'),
                         ('SM%iDRVER' % i): (self.safety_monitor[i].DriverVersion, 'Safety monitor driver version'),
                         ('SM%iDRV' % i): (self.safety_monitor[i].DriverInfo, 'Safety monitor driver name'),
-                        ('SM%iINTFC' % i): (self.safety_monitor[i].InterfaceVersion, 'Safety monitor interface version'),
+                        ('SM%iINTF' % i): (self.safety_monitor[i].InterfaceVersion, 'Safety monitor interface version'),
                         ('SM%iDESC' % i): (self.safety_monitor[i].Description, 'Safety monitor description'),
                         ('SM%iSUPAC' % i): (self.safety_monitor[i].SupportedActions, 'Safety monitor supported actions'),
                         }
@@ -1639,7 +1640,7 @@ class Observatory:
                         ('SW%iNAME' %i): (self.switch[i].Name, 'Switch name'),
                         ('SW%iDRVER' %i): (self.switch[i].DriverVersion, 'Switch driver version'),
                         ('SW%iDRV' %i): (self.switch[i].DriverInfo, 'Switch driver name'),
-                        ('SW%iINTFC' %i): (self.switch[i].InterfaceVersion, 'Switch interface version'),
+                        ('SW%iINTF' %i): (self.switch[i].InterfaceVersion, 'Switch interface version'),
                         ('SW%iDESC' %i): (self.switch[i].Description, 'Switch description'),
                         ('SW%iSUPAC' %i): (self.switch[i].SupportedActions, 'Switch supported actions'),
                         ('SW%iMAXSW' %i): (self.switch[i].MaxSwitch, 'Switch maximum switch'),
@@ -1648,7 +1649,7 @@ class Observatory:
                     info[('SW%iSW%iNM' % (i, j))] = (self.switch[i].GetSwitchName(j), 'Switch %i Device %i name' % (i, j))
                     info[('SW%iSW%iDS' % (i, j))] = (self.switch[i].GetSwitchDescription(j), 'Switch %i Device %i description' % (i, j))
                     info[('SW%iSW%i' % (i, j))] = (self.switch[i].GetSwitch(j), 'Switch %i Device %i state' % (i, j))
-                    info[('SW%iSW%iVAL' % (i, j))] = (self.switch[i].GetSwitchValue(j), 'Switch %i Device %i value' % (i, j))
+                    info[('SW%iSW%iVA' % (i, j))] = (self.switch[i].GetSwitchValue(j), 'Switch %i Device %i value' % (i, j))
                     info[('SW%iSW%iMN' % (i, j))] = (self.switch[i].MinSwitchValue(j), 'Switch %i Device %i minimum value' % (i, j))
                     info[('SW%iSW%iMX' % (i, j))] = (self.switch[i].MaxSwitchValue(j), 'Switch %i Device %i maximum value' % (i, j))
                     info[('SW%iSW%iST' % (i, j))] = (self.switch[i].SwitchStep(j), 'Switch %i Device %i step' % (i, j))
@@ -1692,7 +1693,7 @@ class Observatory:
                 'TELNAME': (self.telescope.Name, 'Telescope name'),
                 'TELDRVER': (self.telescope.DriverVersion, 'Telescope driver version'),
                 'TELDRV': (self.telescope.DriverInfo, 'Telescope driver name'),
-                'TELINTFC': (self.telescope.InterfaceVersion, 'Telescope interface version'),
+                'TELINTF': (self.telescope.InterfaceVersion, 'Telescope interface version'),
                 'TELDESC': (self.telescope.Description, 'Telescope description'),
                 'TELAPAR': (None, 'Telescope aperture area [m^2]'),
                 'TELDIAM': (None, 'Telescope aperture diameter [m]'),
