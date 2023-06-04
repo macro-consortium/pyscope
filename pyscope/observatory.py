@@ -1589,6 +1589,144 @@ class Observatory:
             return info
         else:
             return {'ROTCONN': (False, 'Rotator connected')}
+    
+    @property
+    def safety_monitor_info(self):
+        if self.safety_monitor is not None: 
+            try: self.safety_monitor.Connected = True
+            except: return {'SMCONN': (False, 'Safety monitor connected')}
+            info = {'SMCONN': (True, 'Safety monitor connected'),
+                    }
+        else: 
+            return {'SMCONN': (False, 'Safety monitor connected')}
+    
+    @property
+    def switch_info(self):
+        if self.switch is not None:
+            try: self.switch.Connected = True
+            except: return {'SWCONN': (False, 'Switch connected')}
+            info = {'SWCONN': (True, 'Switch connected'),
+                    }
+        else:
+            return {'SWCONN': (False, 'Switch connected')}
+    
+    @property
+    def telescope_info(self):
+        try: self.telescope.Connected = True
+        except: return {'TELCONN': (False, 'Telescope connected')}
+        info = {'TELCONN': (True, 'Telescope connected'),
+                'TELALT': (None, 'Telescope altitude [degrees]'),
+                'TELAZ': (None, 'Telescope azimuth North-referenced positive East (clockwise) [degrees]'),
+                'TELHOME': (self.telescope.AtHome, 'Is telescope at home position'),
+                'TELPARK': (self.telescope.AtPark, 'Is telescope at park position'),
+                'TELRA': (self.telescope.RightAscension, 'Telescope right ascension in TELEQSYS coordinate frame [hours]'),
+                'TELDEC': (self.telescope.Declination, 'Telescope declination in TELEQSYS coordinate frame [degrees]'),
+                'TARGRA': (None, 'Target right ascension in EQSYS coordinate frame [hours]'),
+                'TARGDEC': (None, 'Target declination in EQSYS coordinate frame [degrees]'),
+                'OBJCTRA': (None, 'Object right ascension in ICRS coordinate frame [hours]'),
+                'OBJCTDEC': (None, 'Object declination in ICRS coordinate frame [degrees]'),
+                'TELSLEW': (None, 'Is telescope slewing'),
+                'TELSETT': (None, 'Telescope settling time [seconds]'),
+                'TELPIER': (None, 'Telescope pier side'),
+                'TELTRACK': (None, 'Is telescope tracking'),
+                'TELTRKRT': (None, 'Telescope tracking rate (sidereal)'),
+                'TELOFFRA': (None, 'Telescope RA tracking offset [seconds per sidereal second]'),
+                'TELOFFDC': (None, 'Telescope DEC tracking offset [arcseconds per sidereal second]'),
+                'TELPULSE': (None, 'Is telescope pulse guiding'),
+                'TELGUIDR': (None, 'Telescope pulse guiding RA rate [degrees/sec]'),
+                'TELGUIDD': (None, 'Telescope pulse guiding DEC rate [arcseconds/sec]'),
+                'TELDOREF': (None, 'Does telescope do refraction'),
+                'TELLST': (self.telescope.SiderealTime, 'Telescope local sidereal time [hours]'),
+                'TELUT': (None, 'Telescope UTC date'),
+                'TELNAME': (self.telescope.Name, 'Telescope name'),
+                'TELDRVER': (self.telescope.DriverVersion, 'Telescope driver version'),
+                'TELDRV': (self.telescope.DriverInfo, 'Telescope driver name'),
+                'TELINTFC': (self.telescope.InterfaceVersion, 'Telescope interface version'),
+                'TELDESC': (self.telescope.Description, 'Telescope description'),
+                'TELAPAR': (None, 'Telescope aperture area [m^2]'),
+                'TELDIAM': (None, 'Telescope aperture diameter [m]'),
+                'TELFOCL': (None, 'Telescope focal length [m]'),
+                'TELELEV': (None, 'Telescope elevation [degrees]'), 
+                'TELLAT': (None, 'Telescope latitude [degrees]'),
+                'TELLONG': (None, 'Telescope longitude [degrees]'),
+                'TELALN': (None, 'Telescope alignment mode'),
+                'TELEQSYS': (['equOther', 'equTopocentric', 'equJ2000', 'equJ2050', 'equB1950'][self.telescope.EquatorialSystem], 'Telescope equatorial coordinate system'),
+                'TELCANHM': (self.telescope.CanFindHome, 'Can telescope find home'),
+                'TELCANPA': (self.telescope.CanPark, 'Can telescope park'),
+                'TELCANUN': (self.telescope.CanUnpark, 'Can telescope unpark'),
+                'TELCANPP': (self.telescope.CanSetPark, 'Can telescope set park position'),
+                'TELCANPG': (self.telescope.CanPulseGuide, 'Can telescope pulse guide'),
+                'TELCANGR': (self.telescope.CanSetGuideRates, 'Can telescope set guide rates'),
+                'TELCANTR': (self.telescope.CanSetTracking, 'Can telescope set tracking'),
+                'TELCANSR': (self.telescope.CanSetRightAscensionRate, 'Can telescope set RA offset rate'),
+                'TELCANSD': (self.telescope.CanSetDeclinationRate, 'Can telescope set DEC offset rate'),
+                'TELCANSP': (self.telescope.CanSetPierSide, 'Can telescope set pier side'),
+                'TELCANSL': (self.telescope.CanSlew, 'Can telescope slew to equatorial coordinates'),
+                'TELCNSLA': (self.telescope.CanSlewAsync, 'Can telescope slew asynchronously'),
+                'TELCANSF': (self.telescope.CanSlewAltAz, 'Can telescope slew to alt-azimuth coordinates'),
+                'TELCNSFA': (self.telescope.CanSlewAltAzAsync, 'Can telescope slew to alt-azimuth coordinates asynchronously'),
+                'TELCANSY': (self.telescope.CanSync, 'Can telescope sync to equatorial coordinates'),
+                'TELCNSYA': (self.telescope.CanSyncAltAz, 'Can telescope sync to alt-azimuth coordinates'),
+                'TELTRCKS': (self.telescope.TrackingRates, 'Telescope tracking rates'),
+                'TELSUPAC': (self.telescope.SupportedActions, 'Telescope supported actions'),
+                }
+        try: info['TELALT'][0] = self.telescope.Altitude
+        except: pass
+        try: info['TELAZ'][0] = self.telescope.Azimuth
+        except: pass
+        try: info['TARGRA'][0] = self.telescope.TargetRightAscension
+        except: pass
+        try: info['TARGDEC'][0] = self.telescope.TargetDeclination
+        except: pass
+        eq_system = self.telescope.EquatorialSystem
+        if eq_system in (0, 1): obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination, 
+                frame=coord.TETE(obstime=t, location=self.observatory_location))
+        elif eq_system == 2: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination)
+        elif eq_system == 3: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
+                frame=coord.FK5(equinox='J2050'))
+        elif eq_system == 4: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
+                frame=coord.FK4(equinox='B1950'))
+        info['OBJCTRA'][0] = obj.ra.to_string(unit=u.hour)
+        info['OBJCTDEC'][0] = obj.dec.to_string(unit=u.degree)
+        try: info['TELSLEW'][0] = self.telescope.Slewing
+        except: pass
+        try: info['TELSETT'][0] = self.telescope.SlewSettleTime
+        except: pass
+        try: info['TELPIER'][0] = ['pierEast', 'pierWest', 'pierUnknown'][self.telescope.SideOfPier]
+        except: pass
+        try: info['TELTRACK'][0] = self.telescope.Tracking
+        except: pass
+        try: info['TELTRKRT'][0] = self.telescope.TrackingRates[self.telescope.TrackingRate]
+        except: pass
+        try: info['TELOFFRA'][0] = self.telescope.RightAscensionRate
+        except: pass
+        try: info['TELOFFDC'][0] = self.telescope.DeclinationRate
+        except: pass
+        try: info['TELPULSE'][0] = self.telescope.IsPulseGuiding
+        except: pass
+        try: info['TELGUIDR'][0] = self.telescope.GuideRateRightAscension
+        except: pass
+        try: info['TELGUIDD'][0] = self.telescope.GuideRateDeclination
+        except: pass
+        try: info['TELDOREF'][0] = self.telescope.DoesRefraction
+        except: pass
+        try: info['TELUT'][0] = self.telescope.UTCDate
+        except: pass
+        try: info['TELAPAR'][0] = self.telescope.ApertureArea
+        except: pass
+        try: info['TELDIAM'][0] = self.telescope.ApertureDiameter
+        except: pass
+        try: info['TELFOCL'][0] = self.telescope.FocalLength
+        except: pass
+        try: info['TELELEV'][0] = self.telescope.SiteElevation
+        except: pass
+        try: info['TELLAT'][0] = self.telescope.SiteLatitude
+        except: pass
+        try: info['TELLONG'][0] = self.telescope.SiteLongitude
+        except: pass
+        try: info['TELALN'][0] = ['AltAz', 'Polar', 'GermanPolar'][self.telescope.AlignmentMode]
+        except: pass
+        return info
 
     @property
     def observatory_location(self):
