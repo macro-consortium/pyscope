@@ -1565,6 +1565,32 @@ class Observatory:
             return {'WXCONN': (False, 'Observing conditions connected')}
 
     @property
+    def rotator_info(self):
+        if self.rotator is not None:
+            try: self.rotator.Connected = True
+            except: return {'ROTCONN': (False, 'Rotator connected')}
+            info = {'ROTCONN': (True, 'Rotator connected'),
+                    'ROTPOS': (self.rotator.Position, 'Rotator position'),
+                    'ROTMECHP': (self.rotator.MechanicalPosition, 'Rotator mechanical position'),
+                    'ROTTARGP': (self.rotator.TargetPosition, 'Rotator target position'),
+                    'ROTMOV': (self.rotator.IsMoving, 'Rotator moving'),
+                    'ROTREVSE': (self.rotator.Reverse, 'Rotator reverse'),
+                    'ROTNAME': (self.rotator.Name, 'Rotator name'),
+                    'ROTDRVER': (self.rotator.DriverVersion, 'Rotator driver version'),
+                    'ROTDRV': (self.rotator.DriverInfo, 'Rotator driver name'),
+                    'ROTINTFC': (self.rotator.InterfaceVersion, 'Rotator interface version'),
+                    'ROTDESC': (self.rotator.Description, 'Rotator description'),
+                    'ROTSTEP': (None, 'Rotator step size [degrees]'),
+                    'ROTCANRV': (self.rotator.CanReverse, 'Can rotator reverse'),
+                    'ROTSUPAC': (self.rotator.SupportedActions, 'Rotator supported actions'),
+                    }
+            try: info['ROTSTEP'][0] = self.rotator.StepSize
+            except: pass
+            return info
+        else:
+            return {'ROTCONN': (False, 'Rotator connected')}
+
+    @property
     def observatory_location(self):
         '''Returns the EarthLocation object for the observatory'''
         return coord.EarthLocation(lat=self.latitude, lon=self.longitude, height=self.elevation)
