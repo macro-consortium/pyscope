@@ -534,166 +534,31 @@ class Observatory:
         hdr['NAXIS'] = (2, 'number of axes')
         hdr['NAXIS1'] = (self.camera.ImageArray.shape[0], 'fastest changing axis')
         hdr['NAXIS2'] = (self.camera.ImageArray.shape[1], 'next to fastest changing axis')
-        if frametyp is not None: hdr['FRAMETYP'] = (frametyp, 'Frame type')
-        elif self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Light', 'Frame type') 
-        elif not self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Dark', 'Frame type')
         hdr['BSCALE'] = (1, 'physical=BZERO + BSCALE*array_value')
         hdr['BZERO'] = (32768, 'physical=BZERO + BSCALE*array_value')
         hdr['SWCREATE'] = ('pyScope', 'Software used to create file')
         hdr['SWVERSIO'] = (__version__, 'Version of software used to create file')
         hdr['ROWORDER'] = ('TOP-DOWN', 'Row order of image')
-        
-        hdr['DATE-OBS'] = (self.camera.LastExposureStartTime, 'YYYY-MM-DDThh:mm:ss observation start, UT')
-        hdr['JD'] = (astrotime.Time(self.camera.LastExposureStartTime).jd, 'Julian date')
-        hdr['MJD'] = (astrotime.Time(self.camera.LastExposureStartTime).mjd, 'Modified Julian date')
-        hdr['EXPTIME'] = (self.camera.LastExposureDuration, 'Exposure time in seconds')
-        hdr['EXPOSURE'] = (self.camera.LastExposureDuration, 'Exposure time in seconds')
-        hdr['SET-TEMP'] = (self.camera.CoolerSetPoint, 'CCD temperature setpoint in C')
-        hdr['CCD-TEMP'] = (self.camera.CCDTemperature, 'CCD temperature in C')
-        if self.camera.CanGetCoolerPower: hdr['COOLERPOW'] = (self.camera.CoolerPower, 'Cooler power in percent')
-        hdr['XPIXSZ'] = (self.camera.PixelSizeX, 'Pixel size in microns')
-        hdr['YPIXSZ'] = (self.camera.PixelSizeY, 'Pixel size in microns')
-        hdr['XBINNING'] = (self.camera.BinX, 'Binning factor in width')
-        hdr['YBINNING'] = (self.camera.BinY, 'Binning factor in height')
-        hdr['XORGSUBF'] = (self.camera.StartX, 'Subframe X position')
-        hdr['YORGSUBF'] = (self.camera.StartY, 'Subframe Y position')
-        hdr['XPOSSUBF'] = (self.camera.NumX, 'Subframe X dimension')
-        hdr['YPOSSUBF'] = (self.camera.NumY, 'Subframe Y dimension')
-        hdr['READOUT'] = (self.camera.ReadoutMode, 'Readout mode of image')
-        hdr['FOCALLEN'] = (self.focal_length, 'Focal length of telescope in mm')
-        hdr['APTDIA'] = (self.diameter, 'Aperture diameter of telescope in mm')
-        hdr['APTAREA'] = (np.pi*(self.diameter/2)**2, 'Aperture area of telescope in mm^2')
-        hdr['SBSTDVER'] = ('SBFITSEXT Version 1.0', 'Version of SBFITSEXT standard')
-        hdr['HSINKT'] = (self.camera.HeatSinkTemperature, 'Heat sink temperature in C')
-        hdr['EGAIN'] = (self.camera.ElectronsPerADU, 'Electronic gain in e-/ADU')
-        hdr['EGAINMAX'] = (self.camera.GainMax, 'Maximum electronic gain in e-/ADU')
-        hdr['EGAINMIN'] = (self.camera.GainMin, 'Minimum electronic gain in e-/ADU')
-        hdr['ISSHUTTR'] = (self.camera.HasShutter, 'Whether a mechanical shutter is present')
-        if self.camera.CanFastReadout: hdr['FASTREAD'] = (self.camera.FastReadout, 'Fast readout mode')
-        hdr['FULLWELL'] = (self.camera.FullWellCapacity, 'Full well capacity in e-')
-        hdr['MAXADU'] = (self.camera.MaxADU, 'Maximum ADU value in image')
-        hdr['WIDTH'] = (self.camera.PixelSizeX, 'Width of CCD in pixels')
-        hdr['HEIGHT'] = (self.camera.PixelSizeY, 'Height of CCD in pixels')
-        hdr['CAMNAME'] = (self.camera.Name, 'Name of camera')
-        hdr['SENSOR'] = (self.camera.SensorName, 'Name of sensor')
-        try: hdr['SUBEXP'] = (self.camera.SubExposureDuration, 'Subexposure time in seconds')
-        except: pass
-        match self.camera.SensorType:
-            case 1: hdr['BAYERPAT'] = ('Color', 'Sensor type')
-            case 2: hdr['BAYERPAT'] = ('RGGB', 'Sensor type')
-            case 3: hdr['BAYERPAT'] = ('CMYG', 'Sensor type')
-            case 4: hdr['BAYERPAT'] = ('CMYG2', 'Sensor type')
-            case 5: hdr['BAYERPAT'] = ('LRGB', 'Sensor type')
-        if self.camera.SensorType != 0:
-            hdr['BAYOFFX'] = (self.camera.BayerOffsetX, 'Bayer X offset')
-            hdr['BAYOFFY'] = (self.camera.BayerOffsetY, 'Bayer Y offset')
 
-        hdr['TELENAME'] = (self.telescope.Name, 'Telescope name')
-        hdr['TARGET'] = (target, 'Target name')
-        hdr['OBJCTALT'] = (self.telescope.Altitude, 'Telescope altitude in degrees')
-        hdr['OBJCTAZ'] = (self.telescope.Azimuth, 'Telescope azimuth in degrees')
-        hdr['OBJCTRA'] = (self.telescope.RightAscension, 'Telescope right ascension in hours')
-        hdr['OBJCTDEC'] = (self.telescope.Declination, 'Telescope declination in degrees')
-        hdr['RARATE'] = (self.telescope.RightAscensionRate, 'Telescope right ascension rate in seconds per sidereal second')
-        hdr['DECRATE'] = (self.telescope.DeclinationRate, 'Telescope declination rate in arcseconds per sidereal second')
-        hdr['HA'] = (self.telescope.HourAngle, 'Telescope hour angle in degrees')
-        hdr['EQSYS'] (self.telescope.EquatorialSystem, 'Telescope equatorial system')
-        hdr['TELELST'] = (self.telescope.SiderealTime, 'Telescope local sidereal time in hours')
-        hdr['REFRACTION'] = (self.telescope.DoesRefraction, 'Does telescope account for refraction')
-        hdr['SITE'] = (self.site, 'Site name')
-        hdr['INSTRUME'] = (self.instrument_name, 'Instrument name') 
-        hdr['DESCRIPT'] = (self.instrument_description, 'Instrument description')
-        hdr['SITELAT'] = (self.latitude, 'Site latitude in degrees')
-        hdr['SITELONG'] = (self.longitude, 'Site longitude in degrees')
-        hdr['SITEELEV'] = (self.elevation, 'Site elevation in meters')
-        hdr['TRACKING'] = (self.telescope.Tracking, 'Telescope tracking state')
-        hdr['TRKRATE'] = (self.telescope.TrackingRate, 'Telescope tracking rate')
+        if frametyp is not None: hdr['FRAMETYP'] = (frametyp, 'Frame type')
+        elif self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Light', 'Frame type') 
+        elif not self.last_camera_shutter_status: hdr['FRAMETYP'] = ('Dark', 'Frame type')
 
-        if self.dome is not None:
-            hdr['DOMENAME'] = (self.dome.Name, 'Dome name')
-            hdr['DOMEALT'] = (self.dome.Altitude, 'Dome altitude in degrees')
-            hdr['DOMEAZ'] = (self.dome.Azimuth, 'Dome azimuth in degrees')
-            hdr['DOMESTAT'] = (self.dome.Status, 'Dome status')
-        
-        if self.filter_wheel is not None:
-            hdr['FWNAME'] = (self.filter_wheel.Name, 'Filter wheel name')
-            hdr['FILTERPS'] = (self.filter_wheel.Position, 'Filter wheel position')
-            hdr['FILTER'] = (self.filters[self.filter_wheel.Position], 'Filter name')
-            if self.focuser is not None:
-                hdr['FOCOFFST'] = (self.filter_focus_offsets[self.filter_wheel.Position], 'Filter focus offset in steps')
-        
-        if self.focuser is not None:
-            hdr['FOCNAME'] = (self.focuser.Name, 'Focuser name')
-            hdr['FOCPOS'] = (self.focuser.Position, 'Focuser position in steps')
-            hdr['FOCSTEP'] = (self.focuser.StepSize, 'Focuser step size in microns')
-            hdr['FOCTEMP'] = (self.focuser.Temperature, 'Focuser temperature in C')
-            if self.focuser.TempCompAvailable: hdr['TEMPCOMP'] = (self.focuser.TempComp, 'Focuser temperature compensation')
-            hdr['MAXSTEP'] = (self.focuser.MaxStep, 'Maximum focuser step')
+        hdr.update(self.observatory_info)
+        hdr.update(self.camera_info)
+        hdr.update(self.telescope_info)
+        hdr.update(self.cover_calibrator_info)
+        hdr.update(self.dome_info)
+        hdr.update(self.filter_wheel_info)
+        hdr.update(self.focuser_info)
+        hdr.update(self.observing_conditions_info)
+        hdr.update(self.rotator_info)
+        hdr.update(self.safety_monitor_info)
+        hdr.update(self.switch_info)
+        hdr.update(self.autofocus_info)
+        hdr.update(self.wcs_info)
 
-        if self.observing_conditions is not None:
-            hdr['WXNAME'] = (self.observing_conditions.Name, 'Observing conditions name')
-            hdr['WXAVG'] = (self.observing_conditions.AveragePeriod, 'Observing conditions average period in seconds')
-            try: 
-                hdr['WXCLOUDS'] = (self.observing_conditions.CloudCover, 'Cloud cover')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('CloudCover'), 'CloudCover last updated')
-            except: pass
-            try: 
-                hdr['WXDEWPT'] = (self.observing_conditions.DewPoint, 'Dew point in C')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('DewPoint'), 'DewPoint last updated')
-            except: pass
-            try: 
-                hdr['WXHUMID'] = (self.observing_conditions.Humidity, 'Humidity in percent')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('Humidity'), 'Humidity last updated')
-            except: pass
-            try: 
-                hdr['WXPRESS'] = (self.observing_conditions.Pressure, 'Pressure in mbar')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('Pressure'), 'Pressure last updated')
-            except: pass
-            try: 
-                hdr['WXRAIN'] = (self.observing_conditions.RainRate, 'Rain rate in mm/hr')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('RainRate'), 'RainRate last updated')
-            except: pass
-            try: 
-                hdr['WXSKYBR'] = (self.observing_conditions.SkyBrightness, 'Sky brightness in magnitudes')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('SkyBrightness'), 'SkyBrightness last updated')
-            except: pass
-            try: 
-                hdr['WXSKYQM'] = (self.observing_conditions.SkyQuality, 'Sky quality in magnitudes')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('SkyQuality'), 'SkyQuality last updated')
-            except: pass
-            try: 
-                hdr['WXFWHM'] = (self.observing_condition.StarFWHM, 'Star FWHM in arcseconds')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('StarFWHM'), 'StarFWHM last updated')
-            except: pass
-            try: 
-                hdr['WXTEMP'] = (self.observing_conditions.Temperature, 'Temperature in C')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('Temperature'), 'Temperature last updated')
-            except: pass
-            try: 
-                hdr['WXWINDIR'] = (self.observing_conditions.WindDirection, 'Wind direction in degrees')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('WindDirection'), 'WindDirection last updated')
-            except: pass
-            try: 
-                hdr['WXWINDG'] = (self.observing_conditions.WindGust, 'Wind gust in km/hr')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('WindGust'), 'WindGust last updated')
-            except: pass
-            try: 
-                hdr['WXWINDSP'] = (self.observing_conditions.WindSpeed, 'Wind speed in km/hr')
-                hdr['WXLSTUPD'] = (self.observing_conditions.TimeSinceLastUpdate('WindSpeed'), 'WindSpeed last updated')
-            except: pass
-
-        if self.rotator is not None:
-            hdr['ROTNAME'] = (self.rotator.Name, 'Rotator name')
-            hdr['ROTANGLE'] = (self.rotator.Position, 'Rotator angle in degrees')
-            hdr['MECHANGL'] = (self.rotator.MechanicalPosition, 'Mechanical angle in degrees')
-            # TODO: Add whether de-rotation is on
-        
-        if self.safety_monitor is not None:
-            for i, safety_monitor in enumerate(self.safety_monitor):
-                hdr['SAFNM%i' % i] = (safety_monitor.Name, 'Safety monitor name')
-                hdr['SAFSTAT%i' % i] = (safety_monitor.IsSafe, 'Safety monitor status')
-        
-        # TODO: Add capability to optionally save switch statuses to header
+        # TODO: Add observatory thread statuses (observingconditions, safety monitor, derotation)
 
         hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
@@ -1779,6 +1644,10 @@ class Observatory:
         try: info['TELALN'][0] = ['AltAz', 'Polar', 'GermanPolar'][self.telescope.AlignmentMode]
         except: pass
         return info
+    
+    @property
+    def wcs_info(self):
+        return {'WCSDRV': (self.wcs_driver, 'WCS driver')}
 
     @property
     def observatory_location(self):

@@ -12,8 +12,6 @@
 
 <li>observatory</li>
     <ul>
-    <li>Write hardware info methods</li>
-    <li>Double check header values</li>
     <li>Double check optional ASCOM methods and properties have exception handling</li>
     <li>Set a default logging and allow for init argument/config var to change</li>
     <li>Write ObservingConditions thread method</li>
