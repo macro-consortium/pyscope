@@ -14,7 +14,6 @@
 
 <li>observatory</li>
     <ul>
-    <li>Write ObservingConditions thread method</li>
     <li>Write SafetyMonitor thread method</li>
     <li>Write de-rotation thread method, add to header</li>
     <li>Write autofocus method</li>

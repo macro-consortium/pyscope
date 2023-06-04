@@ -7,6 +7,7 @@ import configparser
 import tempfile
 import time
 import shutil
+from threading import Thread, Event
 
 from pyscope import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
 from pyscope import Rotator, SafetyMonitor, Switch, Telescope, WCS
@@ -274,6 +275,10 @@ class Observatory:
             self._last_camera_shutter_status = Light
             self.camera.OriginalStartExposure(Duration, Light)
         self.camera.StartExposure = NewStartExposure
+        
+        # Threads
+        self.observing_conditions_thread = None
+        self.observing_conditions_event = None
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -663,6 +668,41 @@ class Observatory:
             self.derotate()
 
         return True
+    
+    def start_observing_conditions_thread(self, update_interval=60):
+        '''Starts the observing conditions updating thread'''
+
+        if self.observing_conditions is None: raise ObservatoryException('Observing conditions is not connected.')
+
+        logger.info('Starting observing conditions thread...')
+        self.observing_conditions_event = Event()
+        self.observing_conditions_thread = Thread(target=self.update_observing_conditions, args=(update_interval,), 
+            daemon=True, name='Observing Conditions Thread')
+        self.observing_conditions_thread.start()
+        logger.info('Observing conditions thread started.')
+
+        return True
+    
+    def stop_observing_conditions_thread(self):
+        '''Stops the observing conditions updating thread'''
+
+        if self.observing_conditions_event is None: raise ObservatoryException('Observing conditions thread is not running.')
+
+        logger.info('Stopping observing conditions thread...')
+        self.observing_conditions_event.set()
+        self.observing_conditions_thread.join()
+        self.observing_conditions_event = None
+        self.observing_conditions_thread = None
+        logger.info('Observing conditions thread stopped.')
+
+        return True
+
+    def _update_observing_conditions(self, wait_time=0):
+        '''Updates the observing conditions'''
+        while not self.observing_conditions_event.is_set():
+            logger.info('Updating observing conditions...')
+            self.observing_conditions.Refresh()
+            time.sleep(wait_time)
 
     def derotate(self):
         '''Begin a derotation thread for the current ra and dec'''
