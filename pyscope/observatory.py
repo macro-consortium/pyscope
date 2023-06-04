@@ -280,54 +280,54 @@ class Observatory:
         '''Connects to the observatory'''
 
         self.camera.Connected = True
-        if self.camera.Connected: self.logger.info('Camera connected')
-        else: self.logger.warning('Camera failed to connect')
+        if self.camera.Connected: logging.info('Camera connected')
+        else: logging.warning('Camera failed to connect')
 
         if self.cover_calibrator is not None:
             self.cover_calibrator.Connected = True
-            if self.cover_calibrator.Connected: self.logger.info('Cover calibrator connected')
-            else: self.logger.warning('Cover calibrator failed to connect')
+            if self.cover_calibrator.Connected: logging.info('Cover calibrator connected')
+            else: logging.warning('Cover calibrator failed to connect')
         
         if self.dome is not None:
             self.dome.Connected = True
-            if self.dome.Connected: self.logger.info('Dome connected')
-            else: self.logger.warning('Dome failed to connect')
+            if self.dome.Connected: logging.info('Dome connected')
+            else: logging.warning('Dome failed to connect')
         
         if self.filter_wheel is not None:
             self.filter_wheel.Connected = True
-            if self.filter_wheel.Connected: self.logger.info('Filter wheel connected')
-            else: self.logger.warning('Filter wheel failed to connect')
+            if self.filter_wheel.Connected: logging.info('Filter wheel connected')
+            else: logging.warning('Filter wheel failed to connect')
         
         if self.focuser is not None:
             self.focuser.Connected = True
-            if self.focuser.Connected: self.logger.info('Focuser connected')
-            else: self.logger.warning('Focuser failed to connect')
+            if self.focuser.Connected: logging.info('Focuser connected')
+            else: logging.warning('Focuser failed to connect')
         
         if self.observing_conditions is not None:
             self.observing_conditions.Connected = True
-            if self.observing_conditions.Connected: self.logger.info('Observing conditions connected')
-            else: self.logger.warning('Observing conditions failed to connect')
+            if self.observing_conditions.Connected: logging.info('Observing conditions connected')
+            else: logging.warning('Observing conditions failed to connect')
         
         if self.rotator is not None:
             self.rotator.Connected = True
-            if self.rotator.Connected: self.logger.info('Rotator connected')
-            else: self.logger.warning('Rotator failed to connect')
+            if self.rotator.Connected: logging.info('Rotator connected')
+            else: logging.warning('Rotator failed to connect')
         
         if self.safety_monitor is not None:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = True
-                if safety_monitor.Connected: self.logger.info('Safety monitor %s connected' % safety_monitor.Name)
-                else: self.logger.warning('Safety monitor %s failed to connect' % safety_monitor.Name)
+                if safety_monitor.Connected: logging.info('Safety monitor %s connected' % safety_monitor.Name)
+                else: logging.warning('Safety monitor %s failed to connect' % safety_monitor.Name)
             
         if self.switch is not None:
             for switch in self.switch:
                 switch.Connected = True
-                if switch.Connected: self.logger.info('Switch %s connected' % switch.Name)
-                else: self.logger.warning('Switch %s failed to connect' % switch.Name)
+                if switch.Connected: logging.info('Switch %s connected' % switch.Name)
+                else: logging.warning('Switch %s failed to connect' % switch.Name)
         
         self.telescope.Connected = True
-        if self.telescope.Connected: self.logger.info('Telescope connected')
-        else: self.logger.warning('Telescope failed to connect')
+        if self.telescope.Connected: logging.info('Telescope connected')
+        else: logging.warning('Telescope failed to connect')
 
         return True
     
@@ -335,66 +335,66 @@ class Observatory:
         '''Disconnects from the observatory'''
 
         self.camera.Connected = False
-        if not self.camera.Connected: self.logger.info('Camera disconnected')
-        else: self.logger.warning('Camera failed to disconnect')
+        if not self.camera.Connected: logging.info('Camera disconnected')
+        else: logging.warning('Camera failed to disconnect')
 
         if self.cover_calibrator is not None:
             self.cover_calibrator.Connected = False
-            if not self.cover_calibrator.Connected: self.logger.info('Cover calibrator disconnected')
-            else: self.logger.warning('Cover calibrator failed to disconnect')
+            if not self.cover_calibrator.Connected: logging.info('Cover calibrator disconnected')
+            else: logging.warning('Cover calibrator failed to disconnect')
         
         if self.dome is not None:
             self.dome.Connected = False
-            if not self.dome.Connected: self.logger.info('Dome disconnected')
-            else: self.logger.warning('Dome failed to disconnect')
+            if not self.dome.Connected: logging.info('Dome disconnected')
+            else: logging.warning('Dome failed to disconnect')
         
         if self.filter_wheel is not None:
             self.filter_wheel.Connected = False
-            if not self.filter_wheel.Connected: self.logger.info('Filter wheel disconnected')
-            else: self.logger.warning('Filter wheel failed to disconnect')
+            if not self.filter_wheel.Connected: logging.info('Filter wheel disconnected')
+            else: logging.warning('Filter wheel failed to disconnect')
         
         if self.focuser is not None:
             self.focuser.Connected = False
-            if not self.focuser.Connected: self.logger.info('Focuser disconnected')
-            else: self.logger.warning('Focuser failed to disconnect')
+            if not self.focuser.Connected: logging.info('Focuser disconnected')
+            else: logging.warning('Focuser failed to disconnect')
 
         if self.observing_conditions is not None:
             self.observing_conditions.Connected = False
-            if not self.observing_conditions.Connected: self.logger.info('Observing conditions disconnected')
-            else: self.logger.warning('Observing conditions failed to disconnect')
+            if not self.observing_conditions.Connected: logging.info('Observing conditions disconnected')
+            else: logging.warning('Observing conditions failed to disconnect')
         
         if self.rotator is not None:
             self.rotator.Connected = False
-            if not self.rotator.Connected: self.logger.info('Rotator disconnected')
-            else: self.logger.warning('Rotator failed to disconnect')
+            if not self.rotator.Connected: logging.info('Rotator disconnected')
+            else: logging.warning('Rotator failed to disconnect')
         
         if self.safety_monitor is not None:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = False
-                if not safety_monitor.Connected: self.logger.info('Safety monitor %s disconnected' % safety_monitor.Name)
-                else: self.logger.warning('Safety monitor %s failed to disconnect' % safety_monitor.Name)
+                if not safety_monitor.Connected: logging.info('Safety monitor %s disconnected' % safety_monitor.Name)
+                else: logging.warning('Safety monitor %s failed to disconnect' % safety_monitor.Name)
         
         if self.switch is not None:
             for switch in self.switch:
                 switch.Connected = False
-                if not switch.Connected: self.logger.info('Switch %s disconnected' % switch.Name)
-                else: self.logger.warning('Switch %s failed to disconnect' % switch.Name)
+                if not switch.Connected: logging.info('Switch %s disconnected' % switch.Name)
+                else: logging.warning('Switch %s failed to disconnect' % switch.Name)
             
         self.telescope.Connected = False
-        if not self.telescope.Connected: self.logger.info('Telescope disconnected')
-        else: self.logger.warning('Telescope failed to disconnect')
+        if not self.telescope.Connected: logging.info('Telescope disconnected')
+        else: logging.warning('Telescope failed to disconnect')
 
         return True
     
     def shutdown(self):
         '''Shuts down the observatory'''
 
-        self.logger.info('Shutting down observatory')
+        logging.info('Shutting down observatory')
 
-        logging.info('Aborting any in-progress camera exposures...')
-        try:
-            self.camera.AbortExposure()
-        except: logging.exception('Error aborting exposure during shutdown')
+        if self.camera.CanAbortExposure:
+            logging.info('Aborting any in-progress camera exposures...')
+            try: self.camera.AbortExposure()
+            except: logging.exception('Error aborting exposure during shutdown')
 
         logging.info('Attempting to take a dark exposure to close camera shutter...')
         try:
@@ -498,7 +498,7 @@ class Observatory:
         phase_angle = np.arctan2(sun.distance*np.sin(elongation), moon.distance - sun.distance*np.cos(elongation))
         return (1.0 + np.cos(phase_angle))/2.0
 
-    def get_object_altaz(self, obj, ra, dec, unit=('hr', 'deg'), frame='icrs', t=None):
+    def get_object_altaz(self, obj, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', t=None):
         '''Returns the altitude and azimuth of the requested object at the requested time'''
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
         if t is None: t = self.observatory_time
@@ -506,7 +506,7 @@ class Observatory:
 
         return obj.transform_to(coord.AltAz(obstime=t, location=self.observatory_location))
     
-    def get_object_slew(self, obj, ra, dec, unit=('hr', 'deg'), frame='icrs', t=None):
+    def get_object_slew(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', t=None):
         '''Determines the slew coordinates of the requested object at the requested time'''
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
         if t is None: t = self.observatory_time
@@ -899,7 +899,12 @@ class Observatory:
             logging.info('Homing complete')
 
         logging.info('Slewing to point at cover calibrator')
-        self.telescope.SlewToAltAz(self.cover_calibrator_az, self.cover_calibrator_alt)
+        if self.telescope.CanSlewAltAz: 
+            self.telescope.SlewToAltAz(self.cover_calibrator_az, self.cover_calibrator_alt)
+        elif self.telescope.CanSlew: 
+            obj = self.get_object_slew(obj=coord.AltAz(alt=self.cover_calibrator_alt, az=self.cover_calibrator_az, 
+                obstime=self.observatory_time, location=self.observatory_location))
+            self.telescope.SlewToCoordinates(obj.ra.hour, obj.dec.deg)
         self.telescope.Tracking = False
         logging.info('Slew complete')
 
@@ -916,9 +921,10 @@ class Observatory:
                     if type(binnings[0]) is tuple: self.camera.BinX = binning[0]; self.camera.BinY = binning[1]
                     else: self.camera.BinX = binning; self.camera.BinY = binning
                     for j in range(repeat):
-                        while self.camera.Temperature > (self.cooler_setpoint + self.cooler_tolerance):
-                            logging.info('Cooler is not at setpoint, waiting 10 seconds...')
-                            time.sleep(10)
+                        if self.camera.CanSetCCDTemperature:
+                            while self.camera.CCDTemperature > (self.cooler_setpoint + self.cooler_tolerance):
+                                logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                                time.sleep(10)
                         self.filter_wheel.Position = i
                         if self.cover_calibrator.CalibratorState != 'NotPresent' or filter_brightness is not None:
                             logging.info('Setting the cover calibrator brightness to %i' % filter_brightness[i])
@@ -982,9 +988,10 @@ class Observatory:
                     if type(binnings[0]) is tuple: self.camera.BinX = binning[0]; self.camera.BinY = binning[1]
                     else: self.camera.BinX = binning; self.camera.BinY = binning
                     for j in range(repeat):
-                        while self.camera.Temperature > (self.cooler_setpoint + self.cooler_tolerance):
-                            logging.info('Cooler is not at setpoint, waiting 10 seconds...')
-                            time.sleep(10)
+                        if self.camera.CanSetCCDTemperature:
+                            while self.camera.CCDTemperature > (self.cooler_setpoint + self.cooler_tolerance):
+                                logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                                time.sleep(10)
                         camera.StartExposure(exposure, False)
                         save_string = save_path + ('dark_%s_%ix%i_%4.4gs__%i.fts' % (
                                 self.camera.ReadoutModes[self.camera.ReadoutMode].replace(' ', ''),
