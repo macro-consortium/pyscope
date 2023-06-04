@@ -1,5 +1,6 @@
-__version__ = '0.1.0'
-
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 from .autofocus import Autofocus
 from .camera import Camera
@@ -13,5 +14,6 @@ from .safety_monitor import SafetyMonitor
 from .switch import Switch
 from .telescope import Telescope
 from .wcs import WCS
-
 from .observatory import Observatory
+
+__version__ = '0.1.0'

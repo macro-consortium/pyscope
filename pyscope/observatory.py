@@ -4,7 +4,6 @@ import astropy.wcs, astropy.io.fits as pyfits
 from astroquery.mpc import MPC
 import numpy as np
 import configparser
-import logging
 import tempfile
 import time
 import shutil
@@ -14,7 +13,7 @@ from pyscope import Rotator, SafetyMonitor, Switch, Telescope, WCS
 
 from pyscope._driver_utils import _check_class_inheritance
 from pyscope.drivers._ascom import Driver as AscomDriver
-from . import __version__
+from pyscope import __version__, logger
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides
@@ -73,7 +72,7 @@ class Observatory:
         self._autofocus = None
 
         if config_file_path is not None:
-            logging.info('Using config file to initialize observatory: %s' % config_file)
+            logger.info('Using config file to initialize observatory: %s' % config_file)
             try: self._config.read(config_file_path)
             except: raise ObservatoryException("Error parsing config file '%s'" % config_file_path)
 
@@ -280,54 +279,54 @@ class Observatory:
         '''Connects to the observatory'''
 
         self.camera.Connected = True
-        if self.camera.Connected: logging.info('Camera connected')
-        else: logging.warning('Camera failed to connect')
+        if self.camera.Connected: logger.info('Camera connected')
+        else: logger.warning('Camera failed to connect')
 
         if self.cover_calibrator is not None:
             self.cover_calibrator.Connected = True
-            if self.cover_calibrator.Connected: logging.info('Cover calibrator connected')
-            else: logging.warning('Cover calibrator failed to connect')
+            if self.cover_calibrator.Connected: logger.info('Cover calibrator connected')
+            else: logger.warning('Cover calibrator failed to connect')
         
         if self.dome is not None:
             self.dome.Connected = True
-            if self.dome.Connected: logging.info('Dome connected')
-            else: logging.warning('Dome failed to connect')
+            if self.dome.Connected: logger.info('Dome connected')
+            else: logger.warning('Dome failed to connect')
         
         if self.filter_wheel is not None:
             self.filter_wheel.Connected = True
-            if self.filter_wheel.Connected: logging.info('Filter wheel connected')
-            else: logging.warning('Filter wheel failed to connect')
+            if self.filter_wheel.Connected: logger.info('Filter wheel connected')
+            else: logger.warning('Filter wheel failed to connect')
         
         if self.focuser is not None:
             self.focuser.Connected = True
-            if self.focuser.Connected: logging.info('Focuser connected')
-            else: logging.warning('Focuser failed to connect')
+            if self.focuser.Connected: logger.info('Focuser connected')
+            else: logger.warning('Focuser failed to connect')
         
         if self.observing_conditions is not None:
             self.observing_conditions.Connected = True
-            if self.observing_conditions.Connected: logging.info('Observing conditions connected')
-            else: logging.warning('Observing conditions failed to connect')
+            if self.observing_conditions.Connected: logger.info('Observing conditions connected')
+            else: logger.warning('Observing conditions failed to connect')
         
         if self.rotator is not None:
             self.rotator.Connected = True
-            if self.rotator.Connected: logging.info('Rotator connected')
-            else: logging.warning('Rotator failed to connect')
+            if self.rotator.Connected: logger.info('Rotator connected')
+            else: logger.warning('Rotator failed to connect')
         
         if self.safety_monitor is not None:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = True
-                if safety_monitor.Connected: logging.info('Safety monitor %s connected' % safety_monitor.Name)
-                else: logging.warning('Safety monitor %s failed to connect' % safety_monitor.Name)
+                if safety_monitor.Connected: logger.info('Safety monitor %s connected' % safety_monitor.Name)
+                else: logger.warning('Safety monitor %s failed to connect' % safety_monitor.Name)
             
         if self.switch is not None:
             for switch in self.switch:
                 switch.Connected = True
-                if switch.Connected: logging.info('Switch %s connected' % switch.Name)
-                else: logging.warning('Switch %s failed to connect' % switch.Name)
+                if switch.Connected: logger.info('Switch %s connected' % switch.Name)
+                else: logger.warning('Switch %s failed to connect' % switch.Name)
         
         self.telescope.Connected = True
-        if self.telescope.Connected: logging.info('Telescope connected')
-        else: logging.warning('Telescope failed to connect')
+        if self.telescope.Connected: logger.info('Telescope connected')
+        else: logger.warning('Telescope failed to connect')
 
         return True
     
@@ -335,128 +334,128 @@ class Observatory:
         '''Disconnects from the observatory'''
 
         self.camera.Connected = False
-        if not self.camera.Connected: logging.info('Camera disconnected')
-        else: logging.warning('Camera failed to disconnect')
+        if not self.camera.Connected: logger.info('Camera disconnected')
+        else: logger.warning('Camera failed to disconnect')
 
         if self.cover_calibrator is not None:
             self.cover_calibrator.Connected = False
-            if not self.cover_calibrator.Connected: logging.info('Cover calibrator disconnected')
-            else: logging.warning('Cover calibrator failed to disconnect')
+            if not self.cover_calibrator.Connected: logger.info('Cover calibrator disconnected')
+            else: logger.warning('Cover calibrator failed to disconnect')
         
         if self.dome is not None:
             self.dome.Connected = False
-            if not self.dome.Connected: logging.info('Dome disconnected')
-            else: logging.warning('Dome failed to disconnect')
+            if not self.dome.Connected: logger.info('Dome disconnected')
+            else: logger.warning('Dome failed to disconnect')
         
         if self.filter_wheel is not None:
             self.filter_wheel.Connected = False
-            if not self.filter_wheel.Connected: logging.info('Filter wheel disconnected')
-            else: logging.warning('Filter wheel failed to disconnect')
+            if not self.filter_wheel.Connected: logger.info('Filter wheel disconnected')
+            else: logger.warning('Filter wheel failed to disconnect')
         
         if self.focuser is not None:
             self.focuser.Connected = False
-            if not self.focuser.Connected: logging.info('Focuser disconnected')
-            else: logging.warning('Focuser failed to disconnect')
+            if not self.focuser.Connected: logger.info('Focuser disconnected')
+            else: logger.warning('Focuser failed to disconnect')
 
         if self.observing_conditions is not None:
             self.observing_conditions.Connected = False
-            if not self.observing_conditions.Connected: logging.info('Observing conditions disconnected')
-            else: logging.warning('Observing conditions failed to disconnect')
+            if not self.observing_conditions.Connected: logger.info('Observing conditions disconnected')
+            else: logger.warning('Observing conditions failed to disconnect')
         
         if self.rotator is not None:
             self.rotator.Connected = False
-            if not self.rotator.Connected: logging.info('Rotator disconnected')
-            else: logging.warning('Rotator failed to disconnect')
+            if not self.rotator.Connected: logger.info('Rotator disconnected')
+            else: logger.warning('Rotator failed to disconnect')
         
         if self.safety_monitor is not None:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = False
-                if not safety_monitor.Connected: logging.info('Safety monitor %s disconnected' % safety_monitor.Name)
-                else: logging.warning('Safety monitor %s failed to disconnect' % safety_monitor.Name)
+                if not safety_monitor.Connected: logger.info('Safety monitor %s disconnected' % safety_monitor.Name)
+                else: logger.warning('Safety monitor %s failed to disconnect' % safety_monitor.Name)
         
         if self.switch is not None:
             for switch in self.switch:
                 switch.Connected = False
-                if not switch.Connected: logging.info('Switch %s disconnected' % switch.Name)
-                else: logging.warning('Switch %s failed to disconnect' % switch.Name)
+                if not switch.Connected: logger.info('Switch %s disconnected' % switch.Name)
+                else: logger.warning('Switch %s failed to disconnect' % switch.Name)
             
         self.telescope.Connected = False
-        if not self.telescope.Connected: logging.info('Telescope disconnected')
-        else: logging.warning('Telescope failed to disconnect')
+        if not self.telescope.Connected: logger.info('Telescope disconnected')
+        else: logger.warning('Telescope failed to disconnect')
 
         return True
     
     def shutdown(self):
         '''Shuts down the observatory'''
 
-        logging.info('Shutting down observatory')
+        logger.info('Shutting down observatory')
 
         if self.camera.CanAbortExposure:
-            logging.info('Aborting any in-progress camera exposures...')
+            logger.info('Aborting any in-progress camera exposures...')
             try: self.camera.AbortExposure()
-            except: logging.exception('Error aborting exposure during shutdown')
+            except: logger.exception('Error aborting exposure during shutdown')
 
-        logging.info('Attempting to take a dark exposure to close camera shutter...')
+        logger.info('Attempting to take a dark exposure to close camera shutter...')
         try:
             self.camera.StartExposure(0, False)
             while self.camera.ImageReady is False:
                 time.sleep(0.1)
-        except: logging.exception('Error closing camera shutter during shutdown')
+        except: logger.exception('Error closing camera shutter during shutdown')
     
         if self.cover_calibrator is not None:
             if self.cover_calibrator.CalibratorState != 'NotPresent':
-                logging.info('Attempting to turn off cover calibrator...')
+                logger.info('Attempting to turn off cover calibrator...')
                 try: self.cover_calibrator.CalibratorOff()
-                except: logging.exception('Error turning off cover calibrator during shutdown')
+                except: logger.exception('Error turning off cover calibrator during shutdown')
             if self.cover_calibrator.CoverState != 'NotPresent':
-                logging.info('Attempting to halt any cover calibrator shutter motion...')
+                logger.info('Attempting to halt any cover calibrator shutter motion...')
                 try: self.cover_calibrator.HaltCover()
-                except: logging.exception('Error closing cover calibrator shutter during shutdown')
-                logging.info('Attempting to close cover calibrator shutter...')
+                except: logger.exception('Error closing cover calibrator shutter during shutdown')
+                logger.info('Attempting to close cover calibrator shutter...')
                 try: self.cover_calibrator.CloseCover()
-                except: logging.exception('Error closing cover calibrator shutter during shutdown')
+                except: logger.exception('Error closing cover calibrator shutter during shutdown')
 
         if self.dome is not None:
-            logging.info('Aborting any dome motion...')
+            logger.info('Aborting any dome motion...')
             try: self.dome.AbortSlew()
-            except: logging.exception('Error aborting dome motion during shutdown')
+            except: logger.exception('Error aborting dome motion during shutdown')
 
             if self.dome.CanFindPark:
-                logging.info('Attempting to park dome...')
+                logger.info('Attempting to park dome...')
                 try: self.dome.Park()
-                except: logging.exception('Error parking dome during shutdown')
+                except: logger.exception('Error parking dome during shutdown')
 
             if self.dome.CanSetShutter:
-                logging.info('Attempting to close dome shutter...')
+                logger.info('Attempting to close dome shutter...')
                 try: self.dome.CloseShutter()
-                except: logging.exception('Error closing dome shutter during shutdown')
+                except: logger.exception('Error closing dome shutter during shutdown')
         
         if self.focuser is not None:
-            logging.info('Aborting any in-progress filter wheel motion...')
+            logger.info('Aborting any in-progress filter wheel motion...')
             try: self.focuser.Halt()
-            except: logging.exception('Error aborting filter wheel motion during shutdown')
+            except: logger.exception('Error aborting filter wheel motion during shutdown')
         
         if self.rotator is not None:
-            logging.info('Aborting any in-progress rotator motion...')
+            logger.info('Aborting any in-progress rotator motion...')
             try: self.rotator.Halt()
-            except: logging.exception('Error stopping rotator during shutdown')
+            except: logger.exception('Error stopping rotator during shutdown')
         
-        logging.info('Aborting any in-progress telescope slews...')
+        logger.info('Aborting any in-progress telescope slews...')
         try: self.telescope.AbortSlew()
-        except: logging.exception('Error aborting slew during shutdown')
+        except: logger.exception('Error aborting slew during shutdown')
 
-        logging.info('Attempting to turn off telescope tracking...')
+        logger.info('Attempting to turn off telescope tracking...')
         try: self.telescope.Tracking = False
-        except: logging.exception('Error turning off telescope tracking during shutdown')
+        except: logger.exception('Error turning off telescope tracking during shutdown')
 
         if self.telescope.CanPark:
-            logging.info('Attempting to park telescope...')
+            logger.info('Attempting to park telescope...')
             try: self.telescope.Park()
-            except: logging.exception('Error parking telescope during shutdown')
+            except: logger.exception('Error parking telescope during shutdown')
         elif self.telescope.CanFindHome:
-            logging.info('Attempting to find home position...')
+            logger.info('Attempting to find home position...')
             try: self.telescope.FindHome()
-            except: logging.exception('Error finding home position during shutdown')
+            except: logger.exception('Error finding home position during shutdown')
 
         return True
         
@@ -514,13 +513,13 @@ class Observatory:
 
         eq_system = self.telescope.EquatorialSystem
         if eq_system == 0:
-            logging.warning('Telescope equatorial system is not set, assuming Topocentric')
+            logger.warning('Telescope equatorial system is not set, assuming Topocentric')
             eq_system = 1
         
         if eq_system == 1: obj_slew = obj.transform_to(coord.TETE(obstime=t, location=self.observatory_location))
         elif eq_system == 2: obj_slew = obj.transform_to('icrs')
         elif eq_system == 3:
-            logging.info('Astropy does not support J2050 ICRS yet, using FK5')
+            logger.info('Astropy does not support J2050 ICRS yet, using FK5')
             obj_slew = obj.transform_to(coord.FK5(equinox='J2050'))
         elif eq_system == 4: obj_slew = obj.transform_to(coord.FK4(equinox='B1950'))
 
@@ -530,12 +529,12 @@ class Observatory:
         '''Saves the current image'''
 
         if not self.camera.ImageReady:
-            logging.warning('Image is not ready.')
+            logger.warning('Image is not ready.')
             return False
         
         if (self.camera.ImageArray is None or self.camera.ImageArray.size == 0 
             or self.camera.ImageArray.shape[0] == 0 or self.camera.ImageArray.shape[1] == 0):
-            logging.warning('Image array is empty.')
+            logger.warning('Image array is empty.')
             return False
         
         hdr = pyfits.Header()
@@ -584,7 +583,7 @@ class Observatory:
 
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        logging.info('Slewing to RA %i:%i:%.2f and Dec %i:%i:%.2f' % obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2],
+        logger.info('Slewing to RA %i:%i:%.2f and Dec %i:%i:%.2f' % obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2],
             obj.dec.dms[0], obj.dec.dms[1], obj.dec.dms[2])
         slew_obj = self.get_object_slew(obj)
         altaz_obj = self.get_object_altaz(obj)
@@ -592,18 +591,18 @@ class Observatory:
         if not self.telescope.Connected: raise ObservatoryException('The telescope is not connected.')
 
         if altaz_obj.alt.deg <= self.min_altitude:
-            logging.warning('Target is below the minimum altitude of %.2f degrees' % self.min_altitude)
+            logger.warning('Target is below the minimum altitude of %.2f degrees' % self.min_altitude)
             return False
         
         if self.telescope.CanPark:
             if self.telescope.AtPark:
-                logging.info('Telescope is parked, unparking...')
+                logger.info('Telescope is parked, unparking...')
                 self.telescope.Unpark()
                 if self.telescope.CanFindHome:
-                    logging.info('Finding home position...')
+                    logger.info('Finding home position...')
                     self.telescope.FindHome()
         
-        logging.info('Attempting to slew to coordinates...')
+        logger.info('Attempting to slew to coordinates...')
         if self.telescope.CanSlew: 
             if self.telescope.CanSlewAsync: self.telescope.SlewToCoordinatesAsync(slew_obj.ra.hour, slew_obj.dec.deg)
             else: self.telescope.SlewToCoordinates(slew_obj.ra.hour, slew_obj.dec.deg)
@@ -614,21 +613,21 @@ class Observatory:
 
         if control_dome and self.dome is not None:
             if self.dome.ShutterState != 0 and self.CanSetShutter:
-                logging.info('Opening the dome shutter...')
+                logger.info('Opening the dome shutter...')
                 self.dome.OpenShutter()
                 if self.dome.CanFindHome:
-                    logging.info('Finding the dome home...')
+                    logger.info('Finding the dome home...')
                     self.dome.FindHome()
             if self.dome.CanPark:
                 if self.dome.AtPark and self.dome.CanFindHome:
-                    logging.info('Finding the dome home...')
+                    logger.info('Finding the dome home...')
                     self.dome.FindHome()
             if not self.dome.Slaved:
                 if self.dome.CanSetAltitude: 
-                    logging.info('Setting the dome altitude...')
+                    logger.info('Setting the dome altitude...')
                     self.dome.SlewToAltitude(altaz_obj.alt.deg)
                 if self.dome.CanSetAzimuth: 
-                    logging.info('Setting the dome azimuth...')
+                    logger.info('Setting the dome azimuth...')
                     self.dome.SlewToAzimuth(altaz_obj.az.deg)
         
         if control_rotator and self.rotator is not None:
@@ -638,10 +637,10 @@ class Observatory:
 
             if (self.rotator.MechanicalPosition + rotation_angle >= self.rotator_max_angle or
                 self.rotator.MechanicalPosition - rotation_angle <= self.rotator_min_angle):
-                logging.warning('Rotator will pass through the limit. Cannot slew to target.')
+                logger.warning('Rotator will pass through the limit. Cannot slew to target.')
                 return False
 
-            logging.info('Rotating the rotator to hour angle %.2f' % hour_angle)
+            logger.info('Rotating the rotator to hour angle %.2f' % hour_angle)
             self.rotator.MoveAbsolute(rotation_angle)
 
         condition = True
@@ -650,17 +649,17 @@ class Observatory:
             if self.control_dome and self.dome is not None: condition = condition or self.dome.Slewing
             if self.control_rotator and self.rotator is not None: condition = condition or self.rotator.IsMoving
             time.sleep(0.1)
-        logging.info('Slew complete')
+        logger.info('Slew complete')
 
         if self.telescope.CanSetTracking: 
-            logging.info('Turning on sidereal tracking...')
+            logger.info('Turning on sidereal tracking...')
             self.telescope.TrackingRate = 0
             self.telescope.Tracking = True
-            logging.info('Sidereal tracking is on.')
-        else: logging.warning('Tracking cannot be turned on.')
+            logger.info('Sidereal tracking is on.')
+        else: logger.warning('Tracking cannot be turned on.')
 
         if self.control_rotator and self.rotator is not None: 
-            logging.info('Starting derotation...')
+            logger.info('Starting derotation...')
             self.derotate()
 
         return True
@@ -758,46 +757,46 @@ class Observatory:
 
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        logging.info('Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)' %
+        logger.info('Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)' %
             (frame, obj.ra.hms[0], obj.ra.hms[1], obj.ra.hms[2], obj.dec.dms[0], obj.dec.dms[1], obj.dec.dms[2], 
             target_x_pixel, target_y_pixel))
 
         if initial_offset_dec != 0 and do_initial_slew:
-            logging.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
+            logger.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
 
         for attempt in range(max_attempts):
             slew_obj = self.get_object_slew(obj)
             
             if check_and_refine:
-                logging.info('Attempt %i of %i' % (attempt+1, max_attempts))
+                logger.info('Attempt %i of %i' % (attempt+1, max_attempts))
             
             if attempt == 0: 
                 if do_initial_slew:
                     if initial_offset_dec != 0:
-                        logging.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
+                        logger.info('Offseting the initial slew declination by %.2f arcseconds' % initial_offset_dec)
                     self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg + initial_offset_dec/3600)
             else: self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg)
             
-            logging.info('Settling for %.2f seconds' % settle_time)
+            logger.info('Settling for %.2f seconds' % settle_time)
             time.sleep(settle_time)
 
             if not check_and_refine and attempt_number > 0:
-                logging.info('Check and recenter is off, single-shot recentering complete')
+                logger.info('Check and recenter is off, single-shot recentering complete')
                 return True
             
-            logging.info('Refreshing observing conditions')
+            logger.info('Refreshing observing conditions')
             self.observing_conditions.Refesh()
 
-            logging.info('Taking %.2f second exposure' % exposure)
+            logger.info('Taking %.2f second exposure' % exposure)
             self.camera.ReadoutMode = self.camera.ReadoutModes[self.default_readout_mode]
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady: time.sleep(0.1)
-            logging.info('Exposure complete')
+            logger.info('Exposure complete')
 
             temp_image = tempfile.gettempdir()+'%s.fts' % astrotime.Time(self.observatory_time, format='fits').value
             self.save_last_image(temp_image, do_wcs=True,)
 
-            logging.info('Searching for a WCS solution...')
+            logger.info('Searching for a WCS solution...')
             solution_found = self._wcs.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
                                             ra_dec_units=('hour', 'deg'), solve_timeout=60, 
                                             scale_units='arcsecperpix', scale_type='ev',
@@ -805,63 +804,63 @@ class Observatory:
                                             parity=1, crpix_center=True)
 
             if save_images:
-                logging.info('Saving the centering image to %s' % save_path)
+                logger.info('Saving the centering image to %s' % save_path)
                 shutil.copy(temp_image, save_path)
 
             if not solution_found:
-                logging.info('No WCS solution found, skipping this attempt')
+                logger.info('No WCS solution found, skipping this attempt')
                 continue
             
-            logging.info('WCS solution found, solving for the pixel location of the target')
+            logger.info('WCS solution found, solving for the pixel location of the target')
             try:
                 hdulist = pyfits.open(temp_image)
                 w = astropy.wcs.WCS(hdulist[0].header)
 
                 center_coord = w.pixel_to_world(int(self.camera.CameraXSize/2), int(self.camera.CameraYSize/2))
                 center_ra = center_coord.ra.hour; center_dec = center_coord.dec.deg
-                logging.info('Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
+                logger.info('Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
                     (center_coord.ra.hms[0], center_coord.ra.hms[1], center_coord.ra.hms[2],
                     center_coord.dec.dms[0], center_coord.dec.dms[1], center_coord.dec.dms[2]))
 
                 coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
                 target_pixel_ra = coord.ra.hour; target_pixel_dec = coord.dec.deg
-                logging.info('Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
+                logger.info('Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f' % 
                 (coord.ra.hms[0], coord.ra.hms[1], coord.ra.hms[2],
                 coord.dec.dms[0], coord.dec.dms[1], coord.dec.dms[2]))
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]; obj_y_pixel = pixels[1]
-                logging.info('Object is at pixel (%.2f, %.2f)' % (obj_x_pixel, obj_y_pixel))
+                logger.info('Object is at pixel (%.2f, %.2f)' % (obj_x_pixel, obj_y_pixel))
             except: 
-                logging.info('Could not solve for the pixel location of the target, skipping this attempt')
+                logger.info('Could not solve for the pixel location of the target, skipping this attempt')
                 continue
 
             error_ra = obj.ra.hour - target_pixel_ra; error_dec = obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel; error_y_pixels = obj_y_pixel - target_y_pixel
-            logging.info('Error in RA is %.2f arcseconds' % (error_ra*15*3600))
-            logging.info('Error in Dec is %.2f arcseconds' % (error_dec*3600))
-            logging.info('Error in x pixels is %.2f' % error_x_pixels)
-            logging.info('Error in y pixels is %.2f' % error_y_pixels)
+            logger.info('Error in RA is %.2f arcseconds' % (error_ra*15*3600))
+            logger.info('Error in Dec is %.2f arcseconds' % (error_dec*3600))
+            logger.info('Error in x pixels is %.2f' % error_x_pixels)
+            logger.info('Error in y pixels is %.2f' % error_y_pixels)
 
             if max(error_x_pixels, error_y_pixels) <= max_pixel_error:
                 break
 
-            logging.info('Offsetting next slew coordinates')
+            logger.info('Offsetting next slew coordinates')
             obj = self._parse_obj_ra_dec(ra=obj.ra.hour + error_ra, dec=obj.dec.deg + error_dec, 
                                 unit=('hour', 'deg'), frame='icrs')
         else:
-            logging.info('Target could not be centered after %d attempts' % max_attempts)
+            logger.info('Target could not be centered after %d attempts' % max_attempts)
             return False
         
         if sync_mount:
-                logging.info('Syncing the mount to the center ra and dec transformed to J-Now...')
+                logger.info('Syncing the mount to the center ra and dec transformed to J-Now...')
 
                 sync_obj = self._parse_obj_ra_dec(ra=center_ra, dec=center_dec, unit=('hour', 'deg'), frame='icrs')
                 sync_obj = self.get_object_slew(sync_obj)
                 self.telescope.SyncToCoordinates(sync_obj.ra.hour, sync_obj.dec.deg)
-                logging.info('Sync complete')
+                logger.info('Sync complete')
             
-        logging.info('Target is now in position after %d attempts' % (attempt+1))
+        logger.info('Target is now in position after %d attempts' % (attempt+1))
 
         return True
     
@@ -870,35 +869,35 @@ class Observatory:
         final_telescope_position='no change'):
         '''Takes a sequence of flat frames'''
 
-        logging.info('Taking flat frames')
+        logger.info('Taking flat frames')
 
         if self.filter_wheel is None or self.cover_calibrator is None:
-            logging.info('Filter wheel or cover calibrator is not available, exiting')
+            logger.info('Filter wheel or cover calibrator is not available, exiting')
             return False
 
         if len(filter_exposure) != len(self.filters):
-            logging.info('Number of filter exposures does not match the number of filters, exiting')
+            logger.info('Number of filter exposures does not match the number of filters, exiting')
             return False
         
         if save_path is None:
             save_path = os.getcwd()
-            logging.info('Setting save path to current working directory: %s' % save_path)
+            logger.info('Setting save path to current working directory: %s' % save_path)
         
         if type(new_folder) is bool:
             save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
             os.makedirs(save_path)
-            logging.info('Created new directory: %s' % save_path)
+            logger.info('Created new directory: %s' % save_path)
         elif type(new_folder) is str:
             save_path = os.path.join(save_path, new_folder)
             os.makedirs(save_path)
-            logging.info('Created new directory: %s' % save_path)
+            logger.info('Created new directory: %s' % save_path)
 
         if home_telescope and self.telescope.CanFindHome:
-            logging.info('Homing the telescope')
+            logger.info('Homing the telescope')
             self.telescope.FindHome()
-            logging.info('Homing complete')
+            logger.info('Homing complete')
 
-        logging.info('Slewing to point at cover calibrator')
+        logger.info('Slewing to point at cover calibrator')
         if self.telescope.CanSlewAltAz: 
             self.telescope.SlewToAltAz(self.cover_calibrator_az, self.cover_calibrator_alt)
         elif self.telescope.CanSlew: 
@@ -906,12 +905,12 @@ class Observatory:
                 obstime=self.observatory_time, location=self.observatory_location))
             self.telescope.SlewToCoordinates(obj.ra.hour, obj.dec.deg)
         self.telescope.Tracking = False
-        logging.info('Slew complete')
+        logger.info('Slew complete')
 
         if self.cover_calibrator.CoverState != 'NotPresent':
-            logging.info('Opening the cover calibrator')
+            logger.info('Opening the cover calibrator')
             self.cover_calibrator.OpenCover()
-            logging.info('Cover open')
+            logger.info('Cover open')
 
         for i in range(len(self.filters)):
             if filter_exposure[i] == 0: continue
@@ -923,11 +922,11 @@ class Observatory:
                     for j in range(repeat):
                         if self.camera.CanSetCCDTemperature:
                             while self.camera.CCDTemperature > (self.cooler_setpoint + self.cooler_tolerance):
-                                logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                                logger.info('Cooler is not at setpoint, waiting 10 seconds...')
                                 time.sleep(10)
                         self.filter_wheel.Position = i
                         if self.cover_calibrator.CalibratorState != 'NotPresent' or filter_brightness is not None:
-                            logging.info('Setting the cover calibrator brightness to %i' % filter_brightness[i])
+                            logger.info('Setting the cover calibrator brightness to %i' % filter_brightness[i])
                             self.cover_calibrator.CalibratorOn(filter_brightness[i])
                         camera.StartExposure(filter_exposure[i], False)
                         save_string = save_path + ('flat_%s_%ix%i_%4.4f_%i_%i.fts' % 
@@ -936,50 +935,50 @@ class Observatory:
                         while not camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp='Flat')
-                        logging.info('Flat %i of %i complete: %s' % (j, repeat, save_string))
+                        logger.info('Flat %i of %i complete: %s' % (j, repeat, save_string))
         
         if self.cover_calibrator.CalibratorState != 'NotPresent':
-            logging.info('Turning off the cover calibrator')
+            logger.info('Turning off the cover calibrator')
             self.cover_calibrator.CalibratorOff()
-            logging.info('Cover calibrator off')
+            logger.info('Cover calibrator off')
             
         if self.cover_calibrator.CoverState != 'NotPresent':
-            logging.info('Closing the cover calibrator')
+            logger.info('Closing the cover calibrator')
             self.cover_calibrator.CloseCover()
-            logging.info('Cover closed')
+            logger.info('Cover closed')
 
             if final_telescope_position == 'no change':
-                logging.info('No change to telescope position requested, exiting')
+                logger.info('No change to telescope position requested, exiting')
             elif final_telescope_position == 'home' and self.telescope.CanFindHome:
-                logging.info('Homing the telescope')
+                logger.info('Homing the telescope')
                 self.telescope.FindHome()
-                logging.info('Homing complete')
+                logger.info('Homing complete')
             elif final_telescope_position == 'park' and self.telescope.CanPark:
-                logging.info('Parking the telescope')
+                logger.info('Parking the telescope')
                 self.telescope.Park()
-                logging.info('Parking complete')
+                logger.info('Parking complete')
             
-        logging.info('Flats complete')
+        logger.info('Flats complete')
 
         return True
     
     def take_darks(self, exposures, readouts, binnings, repeat=10, save_path=None, new_folder=None):
         '''Takes a sequence of dark frames'''
 
-        logging.info('Taking dark frames')
+        logger.info('Taking dark frames')
 
         if save_path is None:
             save_path = os.getcwd()
-            logging.info('Setting save path to current working directory: %s' % save_path)
+            logger.info('Setting save path to current working directory: %s' % save_path)
         
         if type(new_folder) is bool:
             save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
             os.makedirs(save_path)
-            logging.info('Created new directory: %s' % save_path)
+            logger.info('Created new directory: %s' % save_path)
         elif type(new_folder) is str:
             save_path = os.path.join(save_path, new_folder)
             os.makedirs(save_path)
-            logging.info('Created new directory: %s' % save_path)
+            logger.info('Created new directory: %s' % save_path)
 
         for exposure in exposures:
             for readout in readouts:
@@ -990,7 +989,7 @@ class Observatory:
                     for j in range(repeat):
                         if self.camera.CanSetCCDTemperature:
                             while self.camera.CCDTemperature > (self.cooler_setpoint + self.cooler_tolerance):
-                                logging.info('Cooler is not at setpoint, waiting 10 seconds...')
+                                logger.info('Cooler is not at setpoint, waiting 10 seconds...')
                                 time.sleep(10)
                         camera.StartExposure(exposure, False)
                         save_string = save_path + ('dark_%s_%ix%i_%4.4gs__%i.fts' % (
@@ -1000,9 +999,9 @@ class Observatory:
                         while not camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp='Dark')
-                        logging.info('Dark %i of %i complete: %s' % (j, repeat, save_string))
+                        logger.info('Dark %i of %i complete: %s' % (j, repeat, save_string))
         
-        logging.info('Darks complete')
+        logger.info('Darks complete')
 
         return True
 

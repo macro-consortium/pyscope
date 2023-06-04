@@ -8,11 +8,12 @@
     <li>safety_monitor_winerroof</li>
     <li>SBIGUniversal</li>
     <li>wcs_pinpoint</li>
+    <li>wcs_platesolve2</li>
+    <li>wcs_platesolve3</li>
     </ul>
 
 <li>observatory</li>
     <ul>
-    <li>Set a default logging and allow for init argument/config var to change</li>
     <li>Write ObservingConditions thread method</li>
     <li>Write SafetyMonitor thread method</li>
     <li>Write de-rotation thread method, add to header</li>
@@ -21,7 +22,7 @@
     <li>Support multiple WCS solvers</li>
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
-    <li>Add support for Nasymth telescopes (two backends)</li>
+    <li>Add support for Nasmyth telescopes (two backends)</li>
     </ul>
 
 <li>Write tests</li>
