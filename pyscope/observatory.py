@@ -1594,34 +1594,58 @@ class Observatory:
     def safety_monitor_info(self, index=None):
         if self.safety_monitor is not None:
             all_info = []
-            for safety_monitor in self.safety_monitor:
-                try: safety_monitor.Connected = True
-                except: info = {'SMCONN': (False, 'Safety monitor connected')}
-                info = {'SMCONN': (True, 'Safety monitor connected'),
-                        'SMISSAFE': (safety_monitor.IsSafe, 'Safety monitor safe'),
-                        'SMNAME': (safety_monitor.Name, 'Safety monitor name'),
-                        'SMDRVER': (safety_monitor.DriverVersion, 'Safety monitor driver version'),
-                        'SMDRV': (safety_monitor.DriverInfo, 'Safety monitor driver name'),
-                        'SMINTFC': (safety_monitor.InterfaceVersion, 'Safety monitor interface version'),
-                        'SMDESC': (safety_monitor.Description, 'Safety monitor description'),
-                        'SMSUPAC': (safety_monitor.SupportedActions, 'Safety monitor supported actions'),
+            for i in range(len(self.safety_monitor)):
+                try: self.safety_monitor[i].Connected = True
+                except: info = {'SM%iCONN' % i: (False, 'Safety monitor connected')}
+                info = {('SM%iCONN' % i): (True, 'Safety monitor connected'),
+                        ('SM%iISSAF' % i): (self.safety_monitor[i].IsSafe, 'Safety monitor safe'),
+                        ('SM%iNAME' % i): (self.safety_monitor[i].Name, 'Safety monitor name'),
+                        ('SM%iDRVER' % i): (self.safety_monitor[i].DriverVersion, 'Safety monitor driver version'),
+                        ('SM%iDRV' % i): (self.safety_monitor[i].DriverInfo, 'Safety monitor driver name'),
+                        ('SM%iINTFC' % i): (self.safety_monitor[i].InterfaceVersion, 'Safety monitor interface version'),
+                        ('SM%iDESC' % i): (self.safety_monitor[i].Description, 'Safety monitor description'),
+                        ('SM%iSUPAC' % i): (self.safety_monitor[i].SupportedActions, 'Safety monitor supported actions'),
                         }
                 all_info.append(info)
         else: 
-            return {'SMCONN': (False, 'Safety monitor connected')}
+            return {'SM0CONN': (False, 'Safety monitor connected')}
         
         if index is not None: return all_info[index]
+        elif len(all_info) == 1: return all_info[0]
         else: return all_info
     
     @property
-    def switch_info(self):
+    def switch_info(self, index=None):
         if self.switch is not None:
-            try: self.switch.Connected = True
-            except: return {'SWCONN': (False, 'Switch connected')}
-            info = {'SWCONN': (True, 'Switch connected'),
-                    }
+            all_info = []
+            for i in range(len(self.switch)):
+                try: self.switch.Connected = True
+                except: info = {('SW%iCONN' % i): (False, 'Switch connected')}
+                info = {('SW%iCONN' %i): (True, 'Switch connected'),
+                        ('SW%iNAME' %i): (self.switch[i].Name, 'Switch name'),
+                        ('SW%iDRVER' %i): (self.switch[i].DriverVersion, 'Switch driver version'),
+                        ('SW%iDRV' %i): (self.switch[i].DriverInfo, 'Switch driver name'),
+                        ('SW%iINTFC' %i): (self.switch[i].InterfaceVersion, 'Switch interface version'),
+                        ('SW%iDESC' %i): (self.switch[i].Description, 'Switch description'),
+                        ('SW%iSUPAC' %i): (self.switch[i].SupportedActions, 'Switch supported actions'),
+                        ('SW%iMAXSW' %i): (self.switch[i].MaxSwitch, 'Switch maximum switch'),
+                        }
+                for j in range(self.switch[i].MaxSwitch):
+                    info[('SW%iSW%iNM' % (i, j))] = (self.switch[i].GetSwitchName(j), 'Switch %i Device %i name' % (i, j))
+                    info[('SW%iSW%iDS' % (i, j))] = (self.switch[i].GetSwitchDescription(j), 'Switch %i Device %i description' % (i, j))
+                    info[('SW%iSW%i' % (i, j))] = (self.switch[i].GetSwitch(j), 'Switch %i Device %i state' % (i, j))
+                    info[('SW%iSW%iVAL' % (i, j))] = (self.switch[i].GetSwitchValue(j), 'Switch %i Device %i value' % (i, j))
+                    info[('SW%iSW%iMN' % (i, j))] = (self.switch[i].MinSwitchValue(j), 'Switch %i Device %i minimum value' % (i, j))
+                    info[('SW%iSW%iMX' % (i, j))] = (self.switch[i].MaxSwitchValue(j), 'Switch %i Device %i maximum value' % (i, j))
+                    info[('SW%iSW%iST' % (i, j))] = (self.switch[i].SwitchStep(j), 'Switch %i Device %i step' % (i, j))
+
+                all_info.append(info)
         else:
-            return {'SWCONN': (False, 'Switch connected')}
+            return {'SW0CONN': (False, 'Switch connected')}
+
+        if index is not None: return all_info[index]
+        elif len(all_info) == 1: return all_info[0]
+        else: return all_info
     
     @property
     def telescope_info(self):
