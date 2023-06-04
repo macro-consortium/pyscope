@@ -1441,6 +1441,20 @@ class Observatory:
             return info
         else:
             return {'FOCCONN': (False, 'Focuser connected')}
+    
+    @property
+    def observatory_info(self):
+        return {'OBSNAME': (self.site_name, 'Observatory name'),
+                'OBSINSTNM': (self.instrument_name, 'Instrument name'),
+                'OBSINSTD': (self.instrument_description, 'Instrument description'),
+                'OBSSITET': (self.get_site_from_telescope, 'Get site coordinates from telescope'),
+                'OBSLAT': (self.latitude, 'Observatory latitude'),
+                'OBSLONG': (self.longitude, 'Observatory longitude'),
+                'OBSELEV': (self.elevation, 'Observatory altitude'),
+                'OBSOPTTE': (self.get_optics_from_telescope, 'Get optics from telescope'),
+                'OBSDIA': (self.diameter, 'Observatory diameter'),
+                'OBSFL': (self.focal_length, 'Observatory focal length'),
+                }
 
     @property
     def observing_conditions_info(self):
