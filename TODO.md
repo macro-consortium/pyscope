@@ -15,8 +15,7 @@
 <li>observatory</li>
     <ul>
     <li>Turn user-facing methods into classes</li>
-    <li>Make _parse_obj_ra_dec and airmass a utils method</li>
-    <li>Write autofocus method</li>
+    <li>Move static methods to utils</li>
     <li>Write property and method docstrings</li>
     <li>Improve logging</li>
     <li>Maxim integration</li>

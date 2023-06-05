@@ -1,9 +1,7 @@
 import logging
 import time
 
-# from win32com.client import Dispatch
-def Dispatch(com_object_name):
-    return None
+from win32com.client import Dispatch
 
 class Autofocus:
     pass

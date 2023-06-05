@@ -1,17 +1,19 @@
-from astropy import coordinates as coord, time as astrotime
 from pprint import pprint
-import astropy.wcs, astropy.io.fits as pyfits
-from astroquery.mpc import MPC
-import numpy as np
 import configparser
 import tempfile
 import time
 import shutil
-from threading import Thread, Event
+import threading
+
+from astropy import coordinates as coord, time as astrotime, convolution, units as u
+from astropy.io import fits
+from astroquery.mpc import MPC
+import numpy as np
+import photutils.background as photbackground
+import photutils.segmentation as photsegmentation
 
 from pyscope import Autofocus, Camera, CoverCalibrator, Dome, FilterWheel, Focuser, ObservingConditions
 from pyscope import Rotator, SafetyMonitor, Switch, Telescope, WCS
-
 from pyscope._driver_utils import _check_class_inheritance
 from pyscope.drivers._ascom import Driver as AscomDriver
 from pyscope import __version__, logger
@@ -579,7 +581,7 @@ class Observatory:
             logger.warning('Image array is empty.')
             return False
         
-        hdr = pyfits.Header()
+        hdr = fits.Header()
 
         hdr['SIMPLE'] = True
         hdr['BITPIX'] = (16, '8 unsigned int, 16 & 32 int, -32 & -64 real')
@@ -611,7 +613,7 @@ class Observatory:
         hdr.update(self.autofocus_info)
         hdr.update(self.wcs_info)
 
-        hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
+        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
         if do_wcs: 
@@ -716,7 +718,7 @@ class Observatory:
 
         if self.control_rotator and self.rotator is not None: 
             logger.info('Starting derotation...')
-            self.derotate()
+            self.start_derotation_thread()
 
         return True
     
@@ -726,8 +728,8 @@ class Observatory:
         if self.observing_conditions is None: raise ObservatoryException('Observing conditions is not connected.')
 
         logger.info('Starting observing conditions thread...')
-        self._observing_conditions_event = Event()
-        self._observing_conditions_thread = Thread(target=self._update_observing_conditions, args=(update_interval,), 
+        self._observing_conditions_event = threading.Event()
+        self._observing_conditions_thread = threading.Thread(target=self._update_observing_conditions, args=(update_interval,), 
             daemon=True, name='Observing Conditions Thread')
         self._observing_conditions_thread.start()
         logger.info('Observing conditions thread started.')
@@ -761,8 +763,8 @@ class Observatory:
         if self.safety_monitor is None: raise ObservatoryException('Safety monitor is not connected.')
 
         logger.info('Starting safety monitor thread...')
-        self._safety_monitor_event = Event()
-        self._safety_monitor_thread = Thread(target=self._update_safety_monitor, args=(update_interval,on_fail,), 
+        self._safety_monitor_event = threading.Event()
+        self._safety_monitor_thread = threading.Thread(target=self._update_safety_monitor, args=(update_interval,on_fail,), 
             daemon=True, name='Safety Monitor Thread')
         self._safety_monitor_thread.start()
         logger.info('Safety monitor thread started.')
@@ -803,8 +805,8 @@ class Observatory:
         obj = self.get_current_object().transform_to(coord.AltAz(obstime=Time.now(), location=self.location))
 
         logger.info('Starting derotation thread...')
-        self._derotation_event = Event()
-        self._derotation_thread = Thread(target=self._update_rotator, args=(obj,), 
+        self._derotation_event = threading.Event()
+        self._derotation_thread = threading.Thread(target=self._update_rotator, args=(obj,), 
             daemon=True, name='Derotation Thread')
         self._derotation_thread.start()
         logger.info('Derotation thread started.')
@@ -860,9 +862,60 @@ class Observatory:
                 switch_array.append(temp)
         return switch_array
     
-    def autofocus(self):
+    def autofocus(self, exposure=3, midpoint=0, nsteps=5, step_size=500, use_current_pointing=False):
         '''Runs the autofocus routine'''
-        return
+
+        if self.autofocus is not None:
+            logger.info('Using %s to run autofocus...' % self.autofocus_driver)
+            result = self.autofocus.Run()
+            logger.info('Autofocus routine completed.')
+            return result
+        elif self.focuser is not None:
+            logger.info('Using observatory autofocus routine...')
+
+            if not use_current_pointing:
+                logger.info('Slewing to zenith...')
+                self.slew_to_coordinates(obj=coord.SkyCoord(alt=90*u.deg, az=0*u.deg, frame='altaz'))
+                logger.info('Slewing complete.')
+            
+            logger.info('Starting autofocus routine...')
+
+            test_positions = np.linspace(midpoint-step_size*nsteps/2, midpoint+step_size*nsteps/2, nsteps)
+            test_positions = np.round(test_positions, -2)
+
+            focus_values = []
+            for position, i in enumerate(test_positions):
+                logger.info('Moving focuser to %s...' % position)
+                if self.focuser.Absolute: self.focuser.Move(position)
+                elif i == 0: self.focuser.Move(-position[0])
+                else: self.focuser.Move(step_size)
+                logger.info('Focuser moved.')
+                
+                logger.info('Taking %s second exposure...' % exposure)
+                self.camera.StartExposure(exposure, True)
+                while not image.ImageReady: time.sleep(0.1)
+                logger.info('Exposure complete.')
+
+                logger.info('Calculating mean star fwhm...')
+                filename = tempfile.gettempdir() + '/autofocus.fts'
+                self.save_last_image(filename, overwrite=True, do_wcs=True)
+                cat = get_image_source_catalog(filename)
+                focus_values.append(np.mean(cat.fwhm))
+                logger.info('FWHM = %.1f pixels' % focus_values[-1])
+            
+            popt, pcov = np.polyfit(test_positions, focus_values, 2)
+            result = np.round(-popt[1]/(2*popt[0]), 0)
+            logger.info('Best focus position is %i' % result)
+
+            logger.info('Moving focuser to best focus position...')
+            if self.focuser.Absolute: self.focuer.Move(result)
+            else: self.focuser.Move(test_positions[-1]-result)
+            logger.info('Focuser moved.')
+            logger.info('Autofocus routine complete.')
+
+            return result
+        else:
+            raise ObservatoryException('There is no focuser or autofocus driver present.')
     
     def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
                 target_y_pixel=None, initial_offset_dec=0, check_and_refine=True, max_attempts=5, tolerance=3, 
@@ -963,7 +1016,7 @@ class Observatory:
             logger.info('Exposure complete')
 
             temp_image = tempfile.gettempdir()+'%s.fts' % astrotime.Time(self.observatory_time, format='fits').value
-            self.save_last_image(temp_image, do_wcs=True,)
+            self.save_last_image(temp_image, do_wcs=True)
 
             logger.info('Searching for a WCS solution...')
             if type(self.wcs) is WCS:
@@ -991,7 +1044,7 @@ class Observatory:
             
             logger.info('WCS solution found, solving for the pixel location of the target')
             try:
-                hdulist = pyfits.open(temp_image)
+                hdulist = fits.open(temp_image)
                 w = astropy.wcs.WCS(hdulist[0].header)
 
                 center_coord = w.pixel_to_world(int(self.camera.CameraXSize/2), int(self.camera.CameraYSize/2))
@@ -1192,6 +1245,33 @@ class Observatory:
         '''Calculates the airmass given an altitude via Pickering 2002'''
 
         return 1/np.sin((alt/deg + 244/(165+47*(alt/deg)**1.1))*deg)
+
+    @staticmethod
+    def get_image_source_catalog(image_path):
+        '''Finds sources in an image and returns a catalog of their positions
+        along with other properties'''
+
+        with fits.open(image_path) as hdul:
+            image = hdul[0].data
+            image = image.astype(np.float64)
+            hdr = hdul[0].header
+
+        bkg = photbackground.Background2D(image, (50, 50), filter_size=(3, 3),
+                        bkg_estimator=photbackground.MedianBackground())
+        image -= bkg.background # subtract the background
+
+        kernel = photsegmentation.make_2dgaussian_kernel(3.0, size=5)
+        convolved_image = convolution.convolve(image, kernel)
+
+        segment_map = photsegmentation.detect_sources(convolved_image, 1.5 * bkg.background_rms, npixels=10)
+        segm_deblend = photsegmentation.deblend_sources(convolved_image, segment_map,
+                                npixels=10, nlevels=32, contrast=0.001,
+                                progress_bar=False)
+
+        cat = photsegmentation.SourceCatalog(image, segm_deblend, convolved_data=convolved_image, 
+            background=bkg.background, wcs=astropy.wcs.WCS(hdr))
+
+        return cat
     
     def _parse_obj_ra_dec(self, obj=None, ra=None, dec=None, unit=('hour', 'deg'), frame='icrs', t=None):
         if type(obj) is str: 
