@@ -279,6 +279,9 @@ class Observatory:
         # Threads
         self.observing_conditions_thread = None
         self.observing_conditions_event = None
+
+        self.safety_monitor_thread = None
+        self.safety_monitor_event = None
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -676,7 +679,7 @@ class Observatory:
 
         logger.info('Starting observing conditions thread...')
         self.observing_conditions_event = Event()
-        self.observing_conditions_thread = Thread(target=self.update_observing_conditions, args=(update_interval,), 
+        self.observing_conditions_thread = Thread(target=self._update_observing_conditions, args=(update_interval,), 
             daemon=True, name='Observing Conditions Thread')
         self.observing_conditions_thread.start()
         logger.info('Observing conditions thread started.')
@@ -702,6 +705,45 @@ class Observatory:
         while not self.observing_conditions_event.is_set():
             logger.info('Updating observing conditions...')
             self.observing_conditions.Refresh()
+            time.sleep(wait_time)
+    
+    def start_safety_monitor_thread(self, update_interval=60, on_fail=self.shutdown):
+        '''Starts the safety monitor updating thread'''
+
+        if self.safety_monitor is None: raise ObservatoryException('Safety monitor is not connected.')
+
+        logger.info('Starting safety monitor thread...')
+        self.safety_monitor_event = Event()
+        self.safety_monitor_thread = Thread(target=self._update_safety_monitor, args=(update_interval,on_fail,), 
+            daemon=True, name='Safety Monitor Thread')
+        self.safety_monitor_thread.start()
+        logger.info('Safety monitor thread started.')
+
+        return True
+    
+    def stop_safety_monitor_thread(self):
+        '''Stops the safety monitor updating thread'''
+
+        if self.safety_monitor_event is None: raise ObservatoryException('Safety monitor thread is not running.')
+
+        logger.info('Stopping safety monitor thread...')
+        self.safety_monitor_event.set()
+        self.safety_monitor_thread.join()
+        self.safety_monitor_event = None
+        self.safety_monitor_thread = None
+        logger.info('Safety monitor thread stopped.')
+
+        return True
+    
+    def _update_safety_monitor(self, wait_time=0, on_fail=self.shutdown):
+        '''Updates the safety monitor'''
+        while not self.safety_monitor_event.is_set():
+            logger.info('Updating safety monitor...')
+            safety_array = self.safety_status()
+            if not all(safety_array):
+                logger.warning('Safety monitor is not safe, calling on_fail function "%s" and ending thread...' % on_fail.__name__)
+                self.on_fail()
+                self.stop_safety_monitor_thread()
             time.sleep(wait_time)
 
     def derotate(self):
