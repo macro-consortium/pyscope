@@ -29,6 +29,7 @@ class WCS(abstract.WCS):
         if wcs_header:
             with pyfits.open(filepath, mode='update') as hdul:
                 hdul[0].header.update(wcs_header)
+                return True
         else:
             return False
 

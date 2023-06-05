@@ -3,7 +3,6 @@
 
 <li>drivers</li>
     <ul>
-    <li>Turn user-facing methods into classes</li>
     <li>autofocus_pwi</li>
     <li>observing_conditions_winer</li>
     <li>safety_monitor_winerroof</li>
@@ -15,11 +14,11 @@
 
 <li>observatory</li>
     <ul>
+    <li>Turn user-facing methods into classes</li>
+    <li>Make _parse_obj_ra_dec and airmass a utils method</li>
     <li>Write autofocus method</li>
     <li>Write property and method docstrings</li>
-    <li>Make _parse_obj_ra_dec a static method</li>
     <li>Improve logging</li>
-    <li>Support multiple WCS solvers</li>
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
     <li>Add support for Nasmyth telescopes (two backends)</li>

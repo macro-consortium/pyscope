@@ -71,6 +71,7 @@ class Observatory:
         self.min_altitude = 10
 
         self._autofocus = None
+        self._wcs = None
 
         if config_file_path is not None:
             logger.info('Using config file to initialize observatory: %s' % config_file)
@@ -142,8 +143,12 @@ class Observatory:
             self._autofocus = Autofocus(self.autofocus_driver, ascom=False, fallback=None)
 
             # WCS
-            self._wcs_driver = self.config.get('wcs', 'wcs_driver', fallback=None)
-            self._wcs = WCS(self.wcs_driver)
+            for val in self.config['WCS'].values():
+                try:
+                    self._wcs_driver.append(val)
+                    self._wcs.append(WCS(val))
+                except:
+                    pass
 
             # Get other keywords from config file
             master_dict = {**self._config['site'], **self._config['camera'], **self._config['cover_calibrator'],
@@ -214,6 +219,7 @@ class Observatory:
         kwarg = kwargs.get('safety_monitor', self._safety_monitor)
         if type(kwarg) is not list: 
             self._safety_monitor = kwarg
+            if self._safety_monitor is not None: _check_class_inheritance(self._safety_monitor, 'SafetyMonitor')
             self._safety_monitor_driver = self._safety_monitor.Name if self._safety_monitor is not None else ''
             self._safety_monitor_ascom = (AscomDriver in type(self._safety_monitor).__bases__) if self._safety_monitor is not None else False
             self._config['safety_monitor']['driver_0'] = (self._safety_monitor_driver + ',' + str(self._safety_monitor_ascom)) if self._safety_monitor_driver != '' else ''
@@ -231,6 +237,7 @@ class Observatory:
         kwarg = kwargs.get('switch', self._switch)
         if type(kwarg) is not list or type(kwarg) is not tuple: 
             self._switch = kwarg
+            if self._switch is not None: _check_class_inheritance(self._switch, 'Switch')
             self._switch_driver = self._switch.Name if self._switch is not None else ''
             self._switch_ascom = (AscomDriver in type(self._switch).__bases__) if self._switch is not None else False
             self._config['switch']['driver_0'] = (self._switch_driver + ',' + str(self._switch_ascom)) if self._switch_driver != '' else ''
@@ -259,11 +266,23 @@ class Observatory:
         self._config['autofocus']['autofocus_driver'] = self._autofocus_driver
 
         # WCS
-        self._wcs = kwargs.get('wcs', self._wcs)
-        if self._wcs is None: self._wcs = WCS('wcs_astrometrynet')
-        _check_class_inheritance(self._wcs, 'WCS')
-        self._wcs_driver = self._wcs.Name
-        self._config['wcs']['wcs_driver'] = self._wcs_driver
+        kwarg = kwargs.get('wcs', self._wcs)
+        if kwarg is None:
+            self._wcs = WCS('wcs_astrometrynet')
+            self._wcs_driver = 'wcs_astrometrynet'
+            self._config['wcs']['driver_0'] = self._wcs_driver
+        elif type(kwarg) is not list or type(kwarg) is not tuple:
+            self._wcs = kwarg
+            _check_class_inheritance(self._wcs, 'WCS')
+            self._wcs_driver = self._wcs.__name__ if self._wcs is not None else ''
+            self._config['wcs']['driver_0'] = self._wcs_driver if self._wcs_driver != '' else ''
+        else:
+            self._wcs = kwarg
+            self._wcs_driver = [None] * len(self._wcs)
+            for i, wcs in enumerate(self._wcs):
+                if wcs is not None: _check_class_inheritance(wcs, 'WCS')
+                self._wcs_driver[i] = wcs.__name__ if wcs is not None else ''
+                self._config['wcs']['driver_%i' % i] = self._wcs_driver[i] if self._wcs_driver[i] != '' else ''
 
         # Get other keywords
         self._read_out_kwargs(kwargs)
@@ -595,11 +614,22 @@ class Observatory:
         hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
-        if do_wcs: self._wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
-                                            ra_dec_units=('hour', 'deg'), solve_timeout=60, 
-                                            scale_units='arcsecperpix', scale_type='ev',
-                                            scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
-                                            parity=1, crpix_center=True)
+        if do_wcs: 
+            if type(self.wcs) is WCS:
+                self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                    ra_dec_units=('hour', 'deg'), solve_timeout=60, 
+                    scale_units='arcsecperpix', scale_type='ev',
+                    scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                    parity=1, crpix_center=True)
+            else: 
+                for wcs, i in enumerate(self.wcs):
+                    solution = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
+                        ra_dec_units=('hour', 'deg'), solve_timeout=60,
+                        scale_units='arcsecperpix', scale_type='ev',
+                        scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                        parity=1, crpix_center=True)
+                    if solution: break
+                if not solution: logger.info('WCS solution not found.')
 
         return True
     
@@ -936,11 +966,20 @@ class Observatory:
             self.save_last_image(temp_image, do_wcs=True,)
 
             logger.info('Searching for a WCS solution...')
-            solution_found = self._wcs.Solve(temp_image, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
-                                            ra_dec_units=('hour', 'deg'), solve_timeout=60, 
-                                            scale_units='arcsecperpix', scale_type='ev',
-                                            scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
-                                            parity=1, crpix_center=True)
+            if type(self.wcs) is WCS:
+                self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                    ra_dec_units=('hour', 'deg'), solve_timeout=60, 
+                    scale_units='arcsecperpix', scale_type='ev',
+                    scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                    parity=1, crpix_center=True)
+            else: 
+                for wcs, i in enumerate(self.wcs):
+                    solution_found = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
+                        ra_dec_units=('hour', 'deg'), solve_timeout=60,
+                        scale_units='arcsecperpix', scale_type='ev',
+                        scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                        parity=1, crpix_center=True)
+                    if solution_found: break
 
             if save_images:
                 logger.info('Saving the centering image to %s' % save_path)
