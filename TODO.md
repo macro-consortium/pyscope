@@ -3,6 +3,7 @@
 
 <li>drivers</li>
     <ul>
+    <li>Turn user-facing methods into classes</li>
     <li>autofocus_pwi</li>
     <li>observing_conditions_winer</li>
     <li>safety_monitor_winerroof</li>
@@ -14,9 +15,10 @@
 
 <li>observatory</li>
     <ul>
-    <li>Write de-rotation thread method, add to header</li>
     <li>Write autofocus method</li>
     <li>Write property and method docstrings</li>
+    <li>Make _parse_obj_ra_dec a static method</li>
+    <li>Improve logging</li>
     <li>Support multiple WCS solvers</li>
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
@@ -78,6 +80,8 @@
     <li>readthedocs</li>
     </ul>
 
+<li>Check for PEP8 compliance</li>
+
 <li>Installer setup on pip, conda</li>
 
 <li>Integration with grism pipeline</li>
@@ -99,6 +103,7 @@
         <li>Diffraction Limited</li>
         <li>Planewave</li>
         <li>Sierra Remote Observatories</li>
+        <li>astropy affiliated package?</li>
         </ul>
     </ul>
 

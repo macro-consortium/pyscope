@@ -282,6 +282,9 @@ class Observatory:
 
         self._safety_monitor_thread = None
         self._safety_monitor_event = None
+
+        self.derotation_thread = None
+        self.derotation_event = None
     
     def connect_all(self):
         '''Connects to the observatory'''
@@ -533,6 +536,18 @@ class Observatory:
 
         return obj_slew
     
+    def get_current_object(self):
+        '''Returns the current pointing of the telescope in ICRS'''
+        eq_system = self.telescope.EquatorialSystem
+        if eq_system in (0, 1): obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination, 
+                frame=coord.TETE(obstime=t, location=self.observatory_location))
+        elif eq_system == 2: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination)
+        elif eq_system == 3: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
+                frame=coord.FK5(equinox='J2050'))
+        elif eq_system == 4: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
+                frame=coord.FK4(equinox='B1950'))
+        return obj
+    
     def save_last_image(self, filename, frametyp=None, target=None, do_wcs=False, overwrite=False, **kwargs):
         '''Saves the current image'''
 
@@ -573,15 +588,18 @@ class Observatory:
         hdr.update(self.rotator_info)
         hdr.update(self.safety_monitor_info)
         hdr.update(self.switch_info)
+        hdr.update(self.threads_info)
         hdr.update(self.autofocus_info)
         hdr.update(self.wcs_info)
-
-        # TODO: Add observatory thread statuses (observingconditions, safety monitor, derotation)
 
         hdu = pyfits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
-        if do_wcs: self._wcs.Solve(filename, **kwargs)
+        if do_wcs: self._wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                                            ra_dec_units=('hour', 'deg'), solve_timeout=60, 
+                                            scale_units='arcsecperpix', scale_type='ev',
+                                            scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
+                                            parity=1, crpix_center=True)
 
         return True
     
@@ -744,15 +762,54 @@ class Observatory:
                 logger.warning('Safety monitor is not safe, calling on_fail function "%s" and ending thread...' % on_fail.__name__)
                 self.on_fail()
                 self.stop_safety_monitor_thread()
+                return
             time.sleep(wait_time)
 
-    def derotate(self):
+    def start_derotation_thread(self, update_interval=0.05):
         '''Begin a derotation thread for the current ra and dec'''
-        return
-    
-    def stop_derotation(self):
+
+        if self.rotator is None: raise ObservatoryException('Rotator is not connected.')
+
+        obj = self.get_current_object().transform_to(coord.AltAz(obstime=Time.now(), location=self.location))
+
+        logger.info('Starting derotation thread...')
+        self._derotation_event = Event()
+        self._derotation_thread = Thread(target=self._update_rotator, args=(obj,), 
+            daemon=True, name='Derotation Thread')
+        self._derotation_thread.start()
+        logger.info('Derotation thread started.')
+
+        return True
+
+    def stop_derotation_thread(self):
         '''Stops the derotation thread'''
-        return
+
+        if self._derotation_event is None: raise ObservatoryException('Derotation thread is not running.')
+
+        logger.info('Stopping derotation thread...')
+        self._derotation_event.set()
+        self._derotation_thread.join()
+        self._derotation_event = None
+        self._derotation_thread = None
+        logger.info('Derotation thread stopped.')
+
+        return True
+    
+    def _update_rotator(self, obj, wait_time=0):
+        '''Updates the rotator'''
+        # mean sidereal rate (at J2000) in radians per second
+        SR = 7.292115855306589e-5
+
+        while not self._derotation_event.is_set():
+            self.rotator.Move(command)
+
+            t0 = self.observatory_time
+            obj = obj.transform_to(coord.AltAz(obstime=t0+wait_time*u.second, 
+                location=self.observatory_location))
+
+            command = -(np.cos(obj.az.rad)*np.cos(self.latitude*deg)/np.cos(obj.alt.rad))*SR / deg * wait_time
+
+            time.sleep(wait_time-(self.observatory_time-t0).sec)
 
     def safety_status(self):
         '''Returns the status of the safety monitors'''
@@ -1092,7 +1149,7 @@ class Observatory:
             self.config.write(configfile)
     
     @staticmethod
-    def airmass(self, alt):
+    def airmass(alt):
         '''Calculates the airmass given an altitude via Pickering 2002'''
 
         return 1/np.sin((alt/deg + 244/(165+47*(alt/deg)**1.1))*deg)
@@ -1706,14 +1763,7 @@ class Observatory:
         except: pass
         try: info['TARGDEC'][0] = self.telescope.TargetDeclination
         except: pass
-        eq_system = self.telescope.EquatorialSystem
-        if eq_system in (0, 1): obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination, 
-                frame=coord.TETE(obstime=t, location=self.observatory_location))
-        elif eq_system == 2: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination)
-        elif eq_system == 3: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
-                frame=coord.FK5(equinox='J2050'))
-        elif eq_system == 4: obj = self._parse_obj_ra_dec(ra=self.telescope.RightAscension, dec=self.telescope.Declination,
-                frame=coord.FK4(equinox='B1950'))
+        obj = self.get_current_object()
         info['OBJCTRA'][0] = obj.ra.to_string(unit=u.hour)
         info['OBJCTDEC'][0] = obj.dec.to_string(unit=u.degree)
         info['OBJCTALT'][0] = obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).alt.to(u.degree)
@@ -1761,6 +1811,13 @@ class Observatory:
         try: info['TELALN'][0] = ['AltAz', 'Polar', 'GermanPolar'][self.telescope.AlignmentMode]
         except: pass
         return info
+    
+    @property
+    def threads_info(self):
+        return {'DEROTATE': (not self.derotation_thread is None, 'Is derotation thread active'),
+                'OCTHREAD': (not self.observing_conditions_thread is None, 'Is observing conditions thread active'),
+                'SMTHREAD': (not self.safety_monitor_thread is None, 'Is status monitor thread active'),
+                }
     
     @property
     def wcs_info(self):
