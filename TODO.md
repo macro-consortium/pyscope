@@ -15,7 +15,6 @@
 <li>observatory</li>
     <ul>
     <li>Turn user-facing methods into classes</li>
-    <li>Move static methods to utils</li>
     <li>Write property and method docstrings</li>
     <li>Improve logging</li>
     <li>Maxim integration</li>
