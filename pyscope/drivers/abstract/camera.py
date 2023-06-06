@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Camera(ABC):
+from abstract import DocstringInheritee
+
+class Camera(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

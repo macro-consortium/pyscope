@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class ObservingConditions(ABC):
+from abstract import DocstringInheritee
+
+class ObservingConditions(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

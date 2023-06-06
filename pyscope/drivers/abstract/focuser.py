@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Focuser(ABC):
+from abstract import DocstringInheritee
+
+class Focuser(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

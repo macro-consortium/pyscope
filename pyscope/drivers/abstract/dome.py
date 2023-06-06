@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Dome(ABC):
+from abstract import DocstringInheritee
+
+class Dome(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

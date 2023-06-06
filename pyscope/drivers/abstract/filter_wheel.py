@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class FilterWheel(ABC):
+from abstract import DocstringInheritee
+
+class FilterWheel(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

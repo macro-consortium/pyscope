@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Driver(ABC):
+from abstract import DocstringInheritee
+
+class Driver(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

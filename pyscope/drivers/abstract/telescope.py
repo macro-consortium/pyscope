@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Telescope(ABC):
+from abstract import DocstringInheritee
+
+class Telescope(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

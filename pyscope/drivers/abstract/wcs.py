@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class WCS(ABC):
+from abstract import DocstringInheritee
+
+class WCS(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

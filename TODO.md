@@ -14,9 +14,8 @@
 
 <li>observatory</li>
     <ul>
-    <li>Turn user-facing methods into classes</li>
-    <li>Write property and method docstrings</li>
     <li>Improve logging</li>
+    <li>Write property and method docstrings</li>
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
     <li>Add support for Nasmyth telescopes (two backends)</li>

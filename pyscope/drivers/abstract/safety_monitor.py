@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class SafetyMonitor(ABC):
+from abstract import DocstringInheritee
+
+class SafetyMonitor(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

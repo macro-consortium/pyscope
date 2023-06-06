@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class CoverCalibrator(ABC):
+from abstract import DocstringInheritee
+
+class CoverCalibrator(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

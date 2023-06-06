@@ -1,8 +1,12 @@
 import importlib
 import sys
 
-from pyscope.drivers import abstract
-from pyscope.drivers import _ascom
+from astropy import convolution, wcs
+from astropy.io import fits
+import photutils.background as photbackground
+import photutils.segmentation as photsegmentation
+
+from pyscope import drivers
 # from .observatory import ObservatoryException
 
 def airmass(alt):
@@ -32,17 +36,15 @@ def get_image_source_catalog(image_path):
                             progress_bar=False)
 
     cat = photsegmentation.SourceCatalog(image, segm_deblend, convolved_data=convolved_image, 
-        background=bkg.background, wcs=astropy.wcs.WCS(hdr))
+        background=bkg.background, wcs=wcs.WCS(hdr))
 
     return cat
 
-def _import_driver(driver_name, device, ascom=False):
+def import_driver(device, driver_name=None, ascom=False):
     '''Imports a driver'''
-    if driver_name is None: return None
+    if driver_name is None and not ascom: return None
 
-    if ascom:
-        device_class = getattr(_ascom, device)
-        return device_class(driver_name)
+    if ascom: return getattr(drivers.ascom, device)(driver_name)
     else:
         try: 
             device_module = importlib.import_module('pyscope.drivers.%s' % driver_name)
@@ -61,8 +63,8 @@ def _import_driver(driver_name, device, ascom=False):
     return device_class()
 
 def _check_class_inheritance(device_class, device):
-    if not getattr(abstract, device) in device_class.__bases__:
-            raise ObservatoryException('Driver %s does not inherit from the required abstract classes' % driver_name)
+    if not getattr(drivers.abstract, device) in device_class.__bases__:
+            raise ObservatoryException('Driver %s does not inherit from the required _abstract classes' % driver_name)
 
 class ObservatoryException(Exception):
     pass

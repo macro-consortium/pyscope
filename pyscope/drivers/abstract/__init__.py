@@ -1,3 +1,4 @@
+from ._docstring_inheritee import DocstringInheritee
 from .autofocus import Autofocus
 from .camera import Camera
 from .cover_calibrator import CoverCalibrator

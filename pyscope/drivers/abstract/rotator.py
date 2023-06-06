@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-class Rotator(ABC):
+from abstract import DocstringInheritee
+
+class Rotator(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass
