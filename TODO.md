@@ -14,11 +14,11 @@
 
 <li>observatory</li>
     <ul>
-    <li>Improve logging</li>
     <li>Write property and method docstrings</li>
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
     <li>Add support for Nasmyth telescopes (two backends)</li>
+    <li>Write source table to second hdu</li>
     </ul>
 
 <li>Write tests</li>
