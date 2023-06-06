@@ -4,8 +4,11 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope import Camera, Telescope, Observatory, WCS
+from pyscope import Observatory
+from pyscope.drivers.ascom import Camera
 
+print(Camera.AbortExposure.__doc__)
+'''
 # Initialize the hardware, names can be found using the ProfileExplorer
 camera = Camera('ASCOM.DLImaging.Camera', ascom=True)
 telescope = Telescope('ASCOM.PWI4.Telescope', ascom=True)
@@ -26,4 +29,4 @@ while observatory.camera.CCDTemperature > -19:
 
 # Attempt to recenter the telescope
 success = observatory.recenter(obj='M95')
-print('The recentering was a success: %s' % success)
+print('The recentering was a success: %s' % success)'''

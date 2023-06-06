@@ -18,7 +18,6 @@
     <li>Maxim integration</li>
     <li>TheSkyX integration</li>
     <li>Add support for Nasmyth telescopes (two backends)</li>
-    <li>Write source table to second hdu</li>
     </ul>
 
 <li>Write tests</li>

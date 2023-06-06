@@ -1,4 +1,7 @@
-from win32com.client import Dispatch
+import platform
+
+if platform.system() == 'Windows':
+    from win32com.client import Dispatch
 
 from .. import abstract
 

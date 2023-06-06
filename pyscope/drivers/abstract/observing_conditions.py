@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from abstract import DocstringInheritee
+from . import DocstringInheritee
 
 class ObservingConditions(ABC, metaclass=DocstringInheritee):
     @abstractmethod

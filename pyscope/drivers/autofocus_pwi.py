@@ -1,7 +1,10 @@
 import logging
 import time
 
-from win32com.client import Dispatch
+import platform
+
+if platform.system() == 'Windows':
+    from win32com.client import Dispatch
 
 class Autofocus:
     pass

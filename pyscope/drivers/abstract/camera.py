@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from abstract import DocstringInheritee
+from . import DocstringInheritee
 
 class Camera(ABC, metaclass=DocstringInheritee):
     @abstractmethod
@@ -9,6 +9,7 @@ class Camera(ABC, metaclass=DocstringInheritee):
 
     @abstractmethod
     def AbortExposure(self):
+        '''test'''
         pass
 
     @abstractmethod

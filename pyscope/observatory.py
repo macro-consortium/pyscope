@@ -1,5 +1,4 @@
 import configparser
-from pprint import pprint
 import shutil
 import tempfile
 import time
@@ -311,8 +310,7 @@ class Observatory:
         logger.debug('Config:')
         logger.debug(self.config)
     
-    def connect_all(self):
-        '''Connects to the observatory'''
+    def connect_all(self):        
 
         self.camera.Connected = True
         if self.camera.Connected: logger.info('Camera connected')
@@ -774,14 +772,18 @@ class Observatory:
             self.observing_conditions.Refresh()
             time.sleep(wait_time)
     
-    def start_safety_monitor_thread(self, update_interval=60, on_fail=self.shutdown):
+    def start_safety_monitor_thread(self, on_fail=None, update_interval=60):
         '''Starts the safety monitor updating thread'''
 
         if self.safety_monitor is None: raise ObservatoryException('Safety monitor is not connected.')
 
+        if on_fail is None:
+            logger.info('No safety monitor failure function provided. Using default shutdown function')
+            on_fail = self.shutdown
+
         logger.info('Starting safety monitor thread...')
         self._safety_monitor_event = threading.Event()
-        self._safety_monitor_thread = threading.Thread(target=self._update_safety_monitor, args=(update_interval,on_fail,), 
+        self._safety_monitor_thread = threading.Thread(target=self._update_safety_monitor, args=(on_fail,update_interval,), 
             daemon=True, name='Safety Monitor Thread')
         self._safety_monitor_thread.start()
         logger.info('Safety monitor thread started.')
@@ -802,14 +804,14 @@ class Observatory:
 
         return True
     
-    def _update_safety_monitor(self, wait_time=0, on_fail=self.shutdown):
+    def _update_safety_monitor(self, on_fail, wait_time=0):
         '''Updates the safety monitor'''
         while not self._safety_monitor_event.is_set():
             logger.debug('Updating safety monitor...')
             safety_array = self.safety_status()
             if not all(safety_array):
                 logger.warning('Safety monitor is not safe, calling on_fail function "%s" and ending thread...' % on_fail.__name__)
-                self.on_fail()
+                on_fail()
                 self.stop_safety_monitor_thread()
                 return
             time.sleep(wait_time)
