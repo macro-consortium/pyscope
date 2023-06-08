@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+
+import sys,os,re,glob,datetime
+import astropy.io.fits as pyfits
+import numpy as np
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+import matplotlib as mpl
+mpl.use('Agg') # Needed to use matplotlib in cron jobs
+import matplotlib.pyplot as plt
+
+deg = np.pi/180.
+plot_dir ='/home/talon/summary_email/pterror_plots/'
+
+def date_now():
+        # Construct current date string
+        now = datetime.datetime.now()
+        yr_now = now.year; month_now = now.month; day_now = now.day
+        date = '%2d %s% 4d' % (day_now,now.strftime("%B"),yr_now)
+        return date
+
+# Get current day number
+day_nr = datetime.datetime.now().timetuple().tm_yday
+day_nr =str( '%03i' % day_nr)
+daynr = int(day_nr)
+# Get year
+year_nr = str(datetime.datetime.now().year)
+
+# If user specifies day number, use it instead of current
+if len(sys.argv) ==2: daynr = int(sys.argv[1])
+
+# get list of FITS files with current day number embedded
+f_template ='/usr/local/telescope/user/images/???%03i*.fts' % daynr
+fnames = glob.glob(f_template)
+Dra = []; Ddec = []; Ha = []; Dec = []; Elev = []; UT = []
+for fname in fnames:
+	# Create image array, determine array size
+	im,hdr = pyfits.getdata(fname,0,header=True)
+	if hdr['FILTER'][0] == 'T' : continue   # Skip grism images
+	ximsize = im.shape[0];yimsize =im.shape[1]
+	t = Time(hdr['DATE-OBS'], format='isot', scale='utc')
+	ut = np.modf(t.jd -0.5)[0] *24 
+	nx = int(ximsize);ny = int(yimsize)
+	if not 'CRVAL1' in hdr: 
+		print('%s: No WCS, Skipping' % fname)
+		continue
+	c0  = SkyCoord(hdr['CRVAL1'], hdr['CRVAL2'], unit = (u.deg,u.deg) )
+	c  = SkyCoord(hdr['OBJRA'], hdr['OBJDEC'], unit = (u.hour,u.deg) )
+	he = SkyCoord(hdr['HA'], hdr['ELEVATIO'], unit = (u.hourangle, u.deg) )
+	dra = (c.ra.deg -c0.ra.deg) * 3600.; ddec = (c.dec.deg -c0.dec.deg) *3600
+	ha = he.ra.hour; dec =c0.dec.deg; elev =  he.dec.deg
+	if ha > 12: ha -= 24.
+	Dra.append(dra); Ddec.append(ddec);Ha.append(ha); Elev.append(elev); Dec.append(c0.dec.deg); UT.append(ut)
+	#print '%+20s  %.2f   %0.2f   %0.2f      %0.2f   %0.2f' % (fname,ut, ha, dec, dra, ddec)
+
+# Optionally plot
+f, ((ax1, ax2, ax3,ax4), ( ax5, ax6,ax7,ax8)) = plt.subplots(2, 4, sharey='row',figsize=(20,8))
+date = date_now()
+f.suptitle('Gemini telescope pointing errors (arcsec), %s (day %03i)' % (date, daynr) )
+ymax = 100; ymin = -ymax
+ax1.set_ylim(ymin,ymax);ax1.grid(True)
+ax2.set_ylim(ymin,ymax)
+ax3.set_ylim(ymin,ymax)
+ax4.set_ylim(ymin,ymax)
+ax5.set_ylim(ymin,ymax)
+ax6.set_ylim(ymin,ymax)
+ax7.set_ylim(ymin,ymax)
+ax8.set_ylim(ymin,ymax)
+ax1.set_title('HA error vs HA');   ax1.grid(True);            ax1.scatter(Ha,  Dra, color ='r')
+ax2.set_title('HA error vs declination'); ax2.grid(True); ax2.scatter(Dec, Dra, color ='r')
+ax3.set_title('HA error vs elevation');ax3.grid(True);     ax3.scatter(Elev, Dra, color ='r')
+ax4.set_title('HA error vs UT');ax4.grid(True);                ax4.scatter(UT, Dra, color ='r')
+
+ax5.set_title('Dec error vs HA');  ax5.grid(True);            ax5.scatter(Ha,  Ddec, color ='b')
+ax6.set_title('Dec error vs declination');ax6.grid(True); ax6.scatter(Dec, Ddec, color ='b')
+ax7.set_title('Dec error vs elevation'); ax7.grid(True);   ax7.scatter(Elev, Ddec, color ='b')
+ax8.set_title('Dec error vs UT'); ax8.grid(True);              ax8.scatter(UT, Ddec, color ='b')
+pltname = '%spterrors-%s-%03i.png' % (plot_dir, year_nr, daynr)
+print('Saving plot file %s' % pltname)
+plt.savefig(pltname)
+
+
+

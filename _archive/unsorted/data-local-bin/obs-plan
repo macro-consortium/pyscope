@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+
+# obs-plan: Calculates SNR, saturation times, etc for Gemini telescope observer planning
+
+# v. 1.0 14 Nov 2018 RLM  
+
+import sys
+import math
+import numpy as np
+from optparse import OptionParser
+
+def get_args():
+	d_txt = 'Program obs-plan calculates SNR, peak ADU count, saturation time given star magnitude,  \
+	and [optionally] sky brightness, seeing, airmass'
+	parser = OptionParser(description=d_txt, version = '%prog v. 1.0 (14 Nov 2018)' )
+	
+	parser.add_option('-m', dest = 'magnitude'  , type=float, action='store', metavar="App. magnitude", help='Apparent magnitude [no default]')      
+	parser.add_option('-M', dest = 'moon' , metavar='Moon phase', action = 'store',  default = 'quarter', help='Moon (dark, quarter, full), default quarter' )
+	parser.add_option('-f', dest = 'fwhm' , metavar='FWHM seeing', action = 'store',  default = 2.5, help='FWHM seeing (arcsec) [default 2.5]' )
+	parser.add_option('-z', dest = 'airmass' , metavar='Airmass', action = 'store',  default = 1.0, help='Airmass [default 1.0]' )
+	parser.add_option('-t', dest = 'time' , metavar='Exposure time', action = 'store',  default = 10.0, help='Exposure time,sec [default = 10]' )
+	parser.add_option('-v', dest = 'verbose'    , metavar='Verbose'   , action = 'store_true',  default = 'False', help='Verbose output' )
+	return parser.parse_args()    
+    
+# Dictionaries
+Moon_x       =  {'dark':1.0, 'quarter':3, 'full': 10.0}                        # Sky brightness multiplier relative to Moonless
+Sky          =  {"L":2.0, "B":0.7, "G":0.7, "R":1.2, "I":1.5}                    # Color dependence of sky brightness: roughly Sigma = RN + Sky * sqrt(t/sec)
+filter_names =  {"L" : "Luminance" , "G" : "Sloan g", "R" : "Sloan r", "I" : "Sloan i"}
+k            =  {'G':0.3,'R':0.15,'I':0.05,'V':0.3,'B':0.4,'L':0.25}             # Airmass extinction coeff.
+ZP           =  {'G':22.62, 'R':22.50, 'I':21.90, 'V':22.5, 'B':2.15, 'L':23.2}  # Zero-point magnitudes (accurate for Sloan G,R, I, but guesses otherwise)
+
+# Camera specs
+pixel = 0.8           # Pixel size [arcsec]
+RN = 5                # Read noise of the camera [e-]
+DC = 0.05   # Dark current [e-]
+params = [ZP, Sky, pixel,RN,DC]
+
+
+def npixel(fwhm_seeing):
+	# Effective number of pixels
+	return np.pi * (fwhm_seeing/(2*pixel) )**2 
+
+
+def stdev(filtercode, moon, exptime, fwhm_seeing, params):
+	# Calculates standard deviation empirically based on obs. values
+	ZP, Sky, pixel, RN, DC = params
+	sigma = RN + Moon_x[moon] * Sky[filtercode] * np.sqrt(exptime) + np.sqrt(DC*exptime)
+	return sigma
+	
+def calc_all(mag0, filtercodes, moon, exptime, fwhm_seeing0, z, params):
+	ZP, Sky, pixel, RN, DC = params
+	Sigma = []; Snr = []; Saturation_time = []; Peak_ADU = []
+	for fcode in filtercodes:
+		zp = ZP[fcode]
+		mag = mag0 + k[fcode]*(z-1)
+		fwhm_seeing = fwhm_seeing0 * (z**0.6)
+		R_star = 10**( 0.4*(zp - mag) )
+		Signal = R_star * exptime
+		npix= npixel(fwhm_seeing)
+		sigma = stdev(fcode, moon, exptime, fwhm_seeing, params)  
+		noise = np.sqrt(Signal + sigma**2 )
+		snr = Signal/noise
+		t = 10 ** (4.71 - 0.4 * (zp - mag) )
+		saturation_time = t * (fwhm_seeing/pixel)**2
+		peak_ADU = 0.85 * R_star * exptime / npix
+		if peak_ADU > 65000: peak_ADU = ''
+		Sigma.append(sigma); Snr.append(snr)
+		Saturation_time.append(saturation_time)
+		Peak_ADU.append(peak_ADU)
+	return Sigma, Snr, Saturation_time, Peak_ADU
+
+# MAIN 
+
+# Get command  line arguments, assign parameter values
+(opts, args) = get_args()
+if not opts.magnitude:   
+    sys.exit('Magnitude required (option -m), exiting')
+else:
+	mag = opts.magnitude
+moon = opts.moon
+fwhm_seeing = float(opts.fwhm)
+exptime = float(opts.time)
+z = float(opts.airmass)
+	
+# loop through these filters
+fcodes = ['G','R','I','L']
+
+print('Gemini telescope observing planner') 
+print('App. magnitude = %.1f' % mag)
+print('Moon phase     = %s' % moon)
+print('Airmass        = %.1f' %  z)
+print('FWHM seeing    = %.1f\" (zenith) %.1f\" (z=%.1f)' %  \
+(fwhm_seeing, fwhm_seeing*(z**0.6),z))
+print('Exposure time  = %.1f sec' % exptime)
+print()
+print('Parameter         ' + '        '.join([f for f in fcodes] ))
+print('-----------------------------------------------')
+
+Sigma, Snr, Sat, Peak = calc_all(mag, fcodes, moon, exptime, fwhm_seeing,z, params)
+print('SNR            ' +' '.join(["{:7.1f}".format(x) for x in Snr]))
+print('Std.Dev [ADU]  ' +' '.join(["{:7.1f}".format(x) for x in Sigma]))
+print('Peak ADU       ' +' '.join(["{:7.0f}".format(x) if type(x) == float else '    Sat' for x in Peak ]))
+print('Saturation [s] ' +' '.join(["{:7.1f}".format(x) for x in Sat]))
+	
+

@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+
+import glob
+import os
+
+checksizemin = '8398080'
+checksizemax = '8400960'
+filelist = glob.glob('*.fts')
+print 'Files that are the wrong size for Aspen Camera captured through telrun'
+for x in filelist:
+        size = os.path.getsize(x)
+        if os.path.getsize(x) >= int(checksizemin) and os.path.getsize(x) <= int(checksizemax):
+		continue
+	else:
+		print x

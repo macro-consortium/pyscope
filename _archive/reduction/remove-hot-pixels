@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+# Stand-alone in-place hot pixel remover
+import sys, time, glob, os
+import astropy.io.fits as pyfits
+from optparse import OptionParser
+sys.path.append("/data/local/bin/") # The directory that contains cosmics.py
+import cosmics
+
+def get_args():
+    desc = 'Removes hot pixels using cosmics algorithm'
+    parser = OptionParser(description=desc,version = '%prog 1.0, 2 May 2016')
+    parser.add_option('-n', dest = 'niter', metavar='Number iterations', action = 'store', type=int, default = 1, help = 'Number of iterations [default1]') 
+    parser.add_option('-o', dest = 'overwrite', metavar='Overwrite'  , action = 'store_true', default = False, help = 'Overwrite original file(s) [default: new file]')
+    parser.add_option('-v', dest = 'verbose', metavar='Verbose', action = 'store_true', default = False, help='Verbose output')
+    return parser.parse_args()
+    
+
+# Remove hot pixels if requested
+def remove_hot_pixels(niter, infile, outfile):
+    t0 = time.time()
+    hdr = pyfits.getheader(infile); im = pyfits.getdata(infile)
+    # Build the object using nominal values for FLI 16803 camera (NB there are more options):
+    c = cosmics.cosmicsimage(im, gain=1.4, readnoise=14.0, sigclip = 5.0, sigfrac = 0.3, objlim = 5.0)
+    c.run(maxiter = niter)
+    
+    # Write the cleaned image into a new FITS file, conserving the original header :
+    hdr.add_comment('Removed hot pixels using cosmics, %i iterations' % niter)
+    #cosmics.tofits(outfile,c.cleanarray, hdr_cal)
+    hdu = pyfits.PrimaryHDU(c.cleanarray,hdr)
+    # Convert to 16-bit for Talon (camera,etc)
+    hdu.scale('int16','',bzero=32768)
+    # write FITS file
+    hdulist = pyfits.HDUList([hdu])
+    # write file
+    hdulist.writeto(outfile, clobber=True, output_verify='ignore')
+    if verbose: print('Wrote %s' % (outfile))
+    t1 = time.time()
+    if verbose: print('Hot pixel removal took: %.1f sec' % (t1-t0))
+    return
+
+# MAIN #
+
+# Get command  line arguments, assign parameter values
+(opts, args) = get_args()
+Ftsfiles = args[0]     
+niter = opts.niter
+overwrite = opts.overwrite
+verbose = opts.verbose             # Print diagnostics, more
+
+for ftsfile in glob.glob(Ftsfiles):
+    if verbose: print('Processing %s' % ftsfile)
+    if overwrite:
+        outfile = ftsfile
+    else:
+        outfile = os.path.splitext(ftsfile)[0] + '-clean.fts'
+    remove_hot_pixels(niter, ftsfile, outfile)
+

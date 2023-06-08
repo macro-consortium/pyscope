@@ -1,0 +1,71 @@
+#!/bin/csh -f
+# collect all the .ft[sh] file args and build into one 128x128 index.gif.
+
+if ($#argv == 0 || "$1" == "-help") then
+    echo "Usage: $0 [-o index.gif] *.ft[sh]"
+    exit 1
+endif
+
+# set name of output file
+if ("$1" == "-o") then
+    set out = $2;
+    shift; shift
+else
+    set out = "index.gif"
+endif
+if (-e $out) then
+    echo $out already exists.
+    exit 1
+endif
+
+# remaining args are files
+if ($#argv == 0 || "$1" == "-help") then
+    echo "Usage: $0 [-o index.gif] *.ft[sh]"
+    exit 1
+endif
+
+# make our own tmp dir to work in
+set tmpdir = /tmp/$$.tmp
+mkdir $tmpdir
+
+# remember where we are now
+set back = $cwd;
+
+# cleanup if signalled
+onintr cleanup
+
+# convert each ft[sh] to pnm, in parallel
+foreach f ($argv)
+    set ftail = $f:t
+    if ($f =~ *h) then
+	cp $f $tmpdir/x.fth
+	fdecompress -r $tmpdir/x.fth
+	set fitsf = $tmpdir/x.fts
+    else
+	set fitsf = $f
+    endif
+
+    set tmpfts = $tmpdir/$ftail:r.fts
+    set tmppnm = $tmpdir/$ftail:r.pnm
+    fitswindow < $fitsf > $tmpfts
+    nice fitstopnm -quiet $tmpfts > $tmppnm &
+end
+
+# wait for all
+wait
+
+# make the index
+set tmp = $tmpdir/$$.idx
+cd $tmpdir
+pnmindex -black -size 128 -across 5 *.pnm > $tmp
+
+# and turn it into a gif
+cd $back
+ppmtogif -quiet < $tmp > $out
+
+cleanup:
+
+rm -fr $tmpdir &
+
+# For RCS Only -- Do Not Edit
+# @(#) $RCSfile: fitsindex,v $ $Date: 2001/04/19 21:12:17 $ $Revision: 1.1.1.1 $ $Name:  $

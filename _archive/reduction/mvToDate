@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# mvToDate: Sorts a directory full of ft[sh] files into year/dayxxx
+#           directories.
+# Original version: KMI (Sometime in 2003)
+# 03 Feb 2004: Various cleanups; only create dayxxx directory if there
+#              are images for that day; added to talon's crontab
+
+ARCHIVE_DIR="/mnt/images/archive"
+#ARCHIVE_DIR=`pwd`
+#fitshdr="/usr/local/telescope/bin/fitshdr"
+
+cd $ARCHIVE_DIR
+
+for file in `ls | grep '^...[0-9][0-9][0-9].*ft[sh]$'`; do
+  date=`$fitshdr $file | grep DATE-OBS | awk -F\' '{print $2}'`
+  year=`echo $date | awk -F- '{print $1}'`
+  if [ -d $year ]; then
+    true
+  else
+    mkdir $year
+  fi
+
+  echo "file: $file"
+  daynum=`echo $file | awk '{print substr($0, 4, 3)}'`
+  echo "daynum: $daynum"
+  today=`date +"%j"`
+
+  if [ -d $year/day$daynum ]; then
+    true
+  else
+    mkdir $year/day$daynum
+  fi
+  echo "$file -> $year/day$daynum"
+  mv $file $year/day$daynum
+done
+

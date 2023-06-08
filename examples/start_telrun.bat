@@ -1,0 +1,2 @@
+python telrun.py
+pause

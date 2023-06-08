@@ -1,0 +1,5 @@
+#!/bin/bash
+source /opt/anaconda3/etc/profile.d/conda.sh
+conda activate /data/condaenvs/rlm-astro
+/usr/local/telescope/bin/email-summary.py
+

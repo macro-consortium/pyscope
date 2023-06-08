@@ -10,13 +10,11 @@ Welcome to pyscope's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-.. automodapi:: pyscope
-   :no-inheritance-diagram:
-.. automodapi:: pyscope.telrun
-   :no-inheritance-diagram:
-.. automodapi:: pyscope.drivers
-   :no-inheritance-diagram:
-.. automodapi:: pyscope.drivers.ascom
-   :no-inheritance-diagram:
-.. automodapi:: pyscope.drivers.abstract
-   :no-inheritance-diagram:
+
+.. automodule:: pyscope
+
+Index
+=====
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

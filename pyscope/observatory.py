@@ -9,9 +9,9 @@ from astropy.io import fits
 from astroquery.mpc import MPC
 import numpy as np
 
-from pyscope import utils
-from pyscope.drivers import ascom
-from pyscope import __version__, logger
+from . import utils
+from .drivers import ascom
+from . import __version__, logger
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides

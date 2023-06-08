@@ -1,4 +1,0 @@
-#!/usr/bin/python
-# EASY-INSTALL-SCRIPT: 'ellc==1.6.3','ellc_emcee'
-__requires__ = 'ellc==1.6.3'
-__import__('pkg_resources').run_script('ellc==1.6.3', 'ellc_emcee')

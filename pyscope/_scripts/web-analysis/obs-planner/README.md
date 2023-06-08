@@ -1,2 +1,0 @@
-# iro-obs-planner
-Collection of tools including observation planning, data reduction, and more, as implemented for the Gemini Telescope at the Iowa Robotic Observatory located at Winer Observatory in Sonoita, AZ. Production webpage hosted at: http://astro.physics.uiowa.edu:8080/astrolab/obsplanner

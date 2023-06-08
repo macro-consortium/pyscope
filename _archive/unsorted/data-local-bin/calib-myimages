@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+# Run ccdcalib, wcs, and fwhm on all .fts images in current directory, but skip those already calibrated
+
+import ftplib, os, sys, traceback, time, glob
+import datetime as dt
+from fnmatch import fnmatch
+import pyfits
+
+def datestr():
+	y4 = time.strftime("%Y")
+	y2 = y4[2:4]
+	dm = time.strftime("%d-%B-")
+	return dm+y4
+
+#MAIN
+
+# Directories
+
+bindir = '/usr/local/telescope/bin/'
+
+# Generate a list of FITS files in current directory
+full_names = []
+names = glob.glob('*.fts')
+for name in names:
+	hdu = pyfits.open(name); header = hdu[0].header
+	if  not 'CRVAL1' in header: full_names.append(name)
+	hdu.close()
+
+print 'Calibrating %i files' % (len(full_names))
+# Fully calibrate (CCDcalib,wcs,fwhm)
+for full_name in full_names:
+	fname = os.path.basename(full_name)
+	fil = pyfits.getval(full_name,'FILTER')[0]
+	froot,fext = os.path.splitext(fname) 
+	os.system('/usr/local/bin/ccdcalib -H 1 %s' % full_name)
+	# But don't do wcs, fwhm on grism images
+	if fil != 'T':
+		os.system('/usr/local/telescope/bin/wcs  -o2w %s' % full_name)
+		os.system('/usr/local/telescope/bin/fwhm -ow %s' % full_name)
+	now = time.strftime("%c")
+	print 'Calibrated %s' % (fname)
+
+
