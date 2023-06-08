@@ -3,7 +3,7 @@ import sys
 
 from .. import drivers, logger
 
-def import_driver(device, driver_name=None, ascom=False):
+def import_driver(device, driver_name=None, ascom=False, filepath=None):
     '''Imports a driver'''
     if driver_name is None and not ascom: return None
 
@@ -11,15 +11,16 @@ def import_driver(device, driver_name=None, ascom=False):
     else:
         try: 
             logger.info('Attempting to importing driver %s for device %s from known custom drivers' % (driver_name, device))
-            device_module = importlib.import_module('pyscope.drivers.%s' % driver_name)
-            device_class = getattr(device_module, device)
+            device_class = getattr(drivers, driver_name)
         except:
             logger.info('Driver %s for device %s not found in known custom drivers, attempting to import from file' % (driver_name, device))
             try: 
-                spec = importlib.util.spec_from_file_location(driver_name, device)
-                device_class = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = device_class
-                spec.loader.exec_module(device_class)
+                module_name = filepath.split('/')[-1].split('.')[0]
+                spec = importlib.util.spec_from_file_location(module_name, filepath)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[module_name] = module
+                spec.loader.exec_module(module)
+                device_class = getattr(module, driver_name)
             except: 
                 logger.error('Could not import driver %s for device %s' % (driver_name, device))
                 return None

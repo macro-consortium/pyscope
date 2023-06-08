@@ -4,10 +4,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope import Observatory
-from pyscope.drivers.ascom import Camera
-
-print(Camera.AbortExposure.__doc__)
+from pyscope import drivers
+print(getattr(drivers, 'WCSAstrometryNet').Solve)
 '''
 # Initialize the hardware, names can be found using the ProfileExplorer
 camera = Camera('ASCOM.DLImaging.Camera', ascom=True)

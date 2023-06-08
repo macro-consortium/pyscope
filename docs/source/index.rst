@@ -10,8 +10,8 @@ Welcome to pyscope's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
-.. automodule:: pyscope
+.. automodapi:: pyscope.drivers
+   :no-inheritance-diagram:
 
 Index
 =====

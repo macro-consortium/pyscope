@@ -4,7 +4,7 @@ import os
 import astropy.io.fits as pyfits
 from astroquery.astrometry_net import AstrometryNet
 
-class WCS(abstract.WCS):
+class WCSAstrometryNet(abstract.WCS):
     def __init__(self, *args, **kwargs):
         self._solver = AstrometryNet()
     

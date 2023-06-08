@@ -268,7 +268,7 @@ class Observatory:
         # WCS
         kwarg = kwargs.get('wcs', self._wcs)
         if kwarg is None:
-            self._wcs = WCS('wcs_astrometrynet')
+            self._wcs = utils.import_driver('WCS', 'wcs_astrometrynet')
             self._wcs_driver = 'wcs_astrometrynet'
             self._config['wcs']['driver_0'] = self._wcs_driver
         elif type(kwarg) is not list or type(kwarg) is not tuple:
