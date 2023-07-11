@@ -4,8 +4,12 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope import drivers
-print(getattr(drivers, 'WCSAstrometryNet').Solve)
+from pyscope.drivers.observing_conditions_html import ObservingConditionsHTML
+
+weather = ObservingConditionsHTML('https://winer.org/Site/Weather.php', wind_direction_keyword=b'WINDDIR', wind_direction_units=b'EofN')
+print(weather.WindDirection)
+
+
 '''
 # Initialize the hardware, names can be found using the ProfileExplorer
 camera = Camera('ASCOM.DLImaging.Camera', ascom=True)
