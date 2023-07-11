@@ -1,6 +1,4 @@
-import re
 import urllib.request
-
 from . import abstract
 
 class ObservingConditionsHTML(abstract.ObservingConditions):

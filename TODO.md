@@ -4,8 +4,6 @@
 <li>drivers</li>
     <ul>
     <li>autofocus_pwi</li>
-    <li>observing_conditions_winer</li>
-    <li>safety_monitor_winerroof</li>
     <li>SBIGUniversal</li>
     <li>wcs_pinpoint</li>
     <li>wcs_platesolve2</li>

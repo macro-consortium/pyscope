@@ -4,10 +4,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope.drivers.observing_conditions_html import ObservingConditionsHTML
+from pyscope.drivers.safety_monitor_html import SafetyMonitorHTML
 
-weather = ObservingConditionsHTML('https://winer.org/Site/Weather.php', wind_direction_keyword=b'WINDDIR', wind_direction_units=b'EofN')
-print(weather.WindDirection)
+monitor = SafetyMonitorHTML('https://winer.org/Site/Roof.php')
+print('Is the roof open? %s' % monitor.IsSafe)
 
 
 '''
