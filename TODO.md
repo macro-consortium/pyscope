@@ -24,7 +24,7 @@
 
 <li>telrun</li>
     <ul>
-    <li>Add timeout config options for camera, filter wheel, focuser, rotator, roof/dome, weather, wcs</li>
+    <li>Add timeout config options for all devices</li>
     <li>Generate summary report of scans statuses</li>
     <li>telrun_status portion of class, written to a file</li>
     <li>Update telrun GUI</li>

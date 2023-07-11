@@ -1,9 +1,4 @@
 '''
-
-***************************************
-Telescope Control with Python (pyscope)
-***************************************
-
 What is pyscope?
 ================
 :doc:`pyscope </index>` is an open-source Python package for 
@@ -36,97 +31,15 @@ Features
 ========
 * Control observatory hardware with Python
 * Support for both ASCOM and non-ASCOM devices
-* :doc:`~/api/pyscope.Observatory` convenience methods like 
-  :doc:`~/api/pyscope.Observatory._autofocus and 
-  :doc:`~/api/pyscope.Observatory._recenter`
+* :py:class:`~pyscope.Observatory` convenience methods like 
+  :py:meth:`~pyscope.Observatory.autofocus` and 
+  :py:meth:`~pyscope.Observatory.recenter`
 * :doc:`~/api/pyscope.telrun` module for fully-robotic operation of 
   an observatory
 * Basic data reduction tools like
 * Powered by `Astropy <https://www.astropy.org/>`_, 
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`_ 
   packages, and `ASCOM <https://ascom-standards.org/>`_
-
-
-Getting Started
-===============
-* :doc:`What's New </whats-new>`
-* :doc:`Installation </installation>`
-* :doc:`Quickstart </quickstart>`
-* :doc:`How-to Guides </how-to>`
-* :doc:`Example Gallery </examples>`
-* :doc:`Get Help </help>`
-* `Report Problems <https://github.com/WWGolay/pyScope/issues>`_
-* :doc:`Cite pyscope </cite>`
-* :doc:`About pyscope </about>`
-* :doc:`License </license>`
-
-User Documentation
-==================
-How-to Guides
--------------
-* :doc:`Set up a robotic observatory </how-to/robotic>`
-* :doc:`Set up a remote control server </how-to/remote-server>`
-
-Modules
--------
-* :doc:`pyscope.Observatory </api/pyscope.Observatory>`
-* :doc:`pyscope.drivers </api/pyscope.drivers>`
-
-  * :doc:`pyscope.drivers.ascom </api/pyscope.drivers.ascom>`
-
-* :doc:`pyscope.telrun </api/pyscope.telrun>`
-* :doc:`pyscope.utils </api/pyscope.utils>`
-
-Other Details
--------------
-* :doc:`Configuration Files </setup-reference/config>`
-* :doc:`Logging setup </setup-reference/logging>`
-
-
-Developer Documentation
-=======================
-How to Guides
--------------
-* :doc:`Write a custom driver </how-to/custom-driver>`
-* :doc:`Contribute to pyscope </how-to/contribute>`
-
-Modules
--------
-* :doc:`pyscope.drivers.abstract </api/pyscope.drivers.abstract>`
-
-Authors
-=======
-* Walter Golay, Former Undergraduate at the University of Iowa and 
-  Graduate Student at Harvard University, Department of Astronomy
-
-
-Acknowledgements
-================
-* Robert Mutel, Professor Emeritus at University of Iowa, 
-  Department of Physics and Astronomy
-* The former students and contributors to the 
-  Iowa Robotic Telescope Facility (RTF), the Van Allen Observatory 
-  (VAO), and the Iowa Robotic Observatory (IRO), including the 
-  Rigel Telescope and the Gemini Telescope, now known as the 
-  *Robert L. Mutel Telescope* (RLMT).
-* The Macalester-Augustana Coe Robotic Observatory 
-  (`MACRO <https://macroconsortium.org>`_) 
-  Consortium for providing unrestricted access to the 
-  *Robert L. Mutel Telescope* for testing the early iterations of 
-  this software.
-
-  * John Cannon, Professor at Macalester College, Department of 
-    Physics and Astronomy
-  * William Peterson, Professor at Augustana College, Department 
-    of Physics and Astronomy
-  * James Wetzel, Professor at Coe College, Department of Physics
-
-* Mark and Pat Trueblood, Directors of the 
-  `Winer Observatory <https://www.winer.org/>`_ where the 
-  *Robert L. Mutel Telescope* is located
-* Kevin Ivarsen
-* The astronomy faculty and staff at the University of Iowa, 
-  Department of Physics and Astronomy
 
 '''
 
