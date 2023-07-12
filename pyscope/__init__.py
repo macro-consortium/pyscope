@@ -49,5 +49,4 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 __version__ = '0.1.0'
 
-from .utils import *
 from .observatory import Observatory

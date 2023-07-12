@@ -3,17 +3,17 @@ import io
 from . import abstract
 
 class SafetyMonitorHTML(abstract.SafetyMonitor):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, url, check_phrase=b'ROOFPOSITION=OPEN'):
 
-        self.url = args[0] if len(args) > 0 else kwargs['url']
-        self._check_phrase = kwargs['check_phrase'] if 'check_phrase' in kwargs else b'ROOFPOSITION=OPEN'
+        self._url = url
+        self._check_phrase = check_phrase
 
     @property
     def IsSafe(self):
         safe = False
         buffer = io.BytesIO()
         c = pycurl.Curl()
-        c.setopt(c.URL, self.url)
+        c.setopt(c.URL, self._url)
         c.setopt(c.WRITEDATA, buffer)
         c.perform()
         c.close()

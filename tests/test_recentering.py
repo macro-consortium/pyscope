@@ -4,10 +4,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope.drivers.safety_monitor_html import SafetyMonitorHTML
+from pyscope.drivers import WCSAstrometryNet
 
-monitor = SafetyMonitorHTML('https://winer.org/Site/Roof.php')
-print('Is the roof open? %s' % monitor.IsSafe)
+test = WCSAstrometryNet()
 
 
 '''

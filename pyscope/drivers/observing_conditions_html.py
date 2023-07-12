@@ -2,71 +2,84 @@ import urllib.request
 from . import abstract
 
 class ObservingConditionsHTML(abstract.ObservingConditions):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, url, cloud_cover_keyword=b'CLOUDCOVER', cloud_cover_units=b'%', cloud_cover_numeric=True,
+                    dew_point_keyword=b'DEWPOINT', dew_point_units=b'F', dew_point_numeric=True,
+                    humidity_keyword=b'HUMIDITY', humidity_units=b'%', humidity_numeric=True,
+                    pressure_keyword=b'PRESSURE', pressure_units=b'inHg', pressure_numeric=True,
+                    rain_rate_keyword=b'RAINRATE', rain_rate_units=b'inhr', rain_rate_numeric=True,
+                    sky_brightness_keyword=b'SKYBRIGHTNESS', sky_brightness_units='magdeg2', sky_brightness_numeric=True,
+                    sky_quality_keyword=b'SKYQUALITY', sky_quality_units=None, sky_quality_numeric=True,
+                    sky_temperature_keyword=b'SKYTEMPERATURE', sky_temperature_units=b'F', sky_temperature_numeric=True,
+                    star_fwhm_keyword=b'STARFWHM', star_fwhm_units=b'arcsec', star_fwhm_numeric=True,
+                    temperature_keyword=b'TEMPERATURE', temperature_units=b'F', temperature_numeric=True,
+                    wind_direction_keyword=b'WINDDIRECTION', wind_direction_units=b'EofN', wind_direction_numeric=True,
+                    wind_gust_keyword=b'WINDGUST', wind_gust_units='mph', wind_gust_numeric=True,
+                    wind_speed_keyword=b'WINDSPEED', wind_speed_units='mph', wind_speed_numeric=True, 
+                    last_updated_keyword=b'LASTUPDATED', last_updated_units=None, last_updated_numeric=True):
 
-        self.url = args[0] if len(args) > 0 else kwargs['url']
+        self._url = url
 
         self._cloud_cover = None
-        self._cloud_cover_keyword = kwargs.get('cloud_cover_keyword', b'CLOUDCOVER')
-        self._cloud_cover_units = kwargs.get('cloud_cover_units', b'%')
-        self._cloud_cover_numeric = kwargs.get('cloud_cover_numeric', True)
+        self._cloud_cover_keyword = cloud_cover_keyword
+        self._cloud_cover_units = cloud_cover_units
+        self._cloud_cover_numeric = cloud_cover_numeric
         self._dew_point = None
-        self._dew_point_keyword = kwargs.get('dew_point_keyword', b'DEWPOINT')
-        self._dew_point_units = kwargs.get('dew_point_units', None)
-        self._dew_point_numeric = kwargs.get('dew_point_numeric', True)
+        self._dew_point_keyword = dew_point_keyword
+        self._dew_point_units = dew_point_units
+        self._dew_point_numeric = dew_point_numeric
         self._humidity = None
-        self._humidity_keyword = kwargs.get('humidity_keyword', b'HUMIDITY')
-        self._humidity_units = kwargs.get('humidity_units', b'%')
-        self._humidity_numeric = kwargs.get('humidity_numeric', True)
+        self._humidity_keyword = humidity_keyword
+        self._humidity_units = humidity_units
+        self._humidity_numeric = humidity_numeric
         self._pressure = None
-        self._pressure_keyword = kwargs.get('pressure_keyword', b'PRESSURE')
-        self._pressure_units = kwargs.get('pressure_units', b'inHg')
-        self._pressure_numeric = kwargs.get('pressure_numeric', True)
+        self._pressure_keyword = pressure_keyword
+        self._pressure_units = pressure_units
+        self._pressure_numeric = pressure_numeric
         self._rain_rate = None
-        self._rain_rate_keyword = kwargs.get('rain_rate_keyword', b'RAINRATE')
-        self._rain_rate_units = kwargs.get('rain_rate_units', None)
-        self._rain_rate_numeric = kwargs.get('rain_rate_numeric', True)
+        self._rain_rate_keyword = rain_rate_keyword
+        self._rain_rate_units = rain_rate_units
+        self._rain_rate_numeric = rain_rate_numeric
         self._sky_brightness = None
-        self._sky_brightness_keyword = kwargs.get('sky_brightness_keyword', b'SKYBRIGHTNESS')
-        self._sky_brightness_units = kwargs.get('sky_brightness_units', None)
-        self._sky_brightness_numeric = kwargs.get('sky_brightness_numeric', True)
+        self._sky_brightness_keyword = sky_brightness_keyword
+        self._sky_brightness_units = sky_brightness_units
+        self._sky_brightness_numeric = sky_brightness_numeric
         self._sky_quality = None
-        self._sky_quality_keyword = kwargs.get('sky_quality_keyword', b'SKYQUALITY')
-        self._sky_quality_units = kwargs.get('sky_quality_units', None)
-        self._sky_quality_numeric = kwargs.get('sky_quality_numeric', True)
+        self._sky_quality_keyword = sky_quality_keyword
+        self._sky_quality_units = sky_quality_units
+        self._sky_quality_numeric = sky_quality_numeric
         self._sky_temperature = None
-        self._sky_temperature_keyword = kwargs.get('sky_temperature_keyword', b'SKYTEMPERATURE')
-        self._sky_temperature_units = kwargs.get('sky_temperature_units', 'C')
-        self._sky_temperature_numeric = kwargs.get('sky_temperature_numeric', True)
+        self._sky_temperature_keyword = sky_temperature_keyword
+        self._sky_temperature_units = sky_temperature_units
+        self._sky_temperature_numeric = sky_temperature_numeric
         self._star_fwhm = None
-        self._star_fwhm_keyword = kwargs.get('star_fwhm_keyword', b'STARFWHM')
-        self._star_fwhm_units = kwargs.get('star_fwhm_units', None)
-        self._star_fwhm_numeric = kwargs.get('star_fwhm_numeric', True)
+        self._star_fwhm_keyword = star_fwhm_keyword
+        self._star_fwhm_units = star_fwhm_units
+        self._star_fwhm_numeric = star_fwhm_numeric
         self._temperature = None
-        self._temperature_keyword = kwargs.get('temperature_keyword', b'TEMPERATURE')
-        self._temperature_units = kwargs.get('temperature_units', None)
-        self._temperature_numeric = kwargs.get('temperature_numeric', True)
+        self._temperature_keyword = temperature_keyword
+        self._temperature_units = temperature_units
+        self._temperature_numeric = temperature_numeric
         self._wind_direction = None
-        self._wind_direction_keyword = kwargs.get('wind_direction_keyword', b'WINDDIRECTION')
-        self._wind_direction_units = kwargs.get('wind_direction_units', None)
-        self._wind_direction_numeric = kwargs.get('wind_direction_numeric', True)
+        self._wind_direction_keyword = wind_direction_keyword
+        self._wind_direction_units = wind_direction_units
+        self._wind_direction_numeric = wind_direction_numeric
         self._wind_gust = None
-        self._wind_gust_keyword = kwargs.get('wind_gust_keyword', b'WINDGUST')
-        self._wind_gust_units = kwargs.get('wind_gust_units', None)
-        self._wind_gust_numeric = kwargs.get('wind_gust_numeric', True)
+        self._wind_gust_keyword = wind_gust_keyword
+        self._wind_gust_units = wind_gust_units
+        self._wind_gust_numeric = wind_gust_numeric
         self._wind_speed = None
-        self._wind_speed_keyword = kwargs.get('wind_speed_keyword', b'WINDSPEED')
-        self._wind_speed_units = kwargs.get('wind_speed_units', None)
-        self._wind_speed_numeric = kwargs.get('wind_speed_numeric', True)
+        self._wind_speed_keyword = wind_speed_keyword
+        self._wind_speed_units = wind_speed_units
+        self._wind_speed_numeric = wind_speed_numeric
         self._last_updated = None
-        self._last_updated_keyword = kwargs.get('last_updated_keyword', b'LASTUPDATED')
-        self._last_updated_units = kwargs.get('last_updated_units', None)
-        self._last_updated_numeric = kwargs.get('last_updated_numeric', True)
+        self._last_updated_keyword = last_updated_keyword
+        self._last_updated_units = last_updated_units
+        self._last_updated_numeric = last_updated_numeric
 
         self.Refresh()
     
     def Refresh(self):
-        stream = urllib.request.urlopen(self.url)
+        stream = urllib.request.urlopen(self._url)
         lines = stream.readlines()
 
         for line in lines:
@@ -101,23 +114,23 @@ class ObservingConditionsHTML(abstract.ObservingConditions):
             if last_updated is not None: self._last_updated = last_updated
 
     def SensorDescription(self, PropertyName):
-        return abstract.exceptions.MethodNotImplemented()
+        return
 
     def TimeSinceLastUpdate(self, PropertyName):
-        stream = urllib.request.urlopen(self.url)
+        stream = urllib.request.urlopen(self._url)
         lines = stream.readlines()
 
         for line in lines:
-            self._last_updated = _get_number_from_line(line, b'LASTUPDATED', b'None', False)
+            self._last_updated = _get_number_from_line(line, self._last_updated_keyword, self._last_updated_units, self._last_updated_numeric)
         
         return self.LastUpdated
     
     @property
     def AveragePeriod(self):
-        return abstract.exceptions.PropertyNotImplemented()
+        return
     @AveragePeriod.setter
     def AveragePeriod(self, value):
-        return abstract.exceptions.PropertyNotImplemented()
+        return
     
     @property
     def CloudCover(self):

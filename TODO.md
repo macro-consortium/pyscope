@@ -4,21 +4,14 @@
 <li>drivers</li>
     <ul>
     <li>autofocus_pwi</li>
-    <li>SBIGUniversal</li>
-    <li>wcs_pinpoint</li>
     <li>wcs_platesolve2</li>
     <li>wcs_platesolve3</li>
     </ul>
 
 <li>observatory</li>
     <ul>
-    <li>Write property and method docstrings</li>
     <li>Maxim integration</li>
-    <li>TheSkyX integration</li>
-    <li>Add support for Nasmyth telescopes (two backends)</li>
     </ul>
-
-<li>Write tests</li>
 
 <li>telrun</li>
     <ul>
@@ -51,8 +44,6 @@
     <li>Updates telrun status file</li>
     </ul>
 
-<li>bin</li>
-
 <li>_scripts</li>
     <ul>
     <li>setup_telrun_observatory</li>
@@ -60,10 +51,9 @@
     <li>Scheduling, reduction, analysis scripts</li>
     </ul>
 
-<li>Add notification support</li>
-    <ul>
-    <li>courier.com integration</li>
-    </ul>
+<li>Consider custom exception integration</li>
+
+<li>Write tests</li>
 
 <li>Write docs</li>
     <ul>
@@ -74,10 +64,7 @@
     </ul>
 
 <li>Check for PEP8 compliance</li>
-
 <li>Installer setup on pip, conda</li>
-
-<li>Integration with grism pipeline</li>
 
 <li>Outreach and use</li>
     <ul>
@@ -99,5 +86,11 @@
         <li>astropy affiliated package?</li>
         </ul>
     </ul>
+
+<li>Add notification support via courier.com, others</li>
+<li>Add support for control via TheSkyX</li>
+<li>Allow for Nasmyth telescope control</li>
+<li>Write the SBIGUniversal driver</li>
+<li>Write the FLI camera driver</li>
 
 </ul>
