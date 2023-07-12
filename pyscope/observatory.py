@@ -881,12 +881,12 @@ class Observatory:
                 switch_array.append(temp)
         return switch_array
     
-    def autofocus(self, exposure=3, midpoint=0, nsteps=5, step_size=500, use_current_pointing=False):
+    def run_autofocus(self, exposure=3, midpoint=0, nsteps=5, step_size=500, use_current_pointing=False):
         '''Runs the autofocus routine'''
 
         if self.autofocus is not None:
             logger.info('Using %s to run autofocus...' % self.autofocus_driver)
-            result = self.autofocus.Run()
+            result = self.autofocus.Run(exposure=exposure)
             logger.info('Autofocus routine completed.')
             return result
         elif self.focuser is not None:

@@ -3,7 +3,6 @@
 
 <li>drivers</li>
     <ul>
-    <li>autofocus_pwi</li>
     <li>wcs_platesolve2</li>
     <li>wcs_platesolve3</li>
     </ul>
