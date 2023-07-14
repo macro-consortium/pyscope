@@ -7,11 +7,6 @@
     <li>wcs_platesolve3</li>
     </ul>
 
-<li>observatory</li>
-    <ul>
-    <li>Maxim integration</li>
-    </ul>
-
 <li>telrun</li>
     <ul>
     <li>Add timeout config options for all devices</li>

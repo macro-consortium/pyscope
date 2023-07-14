@@ -1,247 +1,411 @@
-from datetime import datetime, timedelta
-import logging
+import platform
+import time
 
-"""
-This is an IOTA camera driver for Maxim DL.
-Anything in this module beginning with an underscore is a
-private part of the implementation, and should not be accessed
-directly from the outside. All other names should be part of
-the standard Camera programming interface. Alternative
-implementations can be provided by other drivers in the future.
-"""
+from . import abstract, ascom
 
-class Maxim:
-    pass
+class Maxim(abstract.Driver):
+    def __init__(self):
+        if platform.system() != 'Windows':
+            raise Exception('This class is only available on Windows.')
+        else:
+            from win32com.client import Dispatch
+            self._app = Dispatch('MaxIm.Application')
+            self._app.LockApp = True
 
-_maxim = None  # Reference to MaxIm.Application object
-_camera = None # Reference to MaxIm.CCDCamera object
-_last_exposure_start_datetime = None  # Used to check that the exposure returned by Maxim was generated after the call to Expose()
+            self._camera = _MaximCamera()
+            self._camera.Connected = True
 
-def initialize():
-    # Only try to import the win32com library if the driver is going to be used
-    from win32com.client import Dispatch
+            self._filter_wheel = None
+            self._autofocus = None
+            if self._camera.HasFilterWheel:
+                self._filter_wheel = _MaximFilterWheel(self.camera)
+            if self._app.FocuserConnected:
+                self._autofocus = _MaximAutofocus(self.app)
 
-    global _maxim
-    global _camera
-
-    logging.info("Launching MaxIm.Application")
-    _maxim = Dispatch("MaxIm.Application")
-    _maxim.LockApp = True # Prevent Maxim from closing on application exit
-
-    logging.info("Launching MaxIm.CCDCamera")
-    _camera = Dispatch("MaxIm.CCDCamera")
-    _camera.DisableAutoShutdown = True # Prevent camera from disconnecting on application exit
-
-    logging.info("Connecting to camera")
-    _camera.LinkEnabled = True
-    logging.info("Connected to camera '%s'", _camera.CameraName)
-    logging.info("Filters:")
-
-    filter_names = get_filter_names()
-    for i in range(len(filter_names)):
-        logging.info(" %d: %s", i, filter_names[i])
-
-def start_exposure(exposure_length_seconds, open_shutter):
-    """
-    Start an exposure
-
-    exposure_length_seconds: the duration of the exposure in decimal seconds
-    open_shutter: True if the shutter should be open during the exposure
-                  (i.e. a "Light" image) or False if the shutter should be
-                  closed (i.e. a "Dark" image)
-    """
-
-    global _last_exposure_start_datetime
-
-    # Try to see if this resolves Filter property not being reported
-    # correctly in some cases
-    filter_index = _camera.Filter
-    logging.info("Exposing with filter index %d", filter_index)
-
-    _last_exposure_start_datetime = datetime.utcnow() - timedelta(seconds=3)  # Allow for a small margin of error (clock updates, etc)
+            self._wcs = _MaximPinpointWCS(self.camera)
     
-    _camera.Expose(exposure_length_seconds, open_shutter, filter_index)
-
-def abort_exposure():
-    """
-    Abort an exposure if one is in progress.
-    If no exposure is active, this does nothing.
-    """
-
-    _camera.AbortExposure()
-
-def is_exposure_finished():
-    """
-    Following a call to expose(), this function returns True if an
-    image from the latest exposure is ready, or False if the exposure
-    is still in progress
-    """
-
-    return _camera.ImageReady
-
-def verify_latest_exposure():
-    """
-    Make sure that the image that was returned by Maxim was in fact generated
-    by the most recent call to Expose(). I have seen cases where a camera
-    dropout occurs (e.g. if a USB cable gets unplugged and plugged back in)
-    where Maxim will claim that an exposure is complete but just return the
-    same (old) image over and over again.
-
-    Return without error if the image from Maxim appears to be newer than
-    the supplied UTC datetime object based on the DATE-OBS header.
-    Raise an exception if the image is older or if there is an error
-    accessing the image.
-    """
-
-    try:
-        image = _camera.Document
-    except Exception as ex:
-        raise Exception("Unable to access Maxim camera imge: " + str(ex))
-
-    if image is None:
-        raise Exception("No current image in Maxim")
-
-    image_timestamp = image.GetFITSKey("DATE-OBS")
-    # image_timestamp = image_timestamp[:-4] #fixes ValueError: unconverted data remains
-    image_datetime = datetime.strptime(image_timestamp, "%Y-%m-%dT%H:%M:%S.%f")
-
-    logging.info("Image timestamp: %s" , image_timestamp) # Added 1Dec2021 for debugging RLM
-    logging.info("Image timestamp UTC: %s", image_datetime)
-    logging.info("Last exposure start time UTC: %s", _last_exposure_start_datetime)
-
-    if image_datetime < _last_exposure_start_datetime:
-        raise Exception("Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera")
-
-
-def save_image_as_fits(filepath):
-    _camera.SaveImage(filepath)
-
-def get_filter_names():
-    """
-    Return a tuple containing the string name of each filter in
-    the corresponding filter wheel slot. For example, this function might return:
-
-    ("Red", "Green", "Blue", "Luminance", "H-alpha", "Empty", "Empty")
-
-    where the filter in slot 0 is Red and the filter in slot 6 is empty (no filter)
-    """
-
-    return _camera.FilterNames
-
-def get_active_filter():
-    """
-    Return the index of the currently selected filter, with 0 being
-    the first index. The name of the corresponding filter can be 
-    accessed by indexing into the result of get_filter_names()
-    """
-
-    return _camera.Filter
-
-def set_active_filter(filter_index):
-    """
-    Set the active filter to the specified index, starting at 0.
-    """
-
-    _camera.Filter = filter_index
-
-def get_ccd_width_pixels():
-    """
-    Return the number of (unbinned) pixels on the CCD in the X direction
-    """
-
-    return _camera.CameraXSize
-
-def get_ccd_height_pixels():
-    """
-    Return the number of (unbinned) pixels on the CCD in the Y direction
-    """
-
-    return _camera.CameraYSize
-
-def set_binning(binning_x, binning_y):
-    _camera.BinX = binning_x
-    _camera.BinY = binning_y
-
-def set_subframe(start_x, start_y, width, height):
-    _camera.StartX = start_x
-    _camera.StartY = start_y
-    _camera.NumX = width
-    _camera.NumY = height
-
-def set_cmosmode(cmosmode):
-    _camera.ReadoutMode = cmosmode
-
-def run_pinpoint():
-    image = _camera.Document
-    image.PinPointSolve()
-
-def pinpoint_status():
-    image = _camera.Document
-    return image.PinPointStatus
-
-def get_ccd_temperature_celsius():
-    """
-    Return the temperature of the camera, in degrees celsius
-    """
-
-    return _camera.Temperature
+    @property
+    def Connected(self):
+        return self.camera.Connected
+    @Connected.setter
+    def Connected(self, value):
+        self.camera.Connected = value
     
-def get_ccd_guider_temperature_celsius():
-    """
-    Return the temperature of the camera, in degrees celsius
-    """
+    @property
+    def Name(self):
+        return 'MaxIm DL'
+    
+    @property
+    def app(self):
+        return self._app
 
-    return _camera.GuiderTemperature
+    @property
+    def autofocus(self):
+        return self._autofocus
+    
+    @property
+    def camera(self):
+        return self._camera
 
-def set_ccd_temperature_setpoint_celsius(degrees_c):
-    """
-    Set the setpoint of the CCD cooler, in degrees celsius.
-    If degrees_c is None, the cooler will be turned off
-    """
+    @property
+    def filter_wheel(self):
+        return self._filter_wheel
+    
+    @property
+    def wcs(self):
+        return self._wcs
 
-    if degrees_c is None:
-        _camera.TemperatureSetpoint = 30 # Some cameras respond better to setting a setpoint above ambient as a method for turning off the cooler
-        _camera.CoolerOn = False
-    else:
-        _camera.CoolerOn = True
-        if _camera.CoolerOn != True:
-            logging.warn("Error turning camera cooler on: set CoolerOn to True, but is not reported as being on")
+class _MaximAutofocus(abstract.Autofocus):
+    def __init__(self, maxim):
+        self.maxim = maxim
 
-        _camera.TemperatureSetpoint = degrees_c
+    def Run(self, exposure=10):
+        self.maxim.Autofocus(exposure)
 
-def set_ccd_guider_temperature_setpoint_celsius(degrees_c):
-    """
-    Set the setpoint of the CCD cooler, in degrees celsius.
-    If degrees_c is None, the cooler will be turned off
-    """
-
-    if degrees_c is None:
-        _camera.GuiderTemperatureSetpoint = 30 # Some cameras respond better to setting a setpoint above ambient as a method for turning off the cooler
-        _camera.GuiderCoolerOn = False
-    else:
-        _camera.CoolerOn = True
-        if _camera.GuiderCoolerOn != True:
-            logging.warn("Error turning camera cooler on: set CoolerOn to True, but is not reported as being on")
-
-        _camera.GuiderTemperatureSetpoint = degrees_c
+        while self.maxim.AutofocusStatus == -1:
+            time.sleep(1)
         
-def start_guider_exposure(exposure_length_seconds):
-    """
-    Start an exposure
+        if self.maxim.AutofocusStatus == 1:
+            return True
+        else:
+            return False
 
-    exposure_length_seconds: the duration of the exposure in decimal seconds
-    open_shutter: True if the shutter should be open during the exposure
-                  (i.e. a "Light" image) or False if the shutter should be
-                  closed (i.e. a "Dark" image)
-    """
+    def Abort(self):
+        raise NotImplementedError
 
-    global _last_exposure_start_datetime
+class _MaximCamera(abstract.Camera):
+    def __init__(self):
+        self._com_object = Dispatch('MaxIm.CCDCamera')
+        self._com_object.DisableAutoShutdown = True
 
-    # Try to see if this resolves Filter property not being reported
-    # correctly in some cases
-    filter_index = _camera.Filter
-    logging.info("Exposing with filter index %d", filter_index)
+        self._last_exposure_duration = None
+        self._last_exposure_start_time = None
 
-    _last_exposure_start_datetime = datetime.utcnow() - timedelta(seconds=3)  # Allow for a small margin of error (clock updates, etc)
+    @property
+    def Connected(self):
+        return self._com_object is not None and self._com_object.LinkEnabled
+    @Connected.setter
+    def Connected(self, value):
+        self._com_object.LinkEnabled = value
+    
+    @property
+    def Name(self):
+        self._com_object.CameraName
+    
+    def AbortExposure(self):
+        self._com_object.AbortExposure()
 
-    _camera.GuiderExpose(exposure_length_seconds)
+    def PulseGuide(self, Direction, Duration):
+        raise NotImplementedError
+
+    def StartExposure(self, Duration, Light):
+        self._last_exposure_duration = Duration
+        self._last_exposure_start_time = time.time()
+        self._com_object.Expose(Duration, Light)
+
+    def StopExposure(self):
+        self._com_object.AbortExposure()
+
+    @property
+    def BayerOffsetX(self):
+        raise NotImplementedError
+
+    @property
+    def BayerOffsetY(self):
+        raise NotImplementedError
+
+    @property
+    def BinX(self):
+        return self._com_object.BinX
+    @BinX.setter
+    def BinX(self, value):
+        self._com_object.BinX = value
+
+    @property
+    def BinY(self):
+        return self._com_object.BinY
+    @BinY.setter
+    def BinY(self, value):
+        self._com_object.BinY = value
+
+    @property
+    def CameraState(self):
+        return self._com_object.CameraStatus
+
+    @property
+    def CameraXSize(self):
+        return self._com_object.CameraXSize
+
+    @property
+    def CameraYSize(self):
+        return self._com_object.CameraYSize
+
+    @property
+    def CanAbortExposure(self):
+        return True
+
+    @property
+    def CanAsymmetricBin(self):
+        return self._com_object.XYBinning
+
+    @property
+    def CanFastReadout(self):
+        raise NotImplementedError
+
+    @property
+    def CanGetCoolerPower(self):
+        return True
+
+    @property
+    def CanPulseGuide(self):
+        return False
+
+    @property
+    def CanSetCCDTemperature(self):
+        return self._com_object.CanSetTemperature
+
+    @property
+    def CanStopExposure(self):
+        return True
+
+    @property
+    def CCDTemperature(self):
+        return self._com_object.Temperature
+
+    @property
+    def CoolerOn(self):
+        return self._com_object.CoolerOn
+    @CoolerOn.setter
+    def CoolerOn(self, value):
+        self._com_object.CoolerOn = value
+
+    @property
+    def CoolerPower(self):
+        return self._com_object.CoolerPower
+
+    @property
+    def ElectronsPerADU(self):
+        raise NotImplementedError
+
+    @property
+    def ExposureMax(self):
+        raise NotImplementedError
+
+    @property
+    def ExposureMin(self):
+        raise NotImplementedError
+
+    @property
+    def ExposureResolution(self):
+        raise NotImplementedError
+
+    @property
+    def FastReadout(self):
+        raise DeprecationWarning
+    @FastReadout.setter
+    def FastReadout(self, value):
+        raise DeprecationWarning
+
+    @property
+    def FullWellCapacity(self):
+        raise NotImplementedError
+
+    @property
+    def Gain(self):
+        return self._com_object.Speed
+    @Gain.setter
+    def Gain(self, value):
+        self._com_object.Speed = value
+
+    @property
+    def GainMax(self):
+        raise NotImplementedError
+
+    @property
+    def GainMin(self):
+        raise NotImplementedError
+
+    @property
+    def Gains(self):
+        return self._com_object.Speeds
+
+    @property
+    def HasShutter(self):
+        return self._com_object.HasShutter
+
+    @property
+    def HeatSinkTemperature(self):
+        return self._com_object.AmbientTemperature
+
+    @property
+    def ImageArray(self):
+        return self._com_object.ImageArray
+
+    @property
+    def ImageArrayVariant(self):
+        return float(self._com_object.ImageArray)
+
+    @property
+    def ImageReady(self):
+        return self._com_object.ImageReady
+
+    @property
+    def IsPulseGuiding(self):
+        raise NotImplementedError
+
+    @property
+    def LastExposureDuration(self):
+        return self._last_exposure_duration
+
+    @property
+    def LastExposureStartTime(self):
+        return self._last_exposure_start_time
+
+    @property
+    def MaxADU(self):
+        raise NotImplementedError
+
+    @property
+    def MaxBinX(self):
+        return self._com_object.MaxBinX
+
+    @property
+    def MaxBinY(self):
+        return self._com_object.MaxBinY
+
+    @property
+    def NumX(self):
+        return self._com_object.NumX
+    @NumX.setter
+    def NumX(self, value):
+        self._com_object.NumX = value
+
+    @property
+    def NumY(self):
+        return self._com_object.NumY
+    @NumY.setter
+    def NumY(self, value):
+        self._com_object.NumY = value
+
+    @property
+    def Offset(self):
+        raise NotImplementedError
+    @Offset.setter
+    def Offset(self, value):
+        raise NotImplementedError
+
+    @property
+    def OffsetMax(self):
+        raise NotImplementedError
+
+    @property
+    def OffsetMin(self):
+        raise NotImplementedError
+
+    @property
+    def Offsets(self):
+        raise NotImplementedError
+
+    @property
+    def PercentCompleted(self):
+        raise NotImplementedError
+
+    @property
+    def PixelSizeX(self):
+        return self._com_object.PixelSizeX
+
+    @property
+    def PixelSizeY(self):
+        return self._com_object.PixelSizeY
+
+    @property
+    def ReadoutMode(self):
+        return self._com_object.ReadoutMode
+    @ReadoutMode.setter
+    def ReadoutMode(self, value):
+        self._com_object.ReadoutMode = value
+
+    @property
+    def ReadoutModes(self):
+        return self._com_object.ReadoutModes
+
+    @property
+    def SensorName(self):
+        raise NotImplementedError
+
+    @property
+    def SensorType(self):
+        raise NotImplementedError
+
+    @property
+    def SetCCDTemperature(self):
+        return self._com_object.TemperatureSetpoint
+    @SetCCDTemperature.setter
+    def SetCCDTemperature(self, value):
+        self._com_object.TemperatureSetpoint = value
+
+    @property
+    def StartX(self):
+        return self._com_object.StartX
+    @StartX.setter
+    def StartX(self, value):
+        self._com_object.StartX = value
+
+    @property
+    def StartY(self):
+        return self._com_object.StartY
+    @StartY.setter
+    def StartY(self, value):
+        self._com_object.StartY = value
+
+    @property
+    def SubExposureDuration(self):
+        raise NotImplementedError
+    @SubExposureDuration.setter
+    def SubExposureDuration(self, value):
+        raise NotImplementedError
+
+class _MaximFilterWheel(abstract.FilterWheel):
+    def __init__(self, maxim_camera):
+        self.maxim_camera = maxim_camera
+
+    @property
+    def Connected(self):
+        return self.maxim_camera.Connected and self.maxim_camera.HasFilterWheel
+    @Connected.setter
+    def Connected(self, value):
+        self.maxim_camera.Connected = value
+    
+    @property
+    def Name(self):
+        self.maxim_camera.FilterWheelName
+
+    @property
+    def FocusOffsets(self):
+        raise NotImplementedError
+
+    @property
+    def Names(self):
+        return self.maxim_camera.FilterNames
+
+    @property
+    def Position(self):
+        return self.maxim_camera.Filter
+    @Position.setter
+    def Position(self, value):
+        self.maxim_camera.Filter = value
+
+class _MaximPinpointWCS(abstract.WCS):
+    def __init__(self, maxim_camera):
+        self.maxim_camera = maxim_camera
+
+    def Solve(self, ra=None, dec=None, scale_est=None, *args, **kwargs):
+        self.maxim_camera.document.PinpointSolve(ra, dec, scale_est, scale_est)
+
+        while self.maxim_camera.document.PinpointStatus == 3:
+            time.sleep(1)
+        
+        if self.maxim_camera.document.PinpointStatus == 2:
+            return True
+        else:
+            return False

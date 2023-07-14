@@ -1,1 +1,0 @@
-from .wcs_astrometrynet import WCSAstrometryNet

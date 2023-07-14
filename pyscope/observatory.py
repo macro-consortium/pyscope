@@ -70,6 +70,8 @@ class Observatory:
         self._autofocus = None
         self._wcs = None
 
+        self._maxim = None
+
         if config_file_path is not None:
             logger.info('Using config file to initialize observatory: %s' % config_file)
             try: self._config.read(config_file_path)
@@ -78,7 +80,11 @@ class Observatory:
             # Camera
             self._camera_driver = self.config['camera']['camera_driver']
             self._camera_ascom = self.config['camera']['camera_ascom']
-            self._camera = utils.import_driver('Camera', driver_name=self.camera_driver, ascom=self.camera_ascom)
+            if self.camera_driver.lower() in ('maxim', 'maximdl'):
+                self._maxim = utils.import_driver('Driver', driver_name='Maxim', ascom=False)
+                self._camera = self._maxim.camera
+            else:
+                self._camera = utils.import_driver('Camera', driver_name=self.camera_driver, ascom=self.camera_ascom)
 
             # Cover calibrator
             self._cover_calibrator_driver = self.config.get('cover_calibrator', 'cover_calibrator_driver', fallback=None)
@@ -93,7 +99,12 @@ class Observatory:
             # Filter wheel
             self._filter_wheel_driver = self.config.get('filter_wheel', 'filter_wheel_driver', fallback=None)
             self._filter_wheel_ascom = self.config.get('filter_wheel', 'filter_wheel_ascom', fallback=None)
-            self._filter_wheel = utils.import_driver('FilterWheel', driver_name=self.filter_wheel_driver, ascom=self.filter_wheel_ascom)
+            if self.filter_wheel_driver.lower() in ('maxim', 'maximdl'):
+                if self._maxim is None:
+                    raise ObservatoryException('MaxIm DL must be used as the camera driver when using MaxIm DL as the filter wheel driver.')
+                self._filter_wheel = self._maxim.filter_wheel
+            else:
+                self._filter_wheel = utils.import_driver('FilterWheel', driver_name=self.filter_wheel_driver, ascom=self.filter_wheel_ascom)
 
             # Focuser
             self._focuser_driver = self.config.get('focuser', 'focuser_driver', fallback=None)
@@ -137,12 +148,20 @@ class Observatory:
 
             # Autofocus
             self._autofocus_driver = self.config.get('autofocus', 'autofocus_driver', fallback=None)
+            if self.autofocus_driver in ('maxim', 'maximdl'):
+                if self._maxim is None:
+                    raise ObservatoryException('MaxIm DL must be used as the camera driver when using MaxIm DL as the autofocus driver.')
+                self._autofocus = self._maxim.autofocus
             self._autofocus = utils.import_driver('Autofocus', driver_name=self.autofocus_driver)
 
             # WCS
             for val in self.config['WCS'].values():
                 try:
                     self._wcs_driver.append(val)
+                    if self._wcs_driver in ('maxim', 'maximdl'):
+                        if self._maxim is None:
+                            raise ObservatoryException('MaxIm DL must be used as the camera driver when using MaxIm DL as the WCS driver.')
+                        self._wcs.append(self._maxim.wcs)
                     self._wcs.append(utils.import_driver('WCS', driver_name=val))
                 except:
                     logger.warning('Error parsing WCS config: %s' % val)
@@ -2291,6 +2310,10 @@ class Observatory:
     @property
     def last_camera_shutter_status(self):
         return self._last_camera_shutter_status
+    
+    @property
+    def maxim(self):
+        return self._maxim
 
 class ObservatoryException(Exception):
     pass

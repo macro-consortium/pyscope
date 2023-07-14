@@ -9,7 +9,6 @@ class Camera(ABC, metaclass=DocstringInheritee):
 
     @abstractmethod
     def AbortExposure(self):
-        '''test'''
         pass
 
     @abstractmethod
@@ -38,10 +37,18 @@ class Camera(ABC, metaclass=DocstringInheritee):
     @abstractmethod
     def BinX(self):
         pass
+    @BinX.setter
+    @abstractmethod
+    def BinX(self, value):
+        pass
 
     @property
     @abstractmethod
     def BinY(self):
+        pass
+    @BinY.setter
+    @abstractmethod
+    def BinY(self, value):
         pass
 
     @property
