@@ -4,7 +4,7 @@ import platform
 from pyscope import logger
 from . import abstract
 
-class AutofocusPWI(abstract.Autofocus):
+class PWIAutofocus(abstract.Autofocus):
     def __init__(self):
         if platform.system() != 'Windows':
             raise Exception('This class is only available on Windows.')

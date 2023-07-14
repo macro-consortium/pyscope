@@ -2,7 +2,7 @@ import pycurl
 import io
 from . import abstract
 
-class SafetyMonitorHTML(abstract.SafetyMonitor):
+class HTMLSafetyMonitor(abstract.SafetyMonitor):
     def __init__(self, url, check_phrase=b'ROOFPOSITION=OPEN'):
 
         self._url = url

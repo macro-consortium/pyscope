@@ -4,7 +4,7 @@ import platform
 from . import abstract
 from pyscope import utils
 
-class WCSPinpoint(abstract.WCS):
+class PinpointWCS(abstract.WCS):
     def __init__(self):
         if platform.system() != 'Windows':
             raise Exception('PinPoint is only available on Windows.')

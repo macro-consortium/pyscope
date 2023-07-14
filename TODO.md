@@ -45,10 +45,6 @@
     <li>Scheduling, reduction, analysis scripts</li>
     </ul>
 
-<li>Consider custom exception integration</li>
-
-<li>Write tests</li>
-
 <li>Write docs</li>
     <ul>
     <li>README.md</li>
@@ -57,6 +53,8 @@
     <li>readthedocs</li>
     </ul>
 
+<li>Consider custom exception integration</li>
+<li>Write tests</li>
 <li>Check for PEP8 compliance</li>
 <li>Installer setup on pip, conda</li>
 
@@ -64,21 +62,9 @@
     <ul>
     <li>Design logo</li>
     <li>Personal website</li>
-    <li>Potential users and sponsors:</li>
-        <ul>
-        <li>RLMT/MACRO</li>
-        <li>VAO/Iowa</li>
-        <li>Macalester</li>
-        <li>Augustana</li>
-        <li>Knox</li>
-        <li>Harvard</li>
-        <li>UConn</li>
-        <li>ALFALFA-U</li>
-        <li>Diffraction Limited</li>
-        <li>Planewave</li>
-        <li>Sierra Remote Observatories</li>
-        <li>astropy affiliated package?</li>
-        </ul>
+    <li>Potential users and sponsors: RLMT/MACRO, VAO/Iowa, Macalester, 
+    Augustana, Knox, Harvard, UConn, ALFALFA-U, Diffraction Limited, 
+    Planewave, Sierra Remote Observatories, astropy affiliated package?</li>
     </ul>
 
 <li>Add notification support via courier.com, others</li>

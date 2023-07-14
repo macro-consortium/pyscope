@@ -1,7 +1,7 @@
 import urllib.request
 from . import abstract
 
-class ObservingConditionsHTML(abstract.ObservingConditions):
+class HTMLObservingConditions(abstract.ObservingConditions):
     def __init__(self, url, cloud_cover_keyword=b'CLOUDCOVER', cloud_cover_units=b'%', cloud_cover_numeric=True,
                     dew_point_keyword=b'DEWPOINT', dew_point_units=b'F', dew_point_numeric=True,
                     humidity_keyword=b'HUMIDITY', humidity_units=b'%', humidity_numeric=True,

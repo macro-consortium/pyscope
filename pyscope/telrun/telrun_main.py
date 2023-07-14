@@ -40,20 +40,13 @@ from . import telrun_gui
 from . import telrun_status
 from . import check_roof
 
-def run():
-    # email_warnings_thread.start()   -- 6/21/21 WWG - TODO: fix permissions problems
-
-    telrun_gui.start_gui_in_thread()
-
-    logging.info("STARTING TELRUN")
-
-    # Read all config files
+def read_configs():
     config_observatory.read()
     config_focus_offsets.read()
     config_telrun.read()
     config_wcs.read()
 
-    # Set up observatory hardware
+def setup_observatory_connections():
     telrun_status.camera_state = "Connecting"
     observatory.setup_camera()
     telrun_status.camera_state = "Connected"
@@ -70,11 +63,55 @@ def run():
 
     observatory.setup_weather()
 
-    # Catch Ctrl-C and crashes, and try to perform some cleanup 
-    # (like turning off tracking, aborting exposures, etc).
-    # Now that we've connected to all devices, we should be able
-    # to accomplish this...
-    atexit.register(exit_handler)
+
+def exit_handler():
+    """
+    Try to perform some cleanup on program exit
+    """
+
+    logging.info("Stopping any in-progress slews")
+    try:
+        abslew = observatory.mount.AbortSlew
+        if hasattr(abslew, '__call__'):
+            abslew()
+    except Exception as ex:
+        logging.exception("Error aborting slew during shutdown")
+
+    logging.info("Attempting to turn off tracking...")
+    try:
+        observatory.mount.Tracking = False
+    except Exception as ex:
+        logging.exception("Error turning off tracking during shutdown")
+
+    logging.info("Attempting to abort autofocus (if needed)...")
+    try:
+        observatory.autofocus.abort_autofocus()
+    except:
+        logging.exception("Error aborting autofocus during shutdown")
+
+    logging.info("Attempting to abort any in-progress camera exposures...")
+    try:
+        observatory.camera.abort_exposure()
+    except:
+        logging.exception("Error aborting exposure during shutdown")
+
+    logging.info("Attempting to stop focuser...")
+    try:
+        haltfunc = observatory.focuser.Halt
+        if hasattr(haltfunc, '__call__'):
+            haltfunc()
+    except:
+        logging.exception("Error stopping focuser during shutdown")
+
+def run():
+    # email_warnings_thread.start()   -- 6/21/21 WWG - TODO: fix permissions problems
+
+    telrun_gui.start_gui_in_thread()
+
+    logging.info("STARTING TELRUN")
+
+    read_configs()
+    setup_observatory_connections()
 
     # Verify the overscan region is either on or off
     if (max(observatory.camera.get_ccd_width_pixels(), observatory.camera.get_ccd_height_pixels()) > 
@@ -85,6 +122,12 @@ def run():
             max(observatory.camera.get_ccd_width_pixels(), observatory.camera.get_ccd_height_pixels())
             )
         return
+
+    # Catch Ctrl-C and crashes, and try to perform some cleanup 
+    # (like turning off tracking, aborting exposures, etc).
+    # Now that we've connected to all devices, we should be able
+    # to accomplish this...
+    atexit.register(exit_handler)
 
     # Give telrun_status access to our sun elevation calculation function
     # now that things like latitude and longitude have (hopefully) been
@@ -111,6 +154,28 @@ def run():
     while True:
         telrun_file = main_operation_loop(telrun_file)
 
+def deg2sex(eph):
+    ra = Angle(np.array(eph['RA'])[0], u.degree)
+    ra_str = ra.to_string(unit=u.hour, sep=':',precision=2)
+    dec = Angle(np.array(eph['DEC'])[0], u.degree)
+    dec_str = dec.to_string(unit=u.degree, sep=':',precision =1)
+    ra_rate = np.array(eph['RA_rate'].to('arcsec/s'))[0]
+    dec_rate = np.array(eph['DEC_rate'].to('arcsec/s'))[0]
+    return ra_str,dec_str, ra_rate, dec_rate
+
+def query_jpl(object_id, id_type = None):
+    #Queries jpl horizon site and returns object if successful
+    if id_type == None:
+        obj = Horizons(id = object_id, id_type = 'smallbody', location = '857')
+    else:
+        obj = Horizons(id = object_id, id_type = id_type, location = '857')
+    try:
+        eph = obj.ephemerides()
+        return eph
+    except:
+        #print(obj.ephemerides())
+        return None
+
 def main_operation_loop(telrun_file):
     if os.path.isfile(paths.telrun_sls_path("telrun.new")):
         logging.info("Found telrun.new; renaming to telrun.sls")
@@ -136,7 +201,7 @@ def main_operation_loop(telrun_file):
             except Exception as ex:
                     logging.exception("Error refreshing roof info")
             time.sleep(60)
-        
+    
     # Wait for CCD temperature regulation
     cooler_warning_sent = False
     cooler_start_time = time.time()
@@ -189,6 +254,75 @@ def main_operation_loop(telrun_file):
         logging.info("run_scans returned False, new telrun file found!")
         return
 
+def check_telrun_file(telrun_file):
+    logging.info("Performing sanity checks on telrun.sls file...")
+
+    unique_filenames = {} # Dictionary where key is unique filename and value is 1
+    for scan in telrun_file.scans:
+        if scan.imagefn in unique_filenames:
+            logging.warn("Duplicate filename in telrun file: %s", scan.imagefn)
+        unique_filenames[scan.imagefn] = 1
+
+
+    missing_filters = {}  # Dictionary where key is each unique missing filter name, and value is 1
+    ambiguous_filters = {} # Dictionary where key is each ambiguous filter name, and value is a list of possible matching filters
+    for scan in telrun_file.scans:
+        logging.info("Checking scan with EDB line: %s" % scan.raw_edb)
+        camera_width = observatory.camera.get_ccd_width_pixels()
+        camera_height = observatory.camera.get_ccd_height_pixels()
+
+        if (scan.sx < 0 or 
+            scan.sx + scan.sw > camera_width or
+            scan.sy < 0 or
+            scan.sy + scan.sh > camera_height 
+            ):
+            logging.warn("Scan image geometry %dx%d+%d+%d out of bounds for current camera. Will take a full-frame image (%d x %d)",
+                    scan.sw,
+                    scan.sh,
+                    scan.sx,
+                    scan.sy,
+                    camera_width,
+                    camera_height)
+            scan.sx = 0
+            scan.sy = 0
+            scan.sw = camera_width
+            scan.sh = camera_height
+
+        fail_scan = False
+
+        # Check if filter is OK
+        (filter_index, is_unique, matching_filter_names) = observatory.get_filter_by_prefix(scan.filter)
+        if filter_index == -1:
+            missing_filters[scan.filter] = 1
+            fail_scan = True
+        elif is_unique == False:
+            ambiguous_filters[scan.filter] = matching_filter_names
+            fail_scan = True
+
+        if fail_scan:
+            logging.warn("Skipping scan due to invalid filter '%s'...",
+                    scan.filter)
+            scan.status = telrunfile.STATUS_FAIL
+            ## TODO: mark scan as failed in telrun file
+
+    if len(missing_filters) > 0 or len(ambiguous_filters) > 0:
+        logging.warn("THERE WERE PROBLEMS WITH THE FILTERS SPECIFIED IN THE TELRUN FILE!!")
+        if len(missing_filters) > 0:
+            logging.warn("The following filter prefixes could not be found in Maxim:")
+            for filter_prefix in list(missing_filters.keys()):
+                logging.warn("  %s", filter_prefix)
+        if len(ambiguous_filters) > 0:
+            logging.warn("The following filter prefixes are ambiguous:")
+            for filter_prefix, matching_filter_names in list(ambiguous_filters.items()):
+                logging.warn("  %s (matches: %s)",
+                        filter_prefix,
+                        ", ".join(matching_filter_names))
+
+        logging.warn("Any scan using these filters will be SKIPPED")
+        logging.warn("You may need to fix the telrun.sls file or your Maxim DL filter listing")
+        logging.info("Pausing for 10 seconds...")
+        time.sleep(10)
+
 def run_scans(telrun_file):
     """
     Iterate through the scans in a telrun file.
@@ -216,6 +350,7 @@ def run_scans(telrun_file):
         next_autofocus_time = 0 # Run autofocus at the first opportunity
     else:
         next_autofocus_time = time.time() + config_telrun.values.autofocus_interval_seconds
+
 
     num_scans = len(telrun_file.scans)
     telrun_status.total_scan_count = num_scans
@@ -319,7 +454,7 @@ def run_scans(telrun_file):
             set_scan_status(telrun_file, scan, "F")
             continue
             
-        # Check 7: Camera temperature
+        '''# Check 7: Camera temperature
         if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius()) 
         > config_telrun.values.camera_cooler_tolerance):
             logging.info("Trying to wait 60 seconds for camera to reach temperature of %s C", config_telrun.values.camera_cooler_celsius)
@@ -327,11 +462,11 @@ def run_scans(telrun_file):
         
         if (abs(config_telrun.values.camera_cooler_celsius - observatory.camera.get_ccd_temperature_celsius())
         > config_telrun.values.camera_cooler_tolerance):
-            logging.info("Camera temperature is %s C, but should be %s C. Skipping scan", 
+            logging.info("Camera temperature is %s C, but should be %s C. Continuing with scan anyway...", 
                 observatory.camera.get_ccd_temperature_celsius(), config_telrun.values.camera_cooler_celsius)
             telrun_status.skipped_scan_count += 1
             set_scan_status(telrun_file, scan, "F")
-            continue
+            continue'''
     
         try:
             '''logging.info("Object a_ra, a_dec: %s, %s" % (
@@ -353,18 +488,35 @@ def run_scans(telrun_file):
         target_dec_app_degs = convert.rads_to_degs(scan.obj.g_dec)
 
         (target_ra_j2000_hours, target_dec_j2000_degs) = convert.jnow_to_j2000(target_ra_app_hours, target_dec_app_degs)
+
+        # Check for lunar tracking in object comments and switch to lunar rate
+        object_data = None
+        if scan.comment == "LUNARTRACKINGRATE":
+            logging.info("Switching to Lunar Tracking Rate")
+            object_data = query_jpl('301',id_type='majorbody')
+        elif scan.comment.lower() == "nonsidereal":            
+            object_data = query_jpl(scan.obj.name)
+            if object_data is None:
+                logging.info("JPL Horizons lookup failed for object name %s, using coordinates from telrun file" % scan.obj.name)
+            else:
+                logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
+                ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
+                target_ra_j2000_hours = convert.from_dms(ra_str)
+                target_dec_j2000_degs = convert.from_dms(dec_str)
+                (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
         
         try: 
             do_slew = (convert.to_dms(convert.rads_to_hours(previous_scan.obj.ra)) != convert.to_dms(convert.rads_to_hours(scan.obj.ra))
                 or convert.to_dms(convert.rads_to_hours(previous_scan.obj.dec)) != convert.to_dms(convert.rads_to_hours(scan.obj.dec))
-                or auto_done)
+                or auto_done or previous_scan.status == telrunfile.STATUS_FAIL)
             logging.info('Initial slew: %s' % str(do_slew))
         except: do_slew = True
 
         centering_result = False
         if scan.posx is not None and scan.posy is not None:
             logging.info("Refining telescope pointing for this scan...")
-            if not scan.filter in config_telrun.values.recenter_filters:
+            if (not observatory.camera.get_filter_names()[observatory.camera.get_active_filter()] 
+                in config_telrun.values.recenter_filters):
                 filter_index = config_telrun.values.autofocus_filter_index
                 logging.info("Switching to filter %s for recentering adjustment", filter_index)
                 observatory.set_filter_and_offset_focuser(filter_index)
@@ -435,28 +587,13 @@ def run_scans(telrun_file):
         logging.info("Settling for %d seconds", config_observatory.values.settle_time_secs)
         time.sleep(config_observatory.values.settle_time_secs)
 
+        # Turn on tracking, adjust for nonsidereal rate
         observatory.mount.Tracking = True
-        # Check for lunar tracking in object comments and switch to lunar rate
-        if scan.comment == "LUNARTRACKINGRATE":
-            observatory.mount.TrackingRate = 1
-            logging.info("Switching to Lunar Tracking Rate")
-            object_data = query_jpl('301',id_type='majorbody')
-        elif scan.comment.lower() == "nonsidereal":            
-            object_data = query_jpl(scan.obj.name)
-            if object_data == None:
-                logging.info("JPL Horizons lookup failed for object name %s" % scan.obj.name)
-                continue
-            else:
-                logging.info("JPL Horizons lookup successful. Calculated offset rate for %s", scan.obj.name)
-                ra_str, dec_str, ra_rate,dec_rate = deg2sex(object_data)
-                target_ra_j2000_hours = convert.from_dms(ra_str)
-                target_dec_j2000_degs = convert.from_dms(dec_str)
-                (target_ra_app_hours, target_dec_app_degs) = convert.j2000_to_jnow(target_ra_j2000_hours, target_dec_j2000_degs)
-                
-                observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
-                observatory.mount.DeclinationRate =  dec_rate 
-                logging.info("Switching to Non-Sidereal Tracking Rates")
-                logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
+        if object_data is not None:
+            observatory.mount.RightAscensionRate = ra_rate * 0.9972695677 / 15.041 * (1/np.cos(np.deg2rad(convert.from_dms(dec_str)))) 
+            observatory.mount.DeclinationRate =  dec_rate 
+            logging.info("Switching to Non-Sidereal Tracking Rates")
+            logging.info("Rates = (%.4f, %.4f) arcsec/sec" % (observatory.mount.RightAscensionRate, observatory.mount.DeclinationRate))
         telrun_status.mount_state = "Tracking"
 
         tele_ra_app_hours = observatory.mount.RightAscension
@@ -649,7 +786,22 @@ def run_scans(telrun_file):
 
         set_scan_status(telrun_file, scan, "D")
 
+        if scan.filter in ['6', 'W', 'R', 'I']:
+            logging.info('Taking flushing images...')
+            for i in range(5):
+                observatory.camera.start_exposure(2, False)
+                while not observatory.camera.is_exposure_finished():
+                    time.sleep(0.1)
+
     return True # Full telrun file has been processed
+        
+
+def remove_file_if_needed(filepath):
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception as ex:
+            logging.warn("Unable to remove file %s: %s", filepath, ex)
 
 def do_autofocus():
     logging.info("Starting an autofocus run")
@@ -686,35 +838,7 @@ def do_autofocus():
 
     return True
 
-def query_jpl(object_id, id_type = None):
-    #Queries jpl horizon site and returns object if successful
-    if id_type == None:
-        obj = Horizons(id = object_id, id_type = 'smallbody', location = '857')
-    else:
-        obj = Horizons(id = object_id, id_type = id_type, location = '857')
-    try:
-        eph = obj.ephemerides()
-        return eph
-    except:
-        #print(obj.ephemerides())
-        return None
-
-def deg2sex(eph):
-    ra = Angle(np.array(eph['RA'])[0], u.degree)
-    ra_str = ra.to_string(unit=u.hour, sep=':',precision=2)
-    dec = Angle(np.array(eph['DEC'])[0], u.degree)
-    dec_str = dec.to_string(unit=u.degree, sep=':',precision =1)
-    ra_rate = np.array(eph['RA_rate'].to('arcsec/s'))[0]
-    dec_rate = np.array(eph['DEC_rate'].to('arcsec/s'))[0]
-    return ra_str,dec_str, ra_rate, dec_rate
-
-def remove_file_if_needed(filepath):
-    if os.path.exists(filepath):
-        try:
-            os.remove(filepath)
-        except Exception as ex:
-            logging.warn("Unable to remove file %s: %s", filepath, ex)
-
+    
 def set_scan_status(telrun_file, scan, code):
     if not config_telrun.values.update_sls_status_codes:
         logging.info("(not updating status code due to config)")
@@ -726,48 +850,6 @@ def set_scan_status(telrun_file, scan, code):
     except Exception as ex:
         logging.warn("Error updating telrun status code: %s", str(ex))
 
-def exit_handler():
-    """
-    Try to perform some cleanup on program exit
-    """
-
-    logging.info("Attempting to abort any in-progress camera exposures and take a dark to close shutter...")
-    try:
-        observatory.camera.abort_exposure()
-        observatory.camera.start_exposure(0.01, False)
-    except:
-        logging.exception("Error aborting exposure during shutdown")
-
-    logging.info("Stopping any in-progress slews and parking mount...")
-    try:
-        abslew = observatory.mount.AbortSlew
-        if hasattr(abslew, '__call__'):
-            abslew()
-        parkfunc = observatory.mount.Park
-        if hasattr(parkfunc, '__call__'):
-            parkfunc()
-    except Exception as ex:
-        logging.exception("Error aborting slew and parking mount during shutdown")
-
-    logging.info("Attempting to turn off tracking...")
-    try:
-        observatory.mount.Tracking = False
-    except Exception as ex:
-        logging.exception("Error turning off tracking during shutdown")
-
-    logging.info("Attempting to abort autofocus (if needed)...")
-    try:
-        observatory.autofocus.abort_autofocus()
-    except:
-        logging.exception("Error aborting autofocus during shutdown")
-
-    logging.info("Attempting to stop focuser...")
-    try:
-        haltfunc = observatory.focuser.Halt
-        if hasattr(haltfunc, '__call__'):
-            haltfunc()
-    except:
-        logging.exception("Error stopping focuser during shutdown")
-
+    
 if __name__ == "__main__":
     print("Please run this from the telrun.py wrapper script")
