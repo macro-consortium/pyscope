@@ -3,7 +3,7 @@ import sys
 
 from .. import drivers, logger
 
-def import_driver(device, driver_name=None, ascom=False, filepath=None, kwargs={}):
+def import_driver(device, driver_name=None, ascom=False, filepath=None, args=None, kwargs=None):
     '''Imports a driver'''
     if driver_name is None and not ascom: return None
 
@@ -27,7 +27,14 @@ def import_driver(device, driver_name=None, ascom=False, filepath=None, kwargs={
 
     _check_class_inheritance(device_class, device)
 
-    return device_class(**kwargs)
+    if args is None and kwargs is None: 
+        return device_class()
+    elif args is not None and kwargs is None:
+        return device_class(*args)
+    elif args is None and kwargs is not None:
+        return device_class(**kwargs)
+    else:
+        return device_class(*args, **kwargs)
 
 def _check_class_inheritance(device_class, device):
     if not getattr(drivers.abstract, device) in device_class.__bases__:
