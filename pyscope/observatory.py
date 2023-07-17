@@ -33,40 +33,40 @@ class Observatory:
         self._config['rotator'] = {}; self._config['safety_monitor'] = {}; self._config['switch'] = {}
         self._config['telescope'] = {}; self._config['autofocus'] = {}; self._config['wcs'] = {}
 
-        self.site_name = 'pyScope Site'
-        self.instrument_name = 'pyScope Instrument' 
-        self.instrument_description = 'pyScope is a pure-Python telescope control package.'
-        self.get_site_from_telescope = True
-        self.latitude = None; self.longitude = None; self.elevation = None
-        self.get_optics_from_telescope = True
-        self.diameter = None; self.focal_length = None
+        self._site_name = 'pyScope Site'
+        self._instrument_name = 'pyScope Instrument' 
+        self._instrument_description = 'pyScope is a pure-Python telescope control package.'
+        self._get_site_from_telescope = True
+        self._latitude = None; self._longitude = None; self._elevation = None
+        self._get_optics_from_telescope = True
+        self._diameter = None; self._focal_length = None
 
         self._camera = None; self._camera_args = None; self._camera_kwargs = None
-        self.cooler_setpoint = None; self.cooler_tolerance = None; self.max_dimension = None
-        self.default_readout_mode = None
+        self._cooler_setpoint = None; self._cooler_tolerance = None; self._max_dimension = None
+        self._default_readout_mode = None
 
         self._cover_calibrator = None; self._cover_calibrator_args = None; self._cover_calibrator_kwargs = None
-        self.cover_calibrator_alt = None; self.cover_calibrator_az = None
+        self._cover_calibrator_alt = None; self._cover_calibrator_az = None
 
         self._dome = None; self._dome_args = None; self._dome_kwargs = None
 
         self._filter_wheel = None; self._filter_wheel_args = None; self._filter_wheel_kwargs = None
-        self.filters = None; self.filter_focus_offsets = None
+        self._filters = None; self._filter_focus_offsets = None
 
         self._focuser = None; self._focuser_args = None; self._focuser_kwargs = None
-        self.focuser_max_error = 10
+        self._focuser_max_error = 10
 
         self._observing_conditions = None; self._observing_conditions_args = None; self._observing_conditions_kwargs = None
 
         self._rotator = None; self._rotator_args = None; self._rotator_kwargs = None
-        self.rotator_reverse = False; self.rotator_min_angle = None; self.rotator_max_angle = None
+        self._rotator_reverse = False; self._rotator_min_angle = None; self._rotator_max_angle = None
 
         self._safety_monitor = None; self._safety_monitor_args = None; self._safety_monitor_kwargs = None
 
         self._switch = None; self._switch_args = None; self._switch_kwargs = None
 
         self._telescope = None; self._telescope_args = None; self._telescope_kwargs = None
-        self.min_altitude = 10
+        self._min_altitude = 10
 
         self._autofocus = None; self._autofocus_args = None; self._autofocus_kwargs = None
         self._wcs = None; self._wcs_args = None; self._wcs_kwargs = None
