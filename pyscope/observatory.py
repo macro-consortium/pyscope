@@ -79,13 +79,14 @@ class Observatory:
             except: raise ObservatoryException("Error parsing config file '%s'" % config_file_path)
 
             # Camera
-            self._camera_driver = self.config['camera']['camera_driver']
-            self._camera_ascom = self.config['camera']['camera_ascom']
-            self._camera_args = (iter(self.config.get('camera', 'camera_args', fallback='').split())
-                if self.config.get('camera', 'camera_args', fallback=None) not in (None, '') else None)
+            self._camera_driver = self._config['camera']['camera_driver']
+            self._camera_ascom = self._config['camera']['camera_ascom']
+            self._camera_args = (iter(literal_eval(v) for v in 
+                self._config.get('camera', 'camera_args', fallback='').split())
+                if self._config.get('camera', 'camera_args', fallback=None) not in (None, '') else None)
             self._camera_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':') 
-                for pair in self.config.get('camera', 'camera_kwargs', fallback='').split()))
-                if self.config.get('camera', 'camera_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('camera', 'camera_kwargs', fallback='').split()))
+                if self._config.get('camera', 'camera_kwargs', fallback=None) not in (None, '') else None)
             if self.camera_driver.lower() in ('maxim', 'maximdl'):
                 self._maxim = utils.import_driver('Driver', driver_name='Maxim', ascom=False)
                 self._camera = self._maxim.camera
@@ -97,37 +98,40 @@ class Observatory:
                     kwargs=self._camera_kwargs)
 
             # Cover calibrator
-            self._cover_calibrator_driver = self.config.get('cover_calibrator', 'cover_calibrator_driver', fallback=None)
-            self._cover_calibrator_ascom = self.config.get('cover_calibrator', 'cover_calibrator_ascom', fallback=None)
-            self._cover_calibrator_args = (iter(self.config.get('cover_calibrator', 'cover_calibrator_args', fallback='').split())
-                if self.config.get('cover_calibrator', 'cover_calibrator_args', fallback=None) not in (None, '') else None)
+            self._cover_calibrator_driver = self._config.get('cover_calibrator', 'cover_calibrator_driver', fallback=None)
+            self._cover_calibrator_ascom = self._config.get('cover_calibrator', 'cover_calibrator_ascom', fallback=None)
+            self._cover_calibrator_args = (iter(literal_eval(v) for v in
+                self._config.get('cover_calibrator', 'cover_calibrator_args', fallback='').split())
+                if self._config.get('cover_calibrator', 'cover_calibrator_args', fallback=None) not in (None, '') else None)
             self._cover_calibrator_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('cover_calibrator', 'cover_calibrator_kwargs', fallback='').split()))
-                if self.config.get('cover_calibrator', 'cover_calibrator_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('cover_calibrator', 'cover_calibrator_kwargs', fallback='').split()))
+                if self._config.get('cover_calibrator', 'cover_calibrator_kwargs', fallback=None) not in (None, '') else None)
             self._cover_calibrator = utils.import_driver('CoverCalibrator', driver_name=self.cover_calibrator_driver, ascom=self.cover_calibrator_ascom, 
                 args=self._cover_calibrator_args,
                 kwargs=self._cover_calibrator_kwargs)
 
             # Dome
-            self._dome_driver = self.config.get('dome', 'dome_driver', fallback=None)
-            self._dome_ascom = self.config.get('dome', 'dome_ascom', fallback=None)
-            self._dome_args = (iter(self.config.get('dome', 'dome_args', fallback='').split())
-                if self.config.get('dome', 'dome_args', fallback=None) not in (None, '') else None)
+            self._dome_driver = self._config.get('dome', 'dome_driver', fallback=None)
+            self._dome_ascom = self._config.get('dome', 'dome_ascom', fallback=None)
+            self._dome_args = (iter(literal_eval(v) for v in
+                self._config.get('dome', 'dome_args', fallback='').split())
+                if self._config.get('dome', 'dome_args', fallback=None) not in (None, '') else None)
             self._dome_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('dome', 'dome_kwargs', fallback='').split()))
-                if self.config.get('dome', 'dome_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('dome', 'dome_kwargs', fallback='').split()))
+                if self._config.get('dome', 'dome_kwargs', fallback=None) not in (None, '') else None)
             self._dome = utils.import_driver('Dome', driver_name=self.dome_driver, ascom=self.dome_ascom, 
                 args=self._dome_args,
                 kwargs=self._dome_kwargs)
 
             # Filter wheel
-            self._filter_wheel_driver = self.config.get('filter_wheel', 'filter_wheel_driver', fallback=None)
-            self._filter_wheel_ascom = self.config.get('filter_wheel', 'filter_wheel_ascom', fallback=None)
-            self._filter_wheel_args = (iter(self.config.get('filter_wheel', 'filter_wheel_args', fallback='').split())
-                if self.config.get('filter_wheel', 'filter_wheel_args', fallback=None) not in (None, '') else None)
+            self._filter_wheel_driver = self._config.get('filter_wheel', 'filter_wheel_driver', fallback=None)
+            self._filter_wheel_ascom = self._config.get('filter_wheel', 'filter_wheel_ascom', fallback=None)
+            self._filter_wheel_args = (iter(literal_eval(v) for v in
+                self._config.get('filter_wheel', 'filter_wheel_args', fallback='').split())
+                if self._config.get('filter_wheel', 'filter_wheel_args', fallback=None) not in (None, '') else None)
             self._filter_wheel_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('filter_wheel', 'filter_wheel_kwargs', fallback='').split()))
-                if self.config.get('filter_wheel', 'filter_wheel_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('filter_wheel', 'filter_wheel_kwargs', fallback='').split()))
+                if self._config.get('filter_wheel', 'filter_wheel_kwargs', fallback=None) not in (None, '') else None)
             if self.filter_wheel_driver.lower() in ('maxim', 'maximdl'):
                 if self._maxim is None:
                     raise ObservatoryException('MaxIm DL must be used as the camera driver when using MaxIm DL as the filter wheel driver.')
@@ -138,48 +142,51 @@ class Observatory:
                     kwargs=self._filter_wheel_kwargs)
 
             # Focuser
-            self._focuser_driver = self.config.get('focuser', 'focuser_driver', fallback=None)
-            self._focuser_ascom = self.config.get('focuser', 'focuser_ascom', fallback=None)
-            self._focuser_args = (iter(self.config.get('focuser', 'focuser_args', fallback='').split())
-                if self.config.get('focuser', 'focuser_args', fallback=None) not in (None, '') else None)
+            self._focuser_driver = self._config.get('focuser', 'focuser_driver', fallback=None)
+            self._focuser_ascom = self._config.get('focuser', 'focuser_ascom', fallback=None)
+            self._focuser_args = (iter(literal_eval(v) for v in
+                self._config.get('focuser', 'focuser_args', fallback='').split())
+                if self._config.get('focuser', 'focuser_args', fallback=None) not in (None, '') else None)
             self._focuser_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('focuser', 'focuser_kwargs', fallback='').split()))
-                if self.config.get('focuser', 'focuser_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('focuser', 'focuser_kwargs', fallback='').split()))
+                if self._config.get('focuser', 'focuser_kwargs', fallback=None) not in (None, '') else None)
             self._focuser = utils.import_driver('Focuser', driver_name=self.focuser_driver, ascom=self.focuser_ascom, 
                 kwargs=self._focuser_kwargs)
 
             # Observing conditions
-            self._observing_conditions_driver = self.config.get('observing_conditions', 'observing_conditions_driver', fallback=None)
-            self._observing_conditions_ascom = self.config.get('observing_conditions', 'observing_conditions_ascom', fallback=None)
-            self._observing_conditions_args = (iter(self.config.get('observing_conditions', 'observing_conditions_args', fallback='').split())
-                if self.config.get('observing_conditions', 'observing_conditions_args', fallback=None) not in (None, '') else None)
+            self._observing_conditions_driver = self._config.get('observing_conditions', 'observing_conditions_driver', fallback=None)
+            self._observing_conditions_ascom = self._config.get('observing_conditions', 'observing_conditions_ascom', fallback=None)
+            self._observing_conditions_args = (iter(literal_eval(v) for v in
+                self._config.get('observing_conditions', 'observing_conditions_args', fallback='').split())
+                if self._config.get('observing_conditions', 'observing_conditions_args', fallback=None) not in (None, '') else None)
             self._observing_conditions_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('observing_conditions', 'observing_conditions_kwargs', fallback='').split()))
-                if self.config.get('observing_conditions', 'observing_conditions_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('observing_conditions', 'observing_conditions_kwargs', fallback='').split()))
+                if self._config.get('observing_conditions', 'observing_conditions_kwargs', fallback=None) not in (None, '') else None)
             self._observing_conditions = utils.import_driver('ObservingConditions', driver_name=self.observing_conditions_driver, 
                 ascom=self.observing_conditions_ascom, 
                 args=self._observing_conditions_args,
                 kwargs=self._observing_conditions_kwargs)
 
             # Rotator
-            self._rotator_driver = self.config.get('rotator', 'rotator_driver', fallback=None)
-            self._rotator_ascom = self.config.get('rotator', 'rotator_ascom', fallback=None)
-            self._rotator_args = (iter(self.config.get('rotator', 'rotator_args', fallback='').split())
-                if self.config.get('rotator', 'rotator_args', fallback=None) not in (None, '') else None)
+            self._rotator_driver = self._config.get('rotator', 'rotator_driver', fallback=None)
+            self._rotator_ascom = self._config.get('rotator', 'rotator_ascom', fallback=None)
+            self._rotator_args = (iter(literal_eval(v) for v in
+                self._config.get('rotator', 'rotator_args', fallback='').split())
+                if self._config.get('rotator', 'rotator_args', fallback=None) not in (None, '') else None)
             self._rotator_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('rotator', 'rotator_kwargs', fallback='').split()))
-                if self.config.get('rotator', 'rotator_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('rotator', 'rotator_kwargs', fallback='').split()))
+                if self._config.get('rotator', 'rotator_kwargs', fallback=None) not in (None, '') else None)
             self._rotator = utils.import_driver('Rotator', driver_name=self.rotator_driver, ascom=self.rotator_ascom, 
                 args=self._rotator_args,
                 kwargs=self._rotator_kwargs)
 
             # Safety monitor
-            for val in self.config['safety_monitor'].values():
+            for val in self._config['safety_monitor'].values():
                 try: 
                     driver, ascom, ar, kw = val.split(',')
                     self._safety_monitor_driver.append(driver)
                     self._safety_monitor_ascom.append(ascom)
-                    self._safety_monitor_args.append(iter(ar.split()) if ar not in (None, '') else None)
+                    self._safety_monitor_args.append(iter(literal_eval(v) for v in ar.split()) if ar not in (None, '') else None)
                     self._safety_monitor_kwargs.append(dict((k, literal_eval(v)) for k, v in (pair.split(':')
                         for pair in kw.split())) if kw not in (None, '') else None)
                     self._safety_monitor.append(utils.import_driver('SafetyMonitor', driver_name=driver, ascom=ascom, 
@@ -189,12 +196,12 @@ class Observatory:
                     logger.warning('Error parsing safety monitor config: %s' % val)
 
             # Switch
-            for val in self.config['switch'].values():
+            for val in self._config['switch'].values():
                 try: 
                     driver, ascom, kw = val.split(',')
                     self._switch_driver.append(driver)
                     self._switch_ascom.append(ascom)
-                    self._switch_args.append(iter(ar.split()) if ar not in (None, '') else None)
+                    self._switch_args.append(iter(literal_eval(v) for v in ar.split()) if ar not in (None, '') else None)
                     self._switch_kwargs.append(dict((k, literal_eval(v)) for k, v in (pair.split(':')
                         for pair in kw.split())) if kw not in (None, '') else None)
                     self._switch.append(utils.import_driver('Switch', driver_name=driver, ascom=ascom, 
@@ -204,24 +211,26 @@ class Observatory:
                     logger.warning('Error parsing switch config: %s' % val)
 
             # Telescope
-            self._telescope_driver = self.config['telescope']['telescope_driver']
-            self._telescope_ascom = self.config['telescope']['telescope_ascom']
-            self._telescope_args = (iter(self.config.get('telescope', 'telescope_args', fallback='').split())
-                if self.config.get('telescope', 'telescope_args', fallback=None) not in (None, '') else None)
+            self._telescope_driver = self._config['telescope']['telescope_driver']
+            self._telescope_ascom = self._config['telescope']['telescope_ascom']
+            self._telescope_args = (iter(literal_eval(v) for v in
+                self._config.get('telescope', 'telescope_args', fallback='').split())
+                if self._config.get('telescope', 'telescope_args', fallback=None) not in (None, '') else None)
             self._telescope_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('telescope', 'telescope_kwargs', fallback='').split()))
-                if self.config.get('telescope', 'telescope_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('telescope', 'telescope_kwargs', fallback='').split()))
+                if self._config.get('telescope', 'telescope_kwargs', fallback=None) not in (None, '') else None)
             self._telescope = utils.import_driver('Telescope', driver_name=self.telescope_driver, ascom=self.telescope_ascom, 
                 args=self._telescope_args,
                 kwargs=self._telescope_kwargs)
 
             # Autofocus
-            self._autofocus_driver = self.config.get('autofocus', 'autofocus_driver', fallback=None)
-            self._autofocus_args = (iter(self.config.get('autofocus', 'autofocus_args', fallback='').split())
-                if self.config.get('autofocus', 'autofocus_args', fallback=None) not in (None, '') else None)
+            self._autofocus_driver = self._config.get('autofocus', 'autofocus_driver', fallback=None)
+            self._autofocus_args = (iter(literal_eval(v) for v in
+                self._config.get('autofocus', 'autofocus_args', fallback='').split())
+                if self._config.get('autofocus', 'autofocus_args', fallback=None) not in (None, '') else None)
             self._autofocus_kwargs = (dict((k, literal_eval(v)) for k, v in (pair.split(':')
-                for pair in self.config.get('autofocus', 'autofocus_kwargs', fallback='').split()))
-                if self.config.get('autofocus', 'autofocus_kwargs', fallback=None) not in (None, '') else None)
+                for pair in self._config.get('autofocus', 'autofocus_kwargs', fallback='').split()))
+                if self._config.get('autofocus', 'autofocus_kwargs', fallback=None) not in (None, '') else None)
             if self.autofocus_driver in ('maxim', 'maximdl'):
                 if self._maxim is None:
                     raise ObservatoryException('MaxIm DL must be used as the camera driver when using MaxIm DL as the autofocus driver.')
@@ -231,11 +240,11 @@ class Observatory:
                 kwargs=self._autofocus_kwargs)
 
             # WCS
-            for val in self.config['WCS'].values():
+            for val in self._config['WCS'].values():
                 try:
                     driver, ar, kw = val.split(',')
                     self._wcs_driver.append(val)
-                    self._wcs_args.append(iter(ar.split()) if ar not in (None, '') else None)
+                    self._wcs_args.append(iter(literal_eval(v) for v in ar.split()) if ar not in (None, '') else None)
                     self._wcs_kwargs.append(dict((k, literal_eval(v)) for k, v in (pair.split(':')
                         for pair in kw.split())) if kw not in (None, '') else None)
                     if self._wcs_driver in ('maxim', 'maximdl'):
@@ -487,7 +496,7 @@ class Observatory:
         self.derotation_event = None
 
         logger.debug('Config:')
-        logger.debug(self.config)
+        logger.debug(self._config)
     
     def connect_all(self):        
 
@@ -1435,7 +1444,7 @@ class Observatory:
 
     def save_config(self, filename):
         with open(filename, 'w') as configfile:
-            self.config.write(configfile)
+            self._config.write(configfile)
     
     def _parse_obj_ra_dec(self, obj=None, ra=None, dec=None, unit=('hour', 'deg'), frame='icrs', t=None):
         if type(obj) is str: 
@@ -2138,10 +2147,6 @@ class Observatory:
     def pixel_scale(self):
         '''Returns the pixel scale of the camera'''
         return (self.plate_scale * self.camera.PixelSizeX*1e-3, self.plate_scale * self.camera.PixelSizeY*1e-3)
-
-    @property
-    def config(self):
-        return self._config
 
     @property
     def site_name(self):
