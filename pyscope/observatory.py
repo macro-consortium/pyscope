@@ -65,7 +65,7 @@ class Observatory:
         self._switch = None; self._switch_args = None; self._switch_kwargs = None
 
         self._telescope = None; self._telescope_args = None; self._telescope_kwargs = None
-        self._min_altitude = 10
+        self._min_altitude = 10; self._settle_time = 5
 
         self._autofocus = None; self._autofocus_args = None; self._autofocus_kwargs = None
         self._wcs = None; self._wcs_args = None; self._wcs_kwargs = None
@@ -761,7 +761,8 @@ class Observatory:
                 frame=coord.FK4(equinox='B1950'))
         return obj
     
-    def save_last_image(self, filename, frametyp=None, target=None, do_wcs=False, do_fwhm=False, overwrite=False, **kwargs):
+    def save_last_image(self, filename, frametyp=None, do_wcs=False, do_fwhm=False, overwrite=False, 
+                        custom_header=None, **kwargs):
         '''Saves the current image'''
 
         if not self.camera.ImageReady:
@@ -804,6 +805,8 @@ class Observatory:
         hdr.update(self.threads_info)
         hdr.update(self.autofocus_info)
         hdr.update(self.wcs_info)
+
+        if custom_header is not None: hdr.update(custom_header)
 
         if do_fwhm:
             logger.info('Attempting to measure FWHM')
@@ -882,12 +885,12 @@ class Observatory:
             else:
                 raise ObservatoryException('Focuser is not connected.')
         else: 
-            raise ObservatoryException('There is no focuser.')
+            logger.warning('There is no focuser, skipping setting an offset.')
 
     
     def slew_to_coordinates(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', 
                             control_dome=False, control_rotator=False, home_first=False, 
-                            track=True):
+                            wait_for_slew=True, track=True):
         '''Slews the telescope to a given ra and dec'''
 
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
@@ -903,7 +906,7 @@ class Observatory:
             logger.exception('Target is below the minimum altitude of %.2f degrees' % self.min_altitude)
             return False
         
-        while control_rotator and self.rotator is not None:
+        if control_rotator and self.rotator is not None:
             self.stop_derotation_thread()
         
         if self.telescope.CanPark:
@@ -942,6 +945,7 @@ class Observatory:
                     logger.info('Setting the dome azimuth...'); logger.info('Set.')
                     self.dome.SlewToAzimuth(altaz_obj.az.deg)
 
+        if control_rotator and self.rotator is not None:
             rotation_angle = (self.lst() - slew_obj.ra.hour) * 15
 
             if (self.rotator.MechanicalPosition + rotation_angle >= self.rotator_max_angle or
@@ -951,16 +955,16 @@ class Observatory:
 
             logger.info('Rotating the rotator to hour angle %.2f' % hour_angle)
             self.rotator.MoveAbsolute(rotation_angle); logger.info('Rotated.')
-        
-            self.start_derotation_thread()
 
-        condition = True
+        condition = wait_for_slew
         while condition:
             condition = self.telescope.Slewing
             if self.control_dome and self.dome is not None: condition = condition or self.dome.Slewing
             if self.control_rotator and self.rotator is not None: condition = condition or self.rotator.IsMoving
             time.sleep(0.1)
-        logger.info('Slew complete')
+        else:
+            logger.info('Settling for %.2f seconds...' % self.settle_time)
+            time.sleep(self.settle_time)
 
         if track and self.telescope.CanSetTracking: 
             logger.info('Turning on sidereal tracking...')
@@ -988,7 +992,9 @@ class Observatory:
     def stop_observing_conditions_thread(self):
         '''Stops the observing conditions updating thread'''
 
-        if self._observing_conditions_event is None: raise ObservatoryException('Observing conditions thread is not running.')
+        if self._observing_conditions_event is None:
+            logger.warning('Observing conditions thread is not running.')
+            return False
 
         logger.info('Stopping observing conditions thread...')
         self._observing_conditions_event.set()
@@ -1027,7 +1033,9 @@ class Observatory:
     def stop_safety_monitor_thread(self):
         '''Stops the safety monitor updating thread'''
 
-        if self._safety_monitor_event is None: raise ObservatoryException('Safety monitor thread is not running.')
+        if self._safety_monitor_event is None:
+            logger.warning('Safety monitor thread is not running.')
+            return False
 
         logger.info('Stopping safety monitor thread...')
         self._safety_monitor_event.set()
@@ -1069,7 +1077,9 @@ class Observatory:
     def stop_derotation_thread(self):
         '''Stops the derotation thread'''
 
-        if self._derotation_event is None: raise ObservatoryException('Derotation thread is not running.')
+        if self._derotation_event is None:
+            logger.warning('Derotation thread is not running.')
+            return False
 
         logger.info('Stopping derotation thread...')
         self._derotation_event.set()
@@ -1128,7 +1138,8 @@ class Observatory:
 
             if not use_current_pointing:
                 logger.info('Slewing to zenith...')
-                self.slew_to_coordinates(obj=coord.SkyCoord(alt=90*u.deg, az=0*u.deg, frame='altaz'))
+                self.slew_to_coordinates(obj=coord.SkyCoord(alt=90*u.deg, az=0*u.deg, frame='altaz'), 
+                    control_dome=(self.dome is not None), control_rotator=(self.rotator is not None))
                 logger.info('Slewing complete.')
             
             logger.info('Starting autofocus routine...')
@@ -1172,8 +1183,7 @@ class Observatory:
     
     def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
                 target_y_pixel=None, initial_offset_dec=0, check_and_refine=True, max_attempts=5, tolerance=3, 
-                exposure=10, readout=0, save_images=False, save_path='./', sync_mount=False, settle_time=5, 
-                do_initial_slew=True):
+                exposure=10, readout=0, save_images=False, save_path='./', sync_mount=False, do_initial_slew=True):
         '''Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector. 
         
@@ -1248,11 +1258,13 @@ class Observatory:
             
             if attempt == 0: 
                 if do_initial_slew:
-                    self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg + initial_offset_dec/3600)
-            else: self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg)
+                    self.slew_to_coordinates(ra=slew_obj.ra.hour, dec=slew_obj.dec.deg + initial_offset_dec/3600, 
+                        control_dome=(self.dome is not None), control_rotator=(self.rotator is not None))
+            else: self.slew_to_coordinates(slew_obj.ra.hour, slew_obj.dec.deg, 
+                    control_dome=(self.dome is not None), control_rotator=(self.rotator is not None))
             
-            logger.info('Settling for %.2f seconds' % settle_time)
-            time.sleep(settle_time)
+            logger.info('Settling for %.2f seconds' % self.settle_time)
+            time.sleep(self.settle_time)
 
             if not check_and_refine and attempt_number > 0:
                 logger.info('Check and recenter is off, single-shot recentering complete')
@@ -1543,6 +1555,7 @@ class Observatory:
         self.rotator_max_angle = dictionary.get('rotator_max_angle', self.rotator_max_angle)
 
         self.min_altitude = dictionary.get('min_altitude', self.min_altitude)
+        self.settle_time = dictionary.get('settle_time', self.settle_time)
     
     def _args_to_config(self, args):
         if args is None or len(args) == 0: return ''
@@ -2511,6 +2524,14 @@ class Observatory:
     def min_altitude(self, value):
         self._min_altitude = min(max(float(value), 0), 90) if value is not None or value !='' else None
         self._config['telescope']['min_altitude'] = str(self._min_altitude) if self._min_altitude is not None else ''
+    
+    @property
+    def settle_time(self):
+        return self._settle_time
+    @settle_time.setter
+    def settle_time(self, value):
+        self._settle_time = max(float(value), 0) if value is not None or value !='' else None
+        self._config['telescope']['settle_time'] = str(self._settle_time) if self._settle_time is not None else ''
 
     @property
     def autofocus(self):
