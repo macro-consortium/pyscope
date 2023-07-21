@@ -15,6 +15,7 @@ class TelrunOperator:
         self._config = configparser.ConfigParser()
         self._gui = None
         self._telrun_file = None
+        self._best_focus_result = None
         self._wcs_thread = []
         
         # Read-only variables
@@ -390,7 +391,7 @@ class TelrunOperator:
                 continue
 
             # Check 6: Is autofocus needed?
-            best_focus_result = None
+            self._best_focus_result = None
             if self.observatory.focuser is not None and self.do_periodic_autofocus and time.time() - self.last_autofocus_time > self.autofocus_interval and scan.interrupt_allowed:
                 logger.info('Autofocus interval of %.2f hours exceeded, performing autofocus...' % (
                     self.autofocus_interval/3600))
@@ -413,7 +414,11 @@ class TelrunOperator:
 
                 self.observatory.camera.ReadoutMode = self.default_readout
 
-                best_focus_result = self.observatory.run_autofocus(
+                self._is_autofocus_done_thread = threading.Thread(target=self._is_autofocus_done, 
+                    daemon=True, name='is_autofocus_done_thread')
+                self._is_autofocus_done_thread.start()
+
+                self._best_focus_result = self.observatory.run_autofocus(
                     exposure=self.autofocus_exposure,
                     midpoint=self.autofocus_midpoint,
                     nsteps=self.autofocus_nsteps,
@@ -665,7 +670,7 @@ class TelrunOperator:
         if type(self.observatory.wcs) not in (iter, list, tuple):
             logger.info('Using solver %s' % self.wcs_driver)
             solution = self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
-                ra_dec_units=('hour', 'deg'), solve_timeout=60, 
+                ra_dec_units=('hour', 'deg'), solve_timeout=self.wcs_timeout, 
                 scale_units='arcsecperpix', scale_type='ev',
                 scale_est=self.observatory.pixel_scale[0], 
                 scale_err=self.observatory.pixel_scale[0]*0.1,
@@ -674,7 +679,7 @@ class TelrunOperator:
             for wcs, i in enumerate(self.wcs):
                 logger.info('Using solver %s' % self.wcs_driver[i])
                 solution = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
-                    ra_dec_units=('hour', 'deg'), solve_timeout=60,
+                    ra_dec_units=('hour', 'deg'), solve_timeout=self.wcs_timeout,
                     scale_units='arcsecperpix', scale_type='ev',
                     scale_est=self.observatory.pixel_scale[0], 
                     scale_err=self.observatory.pixel_scale[0]*0.1,
@@ -687,6 +692,18 @@ class TelrunOperator:
         logger.info('Removing tmp extension...')
         shutil.move(image_path, image_path.replace('.tmp', ''))
         logger.info('File %s complete' % image_path.replace('.tmp', ''))
+    
+    def _is_autofocus_done(self):
+        if self.observatory.focuser is not None:
+            t0 = time.time()
+            while time.time() < t0 + self.autofocus_timeout:
+                if self._best_focus_result is not None:
+                    return True
+                time.sleep(0.1)
+            else:
+                raise TelrunError('Autofocus timed out')
+        else:
+            return 
     
     @property
     def telhome(self):
