@@ -16,6 +16,7 @@ class TelrunOperator:
         self._gui = None
         self._telrun_file = None
         self._best_focus_result = None
+        self._hardware_status = None
         self._wcs_thread = []
         
         # Read-only variables
@@ -60,7 +61,7 @@ class TelrunOperator:
         self._recenter_save_images = False
         self._recenter_save_path = self.telhome + '/images/recenter/'
         self._recenter_sync_mount = False
-        self._hardware_timeout = 60
+        self._hardware_timeout = 120
         self._wcs_filters = None
         self._wcs_timeout = 30
 
@@ -239,12 +240,12 @@ class TelrunOperator:
                 self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
                 and self.wait_for_cooldown):
             logger.info('CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance)' % (
-                self.observatory.camera.CCDTemperature(),
+                self.observatory.camera.CCDTemperature,
                 self.observatory.cooler_setpoint, 
                 self.observatory.cooler_tolerance))
             time.sleep(10)
         logger.info('CCD temperature: %.3f degs (below limit of %.3f with %.3f tolerance), continuing...' % (
-            self.observatory.camera.CCDTemperature(),
+            self.observatory.camera.CCDTemperature,
             self.observatory.cooler_setpoint,
             self.observatory.cooler_tolerance))
 
@@ -414,9 +415,10 @@ class TelrunOperator:
 
                 self.observatory.camera.ReadoutMode = self.default_readout
 
-                self._is_autofocus_done_thread = threading.Thread(target=self._is_autofocus_done, 
+                t = threading.Thread(target=self._is_process_complete, 
+                    args=(self._best_focus_result, self.autofocus_timeout),
                     daemon=True, name='is_autofocus_done_thread')
-                self._is_autofocus_done_thread.start()
+                t.start()
 
                 self._best_focus_result = self.observatory.run_autofocus(
                     exposure=self.autofocus_exposure,
@@ -435,12 +437,12 @@ class TelrunOperator:
                 self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
                 and self.wait_for_cooldown):
                 logger.info('CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance)' % (
-                    self.observatory.camera.CCDTemperature(),
+                    self.observatory.camera.CCDTemperature,
                     self.observatory.cooler_setpoint, 
                     self.observatory.cooler_tolerance))
                 time.sleep(10)
             logger.info('CCD temperature: %.3f degs (below limit of %.3f with %.3f tolerance), continuing...' % (
-                self.observatory.camera.CCDTemperature(),
+                self.observatory.camera.CCDTemperature,
                 self.observatory.cooler_setpoint,
                 self.observatory.cooler_tolerance))
 
@@ -469,12 +471,22 @@ class TelrunOperator:
 
                         for i in range(self.observatory.filter_wheel.Position+1, len(self.observatory.filters)):
                             if self.observatory.filters[i] in self.recenter_filters:
-                                self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                                self._hardware_status = None
+                                t = threading.Thread(target=self._is_process_complete, 
+                                    args=(self._hardware_status, self.hardware_timeout),
+                                    daemon=True, name='is_filter_change_done_thread')
+                                t.start()
+                                self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                                 break
                         else:
                             for i in range(self.observatory.filter_wheel.Position-1):
                                 if self.observatory.filters[i] in self.recenter_filters:
-                                    self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                                    self._hardware_status = None
+                                    t = threading.Thread(target=self._is_process_complete,
+                                        args=(self._hardware_status, self.hardware_timeout),
+                                        daemon=True, name='is_filter_change_done_thread')
+                                    t.start()
+                                    self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                                     break
                             else:
                                 raise TelrunError('No filters in filter wheel are recenter filters')
@@ -484,6 +496,10 @@ class TelrunOperator:
                 if not slew: add_attempt = 1
                 else: add_attempt = 0
 
+                t = threading.Thread(target=self._is_process_complete,
+                    args=(centered, self.hardware_timeout),
+                    daemon=True, name='is_recenter_done_thread')
+                t.start()
                 centered = self.observatory.recenter(obj=source, 
                             target_x_pixel=scan.posx, target_y_pixel=scan.posy,
                             initial_offset_dec=self.recenter_initial_offset_dec,
@@ -496,18 +512,29 @@ class TelrunOperator:
                             sync_mount=self.recenter_sync_mount, 
                             do_initial_slew=slew)
                 
-                if centered in (None, False):
+                if not centered:
                     logger.warning('Recentering failed, continuing anyway...')
                 else:
                     logger.info('Recentering succeeded, continuing...')
             # If not requested, just slew to the source
             elif slew:
-                self.observatory.slew_to_coordinates(obj=source, control_dome=(self.dome is not None), 
+                logger.info('Slewing to source...')
+
+                self._hardware_status = None
+                t = threading.Thread(target=self._is_process_complete,
+                    args=(self._hardware_status, self.hardware_timeout),
+                    daemon=True, name='is_slew_done_thread')
+                self._hardware_status = self.observatory.slew_to_coordinates(obj=source, control_dome=(self.dome is not None), 
                 control_rotator=(self.rotator is not None), wait_for_slew=False, track=False)
             
             # Set filter and focus offset
             if self.filter_wheel is not None:
-                self.observatory.set_filter_offset_focuser(filter_name=scan.filter)
+                logger.info('Setting filter offset...')
+                self._hardware_status = None
+                t = threading.Thread(target=self._is_process_complete,
+                    args=(self._hardware_status, self.hardware_timeout),
+                    daemon=True, name='is_filter_change_done_thread')
+                self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=scan.filter)
 
             # Set binning
             if scan.binx >= 1 and scan.binx <= self.observatory.camera.MaxBinX:
@@ -610,9 +637,10 @@ class TelrunOperator:
             
             # Start exposure
             logger.info('Starting %4.4g second exposure...' % scan.exposure)
+            t0 = time.time()
             self.observatory.camera.Expose(scan.exposure, scan.light)
             logger.info('Waiting for image...')
-            while not self.observatory.camera.ImageReady:
+            while not self.observatory.camera.ImageReady and time.time() < t0 + scan.exposure + self.hardware_timeout:
                 time.sleep(0.1)
             
             custom_header = {'OBSNAME': scan.observer, 
@@ -693,17 +721,12 @@ class TelrunOperator:
         shutil.move(image_path, image_path.replace('.tmp', ''))
         logger.info('File %s complete' % image_path.replace('.tmp', ''))
     
-    def _is_autofocus_done(self):
-        if self.observatory.focuser is not None:
-            t0 = time.time()
-            while time.time() < t0 + self.autofocus_timeout:
-                if self._best_focus_result is not None:
-                    return True
-                time.sleep(0.1)
-            else:
-                raise TelrunError('Autofocus timed out')
+    def _is_process_complete(self, check_var, timeout):
+        t0 = time.time()
+        while time.time() < t0 + timeout and check_var is None:
+            pass
         else:
-            return 
+            raise TelrunError('Hardware timed out')
     
     @property
     def telhome(self):

@@ -874,12 +874,14 @@ class Observatory:
                             logger.info('Focuser moving to position %i' % (self.focuser.Position + self.current_focus_offset))
                             self.focuser.Move(self.focuser.Position + self.current_focus_offset)
                             logger.info('Focuser moved')
+                            return True
                         else:
                             raise ObservatoryException('Focuser cannot move to the requested position.')
                     else:
                         logger.info('Focuser moving to relative position %i' % self.current_focus_offset)
                         self.focuser.Move(self.current_focus_offset)
                         logger.info('Focuser moved')
+                        return True
                 else: 
                     raise ObservatoryException('Focuser cannot move to the requested position.')
             else:
