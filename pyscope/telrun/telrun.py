@@ -8,9 +8,6 @@ from astropy import coordinates as coord
 
 from pyscope import Observatory, logger
 
-def setup_telrun_observatory(telhome):
-    pass
-
 class TelrunOperator:
     def __init__(self, config_file_path=None, gui=False, **kwargs):
 
@@ -140,6 +137,9 @@ class TelrunOperator:
         self._config['observatory'] = save_dir+'observatory.cfg'
         with open(save_dir + filename, 'w') as config_file:
             self._config.write(config_file)
+
+    def generate_summary_report(self, filename):
+        pass
 
     def run(self):
         logger.info('Checking for an existing telrun.sls file')
@@ -560,13 +560,14 @@ class TelrunOperator:
             logger.info('Waiting for telescope motion to complete...')
             while self.observatory.telescope.Slewing:
                 time.sleep(0.1)
-
-            # Start tracking
-            self.observatory.telescope.Tracking = True
             
             # Settle time
             logger.info('Waiting for settle time of %.1f seconds...' % self.observatory.settle_time)
             time.sleep(self.observatory.settle_time)
+
+            # Start tracking
+            logger.info('Starting tracking...')
+            self.observatory.telescope.Tracking = True
 
             # Check for non-sidereal tracking
             if scan.pm_ra_cosdec != 0 or scan.pm_dec != 0:
@@ -988,4 +989,7 @@ class TelrunFile:
     pass
 
 class TelrunError(Exception):
+    pass
+
+def setup_telrun_observatory(telhome):
     pass
