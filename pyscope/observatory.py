@@ -43,7 +43,6 @@ class Observatory:
 
         self._camera = None; self._camera_args = None; self._camera_kwargs = None
         self._cooler_setpoint = None; self._cooler_tolerance = None; self._max_dimension = None
-        self._default_readout_mode = None
 
         self._cover_calibrator = None; self._cover_calibrator_args = None; self._cover_calibrator_kwargs = None
         self._cover_calibrator_alt = None; self._cover_calibrator_az = None
@@ -484,6 +483,8 @@ class Observatory:
             self._last_camera_shutter_status = Light
             self.camera.OriginalStartExposure(Duration, Light)
         self.camera.StartExposure = NewStartExposure
+
+        self._current_focus_offset = 0
         
         # Threads
         self._observing_conditions_thread = None
@@ -720,7 +721,7 @@ class Observatory:
         phase_angle = np.arctan2(sun.distance*np.sin(elongation), moon.distance - sun.distance*np.cos(elongation))
         return (1.0 + np.cos(phase_angle))/2.0
 
-    def get_object_altaz(self, obj, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', t=None):
+    def get_object_altaz(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', t=None):
         '''Returns the altitude and azimuth of the requested object at the requested time'''
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
         if t is None: t = self.observatory_time
@@ -840,8 +841,53 @@ class Observatory:
 
         return True
     
+    def set_filter_offset_focuser(self, filter_index=None, filter_name=None):
+        if filter_index is None:
+            try: 
+                filter_index = self.filters.index(filter_name)
+                logger.info('Filter %s found at index %i' % (filter_name, filter_index))
+            except:
+                raise ObservatoryException('Filter %s not found in filter list' % filter_name)
+
+        if self.filter_wheel is not None:
+            if self.filter_wheel.Connected:
+                logger.info('Setting filter wheel to filter %i' % filter_index)
+                self.filter_wheel.Position = filter_index
+                logger.info('Filter wheel set')
+            else:   
+                raise ObservatoryException('Filter wheel is not connected.')
+        else:
+            raise ObservatoryException('There is no filter wheel.')
+        
+        if self.focuser is not None:
+            if self.focuser.Connected:
+                self._current_focus_offset = (self.filter_focus_offsets[filter_index]
+                                                - self.current_focus_offset)
+
+                if self.current_focus_offset < self.focuser.MaxIncrement:
+                    if self.focuser.Absolute:
+                        if (self.focuser.Position + self.current_focus_offset > 0 
+                                and self.focuser.Position + self.current_focus_offset < self.focuser.MaxStep):
+                            logger.info('Focuser moving to position %i' % (self.focuser.Position + self.current_focus_offset))
+                            self.focuser.Move(self.focuser.Position + self.current_focus_offset)
+                            logger.info('Focuser moved')
+                        else:
+                            raise ObservatoryException('Focuser cannot move to the requested position.')
+                    else:
+                        logger.info('Focuser moving to relative position %i' % self.current_focus_offset)
+                        self.focuser.Move(self.current_focus_offset)
+                        logger.info('Focuser moved')
+                else: 
+                    raise ObservatoryException('Focuser cannot move to the requested position.')
+            else:
+                raise ObservatoryException('Focuser is not connected.')
+        else: 
+            raise ObservatoryException('There is no focuser.')
+
+    
     def slew_to_coordinates(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', 
-                            control_dome=False, control_rotator=False, home_first=False):
+                            control_dome=False, control_rotator=False, home_first=False, 
+                            track=True):
         '''Slews the telescope to a given ra and dec'''
 
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
@@ -856,6 +902,9 @@ class Observatory:
         if altaz_obj.alt.deg <= self.min_altitude:
             logger.exception('Target is below the minimum altitude of %.2f degrees' % self.min_altitude)
             return False
+        
+        while control_rotator and self.rotator is not None:
+            self.stop_derotation_thread()
         
         if self.telescope.CanPark:
             if self.telescope.AtPark:
@@ -892,9 +941,6 @@ class Observatory:
                 if self.dome.CanSetAzimuth: 
                     logger.info('Setting the dome azimuth...'); logger.info('Set.')
                     self.dome.SlewToAzimuth(altaz_obj.az.deg)
-        
-        while control_rotator and self.rotator is not None:
-            self.stop_derotation_thread()
 
             rotation_angle = (self.lst() - slew_obj.ra.hour) * 15
 
@@ -916,7 +962,7 @@ class Observatory:
             time.sleep(0.1)
         logger.info('Slew complete')
 
-        if self.telescope.CanSetTracking: 
+        if track and self.telescope.CanSetTracking: 
             logger.info('Turning on sidereal tracking...')
             self.telescope.TrackingRate = 0
             self.telescope.Tracking = True
@@ -1126,7 +1172,8 @@ class Observatory:
     
     def recenter(self, obj=None, ra=None, dec=None, unit=('hr', 'deg'), frame='icrs', target_x_pixel=None, 
                 target_y_pixel=None, initial_offset_dec=0, check_and_refine=True, max_attempts=5, tolerance=3, 
-                exposure=10, save_images=False, save_path='./', sync_mount=False, settle_time=5, do_initial_slew=True):
+                exposure=10, readout=0, save_images=False, save_path='./', sync_mount=False, settle_time=5, 
+                do_initial_slew=True):
         '''Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector. 
         
@@ -1212,7 +1259,7 @@ class Observatory:
                 return True
 
             logger.info('Taking %.2f second exposure' % exposure)
-            self.camera.ReadoutMode = self.camera.ReadoutModes[self.default_readout_mode]
+            self.camera.ReadoutMode = self.camera.ReadoutModes[readout]
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady: time.sleep(0.1)
             logger.info('Exposure complete')
@@ -1482,7 +1529,6 @@ class Observatory:
         self.cooler_setpoint = dictionary.get('cooler_setpoint', self.cooler_setpoint)
         self.cooler_tolerance = dictionary.get('cooler_tolerance', self.cooler_tolerance)
         self.max_dimension = dictionary.get('max_dimension', self.max_dimension)
-        self.default_readout_mode = dictionary.get('default_readout_mode', self.default_readout_mode)
 
         self.cover_calibrator_alt = dictionary.get('cover_calibrator_alt', self.cover_calibrator_alt)
         self.cover_calibrator_az = dictionary.get('cover_calibrator_az', self.cover_calibrator_az)
@@ -2282,14 +2328,6 @@ class Observatory:
         self._config['camera']['max_dimension'] = str(self._max_dimension) if self._max_dimension is not None else ''
         if self._max_dimension is not None and max(self.camera.CameraXSize, self.camera.CameraYSize) > self._max_dimension:
             raise ObservatoryException('Camera sensor size exceeds maximum dimension of %d' % self._max_dimension)
-    
-    @property
-    def default_readout_mode(self):
-        return self._default_readout_mode
-    @default_readout_mode.setter
-    def default_readout_mode(self, value):
-        self._default_readout_mode = int(value) if value is not None or value !='' else None
-        self._config['camera']['default_readout_mode'] = str(self._default_readout_mode) if self._default_readout_mode is not None else ''
 
     @property
     def cover_calibrator(self):
@@ -2489,6 +2527,10 @@ class Observatory:
     @property
     def last_camera_shutter_status(self):
         return self._last_camera_shutter_status
+    
+    @property
+    def current_focus_offset(self):
+        return self._current_focus_offset
     
     @property
     def maxim(self):
