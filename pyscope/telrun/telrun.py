@@ -22,7 +22,7 @@ class TelrunOperator:
         # Read-only variables
         self._telhome = None
         self._observatory = None
-        self._dome_type = None # None, 'dome' or 'safety-monitor' or 'both
+        self._dome_type = None # None, 'dome' or 'safety-monitor' or 'both'
         self._do_periodic_autofocus = False
         self._last_autofocus_time = None
         self._skipped_scan_count = 0
@@ -32,6 +32,18 @@ class TelrunOperator:
         self._previous_scan_index = None
         self._next_scan = None
         self._next_scan_index = None
+        self._autofocus_status = None
+        self._camera_status = None
+        self._cover_calibrator_status = None
+        self._dome_status = None
+        self._filter_wheel_status = None
+        self._focuser_status = None
+        self._observing_conditions_status = None
+        self._rotator_status = None
+        self._safety_monitor_status = None
+        self._switch_status = None
+        self._telescope_status = None
+        self._wcs_status = None
 
         # Read/write variables
         self._initial_home = True
@@ -775,6 +787,54 @@ class TelrunOperator:
     @property
     def next_scan_index(self):
         return self._next_scan_index
+    
+    @property
+    def autofocus_status(self):
+        return self._autofocus_status
+    
+    @property
+    def camera_status(self):
+        return self._camera_status
+    
+    @property
+    def cover_calibrator_status(self):
+        return self._cover_calibrator_status
+
+    @property
+    def dome_status(self):
+        return self._dome_status
+    
+    @property
+    def filter_wheel_status(self):
+        return self._filter_wheel_status
+    
+    @property
+    def focuser_status(self):
+        return self._focuser_status
+    
+    @property
+    def observing_conditions_status(self):
+        return self._observing_conditions_status
+    
+    @property
+    def rotator_status(self):
+        return self._rotator_status
+    
+    @property
+    def safety_monitor_status(self):
+        return self._safety_monitor_status
+    
+    @property
+    def switch_status(self):
+        return self._switch_status
+    
+    @property
+    def telescope_status(self):
+        return self._telescope_status
+    
+    @property
+    def wcs_status(self):
+        return self._wcs_status
     
     @property
     def initial_home(self):
