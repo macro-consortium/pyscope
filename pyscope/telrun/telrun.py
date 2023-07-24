@@ -408,7 +408,7 @@ class TelrunOperator:
         
             if scan.status != 'N':
                 logger.info('Scan status is not N, skipping...')
-                self._set_scan_status(scan, 'F', message='Scan already attempted to be processed')
+                self._set_scan_status(scan_index, 'F', message='Scan already attempted to be processed')
                 continue
         
             # Check 2: Wait for scan start time?
@@ -422,11 +422,11 @@ class TelrunOperator:
             elif not self.wait_for_scan_start_time and seconds_until_start_time > self.max_scan_late_time:
                 logger.info('Ignoring scan start time, however \
                     scan start time exceeded max_scan_late_time of %i seconds, skipping...' % self.max_scan_late_time)
-                self._set_scan_status(scan, 'F', message='Exceeded max_scan_late_time')
+                self._set_scan_status(scan_index, 'F', message='Exceeded max_scan_late_time')
                 continue
             elif self.wait_for_scan_start_time and seconds_until_start_time > self.max_scan_late_time:
                 logger.info('Scan start time exceeded max_scan_late_time of %i seconds, skipping...' % self.max_scan_late_time)
-                self._set_scan_status(scan, 'F', message='Exceeded max_scan_late_time')
+                self._set_scan_status(scan_index, 'F', message='Exceeded max_scan_late_time')
                 continue
             else:
                 logger.info('Waiting %.1f seconds (%.2f hours) for scan start time...' % (
@@ -445,7 +445,7 @@ class TelrunOperator:
                     if self.observatory.dome is not None and self.observatory.dome.CanSetShutter:
                         if self.observatory.dome.ShutterStatus != 0:
                             logger.info('Dome shutter is not open, skipping...')
-                            self._set_scan_status(scan, 'F', message='Dome shutter is not open')
+                            self._set_scan_status(scan_index, 'F', message='Dome shutter is not open')
                             continue
                 
                 case 'safety-monitor' | 'safety_monitor' | 'safetymonitor' | 'safety monitor':
@@ -457,7 +457,7 @@ class TelrunOperator:
                             status = self.observatory.safety_monitor[0].IsSafe
                         if not status:
                             logger.info('Safety monitor indicates unsafe, skipping...')
-                            self._set_scan_status(scan, 'F', message='Dome safety monitor indicates unsafe')
+                            self._set_scan_status(scan_index, 'F', message='Dome safety monitor indicates unsafe')
                             continue
                 
                 case 'both':
@@ -469,13 +469,13 @@ class TelrunOperator:
                             status = self.observatory.safety_monitor[0].IsSafe
                         if not status:
                             logger.info('Safety monitor indicates unsafe, skipping...')
-                            self._set_scan_status(scan, 'F', message='Dome safety monitor indicates unsafe')
+                            self._set_scan_status(scan_index, 'F', message='Dome safety monitor indicates unsafe')
                             continue
                     
                     if self.observatory.dome is not None and self.observatory.dome.CanSetShutter:
                         if self.observatory.dome.ShutterStatus != 0:
                             logger.info('Dome shutter is not open, skipping...')
-                            self._set_scan_status(scan, 'F', message='Dome shutter is not open')
+                            self._set_scan_status(scan_index, 'F', message='Dome shutter is not open')
                             continue
             
             # Check 4: Check safety monitors?
@@ -491,7 +491,7 @@ class TelrunOperator:
                 
                 if not status:
                     logger.info('Safety monitor indicates unsafe, skipping...')
-                    self._set_scan_status(scan, 'F', message='Safety monitor indicates unsafe')
+                    self._set_scan_status(scan_index, 'F', message='Safety monitor indicates unsafe')
                     continue
             
             # Check 5: Wait for sun?
@@ -499,7 +499,7 @@ class TelrunOperator:
             if self.wait_for_sun and sun_alt_degs > self.max_solar_elev:
                 logger.info('Sun altitude: %.3f degs (above limit of %s), skipping...' % (
                     sun_alt_degs, self.max_solar_elev))
-                self._set_scan_status(scan, 'F', message='Sun altitude above limit')
+                self._set_scan_status(scan_index, 'F', message='Sun altitude above limit')
                 continue
 
             # Check 6: Is autofocus needed?
@@ -689,7 +689,7 @@ class TelrunOperator:
                 self.observatory.camera.BinX = scan.binx
             else:
                 logger.warning('Requested binx of %i is not supported, skipping...' % scan.binx)
-                self._set_scan_status(scan, 'F', message='Requested binx of %i is not supported' % scan.binx)
+                self._set_scan_status(scan_index, 'F', message='Requested binx of %i is not supported' % scan.binx)
                 continue
 
             if (scan.biny >= 1 and scan.biny <= self.observatory.camera.MaxBinY
@@ -698,7 +698,7 @@ class TelrunOperator:
                 self.observatory.camera.BinY = scan.biny
             else:
                 logger.warning('Requested biny of %i is not supported, skipping...' % scan.biny)
-                self._set_scan_status(scan, 'F', message='Requested biny of %i is not supported' % scan.biny)
+                self._set_scan_status(scan_index, 'F', message='Requested biny of %i is not supported' % scan.biny)
                 continue
 
             # Set subframe
@@ -715,7 +715,7 @@ class TelrunOperator:
             else:
                 logger.warning('Requested startx and numx of %i, %i is not supported, skipping...' % (
                     scan.startx, scan.numx))
-                self._set_scan_status(scan, 'F', message='Requested startx and numx of %i, %i is not supported' % (
+                self._set_scan_status(scan_index, 'F', message='Requested startx and numx of %i, %i is not supported' % (
                     scan.startx, scan.numx))
                 continue
 
@@ -727,7 +727,7 @@ class TelrunOperator:
             else:
                 logger.warning('Requested starty and numy of %i, %i is not supported, skipping...' % (
                     scan.starty, scan.numy))
-                self._set_scan_status(scan, 'F', message='Requested starty and numy of %i, %i is not supported' % (
+                self._set_scan_status(scan_index, 'F', message='Requested starty and numy of %i, %i is not supported' % (
                     scan.starty, scan.numy))
                 continue
 
@@ -847,7 +847,7 @@ class TelrunOperator:
                 self._wcs_thread[-1].start()
 
             # Set scan status to done
-            self._set_scan_status(scan, 'D')
+            self._set_scan_status(scan_index, 'D')
         
         logger.info('Scan loop complete')
         self._skipped_scan_count = 0
@@ -864,10 +864,14 @@ class TelrunOperator:
 
         return True
     
-    def _set_scan_status(self, scan, status, message=None):
-        scan.status = status
-        scan.status_message = message
-        self._skipped_scan_count += 1
+    def _set_scan_status(self, scan_index, status, message=None):
+        self._telrun_file.scans[scan_index].status = status
+        self._telrun_file.scans[scan_index].end_time = astrotime.Time.now()
+
+        if status == 'F':
+            self._skipped_scan_count += 1
+
+        self._telrun_file.update_status_code(scan_index, status, message)
 
     def _async_wcs_solver(self, image_path):
         logger.info('Attempting a plate solution...')
@@ -1251,12 +1255,49 @@ class TelrunOperator:
         self._wcs_timeout = float(value)
         self._config['wcs_timeout'] = str(self._wcs_timeout)
 
-class TelrunGUI:
-    def __init__(self, TelrunOperator):
-        self._telrun = TelrunOperator
-
 class TelrunFile:
-    pass
+    def __init__(self, filename, scans=None):
+        self._filename = filename
+        self._scans = scans
+
+        if os.path.isfile(self.filename):
+            self._read_file()
+        elif self.scans is not None:
+            self._write_file()
+        else: 
+            raise TelrunError('Telrun file does not exist and no scans provided')
+    
+    def update_status_code(self, scan_index, status, message=None):
+        self.scans[scan_index].status = status
+        self.scans[scan_index].status_message = message
+        self._write_file()
+        
+    def _read_file(self):
+        with open(self.filename, 'r') as f:
+            lines = f.readlines()
+
+        if len(lines) % 25 != 0:
+            raise TelrunError('Telrun file is not formatted correctly')
+        
+        scans = []
+        for i in range(len(lines)//25):
+            scan = TelrunScan()
+            scan.read_lines(lines[i*25:(i+1)*25])
+            scans.append(scan)
+        self._scans = scans
+
+    def _write_file(self):
+        with open(self.filename, 'w') as f:
+            for scan in self.scans:
+                f.write(str(scan))
+
+    @property
+    def filename(self):
+        return self._filename
+    
+    @property
+    def scans(self):
+        return self._scans
 
 class TelrunScan:
     def __init__(self, filename='image.fts', status='N', status_message='',
@@ -1297,8 +1338,6 @@ class TelrunScan:
         self.obscode = obscode
         self.title = title
         self.target_name = target_name
-        self.skycoord = skycoord
-        self.start_time = start_time
         self.interrupt_allowed = interrupt_allowed
         self.posx = posx
         self.posy = posy
@@ -1312,6 +1351,93 @@ class TelrunScan:
         self.exposure = exposure
         self.light = light
         self.filt = filt
+    
+    def __str__(self):
+        s =  'filename: %s\n' % self.filename
+        s += 'status: %s\n' % self.status
+        s += 'status_message: %s\n' % self.status_message
+        s += 'observer: %s\n' % self.observer
+        s += 'obscode: %s\n' % self.obscode
+        s += 'title: %s\n' % self.title
+        s += 'target_name: %s\n' % self.target_name
+        try: 
+            s += 'skycoord: %s\n' % self.skycoord.to_string('hmsdms')
+        except:
+            s += 'skycoord: None\n'
+        try: 
+            s += 'pm_ra_cosdec: %s\n' % self.skycoord.pm_ra_cosdec.to_string(u.arcsec/u.hour)
+        except:
+            s += 'pm_ra_cosdec: 0\n'
+        try: 
+            s += 'pm_dec: %s\n' % self.skycoord.pm_dec.to_string(u.arcsec/u.hour)
+        except:
+            s += 'pm_dec: 0\n'
+        try: 
+            s += 'frame: %s\n' % self.skycoord.frame.name
+        except:
+            s += 'frame: None\n'
+        try: 
+            s += 'start_time: %s\n' % self.start_time.fits
+        except:
+            s += 'start_time: None\n'
+        s += 'interrupt_allowed: %s\n' % self.interrupt_allowed
+        s += 'posx: %s\n' % self.posx
+        s += 'posy: %s\n' % self.posy
+        s += 'binx: %s\n' % self.binx
+        s += 'biny: %s\n' % self.biny
+        s += 'startx: %s\n' % self.startx
+        s += 'starty: %s\n' % self.starty
+        s += 'numx: %s\n' % self.numx
+        s += 'numy: %s\n' % self.numy
+        s += 'readout: %s\n' % self.readout
+        s += 'exposure: %s\n' % self.exposure
+        s += 'light: %s\n' % self.light
+        s += 'filt: %s\n' % self.filt
+    
+    def read_lines(self, lines):
+        if len(lines) != 25:
+            raise TelrunError('Scan lines must be 24 lines long')
+        
+        self.filename = lines[0].split(': ')[-1]
+        self.status = lines[1].split(': ')[-1]
+        self.status_message = lines[2].split(': ')[-1]
+        self.observer = lines[3].split(': ')[-1]
+        self.obscode = lines[4].split(': ')[-1]
+        self.title = lines[5].split(': ')[-1]
+        self.target_name = lines[6].split(': ')[-1]
+
+        coords = lines[7].split(': ')[-1]
+        pm_ra_cosdec = lines[8].split(': ')[-1].split(' ')[0]
+        pm_dec = lines[9].split(': ')[-1].split(' ')[0]
+        frame = lines[10].split(': ')[-1]
+
+        if 'None' not in (coords, pm_ra_cosdec, pm_dec, frame):
+            self.skycoord = coord.SkyCoord(coords, 
+                pm_ra_cosdec=pm_ra_cosdec*u.arcsec/u.hour, 
+                pm_dec=pm_dec*u.arcsec/u.hour, 
+                frame=frame)
+        else:
+            self.skycoord = None
+        
+        start_time = lines[11].split(': ')[-1]
+        if 'None' not in start_time:
+            self.start_time = astrotime.Time(start_time, format='fits')
+        else:
+            self.start_time = None
+        
+        self.interrupt_allowed = bool(lines[12].split(': ')[-1] in ('True', 'true', 'T', 't', '1'))
+        self.posx = int(lines[13].split(': ')[-1])
+        self.posy = int(lines[14].split(': ')[-1])
+        self.binx = int(lines[15].split(': ')[-1])
+        self.biny = int(lines[16].split(': ')[-1])
+        self.startx = int(lines[17].split(': ')[-1])
+        self.starty = int(lines[18].split(': ')[-1])
+        self.numx = int(lines[19].split(': ')[-1])
+        self.numy = int(lines[20].split(': ')[-1])
+        self.readout = int(lines[21].split(': ')[-1])
+        self.exposure = float(lines[22].split(': ')[-1])
+        self.light = bool(lines[23].split(': ')[-1] in ('True', 'true', 'T', 't', '1'))
+        self.fil = lines[24].split(': ')[-1]
     
     @property
     def filename(self):
@@ -1378,7 +1504,7 @@ class TelrunScan:
         return self._start_time
     @start_time.setter
     def start_time(self, value):
-        self._start_time = astrotime.Time(*value)
+        self._start_time = astrotime.Time(value)
 
     @property
     def interrupt_allowed(self):
@@ -1473,6 +1599,12 @@ class TelrunScan:
 
 class TelrunError(Exception):
     pass
+
+class TelrunGUI:
+    def __init__(self, TelrunOperator):
+        self._telrun = TelrunOperator
+
+
 
 def setup_telrun_observatory(telhome):
     pass
