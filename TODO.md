@@ -9,7 +9,6 @@
 
 <li>telrun</li>
     <ul>
-    <li>Generate summary report of scans statuses</li>
     <li>Update telrun GUI</li>
     </ul>
 
@@ -37,6 +36,7 @@
     <ul>
     <li>setup_telrun_observatory</li>
     <li>setup_remote_operations</li>
+    <li>summary_report</li>
     <li>Scheduling, reduction, analysis scripts</li>
     </ul>
 
@@ -65,6 +65,7 @@
 
 <li>Future features</li>
     <ul>
+    <li>Allow telrun to only run a single sls file</li>
     <li>Notification support via courier.com, others</li>
     <li>TheSkyX support</li>
     <li>Nasmyth telescope control</li>

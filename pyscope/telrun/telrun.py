@@ -701,6 +701,11 @@ class TelrunOperator:
                 continue
 
             # Set subframe
+            if scan.numx == 0: 
+                scan.numx = self.observatory.camera.CameraXSize/self.observatory.camera.BinX
+            if scan.numy == 0: 
+                scan.numy = self.observatory.camera.CameraYSize/self.observatory.camera.BinY
+
             if (scan.startx + scan.numx < 
                 self.observatory.camera.CameraXSize/self.observatory.camera.BinX):
                 logger.info('Setting startx and numx to %i, %i' % (scan.startx, scan.numx))
@@ -853,7 +858,7 @@ class TelrunOperator:
         self._next_scan_index = None
 
         logger.info('Generating summary report')
-        generate_summary_report(self.telhome+'/schedules/telrun.sls', self.telhome+'/logs/'+
+        summary_report(self.telhome+'/schedules/telrun.sls', self.telhome+'/logs/'+
             self._telrun_file.scans[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')
 
         return True
@@ -1252,11 +1257,227 @@ class TelrunGUI:
 class TelrunFile:
     pass
 
-class Scan:
-    pass
+class TelrunScan:
+    def __init__(self, filename='image.fts', status='N', status_message='',
+                    observer='', obscode='', title='', target_name='',
+                    skycoord=coord.SkyCoord(), start_time=astrotime.Time(),
+                    interrupt_allowed=True, posx=None, posy=None,
+                    binx=1, biny=1, startx=0, starty=0, numx=0,
+                    numy=0, readout=0, exposure=0, light=True,
+                    filter=''):
+
+        self._filename = None
+        self._status = None
+        self._status_message = None
+        self._observer = None
+        self._obscode = None
+        self._title = None
+        self._target_name = None
+        self._skycoord = None
+        self._start_time = None
+        self._interrupt_allowed = None
+        self._posx = None
+        self._posy = None
+        self._binx = None
+        self._biny = None
+        self._startx = None
+        self._starty = None
+        self._numx = None
+        self._numy = None
+        self._readout = None
+        self._exposure = None
+        self._light = None
+        self._filt = None
+
+        self.filename = filename
+        self.status = status
+        self.status_message = status_message
+        self.observer = observer
+        self.obscode = obscode
+        self.title = title
+        self.target_name = target_name
+        self.skycoord = skycoord
+        self.start_time = start_time
+        self.interrupt_allowed = interrupt_allowed
+        self.posx = posx
+        self.posy = posy
+        self.binx = binx
+        self.biny = biny
+        self.startx = startx
+        self.starty = starty
+        self.numx = numx
+        self.numy = numy
+        self.readout = readout
+        self.exposure = exposure
+        self.light = light
+        self.filt = filt
+    
+    @property
+    def filename(self):
+        return self._filename
+    @filename.setter
+    def filename(self, value):
+        self._filename = str(value)
+        if self._filename.split('.')[1] not in ('fts', 'fit', 'fits'):
+            self._filename = self._filename.split('.')[0] + '.fts'
+    
+    @property
+    def status(self):
+        return self._status
+    @status.setter
+    def status(self, value):
+        if value not in ('N', 'D', 'F'):
+            raise ValueError('status must be one of N, D, F')
+        self._status = value
+    
+    @property
+    def status_message(self):
+        return self._status_message
+    @status_message.setter
+    def status_message(self, value):
+        self._status_message = str(value)
+
+    @property
+    def observer(self):
+        return self._observer
+    @observer.setter
+    def observer(self, value):
+        self._observer = str(value)
+    
+    @property
+    def obscode(self):
+        return self._obscode
+    @obscode.setter
+    def obscode(self, value):
+        self._obscode = str(value)
+
+    @property
+    def title(self):
+        return self._title
+    @title.setter
+    def title(self, value):
+        self._title = str(value)
+
+    @property
+    def target_name(self):
+        return self._target_name
+    @target_name.setter
+    def target_name(self, value):
+        self._target_name = str(value)
+
+    @property
+    def skycoord(self):
+        return self._skycoord
+    @skycoord.setter
+    def skycoord(self, value):
+        self._skycoord = coord.SkyCoord(value)
+
+    @property
+    def start_time(self):
+        return self._start_time
+    @start_time.setter
+    def start_time(self, value):
+        self._start_time = astrotime.Time(*value)
+
+    @property
+    def interrupt_allowed(self):
+        return self._interrupt_allowed
+    @interrupt_allowed.setter
+    def interrupt_allowed(self, value):
+        self._interrupt_allowed = bool(value)
+    
+    @property
+    def posx(self):
+        return self._posx
+    @posx.setter
+    def posx(self, value):
+        self._posx = int(value)
+
+    @property
+    def posy(self):
+        return self._posy
+    @posy.setter
+    def posy(self, value):
+        self._posy = int(value)
+
+    @property
+    def binx(self):
+        return self._binx
+    @binx.setter
+    def binx(self, value):
+        self._binx = int(value)
+    
+    @property
+    def biny(self):
+        return self._biny
+    @biny.setter
+    def biny(self, value):
+        self._biny = int(value)
+    
+    @property
+    def startx(self):
+        return self._startx
+    @startx.setter
+    def startx(self, value):
+        self._startx = int(value)
+
+    @property
+    def starty(self):
+        return self._starty
+    @starty.setter
+    def starty(self, value):
+        self._starty = int(value)
+
+    @property
+    def numx(self):
+        return self._numx
+    @numx.setter
+    def numx(self, value):
+        self._numx = int(value)
+
+    @property
+    def numy(self):
+        return self._numy
+    @numy.setter
+    def numy(self, value):
+        self._numy = int(value)
+
+    @property
+    def readout(self):
+        return self._readout
+    @readout.setter
+    def readout(self, value):
+        self._readout = int(value)
+        
+    @property
+    def exposure(self):
+        return self._exposure
+    @exposure.setter
+    def exposure(self, value):
+        self._exposure = float(value)
+
+    @property
+    def light(self):
+        return self._light
+    @light.setter
+    def light(self, value):
+        self._light = bool(value)
+        
+    @property
+    def filt(self):
+        return self._filt
+    @filter.setter
+    def filt(self, value):
+        self._filt = str(value)
 
 class TelrunError(Exception):
     pass
 
 def setup_telrun_observatory(telhome):
     pass
+
+def summary_report(sls_file, report_file):
+    if type(sls_file) is str:
+        sls_file = TelrunFile(sls_file)
+    elif type(sls_file) is not TelrunFile:
+        raise TypeError('sls_file must be a string or TelrunFile object')
