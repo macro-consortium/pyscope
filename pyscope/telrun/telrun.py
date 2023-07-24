@@ -412,6 +412,10 @@ class TelrunOperator:
                 continue
         
             # Check 2: Wait for scan start time?
+            if scan.start_time is None:
+                logger.info('No scan start time, starting now...')
+                scan.start_time = astrotime.Time.now()
+
             seconds_until_start_time = (scan.start_time - astrotime.Time.now()).sec
             if not self.wait_for_scan_start_time and seconds_until_start_time < self.max_scan_late_time:
                 logger.info('Ignoring scan start time, continuing...')
@@ -564,9 +568,6 @@ class TelrunOperator:
                 self.observatory.cooler_setpoint,
                 self.observatory.cooler_tolerance))
             self._camera_status = 'Idle'
-
-            # Checks passed: proceed with observing
-            source = scan.skycoord
             
             # Is the previous target different?
             slew = True
@@ -580,7 +581,7 @@ class TelrunOperator:
             
             # Perform centering if requested
             centered = None
-            if None not in (scan.posx, scan.posy):
+            if None not in (scan.posx, scan.posy, scan.skycoord):
                 logger.info('Refining telescope pointing for this scan...')
 
                 if self.observatory.filter_wheel is not None and self.recenter_filters is not None:
@@ -632,7 +633,7 @@ class TelrunOperator:
                 self._wcs_status = 'Recentering' if self.observatory.wcs is not None else None
                 self._dome_status = 'Recentering' if self.observatory.dome is not None else None
                 self._rotator_status = 'Recentering' if self.observatory.rotator is not None else None
-                self._hardware_status = self.observatory.recenter(obj=source, 
+                self._hardware_status = self.observatory.recenter(obj=scan.skycoord, 
                             target_x_pixel=scan.posx, target_y_pixel=scan.posy,
                             initial_offset_dec=self.recenter_initial_offset_dec,
                             check_and_refine=self.recenter_check_and_refine,
@@ -655,7 +656,7 @@ class TelrunOperator:
                 else:
                     logger.info('Recentering succeeded, continuing...')
             # If not requested, just slew to the source
-            elif slew:
+            elif slew and scan.skycoord is not None:
                 logger.info('Slewing to source...')
 
                 self._hardware_status = None
@@ -666,7 +667,7 @@ class TelrunOperator:
                 self._telescope_status = 'Slewing'
                 self._dome_status = 'Slewing' if self.observatory.dome is not None else None
                 self._rotator_status = 'Slewing' if self.observatory.rotator is not None else None
-                self._hardware_status = self.observatory.slew_to_coordinates(obj=source, control_dome=(self.dome is not None), 
+                self._hardware_status = self.observatory.slew_to_coordinates(obj=scan.skycoord, control_dome=(self.dome is not None), 
                 control_rotator=(self.rotator is not None), wait_for_slew=False, track=False)
             
             # Set filter and focus offset
@@ -1260,7 +1261,7 @@ class TelrunFile:
 class TelrunScan:
     def __init__(self, filename='image.fts', status='N', status_message='',
                     observer='', obscode='', title='', target_name='',
-                    skycoord=coord.SkyCoord(), start_time=astrotime.Time(),
+                    skycoord=None, start_time=None,
                     interrupt_allowed=True, posx=None, posy=None,
                     binx=1, biny=1, startx=0, starty=0, numx=0,
                     numy=0, readout=0, exposure=0, light=True,
