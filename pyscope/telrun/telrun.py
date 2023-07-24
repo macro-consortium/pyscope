@@ -237,10 +237,10 @@ class TelrunOperator:
         with open(save_dir + filename, 'w') as config_file:
             self._config.write(config_file)
 
-    def generate_summary_report(self, filename):
-        pass
+    def _generate_summary_report(self, filename):
+        string = ''
 
-    def run(self):
+    def start(self):
         logger.info('Checking for an existing telrun.sls file')
         if os.path.isfile(self.telhome + '/schedules/telrun.sls'):
             logger.info('Loading existing telrun.sls')
@@ -802,12 +802,21 @@ class TelrunOperator:
                 time.sleep(0.1)
             self._camera_status = 'Idle'
             
-            custom_header = {'OBSNAME': scan.observer, 
-                                'OBSCODE': scan.obscode,
-                                'TARGET': scan.target_name, 
-                                'CENTERED': centered,
-                                'LASTAUTO': self.last_autofocus_time,
-                                'BESTFOC': best_focus_result}
+            custom_header = {'OBSNAME': (scan.observer, 'Name of observer'), 
+                                'OBSCODE': (scan.obscode, 'Observing code'),
+                                'TARGET': (scan.target_name, 'Name of target if provided'),
+                                'SCHEDTIT': (scan.title, 'Title if provided'),
+                                'SCHEDCOM': (scan.comment, 'Comment if provided'),
+                                'SCHEDRA': (scan.ra, 'Requested RA'),
+                                'SCHEDDEC': (scan.dec, 'Requested Dec'),
+                                'SCHEDPRA': (scan.pm_ra_cosdec, 'Requested proper motion in RAcosDec [arcsec/hr]'),
+                                'SCHEDPDEC': (scan.pm_dec, 'Requested proper motion in Dec [arcsec/hr]'),
+                                'SCHEDSRT': (scan.start_time, 'Requested start time'),
+                                'SCHEDINT': (scan.interrupt_allowed, 'Whether the scan can be interrupted by autofocus'),
+                                'CENTERED': (centered, 'Whether the target underwent the centering routine'),
+                                'SCHEDPSX': (scan.posx, 'Requested x pixel for recentering'),
+                                'SCHEDPSY': (scan.posy, 'Requested y pixel for recentering'),
+                                'LASTAUTO': (self.last_autofocus_time, 'When the last autofocus was performed')}
 
             # WCS thread cleanup
             self._wcs_thread = [t for t in self._wcs_thread if t.is_alive()]
@@ -844,6 +853,10 @@ class TelrunOperator:
         self._previous_scan_index = None
         self._next_scan = None
         self._next_scan_index = None
+
+        logger.info('Generating summary report')
+        self._generate_summary_report(self._telrun_file)
+
         return True
     
     def _set_scan_status(self, scan, status, message=None):
@@ -1238,6 +1251,9 @@ class TelrunGUI:
         self._telrun = TelrunOperator
 
 class TelrunFile:
+    pass
+
+class Scan:
     pass
 
 class TelrunError(Exception):

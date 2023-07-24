@@ -10,7 +10,6 @@
 <li>telrun</li>
     <ul>
     <li>Generate summary report of scans statuses</li>
-    <li>telrun_status portion of class, written to a file</li>
     <li>Update telrun GUI</li>
     </ul>
 
@@ -19,7 +18,6 @@
     <li>Config file</li>
     <li>telrunfile -> telrun_file as class with sanity checks built in</li>
     <li>No edb lines/ephem dependencies</li>
-    <li>Write comments to header</li>
     <li>Change ccdcalib argument</li>
     <li>Fix shutter options</li>
     <li>Change tracking to an argument instead of a comment</li>
@@ -32,7 +30,6 @@
 <li>syncfiles</li>
     <ul>
     <li>Config file</li>
-    <li>Updates observatory status file</li>
     <li>Updates telrun status file</li>
     </ul>
 
@@ -51,6 +48,7 @@
     <li>readthedocs</li>
     </ul>
 
+<li>Write telrun status variables to file, change logging to be per-instance</li>
 <li>Consider custom exception integration</li>
 <li>Write tests</li>
 <li>Check for PEP8 compliance</li>
@@ -65,10 +63,13 @@
     Planewave, Sierra Remote Observatories, astropy affiliated package?</li>
     </ul>
 
-<li>Add notification support via courier.com, others</li>
-<li>Add support for control via TheSkyX</li>
-<li>Allow for Nasmyth telescope control</li>
-<li>Write the SBIGUniversal driver</li>
-<li>Write the FLI camera driver</li>
+<li>Future features</li>
+    <ul>
+    <li>Notification support via courier.com, others</li>
+    <li>TheSkyX support</li>
+    <li>Nasmyth telescope control</li>
+    <li>SBIGUniversal driver</li>
+    <li>FLI camera driver</li>
+    </ul>
 
 </ul>
