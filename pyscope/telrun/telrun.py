@@ -4,7 +4,7 @@ import os
 import shutil
 import threading
 
-from astropy import coordinates as coord
+from astropy import coordinates as coord, time as astrotime, units as u
 
 from pyscope import Observatory, logger
 
@@ -237,9 +237,6 @@ class TelrunOperator:
         with open(save_dir + filename, 'w') as config_file:
             self._config.write(config_file)
 
-    def _generate_summary_report(self, filename):
-        string = ''
-
     def start(self):
         logger.info('Checking for an existing telrun.sls file')
         if os.path.isfile(self.telhome + '/schedules/telrun.sls'):
@@ -415,7 +412,7 @@ class TelrunOperator:
                 continue
         
             # Check 2: Wait for scan start time?
-            seconds_until_start_time = time.time() - scan.start_time
+            seconds_until_start_time = (scan.start_time - astrotime.Time.now()).sec
             if not self.wait_for_scan_start_time and seconds_until_start_time < self.max_scan_late_time:
                 logger.info('Ignoring scan start time, continuing...')
             elif not self.wait_for_scan_start_time and seconds_until_start_time > self.max_scan_late_time:
@@ -433,7 +430,7 @@ class TelrunOperator:
             
             while self.wait_for_scan_start_time and seconds_until_start_time > self.preslew_time:
                 time.sleep(0.1)
-                seconds_until_start_time = time.time() - scan.start_time
+                seconds_until_start_time = (scan.start_time - astrotime.Time.now()).sec
             else:
                 if seconds_until_start_time > 0:
                     logger.info('Scan start time in %.1f seconds' % seconds_until_start_time)
@@ -569,14 +566,13 @@ class TelrunOperator:
             self._camera_status = 'Idle'
 
             # Checks passed: proceed with observing
-            source = coord.SkyCoord(ra=scan.ra, dec=scan.dec, frame='icrs', unit=('hourangle', 'deg'), 
-                                    pm_ra_cosdec=scan.pm_ra_cosdec, pm_dec=scan.pm_dec)
+            source = scan.skycoord
             
             # Is the previous target different?
             slew = True
             if self.previous_scan is not None:
-                if (self.previous_scan.ra == scan.ra 
-                        and self.previous_scan.dec == scan.dec
+                if (self.previous_scan.skycoord.ra.hourangle == scan.skycoord.ra.hourangle 
+                        and self.previous_scan.skycoord.dec.deg == scan.skycoord.dec.deg
                         and self.previous_scan.status == 'D'
                         and best_focus_result is not None):
                     logger.info('Previous target is same ra and dec, skipping initial slew...')
@@ -753,15 +749,17 @@ class TelrunOperator:
             self._telescope_status = 'Tracking'
             self.observatory.telescope.Tracking = True
 
-            # Check for non-sidereal tracking
-            if scan.pm_ra_cosdec != 0 or scan.pm_dec != 0:
+            # Check for pm exceeding two pixels in one hour
+            if (scan.skycoord.pm_ra_cosdec.to_value(u.arcsec/u.second) > 2*self.observatory.pixel_scale[0]/(60*60)
+                or scan.skycoord.pm_dec.to_value(u.arcsec/u.second) > 2*self.observatory.pixel_scale[1]/(60*60)):
                 logger.info('Switching to non-sidereal tracking...')
                 self._telescope_status = 'Non-sidereal tracking'
                 self.observatory.mount.RightAscensionRate = (
-                    scan.pm_ra_cosdec * 0.997269567 / 15.041 
-                    * (1/np.cos(np.deg2rad(scan.dec))))
-                self.observatory.mount.DeclinationRate = scan.pm_dec
-                logger.info('RA rate: %.2f arcsec/sec' % self.observatory.mount.RightAscensionRate)
+                    scan.skycoord.pm_ra_cosdec.to_value(u.arcsec/u.second)
+                    * 0.997269567 / 15.041 
+                    * (1/np.cos(np.deg2rad(scan.skycoord.dec.deg))))
+                self.observatory.mount.DeclinationRate = scan.skycoord.pm_dec.to_value(u.arcsec/u.second)
+                logger.info('RA rate: %.2f sec-angle/sec' % self.observatory.mount.RightAscensionRate)
                 logger.info('Dec rate: %.2f arcsec/sec' % self.observatory.mount.DeclinationRate)
 
             # Derotation
@@ -787,7 +785,7 @@ class TelrunOperator:
                 time.sleep(0.1)
             
             # If still time before scan start, wait
-            seconds_until_start_time = scan.start_time - time.time()
+            seconds_until_start_time = (scan.start_time - astrotime.Time.now()).sec
             if seconds_until_start_time > 0 and self.wait_for_scan_start_time:
                 logging.info("Waiting %.1f seconds until start time" % seconds_until_start_time)
                 time.sleep(seconds_until_start_time-0.1)
@@ -807,11 +805,11 @@ class TelrunOperator:
                                 'TARGET': (scan.target_name, 'Name of target if provided'),
                                 'SCHEDTIT': (scan.title, 'Title if provided'),
                                 'SCHEDCOM': (scan.comment, 'Comment if provided'),
-                                'SCHEDRA': (scan.ra, 'Requested RA'),
-                                'SCHEDDEC': (scan.dec, 'Requested Dec'),
-                                'SCHEDPRA': (scan.pm_ra_cosdec, 'Requested proper motion in RAcosDec [arcsec/hr]'),
-                                'SCHEDPDEC': (scan.pm_dec, 'Requested proper motion in Dec [arcsec/hr]'),
-                                'SCHEDSRT': (scan.start_time, 'Requested start time'),
+                                'SCHEDRA': (scan.skycoord.ra.to_string(), 'Requested RA'),
+                                'SCHEDDEC': (scan.skycoord.dec.to_string(), 'Requested Dec'),
+                                'SCHEDPRA': (scan.skycoord.pm_ra_cosdec.to_value(u.arsec/u.hour), 'Requested proper motion in RAcosDec [arcsec/hr]'),
+                                'SCHEDPDEC': (scan.skycoord.pm_dec.to_value(u.arcsec/u.hour), 'Requested proper motion in Dec [arcsec/hr]'),
+                                'SCHEDSRT': (scan.start_time.fits, 'Requested start time'),
                                 'SCHEDINT': (scan.interrupt_allowed, 'Whether the scan can be interrupted by autofocus'),
                                 'CENTERED': (centered, 'Whether the target underwent the centering routine'),
                                 'SCHEDPSX': (scan.posx, 'Requested x pixel for recentering'),
@@ -855,7 +853,8 @@ class TelrunOperator:
         self._next_scan_index = None
 
         logger.info('Generating summary report')
-        self._generate_summary_report(self._telrun_file)
+        generate_summary_report(self.telhome+'/schedules/telrun.sls', self.telhome+'/logs/'+
+            self._telrun_file.scans[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')
 
         return True
     
