@@ -1910,12 +1910,3 @@ class _TextHandler(logging.Handler):
 
 class TelrunError(Exception):
     pass
-
-def setup_telrun_observatory(telhome):
-    pass
-
-def summary_report(sls_file, report_file):
-    if type(sls_file) is str:
-        sls_file = TelrunFile(sls_file)
-    elif type(sls_file) is not TelrunFile:
-        raise TypeError('sls_file must be a string or TelrunFile object')
