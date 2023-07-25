@@ -7,11 +7,6 @@
     <li>wcs_platesolve3</li>
     </ul>
 
-<li>telrun</li>
-    <ul>
-    <li>Update telrun GUI</li>
-    </ul>
-
 <li>schedtel</li>
     <ul>
     <li>Config file</li>

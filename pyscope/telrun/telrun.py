@@ -1,12 +1,19 @@
 import atexit
 import configparser
+import logging
 import os
 import shutil
 import threading
+import tkinter as tk
+import tkinter.ttk as ttk
 
 from astropy import coordinates as coord, time as astrotime, units as u
 
-from pyscope import Observatory, logger
+from pyscope import Observatory
+
+logger = logging.getLogger(__name__)
+
+_gui_font = tk.font.Font(family='Segoe UI', size=10)
 
 class TelrunOperator:
     def __init__(self, config_file_path=None, gui=False, **kwargs):
@@ -199,9 +206,15 @@ class TelrunOperator:
         logger.debug('Registered')
 
         # Open GUI if requested
-        if gui:
+        if self._gui:
             logger.info('Starting GUI')
-            self._gui = TelrunGUI(self)
+            root = tk.Tk()
+            root.tk.call('source', '../src/themeSetup.tcl')
+            root.tk.call('set_theme', 'dark')
+            # icon_photo = tk.PhotoImage(file='images/UILogo.png')
+            # root.iconphoto(False, icon_photo)
+            self._gui = TelrunGUI(root)
+            self._gui.mainloop()
             logger.info('GUI started')
 
         # Connect to observatory hardware
@@ -1407,8 +1420,8 @@ class TelrunScan:
         self.target_name = lines[6].split(': ')[-1]
 
         coords = lines[7].split(': ')[-1]
-        pm_ra_cosdec = lines[8].split(': ')[-1].split(' ')[0]
-        pm_dec = lines[9].split(': ')[-1].split(' ')[0]
+        pm_ra_cosdec = float(lines[8].split(': ')[-1].split(' ')[0])
+        pm_dec = float(lines[9].split(': ')[-1].split(' ')[0])
         frame = lines[10].split(': ')[-1]
 
         if 'None' not in (coords, pm_ra_cosdec, pm_dec, frame):
@@ -1597,14 +1610,306 @@ class TelrunScan:
     def filt(self, value):
         self._filt = str(value)
 
-class TelrunError(Exception):
-    pass
-
-class TelrunGUI:
-    def __init__(self, TelrunOperator):
+class TelrunGUI(ttk.Frame):
+    def __init__(self, parent, TelrunOperator):
+        ttk.Frame.__init__(self, parent)
+        self._parent = parent
         self._telrun = TelrunOperator
 
+        self._build_gui()
+        self._update()
+    
+    def _build_gui(self):
+        ttk.Label(self, text='System Status', font=_gui_font).grid(row=0, column=0, columnspan=3, sticky='new')
+        self.system_status_widget = _SystemStatusWidget(self)
+        self.system_status_widget.grid(row=1, column=0, columnspan=3, sticky='sew')
 
+        ttk.Label(self, text='Previous Scan', font=_gui_font).grid(row=2, column=0, columnspan=1, sticky='sew')
+        self.previous_scan_widget = _ScanWidget(self)
+        self.previous_scan_widget.grid(row=3, column=0, columnspan=1, sticky='new')
+
+        ttk.Label(self, text='Current Scan', font=_gui_font).grid(row=2, column=1, columnspan=1, sticky='sew')
+        self.current_scan_widget = _ScanWidget(self)
+        self.current_scan_widget.grid(row=3, column=1, columnspan=1, sticky='new')
+
+        ttk.Label(self, text='Next Scan', font=_gui_font).grid(row=2, column=2, columnspan=1, sticky='sew')
+        self.next_scan_widget = _ScanWidget(self)
+        self.next_scan_widget.grid(row=3, column=2, columnspan=1, sticky='new')
+
+        self.log_text = ScrolledText(self, width=80, height=20, state='disabled')
+        self.log_text.grid(column=0, row=4, columnspan=3, sticky='new')
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
+
+        self.rowconfigure(0, weight=0)
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
+        self.rowconfigure(4, weight=1)
+
+        log_handler = _TextHandler(self.log_text)
+        log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        log_handler.setFormatter(log_formatter)
+        logger.addHandler(log_handler)
+    
+    def _update(self):
+        self.system_status_widget.update()
+        self.previous_scan_widget.update(self._telrun.previous_scan)
+        self.current_scan_widget.update(self._telrun.current_scan)
+        self.next_scan_widget.update(self._telrun.next_scan)
+
+        self.after(1000, self._update)
+
+class _SystemStatusWidget(ttk.Frame):
+    def __init__(self, parent):
+        ttk.Frame.__init__(self, parent)
+        self._parent = parent
+
+        self.build_gui()
+        self.update()
+    
+    def build_gui(self):
+        
+        rows0 = _Rows(self, 0)
+        self.sun_elevation = rows0.add_row('Sun Elevation:')
+        self.moon_elevation = rows0.add_row('Moon Elevation:')
+        self.moon_illumination = rows0.add_row('Moon Illumination:')
+        self.lst = rows0.add_row('LST:')
+        self.ut = rows0.add_row('UT:')
+        self.last_autofocus_time = rows0.add_row('Last Autofocus Time:')
+        self.time_until_next_autofocus = rows0.add_row('Time Until Next Autofocus:')
+        self.last_scan_status = rows0.add_row('Last Scan Status:')
+        self.current_scan_index = rows0.add_row('Current Scan Index:')
+        self.time_until_scan_start = rows0.add_row('Time Until Scan Start:')
+        self.skipped_scan_count = rows0.add_row('Skipped Scan Count:')
+        self.total_scan_count = rows0.add_row('Total Scan Count:')
+
+        rows1 = _Rows(self, 2)
+        self.autofocus_status = rows1.add_row('Autofocus Status:')
+        self.camera_status = rows1.add_row('Camera Status:')
+        self.cover_calibrator_status = rows1.add_row('Cover Calibrator Status:')
+        self.dome_status = rows1.add_row('Dome Status:')
+        self.filter_wheel_status = rows1.add_row('Filter Wheel Status:')
+        self.focuser_status = rows1.add_row('Focuser Status:')
+        self.observing_conditions_status = rows1.add_row('Observing Conditions Status:')
+        self.rotator_status = rows1.add_row('Rotator Status:')
+        self.safety_monitor_status = rows1.add_row('Safety Monitor Status:')
+        self.switch_status = rows1.add_row('Switch Status:')
+        self.telescope_status = rows1.add_row('Telescope Status:')
+        self.wcs_status = rows1.add_row('WCS Status:')
+
+        rows2 = _Rows(self, 4)
+        self.cloud_cover = rows2.add_row('Cloud Cover:')
+        self.dew_point = rows2.add_row('Dew Point:')
+        self.humidity = rows2.add_row('Humidity:')
+        self.pressure = rows2.add_row('Pressure:')
+        self.rainrate = rows2.add_row('Rain Rate:')
+        self.sky_brightness = rows2.add_row('Sky Brightness:')
+        self.sky_quality = rows2.add_row('Sky Quality:')
+        # self.sky_temperature = rows2.add_row('Sky Temperature:')
+        self.star_fwhm = rows2.add_row('Star FWHM:')
+        self.temperature = rows2.add_row('Temperature:')
+        self.wind_direction = rows2.add_row('Wind Direction:')
+        self.wind_gust = rows2.add_row('Wind Gust:')
+        self.wind_speed = rows2.add_row('Wind Speed:')
+
+        rows3 = _Rows(self, 6)
+        self.wait_for_sun = rows3.add_row('Wait For Sun:')
+        self.max_solar_elev = rows3.add_row('Max Solar Elevation:')
+        self.wait_for_cooldown = rows3.add_row('Wait For Cooldown:')
+        self.default_readout = rows3.add_row('Default Readout:')
+        self.autofocus_interval = rows3.add_row('Autofocus Interval:')
+        self.autofocus_filters = rows3.add_row('Autofocus Filters:')
+        self.autofocus_use_current_pointing = rows3.add_row('Autofocus Use Current Pointing:')
+        self.wait_for_scan_start_time = rows3.add_row('Wait For Scan Start Time:')
+        self.max_scan_late_time = rows3.add_row('Max Scan Late Time:')
+        self.preslew_time = rows3.add_row('Preslew Time:')
+        self.recenter_filters = rows3.add_row('Recenter Filters:')
+        self.wcs_filters = rows3.add_row('WCS Filters:')
+
+    def update(self):
+        self.sun_elevation.set(self._parent._telrun.observatory.sun_altaz()[0])
+        self.moon_elevation.set(self._parent._telrun.observatory.moon_altaz()[0])
+        self.moon_illumination.set(self._parent._telrun.observatory.moon_illumination())
+        self.lst.set(self._parent._telrun.observatory.lst())
+        self.ut.set(self._parent._telrun.observatory.observatory_time.iso)
+        self.last_autofocus_time.set(astrotime.Time(self._parent._telrun.last_autofocus_time, format='unix').iso)
+        self.time_until_next_autofocus.set(self._parent._telrun.last_autofocus_time + self._parent._telrun.autofocus_interval - Time.now())
+        self.last_scan_status.set(self._parent._telrun.previous_scan.status)
+        self.current_scan_index.set(self._parent._telrun.current_scan_index)
+        self.time_until_scan_start.set((self._parent._telrun.current_scan.start_time - astrotime.Time.now()).sec)
+        self.skipped_scan_count.set(self._parent._telrun.skipped_scan_count)
+        self.total_scan_count.set(len(self._parent._telrun._telrun_file.scans))
+
+        self.autofocus_status.set(self._parent._telrun.autofocus_status)
+        self.camera_status.set(self._parent._telrun.camera_status)
+        self.cover_calibrator_status.set(self._parent._telrun.cover_calibrator_status)
+        self.dome_status.set(self._parent._telrun.dome_status)
+        self.filter_wheel_status.set(self._parent._telrun.filter_wheel_status)
+        self.focuser_status.set(self._parent._telrun.focuser_status)
+        self.observing_conditions_status.set(self._parent._telrun.observing_conditions_status)
+        self.rotator_status.set(self._parent._telrun.rotator_status)
+        self.safety_monitor_status.set(self._parent._telrun.safety_monitor_status)
+        self.switch_status.set(self._parent._telrun.switch_status)
+        self.telescope_status.set(self._parent._telrun.telescope_status)
+        self.wcs_status.set(self._parent._telrun.wcs_status)
+
+        self.cloud_cover.set(self._parent._telrun.observing_conditions.CloudCover)
+        self.dew_point.set(self._parent._telrun.observing_conditions.DewPoint)
+        self.humidity.set(self._parent._telrun.observing_conditions.Humidity)
+        self.pressure.set(self._parent._telrun.observing_conditions.Pressure)
+        self.rainrate.set(self._parent._telrun.observing_conditions.RainRate)
+        self.sky_brightness.set(self._parent._telrun.observing_conditions.SkyBrightness)
+        self.sky_quality.set(self._parent._telrun.observing_conditions.SkyQuality)
+        # self.sky_temperature.set(self._parent._telrun.observing_conditions.SkyTemperature)
+        self.star_fwhm.set(self._parent._telrun.observing_conditions.StarFWHM)
+        self.temperature.set(self._parent._telrun.observing_conditions.Temperature)
+        self.wind_direction.set(self._parent._telrun.observing_conditions.WindDirection)
+        self.wind_gust.set(self._parent._telrun.observing_conditions.WindGust)
+        self.wind_speed.set(self._parent._telrun.observing_conditions.WindSpeed)
+
+        self.wait_for_sun.set(str(self._parent._telrun.wait_for_sun))
+        self.max_solar_elev.set(str(self._parent._telrun.max_solar_elev))
+        self.wait_for_cooldown.set(str(self._parent._telrun.wait_for_cooldown))
+        self.default_readout.set(str(self._parent._telrun.default_readout))
+        self.autofocus_interval.set(str(self._parent._telrun.autofocus_interval))
+
+        auto_filt = ''
+        for filt in self._parent._telrun.autofocus_filters:
+            auto_filt += filt + ', '
+        self.autofocus_filters.set(auto_filt)
+
+        self.autofocus_use_current_pointing.set(str(self._parent._telrun.autofocus_use_current_pointing))
+        self.wait_for_scan_start_time.set(str(self._parent._telrun.wait_for_scan_start_time))
+        self.max_scan_late_time.set(str(self._parent._telrun.max_scan_late_time))
+        self.preslew_time.set(str(self._parent._telrun.preslew_time))
+
+        recenter_filt = ''
+        for filt in self._parent._telrun.recenter_filters:
+            recenter_filt += filt + ', '
+        self.recenter_filters.set(recenter_filt)
+
+        wcs_filt = ''
+        for filt in self._parent._telrun.wcs_filters:
+            wcs_filt += filt + ', '
+        self.wcs_filters.set(wcs_filt)
+
+class _ScanWidget(ttk.Frame):
+    def __init__(self, parent):
+        ttk.Frame.__init__(self, parent)
+        self._parent = parent
+
+        self.build_gui()
+        self.update()
+    
+    def build_gui(self):
+        rows = _Rows(self, 0)
+
+        self.filename = rows.add_row('Filename:')
+        self.status = rows.add_row('Status:')
+        self.status_message = rows.add_row('Status Message:')
+        self.observer = rows.add_row('Observer:')
+        self.obscode = rows.add_row('Observer Code:')
+        self.title = rows.add_row('Title:')
+        self.target_name = rows.add_row('Target Name:')
+        self.skycoord = rows.add_row('SkyCoord:')
+        self.proper_motion = rows.add_row('Proper Motion:')
+        self.start_time = rows.add_row('Start Time:')
+        self.interrupt_allowed = rows.add_row('Interrupt Allowed:')
+        self.pos = rows.add_row('Requested Repositioning:')
+        self.binning = rows.add_row('Binning:')
+        self.subframe_start = rows.add_row('Subframe Start:')
+        self.subframe_size = rows.add_row('Subframe Size:')
+        self.readout = rows.add_row('Readout Mode:')
+        self.exposure = rows.add_row('Exposure Time (s):')
+        self.light = rows.add_row('Shutter Open:')
+        self.filt = rows.add_row('Filter:')
+
+    def update(self, scan):
+        if scan is None:
+            self.filename.set('')
+            self.status.set('')
+            self.status_message.set('')
+            self.observer.set('')
+            self.obscode.set('')
+            self.title.set('')
+            self.target_name.set('')
+            self.skycoord.set('')
+            self.proper_motion.set('')
+            self.start_time.set('')
+            self.interrupt_allowed.set('')
+            self.pos.set('')
+            self.binning.set('')
+            self.subframe_start.set('')
+            self.subframe_size.set('')
+            self.readout.set('')
+            self.exposure.set('')
+            self.light.set('')
+            self.filt.set('')
+
+        else:
+            self.filename.set(scan.filename)
+            self.status.set(scan.status)
+            self.status_message.set(scan.status_message)
+            self.observer.set(scan.observer)
+            self.obscode.set(scan.obscode)
+            self.title.set(scan.title)
+            self.target_name.set(scan.target_name)
+            self.skycoord.set(scan.skycoord.to_string('hmsdms'))
+            self.proper_motion.set(scan.skycoord.pm_ra_cosdec.to_string(u.arcsec/u.hour) + ' ' + scan.skycoord.pm_dec.to_string(u.arcsec/u.hour))
+            self.start_time.set(scan.start_time.fits)
+            self.interrupt_allowed.set(scan.interrupt_allowed)
+            self.pos.set(str(scan.posx) + ', ' + str(scan.posy))
+            self.binning.set(str(scan.binx) + 'x' + str(scan.biny))
+            self.subframe_start.set(str(scan.startx) + ', ' + str(scan.starty))
+            self.subframe_size.set(str(scan.numx) + 'x' + str(scan.numy))
+            self.readout.set(scan.readout)
+            self.exposure.set(scan.exposure)
+            self.light.set(scan.light)
+            self.filt.set(scan.filt)
+class _Rows:
+    def __init__(self, parent, column):
+        self._parent = parent
+        self._column = column
+        self._next_row = 0
+
+    def add_row(self):
+        label = ttk.Label(self._parent, text=label_text)
+        label.grid(column=self._column, row=self._next_row, sticky='e')
+
+        string_var = tk.StringVar()
+        entry = ttk.Entry(self._parent, textvariable=string_var)
+        entry.grid(column=self._column+1, row=self._next_row, sticky='ew')
+
+        self._next_row += 1
+
+        return string_var
+
+class _TextHandler(logging.Handler):
+    # This class allows you to log to a Tkinter Text or ScrolledText widget
+    # Adapted from Moshe Kaplan: https://gist.github.com/moshekaplan/c425f861de7bbf28ef06
+
+    def __init__(self, text):
+        # run the regular Handler __init__
+        logging.Handler.__init__(self)
+        # Store a reference to the Text it will log to
+        self.text = text
+
+    def emit(self, record):
+        msg = self.format(record)
+        def append():
+            self.text.configure(state='normal')
+            self.text.insert(tk.END, msg + '\n')
+            self.text.configure(state='disabled')
+            # Autoscroll to the bottom
+            self.text.yview(tk.END)
+        # This is necessary because we can't modify the Text from other threads
+        self.text.after(0, append)
+
+class TelrunError(Exception):
+    pass
 
 def setup_telrun_observatory(telhome):
     pass
