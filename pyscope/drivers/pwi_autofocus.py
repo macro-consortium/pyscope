@@ -1,8 +1,10 @@
+import logging
 import time
 import platform
 
-from pyscope import logger
 from . import abstract
+
+logger = logging.getLogger(__name__)
 
 class PWIAutofocus(abstract.Autofocus):
     def __init__(self):

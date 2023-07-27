@@ -1,5 +1,6 @@
 from ast import literal_eval
 import configparser
+import logging
 import shutil
 import tempfile
 import time
@@ -12,7 +13,9 @@ import numpy as np
 
 from . import utils
 from .drivers import ascom
-from . import __version__, logger
+from pyscope import __version__
+
+logger = logging.getLogger(__name__)
 
 class Observatory:
     '''A class for managing a collection of instruments. The Observatory class provides

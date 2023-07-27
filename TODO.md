@@ -7,14 +7,13 @@
     <li>wcs_platesolve3</li>
     </ul>
 
+<li>telrun</li>
+    <ul>
+    <li>telhome -> custom paths, change schedule-naming convention</li>
+    </ul>
+
 <li>schedtel</li>
     <ul>
-    <li>Config file</li>
-    <li>telrunfile -> telrun_file as class with sanity checks built in</li>
-    <li>No edb lines/ephem dependencies</li>
-    <li>Change ccdcalib argument</li>
-    <li>Fix shutter options</li>
-    <li>Change tracking to an argument instead of a comment</li>
     <li>Enable priority keyword</li>
     <li>Add support for multiple observers</li>
     <li>Check naming conventions, time ordering</li>
@@ -27,26 +26,19 @@
     <li>Updates telrun status file</li>
     </ul>
 
-<li>_scripts</li>
+<li>scripts</li>
     <ul>
     <li>setup_telrun_observatory</li>
     <li>setup_remote_operations</li>
     <li>summary_report</li>
-    <li>Scheduling, reduction, analysis scripts</li>
-    </ul>
-
-<li>Write docs</li>
-    <ul>
-    <li>README.md</li>
-    <li>docstring documentation</li>
-    <li>Examples</li>
-    <li>readthedocs</li>
+    <li>Scheduling, reduction, analysis scripts to bin</li>
     </ul>
 
 <li>Write telrun status variables to file, change logging to be per-instance</li>
 <li>Consider custom exception integration</li>
 <li>Write tests</li>
 <li>Check for PEP8 compliance</li>
+<li>Write docs</li>
 <li>Installer setup on pip, conda</li>
 
 <li>Outreach and use</li>
