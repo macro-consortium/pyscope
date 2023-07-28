@@ -9,6 +9,7 @@ import tkinter.ttk as ttk
 
 import astroplan
 from astropy import coordinates as coord, time as astrotime, units as u, table
+import tksheet
 
 from ..observatory import Observatory
 
@@ -327,6 +328,7 @@ class TelrunOperator:
         elif type(schedule) is not table.QTable:
             raise TypeError('schedule must be a path to an ECSV file or an astropy QTable')
         
+        # Schedule validation
         if 'target' not in schedule.colnames:
             raise ValueError('schedule must have a target column')
         if 'start time (UTC)' not in schedule.colnames:
@@ -341,6 +343,9 @@ class TelrunOperator:
             raise ValueError('schedule must have a dec column')
         if 'configuration' not in schedule.colnames:
             raise ValueError('schedule must have a configuration column')
+
+        for i in range(len(schedule)):
+            schedule[i] = self._block_validation(schedule[i])
 
         self._schedule = schedule
 
@@ -525,99 +530,8 @@ class TelrunOperator:
                 'duration (minutes)', 'ra', 'dec', 'configuration'))
         elif type(block) is not table.Row:
             raise TypeError('Block must be an astroplan ObservingBlock or astropy Row object.')
-        
-        # Check for all required config vals, fill in defaults if not present
-        block['configuration']['observer'] = block['configuration'].get('observer', observing_block_config['observer'])
-        block['configuration']['obscode'] = block['configuration'].get('obscode', observing_block_config['obscode'])
-        block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
-        block['configuration']['title'] = block['configuration'].get('title', observing_block_config['title'])
-        block['configuration']['filter'] = block['configuration'].get('filter', observing_block_config['filter'])
-        block['configuration']['exposure'] = block['configuration'].get('exposure', observing_block_config['exposure'])
-        block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
-        block['configuration']['do_not_interrupt'] = block['configuration'].get('do_not_interrupt', observing_block_config['do_not_interrupt'])
-        block['configuration']['repositioning'] = block['configuration'].get('repositioning', observing_block_config['repositioning'])
-        block['configuration']['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
-        block['configuration']['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
-        block['configuration']['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
-        block['configuration']['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
-        block['configuration']['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
-        block['configuration']['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
-        block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
-        block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
-        block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
-        block['configuration']['status_message'] = block['configuration'].get('status_message', observing_block_config['status_message'])
 
-        # Input validation
-        block['target'] = str(block['target'])
-        block['start time (UTC)'] = astrotime.Time(block['start time (UTC)'], format='iso')
-        block['end time (UTC)'] = astrotime.Time(block['end time (UTC)'], format='iso')
-        block['duration (minutes)'] = float(block['duration (minutes)'])
-        block['ra'] = coord.Longitude(block['ra'])
-        block['dec'] = coord.Latitude(block['dec'])
-
-        block['configuration']['observer'] = str(block['configuration']['observer'])
-        block['configuration']['obscode'] = str(block['configuration']['obscode'])
-
-        block['configuration']['filename'] = str(block['configuration']['filename'])
-        if block['configuration']['filename'] == '':
-            name = block['configuration']['obscode'] + '_'
-            if block['target'] != '':
-                name += block['target'].replace(' ', '-') + '_'
-            name += block['start time (UTC)'].datetime.strftime('%Y%m%dT%H%M%S') + '_'
-            name += block['configuration']['exposure'] + 's_'
-            name += 'FILT-'+block['configuration']['filter'] + '_'
-            name += 'BIN-'+block['configuration']['binning'] + '_'
-            name += 'READ-'+block['configuration']['readout'] + '.fts'
-            block['configuration']['filename'] = name
-        if block['configuration']['filename'].split('.')[-1] not in ('fts', 'fits', 'fit'):
-            block['configuration']['filename'].split('.')[0] + '.fts'
-        
-        block['configuration']['title'] = str(block['configuration']['title'])
-        block['configuration']['filter'] = str(block['configuration']['filter'])
-
-        block['configuration']['exposure'] = float(block['configuration']['exposure'])
-        block['configuration']['n_exp'] = int(block['configuration']['n_exp'])
-        block['configuration']['do_not_interrupt'] = bool(block['configuration']['do_not_interrupt'])
-        if do_not_interrupt:
-            if 60*block['duration (minutes)'] < block['configuration']['exposure']*block['configuration']['n_exp']:
-                raise TelrunError('Insufficient time to complete exposures allocated.')
-        else:
-            if (block['configuration']['exposure'] != 60*block['duration (minutes)']
-                    or block['configuration']['n_exp'] != 1):
-                raise TelrunError('n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False.')
-
-        if type(block['configuration']['repositioning']) not in [iter, tuple, list]:
-            raise TypeError('repositioning must be an iterable of pixel coordinates.')
-        else:
-            block['configuration']['repositioning'][0] = int(block['configuration']['repositioning'][0]) if block['configuration']['repositioning'][0] is not None else None
-            block['configuration']['repositioning'][1] = int(block['configuration']['repositioning'][1]) if block['configuration']['repositioning'][1] is not None else None
-        
-        block['configuration']['shutter_state'] = bool(block['configuration']['shutter_state'])
-        block['configuration']['readout'] = int(block['configuration']['readout'])
-
-        if type(block['configuration']['binning']) not in [iter, tuple, list]:
-            raise TypeError('binning must be an iterable of integers.')
-        else:
-            block['configuration']['binning'][0] = int(block['configuration']['binning'][0])
-            block['configuration']['binning'][1] = int(block['configuration']['binning'][1])
-        
-        if type(block['configuration']['frame_position']) not in [iter, tuple, list]:
-            raise TypeError('frame_position must be an iterable of pixel coordinates.')
-        else:
-            block['configuration']['frame_position'][0] = int(block['configuration']['frame_position'][0])
-            block['configuration']['frame_position'][1] = int(block['configuration']['frame_position'][1])
-
-        if type(block['configuration']['frame_size']) not in [iter, tuple, list]:
-            raise TypeError('frame_size must be an iterable of pixel sizes.')
-        else:
-            block['configuration']['frame_size'][0] = int(block['configuration']['frame_size'][0])
-            block['configuration']['frame_size'][1] = int(block['configuration']['frame_size'][1])
-        
-        block['configuration']['pm_ra_cosdec'] = u.Quantity(block['configuration']['pm_ra_cosdec'], unit=u.arcsec/u.hour)
-        block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
-        block['configuration']['comment'] = str(block['configuration']['comment'])
-        block['configuration']['status'] = str(block['configuration']['status'])
-        block['configuration']['status_message'] = str(block['configuration']['status_message'])
+        block = self._block_validation(block)
 
         self._current_block = block
 
@@ -1175,6 +1089,104 @@ class TelrunOperator:
     
     def _terminate(self):
         self.observatory.shutdown()
+
+    @staticmethod
+    def _block_validation(block):
+
+        # Check for all required config vals, fill in defaults if not present
+        block['configuration']['observer'] = block['configuration'].get('observer', observing_block_config['observer'])
+        block['configuration']['obscode'] = block['configuration'].get('obscode', observing_block_config['obscode'])
+        block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
+        block['configuration']['title'] = block['configuration'].get('title', observing_block_config['title'])
+        block['configuration']['filter'] = block['configuration'].get('filter', observing_block_config['filter'])
+        block['configuration']['exposure'] = block['configuration'].get('exposure', observing_block_config['exposure'])
+        block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
+        block['configuration']['do_not_interrupt'] = block['configuration'].get('do_not_interrupt', observing_block_config['do_not_interrupt'])
+        block['configuration']['repositioning'] = block['configuration'].get('repositioning', observing_block_config['repositioning'])
+        block['configuration']['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
+        block['configuration']['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
+        block['configuration']['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
+        block['configuration']['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
+        block['configuration']['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
+        block['configuration']['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
+        block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
+        block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
+        block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
+        block['configuration']['status_message'] = block['configuration'].get('status_message', observing_block_config['status_message'])
+
+        # Input validation
+        block['target'] = str(block['target'])
+        block['start time (UTC)'] = astrotime.Time(block['start time (UTC)'], format='iso')
+        block['end time (UTC)'] = astrotime.Time(block['end time (UTC)'], format='iso')
+        block['duration (minutes)'] = float(block['duration (minutes)'])
+        block['ra'] = coord.Longitude(block['ra'])
+        block['dec'] = coord.Latitude(block['dec'])
+
+        block['configuration']['observer'] = str(block['configuration']['observer'])
+        block['configuration']['obscode'] = str(block['configuration']['obscode'])
+
+        block['configuration']['filename'] = str(block['configuration']['filename'])
+        if block['configuration']['filename'] == '':
+            name = block['configuration']['obscode'] + '_'
+            if block['target'] != '':
+                name += block['target'].replace(' ', '-') + '_'
+            name += block['start time (UTC)'].datetime.strftime('%Y%m%dT%H%M%S') + '_'
+            name += block['configuration']['exposure'] + 's_'
+            name += 'FILT-'+block['configuration']['filter'] + '_'
+            name += 'BIN-'+block['configuration']['binning'] + '_'
+            name += 'READ-'+block['configuration']['readout'] + '.fts'
+            block['configuration']['filename'] = name
+        if block['configuration']['filename'].split('.')[-1] not in ('fts', 'fits', 'fit'):
+            block['configuration']['filename'].split('.')[0] + '.fts'
+        
+        block['configuration']['title'] = str(block['configuration']['title'])
+        block['configuration']['filter'] = str(block['configuration']['filter'])
+
+        block['configuration']['exposure'] = float(block['configuration']['exposure'])
+        block['configuration']['n_exp'] = int(block['configuration']['n_exp'])
+        block['configuration']['do_not_interrupt'] = bool(block['configuration']['do_not_interrupt'])
+        if do_not_interrupt:
+            if 60*block['duration (minutes)'] < block['configuration']['exposure']*block['configuration']['n_exp']:
+                raise TelrunError('Insufficient time to complete exposures allocated.')
+        else:
+            if (block['configuration']['exposure'] != 60*block['duration (minutes)']
+                    or block['configuration']['n_exp'] != 1):
+                raise TelrunError('n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False.')
+
+        if type(block['configuration']['repositioning']) not in [iter, tuple, list]:
+            raise TypeError('repositioning must be an iterable of pixel coordinates.')
+        else:
+            block['configuration']['repositioning'][0] = int(block['configuration']['repositioning'][0]) if block['configuration']['repositioning'][0] is not None else None
+            block['configuration']['repositioning'][1] = int(block['configuration']['repositioning'][1]) if block['configuration']['repositioning'][1] is not None else None
+        
+        block['configuration']['shutter_state'] = bool(block['configuration']['shutter_state'])
+        block['configuration']['readout'] = int(block['configuration']['readout'])
+
+        if type(block['configuration']['binning']) not in [iter, tuple, list]:
+            raise TypeError('binning must be an iterable of integers.')
+        else:
+            block['configuration']['binning'][0] = int(block['configuration']['binning'][0])
+            block['configuration']['binning'][1] = int(block['configuration']['binning'][1])
+        
+        if type(block['configuration']['frame_position']) not in [iter, tuple, list]:
+            raise TypeError('frame_position must be an iterable of pixel coordinates.')
+        else:
+            block['configuration']['frame_position'][0] = int(block['configuration']['frame_position'][0])
+            block['configuration']['frame_position'][1] = int(block['configuration']['frame_position'][1])
+
+        if type(block['configuration']['frame_size']) not in [iter, tuple, list]:
+            raise TypeError('frame_size must be an iterable of pixel sizes.')
+        else:
+            block['configuration']['frame_size'][0] = int(block['configuration']['frame_size'][0])
+            block['configuration']['frame_size'][1] = int(block['configuration']['frame_size'][1])
+        
+        block['configuration']['pm_ra_cosdec'] = u.Quantity(block['configuration']['pm_ra_cosdec'], unit=u.arcsec/u.hour)
+        block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
+        block['configuration']['comment'] = str(block['configuration']['comment'])
+        block['configuration']['status'] = str(block['configuration']['status'])
+        block['configuration']['status_message'] = str(block['configuration']['status_message'])
+
+        return block
     
     @property
     def do_periodic_autofocus(self):
@@ -1555,8 +1567,19 @@ class TelrunGUI(ttk.Frame):
         self.next_block_widget = _BlockWidget(self)
         self.next_block_widget.grid(row=3, column=2, columnspan=1, sticky='new')
 
-        self.log_text = ScrolledText(self, width=80, height=20, state='disabled')
-        self.log_text.grid(column=0, row=4, columnspan=3, sticky='new')
+        self.schedule = tksheet.Sheet(self, width=80, height=20, 
+                                headers=
+                                ['Target', 'Start Time', 'End Time', 'Duration',
+                                'RA', 'Dec', 'Observer', 'Observer Code', 
+                                'Filename', 'Title', 'Filter', 'Exposure', 
+                                'Num Exposures', 'Do Not Interrupt', 'Repositioning',
+                                'Shutter State', 'Readout', 'Binning', 'Frame Position',
+                                'Frame Size', 'PM RAcosDec', 'PM Dec', 'Comment', 
+                                'Status', 'Status Message'])
+        self.schedule.grid(column=0, row=4, columnspan=3, sticky='new')
+
+        self.log_text = tk.ScrolledText(self, width=80, height=20, state='disabled')
+        self.log_text.grid(column=0, row=5, columnspan=3, sticky='new')
 
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
@@ -1567,6 +1590,7 @@ class TelrunGUI(ttk.Frame):
         self.rowconfigure(2, weight=1)
         self.rowconfigure(3, weight=1)
         self.rowconfigure(4, weight=1)
+        self.rowconfigure(5, weight=1)
 
         log_handler = _TextHandler(self.log_text)
         log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1578,6 +1602,41 @@ class TelrunGUI(ttk.Frame):
         self.previous_block_widget.update(self._telrun.previous_block)
         self.current_block_widget.update(self._telrun.current_block)
         self.next_block_widget.update(self._telrun.next_block)
+
+        if self._telrun._schedule is None:
+            self.schedule.set_sheet_data([[]])
+        else:
+            self.sheet.set_sheet_data([
+                [self._telrun.schedule[i]['target'], 
+                self._telrun.schedule[i]['start time (UTC)'].iso,
+                self._telrun.schedule[i]['end time (UTC)'].iso,
+                self._telrun.schedule[i]['duration (minutes)']*60,
+                self._telrun.schedule[i]['ra'].hms,
+                self._telrun.schedule[i]['dec'].dms,
+                self._telrun.schedule[i]['configuration']['observer'],
+                self._telrun.schedule[i]['configuration']['obscode'],
+                self._telrun.schedule[i]['configuration']['filename'],
+                self._telrun.schedule[i]['configuration']['title'],
+                self._telrun.schedule[i]['configuration']['filter'],
+                self._telrun.schedule[i]['configuration']['exposure'],
+                self._telrun.schedule[i]['configuration']['n_exp'],
+                self._telrun.schedule[i]['configuration']['do_not_interrupt'],
+                self._telrun.schedule[i]['configuration']['repositioning'][0]+','
+                +self._telrun.schedule[i]['configuration']['repositioning'][1],
+                self._telrun.schedule[i]['configuration']['shutter_state'],
+                self._telrun.schedule[i]['configuration']['readout'],
+                self._telrun.schedule[i]['configuration']['binning'][0]+'x'
+                +self._telrun.schedule[i]['configuration']['binning'][1],
+                self._telrun.schedule[i]['configuration']['frame_position'][0]+','
+                +self._telrun.schedule[i]['configuration']['frame_position'][1],
+                self._telrun.schedule[i]['configuration']['frame_size'][0]+'x'
+                +self._telrun.schedule[i]['configuration']['frame_size'][1],
+                self._telrun.schedule[i]['configuration']['pm_ra_cosdec'].to_string(),
+                self._telrun.schedule[i]['configuration']['pm_dec'].to_string(),
+                self._telrun.schedule[i]['configuration']['comment'],
+                self._telrun.schedule[i]['status'],
+                self._telrun.schedule[i]['status_message']
+                ] for i in range(len(self._telrun.schedule))])
 
         self.after(1000, self._update)
 
