@@ -10,6 +10,7 @@
 <li>telrun</li>
     <ul>
     <li>telhome -> custom paths, change schedule-naming convention</li>
+    <li>execute_block supports kwargs input</li>
     </ul>
 
 <li>schedtel</li>

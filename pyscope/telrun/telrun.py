@@ -1035,17 +1035,8 @@ class TelrunOperator:
             logging.info("Waiting %.1f seconds until start time" % seconds_until_start_time)
             time.sleep(seconds_until_start_time-0.1)
         
-        # Start exposure
-        logger.info('Starting %4.4g second exposure...' % block['configuration']['exposure'])
-        self._camera_status = 'Exposing'
-        t0 = time.time()
-        self.observatory.camera.Expose(block['configuration']['exposure'], block['configuration']['shutter_state'])
-        logger.info('Waiting for image...')
-        while not self.observatory.camera.ImageReady and time.time() < t0 + block['configuration']['exposure'] + self.hardware_timeout:
-            time.sleep(0.1)
-        self._camera_status = 'Idle'
-        
-        custom_header = {'OBSNAME': (block['configuration']['observer'], 'Name of observer'), 
+        # Define custom header
+        custom_header = {'OBSERVER': (block['configuration']['observer'], 'Name of observer'), 
                             'OBSCODE': (block['configuration']['obscode'], 'Observing code'),
                             'TARGET': (block['target'], 'Name of target if provided'),
                             'SCHEDTIT': (block['configuration']['title'], 'Title if provided'),
@@ -1060,30 +1051,50 @@ class TelrunOperator:
                             'SCHEDPSX': (block['configuration']['respositioning'][0], 'Requested x pixel for recentering'),
                             'SCHEDPSY': (block['configuration']['respositioning'][1], 'Requested y pixel for recentering'),
                             'LASTAUTO': (self.last_autofocus_time, 'When the last autofocus was performed')}
+        
+        # Start exposures
+        for i in range(block['configuration']['n_exp']):
+            logger.info('Beginning exposure %i of %i' % (i+1, block['configuration']['n_exp']))
+            logger.info('Starting %4.4g second exposure...' % block['configuration']['exposure'])
+            self._camera_status = 'Exposing'
+            t0 = time.time()
+            self.observatory.camera.Expose(block['configuration']['exposure'], block['configuration']['shutter_state'])
+            logger.info('Waiting for image...')
+            while not self.observatory.camera.ImageReady and time.time() < t0 + block['configuration']['exposure'] + self.hardware_timeout:
+                time.sleep(0.1)
+            self._camera_status = 'Idle'
 
-        # WCS thread cleanup
-        self._wcs_threads = [t for t in self._wcs_threads if t.is_alive()]
+            # Append integer to filename if multiple exposures
+            if block['configuration']['n_exp'] > 1:
+                block['configuration']['filename'] = block['configuration']['filename'] + '_%i' % i
 
-        # Save image, do WCS if filter in wcs_filters
-        if self.observatory.filter_wheel is not None:
-            if self.observatory.filter_wheel.Position in self.wcs_filters:
-                save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
-                        block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
-                self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
-                                            args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
-                                            daemon=True, name='wcs_threads'))
-                self._wcs_threads[-1].start()
+            # WCS thread cleanup
+            self._wcs_threads = [t for t in self._wcs_threads if t.is_alive()]
+
+            # Save image, do WCS if filter in wcs_filters
+            if self.observatory.filter_wheel is not None:
+                if self.observatory.filter_wheel.Position in self.wcs_filters:
+                    save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
+                            block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
+                    self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
+                                                args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
+                                                daemon=True, name='wcs_threads'))
+                    self._wcs_threads[-1].start()
+                else:
+                    save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
+                            block['configuration']['filename'], frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
+                    logger.info('Current filter not in wcs filters, skipping WCS solve...')
             else:
                 save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
-                        block['configuration']['filename'], frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
-                logger.info('Current filter not in wcs filters, skipping WCS solve...')
-        else:
-            save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
-                        block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
-            self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
-                                            args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
-                                            daemon=True, name='wcs_threads'))
-            self._wcs_threads[-1].start()
+                            block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
+                self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
+                                                args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
+                                                daemon=True, name='wcs_threads'))
+                self._wcs_threads[-1].start()
+
+        # If multiple exposures, update filename as a list 
+        if block['configuration']['n_exp'] > 1:
+            block['configuration']['filename'] = [block['configuration']['filename'] + '_%i' % i for i in range(block['configuration']['n_exp'])]
 
         # Set block status to done
         self._current_block = None
