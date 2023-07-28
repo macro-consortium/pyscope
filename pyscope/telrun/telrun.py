@@ -34,7 +34,7 @@ observing_block_config = {
         'comment':'',
         'status':'N',
         'status_message':'unprocessed'
-    }
+        }
 
 _gui_font = tk.font.Font(family='Segoe UI', size=10)
 
@@ -50,7 +50,7 @@ class TelrunOperator:
         self._schedule = None
         self._schedule_last_modified = 0
         self._best_focus_result = None
-        self._hardware_status = None
+        self._hardware_status = ''
         self._wcs_threads = []
 
         # Read-only variables without kwarg setters
@@ -63,18 +63,18 @@ class TelrunOperator:
         self._previous_block_index = None
         self._next_block = None
         self._next_block_index = None
-        self._autofocus_status = None
-        self._camera_status = None
-        self._cover_calibrator_status = None
-        self._dome_status = None
-        self._filter_wheel_status = None
-        self._focuser_status = None
-        self._observing_conditions_status = None
-        self._rotator_status = None
-        self._safety_monitor_status = None
-        self._switch_status = None
-        self._telescope_status = None
-        self._wcs_status = None
+        self._autofocus_status = ''
+        self._camera_status = ''
+        self._cover_calibrator_status = ''
+        self._dome_status = ''
+        self._filter_wheel_status = ''
+        self._focuser_status = ''
+        self._observing_conditions_status = ''
+        self._rotator_status = ''
+        self._safety_monitor_status = ''
+        self._switch_status = ''
+        self._telescope_status = ''
+        self._wcs_status = ''
 
         # Read-only variables with kwarg setters
         self._telhome = None
@@ -489,7 +489,15 @@ class TelrunOperator:
 
         self._schedule = None
     
-    def execute_block(self, block):
+    def execute_block(self, *args, **kwargs):
+
+        # Check for block
+        if len(args) > 1:
+            raise TypeError('execute_block() takes 1 positional argument but %i were given' % len(args))
+        elif len(args) == 1:
+            block = args[0]
+        elif len(args) == 0:
+            block = kwargs.get('block', None)
 
         # Turn ObservingBlock into Row
         if type(block) is astroplan.ObservingBlock:
@@ -502,6 +510,18 @@ class TelrunOperator:
                 block.target.dec.dms,
                 block.configuration], 
                 names=('target', 'start time (UTC)', 'end time (UTC)', 
+                'duration (minutes)', 'ra', 'dec', 'configuration'))
+        elif type(block) is None:
+            block = table.Row([
+                kwargs.get('target', None),
+                None,
+                None,
+                kwargs.get('duration', None),
+                kwargs['ra'],
+                kwargs['dec'],
+                kwargs['configuration']
+                ], 
+                names=('target', 'start time (UTC)', 'end time (UTC)',
                 'duration (minutes)', 'ra', 'dec', 'configuration'))
         elif type(block) is not table.Row:
             raise TypeError('Block must be an astroplan ObservingBlock or astropy Row object.')
@@ -516,16 +536,16 @@ class TelrunOperator:
         block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
         block['configuration']['do_not_interrupt'] = block['configuration'].get('do_not_interrupt', observing_block_config['do_not_interrupt'])
         block['configuration']['repositioning'] = block['configuration'].get('repositioning', observing_block_config['repositioning'])
-        block['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
-        block['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
-        block['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
-        block['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
-        block['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
-        block['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
-        block['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
-        block['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
-        block['status'] = block['configuration'].get('status', observing_block_config['status'])
-        block['status_message'] = block['configuration'].get('status_message', observing_block_config['status_message'])
+        block['configuration']['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
+        block['configuration']['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
+        block['configuration']['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
+        block['configuration']['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
+        block['configuration']['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
+        block['configuration']['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
+        block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
+        block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
+        block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
+        block['configuration']['status_message'] = block['configuration'].get('status_message', observing_block_config['status_message'])
 
         # Input validation
         block['target'] = str(block['target'])
@@ -572,32 +592,32 @@ class TelrunOperator:
             block['configuration']['repositioning'][0] = int(block['configuration']['repositioning'][0]) if block['configuration']['repositioning'][0] is not None else None
             block['configuration']['repositioning'][1] = int(block['configuration']['repositioning'][1]) if block['configuration']['repositioning'][1] is not None else None
         
-        block['shutter_state'] = bool(block['shutter_state'])
-        block['readout'] = int(block['readout'])
+        block['configuration']['shutter_state'] = bool(block['configuration']['shutter_state'])
+        block['configuration']['readout'] = int(block['configuration']['readout'])
 
-        if type(block['binning']) not in [iter, tuple, list]:
+        if type(block['configuration']['binning']) not in [iter, tuple, list]:
             raise TypeError('binning must be an iterable of integers.')
         else:
-            block['binning'][0] = int(block['binning'][0])
-            block['binning'][1] = int(block['binning'][1])
+            block['configuration']['binning'][0] = int(block['configuration']['binning'][0])
+            block['configuration']['binning'][1] = int(block['configuration']['binning'][1])
         
-        if type(block['frame_position']) not in [iter, tuple, list]:
+        if type(block['configuration']['frame_position']) not in [iter, tuple, list]:
             raise TypeError('frame_position must be an iterable of pixel coordinates.')
         else:
-            block['frame_position'][0] = int(block['frame_position'][0])
-            block['frame_position'][1] = int(block['frame_position'][1])
+            block['configuration']['frame_position'][0] = int(block['configuration']['frame_position'][0])
+            block['configuration']['frame_position'][1] = int(block['configuration']['frame_position'][1])
 
-        if type(block['frame_size']) not in [iter, tuple, list]:
+        if type(block['configuration']['frame_size']) not in [iter, tuple, list]:
             raise TypeError('frame_size must be an iterable of pixel sizes.')
         else:
-            block['frame_size'][0] = int(block['frame_size'][0])
-            block['frame_size'][1] = int(block['frame_size'][1])
+            block['configuration']['frame_size'][0] = int(block['configuration']['frame_size'][0])
+            block['configuration']['frame_size'][1] = int(block['configuration']['frame_size'][1])
         
-        block['pm_ra_cosdec'] = u.Quantity(block['pm_ra_cosdec'], unit=u.arcsec/u.hour)
-        block['pm_dec'] = u.Quantity(block['pm_dec'], unit=u.arcsec/u.hour)
-        block['comment'] = str(block['comment'])
-        block['status'] = str(block['status'])
-        block['status_message'] = str(block['status_message'])
+        block['configuration']['pm_ra_cosdec'] = u.Quantity(block['configuration']['pm_ra_cosdec'], unit=u.arcsec/u.hour)
+        block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
+        block['configuration']['comment'] = str(block['configuration']['comment'])
+        block['configuration']['status'] = str(block['configuration']['status'])
+        block['configuration']['status_message'] = str(block['configuration']['status_message'])
 
         self._current_block = block
 
@@ -741,19 +761,19 @@ class TelrunOperator:
                     for i in range(self.observatory.filter_wheel.Position+1, len(self.observatory.filters)):
                         if self.observatory.filters[i] in self.autofocus_filters:
                             self._filter_wheel_status = 'Changing filter'
-                            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else None
+                            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
                             self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                             self._filter_wheel_status = 'Idle'
-                            self._focuser_status = 'Idle' if self.observatory.focuser is not None else None
+                            self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                             break
                     else:
                         for i in range(self.observatory.filter_wheel.Position-1):
                             if self.observatory.filters[i] in self.autofocus_filters:
                                 self._filter_wheel_status = 'Changing filter'
-                                self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else None
+                                self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
                                 self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                                 self._filter_wheel_status = 'Idle'
-                                self._focuser_status = 'Idle' if self.observatory.focuser is not None else None
+                                self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                                 break
                         else:
                             raise TelrunError('No filters in filter wheel are autofocus filters')
@@ -805,6 +825,17 @@ class TelrunOperator:
                     and best_focus_result is not None):
                 logger.info('Previous target is same ra and dec, skipping initial slew...')
                 slew = False
+            else:
+                logger.info('Previous target is different ra and dec, slewing...')
+
+                logger.info('Turning off tracking...')
+                self.observatory.telescope.Tracking = False
+                self.observatory.telescope.DeclinationRate = 0
+                self.observatory.telescope.RightAscensionRate = 0
+
+                if self.observatory.rotator is not None:
+                    logger.info('Turning off derotation...')
+                    self.observatory.stop_derotation_thread()
         
         target = coord.SkyCoord(ra=block['ra'].hourangle, dec=block['dec'].deg, unit=(u.hourangle, u.deg))
         
@@ -820,49 +851,50 @@ class TelrunOperator:
 
                     for i in range(self.observatory.filter_wheel.Position+1, len(self.observatory.filters)):
                         if self.observatory.filters[i] in self.recenter_filters:
-                            self._hardware_status = None
+                            self._hardware_status = ''
                             t = threading.Thread(target=self._is_process_complete, 
                                 args=(self._hardware_status, self.hardware_timeout),
                                 daemon=True, name='is_filter_change_done_thread')
                             t.start()
                             self._filter_wheel_status = 'Changing filter'
-                            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else None
+                            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
                             self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                             self._filter_wheel_status = 'Idle'
-                            self._focuser_status = 'Idle' if self.observatory.focuser is not None else None
+                            self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                             break
                     else:
                         for i in range(self.observatory.filter_wheel.Position-1):
                             if self.observatory.filters[i] in self.recenter_filters:
-                                self._hardware_status = None
+                                self._hardware_status = ''
                                 t = threading.Thread(target=self._is_process_complete,
                                     args=(self._hardware_status, self.hardware_timeout),
                                     daemon=True, name='is_filter_change_done_thread')
                                 t.start()
                                 self._filter_wheel_status = 'Changing filter'
-                                self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else None
+                                self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
                                 self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
                                 self._filter_wheel_status = 'Idle'
-                                self._focuser_status = 'Idle' if self.observatory.focuser is not None else None
+                                self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                                 break
                         else:
                             raise TelrunError('No filters in filter wheel are recenter filters')
 
+            logger.info('Setting camera readout mode to default for recentering...')
             self.observatory.camera.ReadoutMode = self.default_readout
             
             if not slew: add_attempt = 1
             else: add_attempt = 0
 
-            self._hardware_status = None
+            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
                 args=(self._hardware_status, self.hardware_timeout),
                 daemon=True, name='is_recenter_done_thread')
             t.start()
             self._camera_status = 'Recentering'
             self._telescope_status = 'Recentering'
-            self._wcs_status = 'Recentering' if self.observatory.wcs is not None else None
-            self._dome_status = 'Recentering' if self.observatory.dome is not None else None
-            self._rotator_status = 'Recentering' if self.observatory.rotator is not None else None
+            self._wcs_status = 'Recentering' if self.observatory.wcs is not None else ''
+            self._dome_status = 'Recentering' if self.observatory.dome is not None else ''
+            self._rotator_status = 'Recentering' if self.observatory.rotator is not None else ''
             self._hardware_status = self.observatory.recenter(obj=target, 
                         target_x_pixel=block['configuration']['respositioning'][0], target_y_pixel=block['configuration']['respositioning'][1],
                         initial_offset_dec=self.recenter_initial_offset_dec,
@@ -877,9 +909,9 @@ class TelrunOperator:
             centered = self._hardware_status
             self._camera_status = 'Idle'
             self._telescope_status = 'Idle'
-            self._wcs_status = 'Idle' if self.observatory.wcs is not None else None
-            self._dome_status = 'Idle' if self.observatory.dome is not None else None
-            self._rotator_status = 'Idle' if self.observatory.rotator is not None else None
+            self._wcs_status = 'Idle' if self.observatory.wcs is not None else ''
+            self._dome_status = 'Idle' if self.observatory.dome is not None else ''
+            self._rotator_status = 'Idle' if self.observatory.rotator is not None else ''
 
             if not centered:
                 logger.warning('Recentering failed, continuing anyway...')
@@ -889,27 +921,27 @@ class TelrunOperator:
         elif slew and target is not None:
             logger.info('Slewing to source...')
 
-            self._hardware_status = None
+            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
                 args=(self._hardware_status, self.hardware_timeout),
                 daemon=True, name='is_slew_done_thread')
             t.start()
             self._telescope_status = 'Slewing'
-            self._dome_status = 'Slewing' if self.observatory.dome is not None else None
-            self._rotator_status = 'Slewing' if self.observatory.rotator is not None else None
+            self._dome_status = 'Slewing' if self.observatory.dome is not None else ''
+            self._rotator_status = 'Slewing' if self.observatory.rotator is not None else ''
             self._hardware_status = self.observatory.slew_to_coordinates(obj=target, control_dome=(self.dome is not None), 
             control_rotator=(self.rotator is not None), wait_for_slew=False, track=False)
         
         # Set filter and focus offset
         if self.filter_wheel is not None:
-            logger.info('Setting filter offset...')
-            self._hardware_status = None
+            logger.info('Setting filter and focus offset...')
+            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
                 args=(self._hardware_status, self.hardware_timeout),
                 daemon=True, name='is_filter_change_done_thread')
             t.start()
             self._filter_wheel_status = 'Changing filter'
-            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else None
+            self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
             self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=block['configuration']['filter'])
             self._filter_wheel_status = 'Idle'
 
@@ -1761,7 +1793,6 @@ class _BlockWidget(ttk.Frame):
         self.comment = rows.add_row('Comment:')
         self.status = rows.add_row('Status:')
         self.status_message = rows.add_row('Status Message:')
-
 
     def update(self, block):
         if block is None:
