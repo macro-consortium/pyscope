@@ -40,7 +40,7 @@ observing_block_config = {
 _gui_font = tk.font.Font(family='Segoe UI', size=10)
 
 class TelrunOperator:
-    def __init__(self, config_file_path=None, gui=False, **kwargs):
+    def __init__(self, config_path='./config/', gui=False, **kwargs):
 
         # Non-accessible variables
         self._config = configparser.ConfigParser()
@@ -78,7 +78,10 @@ class TelrunOperator:
         self._wcs_status = ''
 
         # Read-only variables with kwarg setters
-        self._telhome = None
+        self._config_path = config_path
+        self._schedules_path = './schedules/'
+        self._images_path = './images/'
+        self._log_path = './logs/'
         self._observatory = None
         self._dome_type = None # None, 'dome' or 'safety-monitor' or 'both'
 
@@ -111,19 +114,22 @@ class TelrunOperator:
         self._recenter_tolerance = 3
         self._recenter_exposure = 10
         self._recenter_save_images = False
-        self._recenter_save_path = self.telhome + '/images/recenter/'
+        self._recenter_save_path = './'
         self._recenter_sync_mount = False
         self._hardware_timeout = 120
         self._wcs_filters = None
         self._wcs_timeout = 30
 
         # Load config file if there
-        if config_file_path is not None:
+        if os.path.isfile(self._config_path):
             logger.info('Using config file to initialize telrun: %s' % config_file_path)
             try: self._config.read(config_file_path)
             except: raise TelrunError('Could not read config file: %s' % config_file_path)
 
-            self._telhome = os.path.abspath(os.path.dirname(config_file_path) + '/../')
+            self._config_path = os.path.abspath(os.path.dirname(self._config_path))
+            self._schedules_path = self._config.get('default', 'schedules_path')
+            self._images_path = self._config.get('default', 'images_path')
+            self._logs_path = self._config.get('default', 'logs_path')
             self._observatory = self._config.get('default', 'observatory')
             self._dome_type = self._config.get('default', 'dome_type')
             self._initial_home = self._config.getboolean('default', 'initial_home')
@@ -161,13 +167,9 @@ class TelrunOperator:
             self._wcs_timeout = self._config.getfloat('default', 'wcs_timeout')
         
         # Load kwargs
-        
-        # Parse telhome
-        self._telhome = kwargs.get('telhome', self._telhome)
-        if self._telhome is None:
-            self._telhome = os.path.abspath(os.getcwd())
-        setup_telrun_observatory(self._telhome)
-        self._config['default']['telhome'] = str(self._telhome)
+        self._schedules_path = kwargs.get('schedules_path', self._schedules_path)
+        self._images_path = kwargs.get('images_path', self._images_path)
+        self._logs_path = kwargs.get('logs_path', self._logs_path)
 
         # Parse observatory
         self._observatory = kwargs.get('observatory', self._observatory)
@@ -177,7 +179,7 @@ class TelrunOperator:
             self._config['default']['observatory'] = self._observatory
             self._observatory = Observatory(config_file_path=self._observatory)
         elif type(self._observatory) is Observatory:
-            self._config['default']['observatory'] = str(self.telhome + '/config/observatory.cfg')
+            self._config['default']['observatory'] = str(self.config_path + 'observatory.cfg')
             self.observatory.save_config(self._config['default']['observatory'])
         else:
             raise TelrunError('observatory must be a string representing a config file path \
@@ -278,10 +280,9 @@ class TelrunOperator:
             self._wcs_status = 'Idle'
     
     def save_config(self, filename):
-        save_dir = self.telhome + '/config/'
-        self.observatory.save_config(save_dir+'observatory.cfg')
-        self._config['default']['observatory'] = save_dir+'observatory.cfg'
-        with open(save_dir + filename, 'w') as config_file:
+        self.observatory.save_config(self.config_path+'observatory.cfg')
+        self._config['default']['observatory'] = self.config_path+'observatory.cfg'
+        with open(self.config_path + filename, 'w') as config_file:
             self._config.write(config_file)
 
     def mainloop(self):
@@ -294,10 +295,13 @@ class TelrunOperator:
 
         logger.info('Starting main operation loop...')
         while True:
-            if os.path.exists(self.telhome + '/schedules/telrun.ecsv'):
-                if os.path.getmtime(self.telhome + '/schedules/telrun.ecsv') > self._schedule_last_modified:
+            # Check for new schedule
+            filename = (self.schedules_path + 'telrun_'+
+                            self.observatory.observatory_time().strftime('%m-%d-%Y')+'.ecsv')
+            if os.path.exists(filename):
+                if os.path.getmtime(self.schedules_path + 'telrun.ecsv') > self._schedule_last_modified:
                     logger.info('New schedule detected, reloading...')
-                    self._schedule_last_modified = os.path.getmtime(self.telhome + '/schedules/telrun.ecsv')
+                    self._schedule_last_modified = os.path.getmtime(filename)
 
                     if self._execution_thread is not None:
                         logger.info('Terminating current schedule execution thread...')
@@ -308,11 +312,11 @@ class TelrunOperator:
                     self._execution_event.clear()
 
                     logger.info('Reading new schedule...')
-                    schedule = table.Table.read(self.telhome + '/schedules/telrun.ecsv', format='ascii.ecsv')
+                    schedule = table.Table.read(filename, format='ascii.ecsv')
 
                     logger.info('Starting new schedule execution thread...')
                     self._execution_thread = threading.Thread(target=self._execute_schedule, 
-                        args=(schedule,), daemon=True, name='Telrun Schedule Execution Thread')
+                        args=(schedule,filename), daemon=True, name='Telrun Schedule Execution Thread')
                     self._execution_thread.start()
                     logger.info('Started.')
                 
@@ -321,7 +325,7 @@ class TelrunOperator:
             else:
                 time.sleep(1)
     
-    def execute_schedule(self, schedule):
+    def execute_schedule(self, schedule, *args):
         
         if schedule is str:
             schedule = table.Table.read(schedule, format='ascii.ecsv')
@@ -349,9 +353,17 @@ class TelrunOperator:
 
         self._schedule = schedule
 
+        if args[0] is not None:
+            filename = args[0]
+        else:
+            filename = (self.schedules_path + 'telrun_' + 
+                self.observatory.observatory_time().strftime('%m-%d-%Y') + '.ecsv')
+
         if self.write_to_schedule_log:
-            if os.path.exists(self.telhome + '/logs/schedule-log.ecsv'):
-                schedule_log = table.Table.read(self.telhome + '/logs/schedule-log.ecsv', format='ascii.ecsv')
+            if os.path.exists(self.logs_path
+                +filename.split('.ecsv')[0].split('/')[-1] + '-log.ecsv'):
+                schedule_log = table.Table.read(self.logs_path
+                +filename.split('.')[0].split('/')[-1] + '-log.ecsv', format='ascii.ecsv')
             else:
                 schedule_log = astroplan.Schedule(0, 0).to_table()
         
@@ -476,12 +488,15 @@ class TelrunOperator:
                     self._skipped_block_count += 1
                 
                 self._schedule[block_index] = block
-                self._schedule.write(self.telhome + '/schedules/telrun.ecsv', format='ascii.ecsv', overwrite=True)
-                self._schedule_last_modified = os.path.getmtime(self.telhome + '/schedules/telrun.ecsv')
+                    
+                self._schedule.write(filename, format='ascii.ecsv', overwrite=True)
+                self._schedule_last_modified = os.path.getmtime(filename)
                 
                 if self.write_to_schedule_log:
                     schedule_log.add_row(block)
-                    schedule_log.write(self.telhome + '/logs/schedule-log.ecsv', format='ascii.ecsv', overwrite=True)
+                    schedule_log.write(self.logs_path
+                        +filename.split('.ecsv')[0].split('/')[-1] 
+                        + '-log.ecsv', format='ascii.ecsv')
 
         logger.info('Block loop complete')
         self._skipped_block_count = 0
@@ -489,7 +504,7 @@ class TelrunOperator:
         self._next_block = None
 
         logger.info('Generating summary report')
-        '''summary_report(self.telhome+'/schedules/telrun.sls', self.telhome+'/logs/'+
+        '''summary_report(self.telpath+'/schedules/telrun.sls', self.telpath+'/logs/'+
             self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')'''
 
         self._schedule = None
@@ -1020,21 +1035,21 @@ class TelrunOperator:
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
                 if self.observatory.filter_wheel.Position in self.wcs_filters:
-                    save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
+                    save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
                     self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
-                                                args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
+                                                args=(self.images_path + block['configuration']['filename']+'.tmp',), 
                                                 daemon=True, name='wcs_threads'))
                     self._wcs_threads[-1].start()
                 else:
-                    save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
+                    save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename'], frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
                     logger.info('Current filter not in wcs filters, skipping WCS solve...')
             else:
-                save_success = self.observatory.save_last_image(self.telhome + '/images/' + 
+                save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
                 self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
-                                                args=(self.telhome + '/images/' + block['configuration']['filename']+'.tmp',), 
+                                                args=(self.images_path + block['configuration']['filename']+'.tmp',), 
                                                 daemon=True, name='wcs_threads'))
                 self._wcs_threads[-1].start()
 
@@ -1261,8 +1276,8 @@ class TelrunOperator:
         return self._wcs_status
     
     @property
-    def telhome(self):
-        return self._telhome
+    def telpath(self):
+        return self._telpath
 
     @property
     def observatory(self):
@@ -1697,7 +1712,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.wind_speed = rows2.add_row('Wind Speed:')
 
         rows3 = _Rows(self, 6)
-        self.telhome = rows3.add_row('Telhome:')
+        self.telpath = rows3.add_row('Telhome:')
         self.site_name = rows3.add_row('Site Name:')
         self.dome_type = rows3.add_row('Dome Type:')
         self.initial_home = rows3.add_row('Initial Home:')
@@ -1780,7 +1795,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.wind_gust.set(str(self._parent._telrun.observing_conditions.WindGust))
         self.wind_speed.set(str(self._parent._telrun.observing_conditions.WindSpeed))
 
-        self.telhome.set(self._parent._telrun.telhome)
+        self.telpath.set(self._parent._telrun.telpath)
         self.site_name.set(self._parent._telrun.observatory.site_name)
         self.dome_type.set(self._parent._telrun.dome_type)
         self.initial_home.set(str(self._parent._telrun.initial_home))

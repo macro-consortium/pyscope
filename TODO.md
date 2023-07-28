@@ -7,11 +7,6 @@
     <li>wcs_platesolve3</li>
     </ul>
 
-<li>telrun</li>
-    <ul>
-    <li>telhome -> custom paths, change schedule-naming convention</li>
-    </ul>
-
 <li>schedtel</li>
     <ul>
     <li>Enable priority keyword</li>
