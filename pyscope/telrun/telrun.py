@@ -478,7 +478,7 @@ class TelrunOperator:
                     schedule_log.add_row(block)
                     schedule_log.write(self.telhome + '/logs/schedule-log.ecsv', format='ascii.ecsv', overwrite=True)
 
-        logger.info('Scan loop complete')
+        logger.info('Block loop complete')
         self._skipped_block_count = 0
         self._previous_block = None
         self._next_block = None
@@ -604,12 +604,12 @@ class TelrunOperator:
         # Check 1: Block status?
         if self.check_block_status:
             if block['configuration']['status'] != 'N':
-                logger.info('Scan status is not N, skipping...')
+                logger.info('Block status is not N, skipping...')
                 self._current_block = None
                 if self.update_block_status:
                     block['configuration']['status'] = 'F'
-                    block['configuration']['status_message'] = 'Scan already attempted to be processed'
-                return ('F', 'Scan already attempted to be processed', block)
+                    block['configuration']['status_message'] = 'Block already attempted to be processed'
+                return ('F', 'Block already attempted to be processed', block)
     
         # Check 2: Wait for block start time?
         if block['start time (UTC)'] is None:
@@ -628,7 +628,7 @@ class TelrunOperator:
                 block['configuration']['status_message'] = 'Exceeded max_block_late_time'
             return ('F', 'Exceeded max_block_late_time', block)
         elif self.wait_for_block_start_time and seconds_until_start_time > self.max_block_late_time:
-            logger.info('Scan start time exceeded max_block_late_time of %i seconds, skipping...' % self.max_block_late_time)
+            logger.info('Block start time exceeded max_block_late_time of %i seconds, skipping...' % self.max_block_late_time)
             self._current_block = None
             if self.update_block_status:
                 block['configuration']['status'] = 'F'
@@ -643,7 +643,7 @@ class TelrunOperator:
             seconds_until_start_time = (block['start time (UTC)'] - self.observatory.observatory_time()).sec
         else:
             if seconds_until_start_time > 0:
-                logger.info('Scan start time in %.1f seconds' % seconds_until_start_time)
+                logger.info('Block start time in %.1f seconds' % seconds_until_start_time)
         
         # Check 3: Dome status?
         match self.dome_type:
@@ -1511,16 +1511,16 @@ class TelrunGUI(ttk.Frame):
         self.system_status_widget = _SystemStatusWidget(self)
         self.system_status_widget.grid(row=1, column=0, columnspan=3, sticky='sew')
 
-        ttk.Label(self, text='Previous Scan', font=_gui_font).grid(row=2, column=0, columnspan=1, sticky='sew')
-        self.previous_block_widget = _ScanWidget(self)
+        ttk.Label(self, text='Previous Block', font=_gui_font).grid(row=2, column=0, columnspan=1, sticky='sew')
+        self.previous_block_widget = _BlockWidget(self)
         self.previous_block_widget.grid(row=3, column=0, columnspan=1, sticky='new')
 
-        ttk.Label(self, text='Current Scan', font=_gui_font).grid(row=2, column=1, columnspan=1, sticky='sew')
-        self.current_block_widget = _ScanWidget(self)
+        ttk.Label(self, text='Current Block', font=_gui_font).grid(row=2, column=1, columnspan=1, sticky='sew')
+        self.current_block_widget = _BlockWidget(self)
         self.current_block_widget.grid(row=3, column=1, columnspan=1, sticky='new')
 
-        ttk.Label(self, text='Next Scan', font=_gui_font).grid(row=2, column=2, columnspan=1, sticky='sew')
-        self.next_block_widget = _ScanWidget(self)
+        ttk.Label(self, text='Next Block', font=_gui_font).grid(row=2, column=2, columnspan=1, sticky='sew')
+        self.next_block_widget = _BlockWidget(self)
         self.next_block_widget.grid(row=3, column=2, columnspan=1, sticky='new')
 
         self.log_text = ScrolledText(self, width=80, height=20, state='disabled')
@@ -1563,6 +1563,7 @@ class _SystemStatusWidget(ttk.Frame):
     def build_gui(self):
         
         rows0 = _Rows(self, 0)
+        self.operator_mode = rows0.add_row('Operator Mode:')
         self.sun_elevation = rows0.add_row('Sun Elevation:')
         self.moon_elevation = rows0.add_row('Moon Elevation:')
         self.moon_illumination = rows0.add_row('Moon Illumination:')
@@ -1570,10 +1571,10 @@ class _SystemStatusWidget(ttk.Frame):
         self.ut = rows0.add_row('UT:')
         self.last_autofocus_time = rows0.add_row('Last Autofocus Time:')
         self.time_until_next_autofocus = rows0.add_row('Time Until Next Autofocus:')
-        self.last_block_status = rows0.add_row('Last Scan Status:')
-        self.time_until_block_start = rows0.add_row('Time Until Scan Start:')
-        self.skipped_block_count = rows0.add_row('Skipped Scan Count:')
-        self.total_block_count = rows0.add_row('Total Scan Count:')
+        self.time_until_block_start = rows0.add_row('Time Until Block Start:')
+        self.skipped_block_count = rows0.add_row('Skipped Block Count:')
+        self.total_block_count = rows0.add_row('Total Block Count:')
+        self.schedule_last_modified = rows0.add_row('Schedule Last Modified:')
 
         rows1 = _Rows(self, 2)
         self.autofocus_status = rows1.add_row('Autofocus Status:')
@@ -1605,32 +1606,62 @@ class _SystemStatusWidget(ttk.Frame):
         self.wind_speed = rows2.add_row('Wind Speed:')
 
         rows3 = _Rows(self, 6)
+        self.telhome = rows3.add_row('Telhome:')
+        self.site_name = rows3.add_row('Site Name:')
+        self.dome_type = rows3.add_row('Dome Type:')
+        self.initial_home = rows3.add_row('Initial Home:')
         self.wait_for_sun = rows3.add_row('Wait For Sun:')
         self.max_solar_elev = rows3.add_row('Max Solar Elevation:')
+        self.check_safety_monitors = rows3.add_row('Check Safety Monitors:')
         self.wait_for_cooldown = rows3.add_row('Wait For Cooldown:')
         self.default_readout = rows3.add_row('Default Readout:')
-        self.autofocus_interval = rows3.add_row('Autofocus Interval:')
-        self.autofocus_filters = rows3.add_row('Autofocus Filters:')
-        self.autofocus_use_current_pointing = rows3.add_row('Autofocus Use Current Pointing:')
-        self.wait_for_block_start_time = rows3.add_row('Wait For Scan Start Time:')
-        self.max_block_late_time = rows3.add_row('Max Scan Late Time:')
-        self.preslew_time = rows3.add_row('Preslew Time:')
-        self.recenter_filters = rows3.add_row('Recenter Filters:')
-        self.wcs_filters = rows3.add_row('WCS Filters:')
+        self.check_block_status = rows3.add_row('Check Block Status:')
+        self.update_block_status = rows3.add_row('Update Block Status:')
+        self.write_to_schedule_log = rows3.add_row('Write To Schedule Log:')
+
+        rows4 = _Rows(self, 8)
+        self.autofocus_interval = rows4.add_row('Autofocus Interval:')
+        self.autofocus_exposure = rows4.add_row('Autofocus Exposure:')
+        self.autofocus_midpoint = rows4.add_row('Autofocus Midpoint:')
+        self.autofocus_nsteps = rows4.add_row('Autofocus NSteps:')
+        self.autofocus_step_size = rows4.add_row('Autofocus Step Size:')
+        self.autofocus_use_current_pointing = rows4.add_row('Autofocus Use Current Pointing:')
+        self.autofocus_timeout = rows4.add_row('Autofocus Timeout:')
+        self.wait_for_block_start_time = rows4.add_row('Wait For Block Start Time:')
+        self.max_block_late_time = rows4.add_row('Max Block Late Time:')
+        self.preslew_time = rows4.add_row('Preslew Time:')
+
+        rows5 = _Rows(self, 10)
+        self.recenter_filters = rows5.add_row('Recenter Filters:')
+        self.recenter_initial_offset_dec = rows5.add_row('Recenter Initial Offset Dec:')
+        self.recenter_check_and_refine = rows5.add_row('Recenter Check And Refine:')
+        self.recenter_max_attempts = rows5.add_row('Recenter Max Attempts:')
+        self.recenter_tolerance = rows5.add_row('Recenter Tolerance:')
+        self.recenter_exposure = rows5.add_row('Recenter Exposure:')
+        self.recenter_save_images = rows5.add_row('Recenter Save Images:')
+        self.recenter_save_path = rows5.add_row('Recenter Save Path:')
+        self.recenter_sync_mount = rows5.add_row('Recenter Sync Mount:')
+        self.hardware_timeout = rows5.add_row('Hardware Timeout:')
+        self.wcs_filters = rows5.add_row('WCS Filters:')
+        self.wcs_timeout = rows5.add_row('WCS Timeout:')
 
     def update(self):
-        self.sun_elevation.set(self._parent._telrun.observatory.sun_altaz()[0])
-        self.moon_elevation.set(self._parent._telrun.observatory.moon_altaz()[0])
-        self.moon_illumination.set(self._parent._telrun.observatory.moon_illumination())
-        self.lst.set(self._parent._telrun.observatory.lst())
+        if self._parent._telrun._execution_thread is not None:
+            operator_mode = 'Fully robotic'
+        else:
+            operator_mode = 'Interactive'
+        self.operator_mode.set(operator_mode)
+        self.sun_elevation.set(str(self._parent._telrun.observatory.sun_altaz()[0]))
+        self.moon_elevation.set(str(self._parent._telrun.observatory.moon_altaz()[0]))
+        self.moon_illumination.set(str(self._parent._telrun.observatory.moon_illumination()))
+        self.lst.set(self._parent._telrun.observatory.lst().iso)
         self.ut.set(self._parent._telrun.observatory.observatory_time.iso)
         self.last_autofocus_time.set(astrotime.Time(self._parent._telrun.last_autofocus_time, format='unix').iso)
-        self.time_until_next_autofocus.set(self._parent._telrun.last_autofocus_time + self._parent._telrun.autofocus_interval - Time.now())
-        # 
-        # 
-        self.time_until_block_start.set((self._parent._telrun.current_block['start time (UTC)'] - self.observatory.observatory_time()).sec)
-        self.skipped_block_count.set(self._parent._telrun.skipped_block_count)
-        self.total_block_count.set(len(self._parent._telrun._schedule))
+        self.time_until_next_autofocus.set(str(self._parent._telrun.last_autofocus_time + self._parent._telrun.autofocus_interval - time.time()))
+        self.time_until_block_start.set((self._parent._telrun.current_block['start time (UTC)'] - self.observatory.observatory_time()).second if self._parent._telrun.current_block is not None else '')
+        self.skipped_block_count.set(str(self._parent._telrun.skipped_block_count))
+        self.total_block_count.set(str(len(self._parent._telrun._schedule)))
+        self.schedule_last_modified.set(str(astrotime.Time(self._parent._telrun.schedule_last_modified, format='unix').iso))
 
         self.autofocus_status.set(self._parent._telrun.autofocus_status)
         self.camera_status.set(self._parent._telrun.camera_status)
@@ -1645,47 +1676,57 @@ class _SystemStatusWidget(ttk.Frame):
         self.telescope_status.set(self._parent._telrun.telescope_status)
         self.wcs_status.set(self._parent._telrun.wcs_status)
 
-        self.cloud_cover.set(self._parent._telrun.observing_conditions.CloudCover)
-        self.dew_point.set(self._parent._telrun.observing_conditions.DewPoint)
-        self.humidity.set(self._parent._telrun.observing_conditions.Humidity)
-        self.pressure.set(self._parent._telrun.observing_conditions.Pressure)
-        self.rainrate.set(self._parent._telrun.observing_conditions.RainRate)
-        self.sky_brightness.set(self._parent._telrun.observing_conditions.SkyBrightness)
-        self.sky_quality.set(self._parent._telrun.observing_conditions.SkyQuality)
-        # self.sky_temperature.set(self._parent._telrun.observing_conditions.SkyTemperature)
-        self.star_fwhm.set(self._parent._telrun.observing_conditions.StarFWHM)
-        self.temperature.set(self._parent._telrun.observing_conditions.Temperature)
-        self.wind_direction.set(self._parent._telrun.observing_conditions.WindDirection)
-        self.wind_gust.set(self._parent._telrun.observing_conditions.WindGust)
-        self.wind_speed.set(self._parent._telrun.observing_conditions.WindSpeed)
+        self.cloud_cover.set(str(self._parent._telrun.observing_conditions.CloudCover))
+        self.dew_point.set(str(self._parent._telrun.observing_conditions.DewPoint))
+        self.humidity.set(str(self._parent._telrun.observing_conditions.Humidity))
+        self.pressure.set(str(self._parent._telrun.observing_conditions.Pressure))
+        self.rain_rate.set(str(self._parent._telrun.observing_conditions.RainRate))
+        self.sky_brightness.set(str(self._parent._telrun.observing_conditions.SkyBrightness))
+        self.sky_quality.set(str(self._parent._telrun.observing_conditions.SkyQuality))
+        self.star_fwhm.set(str(self._parent._telrun.observing_conditions.StarFWHM))
+        self.temperature.set(str(self._parent._telrun.observing_conditions.Temperature))
+        self.wind_direction.set(str(self._parent._telrun.observing_conditions.WindDirection))
+        self.wind_gust.set(str(self._parent._telrun.observing_conditions.WindGust))
+        self.wind_speed.set(str(self._parent._telrun.observing_conditions.WindSpeed))
 
+        self.telhome.set(self._parent._telrun.telhome)
+        self.site_name.set(self._parent._telrun.observatory.site_name)
+        self.dome_type.set(self._parent._telrun.dome_type)
+        self.initial_home.set(str(self._parent._telrun.initial_home))
         self.wait_for_sun.set(str(self._parent._telrun.wait_for_sun))
         self.max_solar_elev.set(str(self._parent._telrun.max_solar_elev))
+        self.check_safety_monitors.set(str(self._parent._telrun.check_safety_monitors))
         self.wait_for_cooldown.set(str(self._parent._telrun.wait_for_cooldown))
         self.default_readout.set(str(self._parent._telrun.default_readout))
+        self.check_block_status.set(str(self._parent._telrun.check_block_status))
+        self.update_block_status.set(str(self._parent._telrun.update_block_status))
+        self.write_to_schedule_log.set(str(self._parent._telrun.write_to_schedule_log))
+
         self.autofocus_interval.set(str(self._parent._telrun.autofocus_interval))
-
-        auto_filt = ''
-        for filt in self._parent._telrun.autofocus_filters:
-            auto_filt += filt + ', '
-        self.autofocus_filters.set(auto_filt)
-
+        self.autofocus_exposure.set(str(self._parent._telrun.autofocus_exposure))
+        self.autofocus_midpoint.set(str(self._parent._telrun.autofocus_midpoint))
+        self.autofocus_nsteps.set(str(self._parent._telrun.autofocus_nsteps))
+        self.autofocus_step_size.set(str(self._parent._telrun.autofocus_step_size))
         self.autofocus_use_current_pointing.set(str(self._parent._telrun.autofocus_use_current_pointing))
+        self.autofocus_timeout.set(str(self._parent._telrun.autofocus_timeout))
         self.wait_for_block_start_time.set(str(self._parent._telrun.wait_for_block_start_time))
         self.max_block_late_time.set(str(self._parent._telrun.max_block_late_time))
         self.preslew_time.set(str(self._parent._telrun.preslew_time))
 
-        recenter_filt = ''
-        for filt in self._parent._telrun.recenter_filters:
-            recenter_filt += filt + ', '
-        self.recenter_filters.set(recenter_filt)
+        self.recenter_filters.set(str(self._parent._telrun.recenter_filters))
+        self.recenter_initial_offset_dec.set(str(self._parent._telrun.recenter_initial_offset_dec))
+        self.recenter_check_and_refine.set(str(self._parent._telrun.recenter_check_and_refine))
+        self.recenter_max_attempts.set(str(self._parent._telrun.recenter_max_attempts))
+        self.recenter_tolerance.set(str(self._parent._telrun.recenter_tolerance))
+        self.recenter_exposure.set(str(self._parent._telrun.recenter_exposure))
+        self.recenter_save_images.set(str(self._parent._telrun.recenter_save_images))
+        self.recenter_save_path.set(str(self._parent._telrun.recenter_save_path))
+        self.recenter_sync_mount.set(str(self._parent._telrun.recenter_sync_mount))
+        self.hardware_timeout.set(str(self._parent._telrun.hardware_timeout))
+        self.wcs_filters.set(str(self._parent._telrun.wcs_filters))
+        self.wcs_timeout.set(str(self._parent._telrun.wcs_timeout))
 
-        wcs_filt = ''
-        for filt in self._parent._telrun.wcs_filters:
-            wcs_filt += filt + ', '
-        self.wcs_filters.set(wcs_filt)
-
-class _ScanWidget(ttk.Frame):
+class _BlockWidget(ttk.Frame):
     def __init__(self, parent):
         ttk.Frame.__init__(self, parent)
         self._parent = parent
@@ -1696,68 +1737,84 @@ class _ScanWidget(ttk.Frame):
     def build_gui(self):
         rows = _Rows(self, 0)
 
-        self.filename = rows.add_row('Filename:')
-        self.status = rows.add_row('Status:')
-        self.status_message = rows.add_row('Status Message:')
+        self.target = rows.add_row('Target:')
+        self.start_time = rows.add_row('Start Time:')
+        self.duration = rows.add_row('Duration:')
+        self.ra = rows.add_row('RA:')
+        self.dec = rows.add_row('Dec:')
         self.observer = rows.add_row('Observer:')
         self.obscode = rows.add_row('Observer Code:')
+        self.filename = rows.add_row('Filename:')
         self.title = rows.add_row('Title:')
-        self.target_name = rows.add_row('Target Name:')
-        self.skycoord = rows.add_row('SkyCoord:')
-        self.proper_motion = rows.add_row('Proper Motion:')
-        self.start_time = rows.add_row('Start Time:')
-        self.do_not_interrupt = rows.add_row('Interrupt Allowed:')
-        self.pos = rows.add_row('Requested Repositioning:')
+        self.filter = rows.add_row('Filter:')
+        self.exposure = rows.add_row('Exposure:')
+        self.n_exp = rows.add_row('N Exp:')
+        self.do_not_interrupt = rows.add_row('Do Not Interrupt:')
+        self.respositioning = rows.add_row('Respositioning:')
+        self.shutter_state = rows.add_row('Shutter State:')
+        self.readout = rows.add_row('Readout:')
         self.binning = rows.add_row('Binning:')
-        self.subframe_start = rows.add_row('Subframe Start:')
-        self.subframe_size = rows.add_row('Subframe Size:')
-        self.readout = rows.add_row('Readout Mode:')
-        self.exposure = rows.add_row('Exposure Time (s):')
-        self.light = rows.add_row('Shutter Open:')
-        self.filt = rows.add_row('Filter:')
+        self.frame_position = rows.add_row('Frame Position:')
+        self.frame_size = rows.add_row('Frame Size:')
+        self.pm_ra_cosdec = rows.add_row('PM RA cosDec:')
+        self.pm_dec = rows.add_row('PM Dec:')
+        self.comment = rows.add_row('Comment:')
+        self.status = rows.add_row('Status:')
+        self.status_message = rows.add_row('Status Message:')
+
 
     def update(self, block):
         if block is None:
-            self.filename.set('')
-            self.status.set('')
-            self.status_message.set('')
+            self.target.set('')
+            self.start_time.set('')
+            self.duration.set('')
+            self.ra.set('')
+            self.dec.set('')
             self.observer.set('')
             self.obscode.set('')
+            self.filename.set('')
             self.title.set('')
-            self.target_name.set('')
-            self.skycoord.set('')
-            self.proper_motion.set('')
-            self.start_time.set('')
-            self.do_not_interrupt.set('')
-            self.pos.set('')
-            self.binning.set('')
-            self.subframe_start.set('')
-            self.subframe_size.set('')
-            self.readout.set('')
+            self.filter.set('')
             self.exposure.set('')
-            self.light.set('')
-            self.filt.set('')
-
+            self.n_exp.set('')
+            self.do_not_interrupt.set('')
+            self.respositioning.set('')
+            self.shutter_state.set('')
+            self.readout.set('')
+            self.binning.set('')
+            self.frame_position.set('')
+            self.frame_size.set('')
+            self.pm_ra_cosdec.set('')
+            self.pm_dec.set('')
+            self.comment.set('')
+            self.status.set('')
+            self.status_message.set('')
         else:
-            self.filename.set(block['configuration']['filename'])
-            self.status.set(block['configuration']['status'])
-            self.status_message.set(block['configuration']['status_message'])
-            self.observer.set(block['configuration']['observer'])
-            self.obscode.set(block['configuration']['obscode'])
-            self.title.set(block['configuration']['title'])
-            self.target_name.set(block['target'])
-            self.skycoord.set(block['ra'].to_string('hms')+' '+block['dec'].to_string('dms'))
-            self.proper_motion.set(block['configuration']['pm_ra_cosdec'].to_string(u.arcsec/u.hour) + ' ' + block['configuration']['pm_dec'].to_string(u.arcsec/u.hour))
-            self.start_time.set(block['start time (UTC)'].fits)
-            self.do_not_interrupt.set(block['configuration']['do_not_interrupt'])
-            self.pos.set(str(block['configuration']['respositioning'][0]) + ', ' + str(block['configuration']['respositioning'][1]))
-            self.binning.set(str(block['configuration']['binning'][0]) + 'x' + str(block['configuration']['binning'][1]))
-            self.subframe_start.set(str(block['configuration']['frame_position'][0]) + ', ' + str(block['configuration']['frame_position'][1]))
-            self.subframe_size.set(str(block['configuration']['frame_size'][0]) + 'x' + str(block['configuration']['frame_size'][1]))
-            self.readout.set(block['configuration']['readout'])
-            self.exposure.set(block['configuration']['exposure'])
-            self.light.set(block['configuration']['shutter_state'])
-            self.filt.set(block['configuration']['filter'])
+            self.target.set(block['target'])
+            self.start_time.set(block['start_time'].iso)
+            self.duration.set(block['duration'].second)
+            self.ra.set(block['ra'].to_string('hms'))
+            self.dec.set(block['dec'].to_string('dms'))
+            self.observer.set(block['observer'])
+            self.obscode.set(block['obscode'])
+            self.filename.set(block['filename'])
+            self.title.set(block['title'])
+            self.filter.set(block['filter'])
+            self.exposure.set(str(block['exposure']))
+            self.n_exp.set(str(block['n_exp']))
+            self.do_not_interrupt.set(str(block['do_not_interrupt']))
+            self.respositioning.set(str(block['respositioning'][0])+'x'+str(block['respositioning'][1]))
+            self.shutter_state.set(str(block['shutter_state']))
+            self.readout.set(str(block['readout']))
+            self.binning.set(str(block['binning'][0])+'x'+str(block['binning'][1]))
+            self.frame_position.set(str(block['frame_position'][0])+','+str(block['frame_position'][1]))
+            self.frame_size.set(str(block['frame_size'][0])+'x'+str(block['frame_size'][1]))
+            self.pm_ra_cosdec.set(str(block['pm_ra_cosdec']))
+            self.pm_dec.set(str(block['pm_dec']))
+            self.comment.set(block['comment'])
+            self.status.set(block['status'])
+            self.status_message.set(block['status_message'])
+
 class _Rows:
     def __init__(self, parent, column):
         self._parent = parent

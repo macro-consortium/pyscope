@@ -11,6 +11,7 @@
     <ul>
     <li>telhome -> custom paths, change schedule-naming convention</li>
     <li>execute_block supports kwargs input</li>
+    <li>GUI display schedule</li>
     </ul>
 
 <li>schedtel</li>
