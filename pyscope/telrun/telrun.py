@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 observing_block_config = {
         'observer':'pyScope Observer',
-        'obscode':'pso',
-        'filename':'',
+        'code':'pso',
         'title':'pyScope Observation',
+        'filename':'',
         'filter':'',
         'exposure':0,
         'n_exp':1,
@@ -34,7 +34,7 @@ observing_block_config = {
         'pm_dec':u.Quantity(0, u.arcsec/u.hour),
         'comment':'',
         'status':'N',
-        'status_message':'unprocessed'
+        'message':'unprocessed'
         }
 
 _gui_font = tk.font.Font(family='Segoe UI', size=10)
@@ -482,7 +482,7 @@ class TelrunOperator:
                 else:
                     self._next_block = None
 
-                status, status_message, block = self.execute_block(block)
+                status, message, block = self.execute_block(block)
 
                 if status == 'F':
                     self._skipped_block_count += 1
@@ -557,7 +557,7 @@ class TelrunOperator:
                 self._current_block = None
                 if self.update_block_status:
                     block['configuration']['status'] = 'F'
-                    block['configuration']['status_message'] = 'Block already attempted to be processed'
+                    block['configuration']['message'] = 'Block already attempted to be processed'
                 return ('F', 'Block already attempted to be processed', block)
     
         # Check 2: Wait for block start time?
@@ -574,14 +574,14 @@ class TelrunOperator:
             self._current_block = None
             if self.update_block_status:
                 block['configuration']['status'] = 'F'
-                block['configuration']['status_message'] = 'Exceeded max_block_late_time'
+                block['configuration']['message'] = 'Exceeded max_block_late_time'
             return ('F', 'Exceeded max_block_late_time', block)
         elif self.wait_for_block_start_time and seconds_until_start_time > self.max_block_late_time:
             logger.info('Block start time exceeded max_block_late_time of %i seconds, skipping...' % self.max_block_late_time)
             self._current_block = None
             if self.update_block_status:
                 block['configuration']['status'] = 'F'
-                block['configuration']['status_message'] = 'Exceeded max_block_late_time'
+                block['configuration']['message'] = 'Exceeded max_block_late_time'
             return ('F', 'Exceeded max_block_late_time', block)
         else:
             logger.info('Waiting %.1f seconds (%.2f hours) for block start time...' % (
@@ -603,7 +603,7 @@ class TelrunOperator:
                         self._current_block = None
                         if self.update_block_status:
                             block['configuration']['status'] = 'F'
-                            block['configuration']['status_message'] = 'Dome shutter is not open'
+                            block['configuration']['message'] = 'Dome shutter is not open'
                         return ('F', 'Dome shutter is not open', block)
             
             case 'safety-monitor' | 'safety_monitor' | 'safetymonitor' | 'safety monitor':
@@ -618,7 +618,7 @@ class TelrunOperator:
                         self._current_block = None
                         if self.update_block_status:
                             block['configuration']['status'] = 'F'
-                            block['configuration']['status_message'] = 'Safety monitor indicates unsafe'
+                            block['configuration']['message'] = 'Safety monitor indicates unsafe'
                         return ('F', 'Dome safety monitor indicates unsafe', block)
             
             case 'both':
@@ -633,7 +633,7 @@ class TelrunOperator:
                         self._current_block = None
                         if self.update_block_status:
                             block['configuration']['status'] = 'F'
-                            block['configuration']['status_message'] = 'Safety monitor indicates unsafe'
+                            block['configuration']['message'] = 'Safety monitor indicates unsafe'
                         return ('F', 'Dome safety monitor indicates unsafe', block)
                 
                 if self.observatory.dome is not None and self.observatory.dome.CanSetShutter:
@@ -642,7 +642,7 @@ class TelrunOperator:
                         self._current_block = None
                         if self.update_block_status:
                             block['configuration']['status'] = 'F'
-                            block['configuration']['status_message'] = 'Dome shutter is not open'
+                            block['configuration']['message'] = 'Dome shutter is not open'
                         return ('F', 'Dome shutter is not open', block)
         
         # Check 4: Check safety monitors?
@@ -661,7 +661,7 @@ class TelrunOperator:
                 self._current_block = None
                 if self.update_block_status:
                     block['configuration']['status'] = 'F'
-                    block['configuration']['status_message'] = 'Safety monitor indicates unsafe'
+                    block['configuration']['message'] = 'Safety monitor indicates unsafe'
                 return ('F', 'Safety monitor indicates unsafe', block)
         
         # Check 5: Wait for sun?
@@ -672,7 +672,7 @@ class TelrunOperator:
             self._current_block = None
             if self.update_block_status:
                 block['configuration']['status'] = 'F'
-                block['configuration']['status_message'] = 'Sun altitude above limit'
+                block['configuration']['message'] = 'Sun altitude above limit'
             return ('F', 'Sun altitude above limit', block)
 
         # Check 6: Is autofocus needed?
@@ -998,7 +998,7 @@ class TelrunOperator:
         
         # Define custom header
         custom_header = {'OBSERVER': (block['configuration']['observer'], 'Name of observer'), 
-                            'OBSCODE': (block['configuration']['obscode'], 'Observing code'),
+                            'OBSCODE': (block['configuration']['code'], 'Observing code'),
                             'TARGET': (block['target'], 'Name of target if provided'),
                             'SCHEDTIT': (block['configuration']['title'], 'Title if provided'),
                             'SCHEDCOM': (block['configuration']['comment'], 'Comment if provided'),
@@ -1061,7 +1061,7 @@ class TelrunOperator:
         self._current_block = None
         if self.update_block_status:
             block['configuration']['status'] = 'S'
-            block['configuration']['status_message'] = 'Success'
+            block['configuration']['message'] = 'Success'
         return ('S', 'Success', block)
 
     def _async_wcs_solver(self, image_path):
@@ -1110,9 +1110,9 @@ class TelrunOperator:
 
         # Check for all required config vals, fill in defaults if not present
         block['configuration']['observer'] = block['configuration'].get('observer', observing_block_config['observer'])
-        block['configuration']['obscode'] = block['configuration'].get('obscode', observing_block_config['obscode'])
-        block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
+        block['configuration']['code'] = block['configuration'].get('code', observing_block_config['code'])
         block['configuration']['title'] = block['configuration'].get('title', observing_block_config['title'])
+        block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
         block['configuration']['filter'] = block['configuration'].get('filter', observing_block_config['filter'])
         block['configuration']['exposure'] = block['configuration'].get('exposure', observing_block_config['exposure'])
         block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
@@ -1127,7 +1127,7 @@ class TelrunOperator:
         block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
         block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
         block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
-        block['configuration']['status_message'] = block['configuration'].get('status_message', observing_block_config['status_message'])
+        block['configuration']['message'] = block['configuration'].get('message', observing_block_config['message'])
 
         # Input validation
         block['target'] = str(block['target'])
@@ -1138,23 +1138,23 @@ class TelrunOperator:
         block['dec'] = coord.Latitude(block['dec'])
 
         block['configuration']['observer'] = str(block['configuration']['observer'])
-        block['configuration']['obscode'] = str(block['configuration']['obscode'])
+        block['configuration']['code'] = str(block['configuration']['code'])
+        block['configuration']['title'] = str(block['configuration']['title'])
 
         block['configuration']['filename'] = str(block['configuration']['filename'])
         if block['configuration']['filename'] == '':
-            name = block['configuration']['obscode'] + '_'
+            name = block['configuration']['code'] + '_'
             if block['target'] != '':
                 name += block['target'].replace(' ', '-') + '_'
-            name += block['start time (UTC)'].datetime.strftime('%Y%m%dT%H%M%S') + '_'
-            name += block['configuration']['exposure'] + 's_'
-            name += 'FILT-'+block['configuration']['filter'] + '_'
-            name += 'BIN-'+block['configuration']['binning'] + '_'
-            name += 'READ-'+block['configuration']['readout'] + '.fts'
+            # name += block['configuration']['exposure'] + 's_'
+            # name += 'FILT-'+block['configuration']['filter'] + '_'
+            # name += 'BIN-'+block['configuration']['binning'] + '_'
+            # name += 'READ-'+block['configuration']['readout'] + '_' 
+            name += block['start time (UTC)'].datetime.strftime('%Y-%m-%dT%H:%M:%S') + '.fts'
             block['configuration']['filename'] = name
         if block['configuration']['filename'].split('.')[-1] not in ('fts', 'fits', 'fit'):
             block['configuration']['filename'].split('.')[0] + '.fts'
         
-        block['configuration']['title'] = str(block['configuration']['title'])
         block['configuration']['filter'] = str(block['configuration']['filter'])
 
         block['configuration']['exposure'] = float(block['configuration']['exposure'])
@@ -1199,7 +1199,7 @@ class TelrunOperator:
         block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
         block['configuration']['comment'] = str(block['configuration']['comment'])
         block['configuration']['status'] = str(block['configuration']['status'])
-        block['configuration']['status_message'] = str(block['configuration']['status_message'])
+        block['configuration']['message'] = str(block['configuration']['message'])
 
         return block
     
@@ -1629,9 +1629,9 @@ class TelrunGUI(ttk.Frame):
                 self._telrun.schedule[i]['ra'].hms,
                 self._telrun.schedule[i]['dec'].dms,
                 self._telrun.schedule[i]['configuration']['observer'],
-                self._telrun.schedule[i]['configuration']['obscode'],
-                self._telrun.schedule[i]['configuration']['filename'],
+                self._telrun.schedule[i]['configuration']['code'],
                 self._telrun.schedule[i]['configuration']['title'],
+                self._telrun.schedule[i]['configuration']['filename'],
                 self._telrun.schedule[i]['configuration']['filter'],
                 self._telrun.schedule[i]['configuration']['exposure'],
                 self._telrun.schedule[i]['configuration']['n_exp'],
@@ -1650,7 +1650,7 @@ class TelrunGUI(ttk.Frame):
                 self._telrun.schedule[i]['configuration']['pm_dec'].to_string(),
                 self._telrun.schedule[i]['configuration']['comment'],
                 self._telrun.schedule[i]['status'],
-                self._telrun.schedule[i]['status_message']
+                self._telrun.schedule[i]['message']
                 ] for i in range(len(self._telrun.schedule))])
 
         self.after(1000, self._update)
@@ -1849,9 +1849,9 @@ class _BlockWidget(ttk.Frame):
         self.ra = rows.add_row('RA:')
         self.dec = rows.add_row('Dec:')
         self.observer = rows.add_row('Observer:')
-        self.obscode = rows.add_row('Observer Code:')
-        self.filename = rows.add_row('Filename:')
+        self.code = rows.add_row('Observer Code:')
         self.title = rows.add_row('Title:')
+        self.filename = rows.add_row('Filename:')
         self.filter = rows.add_row('Filter:')
         self.exposure = rows.add_row('Exposure:')
         self.n_exp = rows.add_row('N Exp:')
@@ -1866,7 +1866,7 @@ class _BlockWidget(ttk.Frame):
         self.pm_dec = rows.add_row('PM Dec:')
         self.comment = rows.add_row('Comment:')
         self.status = rows.add_row('Status:')
-        self.status_message = rows.add_row('Status Message:')
+        self.message = rows.add_row('Status Message:')
 
     def update(self, block):
         if block is None:
@@ -1876,7 +1876,7 @@ class _BlockWidget(ttk.Frame):
             self.ra.set('')
             self.dec.set('')
             self.observer.set('')
-            self.obscode.set('')
+            self.code.set('')
             self.filename.set('')
             self.title.set('')
             self.filter.set('')
@@ -1893,7 +1893,7 @@ class _BlockWidget(ttk.Frame):
             self.pm_dec.set('')
             self.comment.set('')
             self.status.set('')
-            self.status_message.set('')
+            self.message.set('')
         else:
             self.target.set(block['target'])
             self.start_time.set(block['start_time'].iso)
@@ -1901,9 +1901,9 @@ class _BlockWidget(ttk.Frame):
             self.ra.set(block['ra'].to_string('hms'))
             self.dec.set(block['dec'].to_string('dms'))
             self.observer.set(block['observer'])
-            self.obscode.set(block['obscode'])
-            self.filename.set(block['filename'])
+            self.code.set(block['code'])
             self.title.set(block['title'])
+            self.filename.set(block['filename'])
             self.filter.set(block['filter'])
             self.exposure.set(str(block['exposure']))
             self.n_exp.set(str(block['n_exp']))
@@ -1918,7 +1918,7 @@ class _BlockWidget(ttk.Frame):
             self.pm_dec.set(str(block['pm_dec']))
             self.comment.set(block['comment'])
             self.status.set(block['status'])
-            self.status_message.set(block['status_message'])
+            self.message.set(block['message'])
 
 class _Rows:
     def __init__(self, parent, column):
