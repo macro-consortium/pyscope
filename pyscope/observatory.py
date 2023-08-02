@@ -39,9 +39,7 @@ class Observatory:
         self._site_name = 'pyScope Site'
         self._instrument_name = 'pyScope Instrument' 
         self._instrument_description = 'pyScope is a pure-Python telescope control package.'
-        self._get_site_from_telescope = True
         self._latitude = None; self._longitude = None; self._elevation = None
-        self._get_optics_from_telescope = True
         self._diameter = None; self._focal_length = None
 
         self._camera = None; self._camera_args = None; self._camera_kwargs = None
@@ -72,6 +70,8 @@ class Observatory:
 
         self._autofocus = None; self._autofocus_args = None; self._autofocus_kwargs = None
         self._wcs = None; self._wcs_args = None; self._wcs_kwargs = None
+
+        self.slew_rate = None; self.instrument_reconfiguration_times = None
 
         self._maxim = None
 
@@ -265,7 +265,7 @@ class Observatory:
                 **self._config['dome'], **self._config['filter_wheel'], **self._config['focuser'],
                 **self._config['observing_conditions'], **self._config['rotator'], **self._config['safety_monitor'],
                 **self._config['switch'], **self._config['telescope'], **self._config['autofocus'], 
-                **self._config['wcs']}
+                **self._config['wcs'], **self._config['scheduling']}
             logger.debug('Master dict: %s' % master_dict)
             self._read_out_kwargs(master_dict)
             logger.debug('Finished reading other keywords from config file')
@@ -1535,11 +1535,9 @@ class Observatory:
         self.site_name = dictionary.get('site_name', self.site_name)
         self.instrument_name = dictionary.get('instrument_name', self.instrument_name)
         self.instrument_description = dictionary.get('instrument_description', self.instrument_description)
-        self.get_site_from_telescope = dictionary.get('get_site_from_telescope', self.get_site_from_telescope)
         self.latitude = dictionary.get('latitude', self.latitude)
         self.longitude = dictionary.get('longitude', self.longitude)
         self.elevation = dictionary.get('elevation', self.elevation)
-        self.get_optics_from_telescope = dictionary.get('get_optics_from_telescope', self.get_optics_from_telescope)
         self.diameter = dictionary.get('diameter', self.diameter)
         self.focal_length = dictionary.get('focal_length', self.focal_length)
 
@@ -1561,6 +1559,9 @@ class Observatory:
 
         self.min_altitude = dictionary.get('min_altitude', self.min_altitude)
         self.settle_time = dictionary.get('settle_time', self.settle_time)
+
+        self.slew_rate = dictionary.get('slew_rate', self.slew_rate)
+        self.instrument_reconfiguration_times = json.loads(dictionary.get('instrument_reconfiguration_times', self.instrument_reconfiguration_times))
     
     def _args_to_config(self, args):
         if args is None or len(args) == 0: return ''
@@ -1845,11 +1846,9 @@ class Observatory:
         return {'OBSNAME': (self.site_name, 'Observatory name'),
                 'OBSINSTN': (self.instrument_name, 'Instrument name'),
                 'OBSINSTD': (self.instrument_description, 'Instrument description'),
-                'OBSSITET': (self.get_site_from_telescope, 'Get site coordinates from telescope'),
                 'OBSLAT': (self.latitude, 'Observatory latitude'),
                 'OBSLONG': (self.longitude, 'Observatory longitude'),
                 'OBSELEV': (self.elevation, 'Observatory altitude'),
-                'OBSOPTTE': (self.get_optics_from_telescope, 'Get optics from telescope'),
                 'OBSDIA': (self.diameter, 'Observatory diameter'),
                 'OBSFL': (self.focal_length, 'Observatory focal length'),
                 }
@@ -2235,27 +2234,14 @@ class Observatory:
     def instrument_description(self, value):
         self._instrument_description = value if value is not None or value !='' else None
         self._config['site']['instrument_description'] = self._instrument_description if self._instrument_description is not None else ''
-
-    @property
-    def get_site_from_telescope(self):
-        return self._get_site_from_telescope
-    @get_site_from_telescope.setter
-    def get_site_from_telescope(self, value):
-        self._get_site_from_telescope = bool(value)
-        self._config['site']['get_site_from_telescope'] = str(self._get_site_from_telescope)
-        if self._get_site_from_telescope:
-            self.latitude = self.telescope.SiteLatitude
-            self.longitude = self.telescope.SiteLongitude
-            self.elevation = self.telescope.SiteElevation
         
     @property
     def latitude(self):
         return self._latitude
     @latitude.setter
     def latitude(self, value):
-        if self.get_site_from_telescope: raise ObservatoryException('Cannot set latitude when get_site_from_telescope is True')
         self._latitude = coord.Latitude(value) if value is not None or value !='' else None
-        self._config['site']['latitude'] = self._latitude.to_string(unit=coord.units.degree, sep=':', precision=2, 
+        self._config['site']['latitude'] = self._latitude.to_string(unit=u.deg, sep=':', precision=5, 
             pad=True, alwayssign=True, decimal=True) if self._latitude is not None else ''
     
     @property
@@ -2263,9 +2249,8 @@ class Observatory:
         return self._longitude
     @longitude.setter
     def longitude(self, value):
-        if self._get_site_from_telescope: raise ObservatoryException('Cannot set longitude when get_site_from_telescope is True')
         self._longitude = coord.Longitude(value) if value is not None or value !='' else None
-        self._config['site']['longitude'] = self._longitude.to_string(unit=coord.units.degree, sep=':', precision=2, 
+        self._config['site']['longitude'] = self._longitude.to_string(unit=u.deg, sep=':', precision=5, 
             pad=True, alwayssign=True, decimal=True) if self._longitude is not None else ''
     
     @property
@@ -2273,27 +2258,14 @@ class Observatory:
         return self._elevation
     @elevation.setter
     def elevation(self, value):
-        if self._get_site_from_telescope: raise ObservatoryException('Cannot set elevation when get_site_from_telescope is True')
         self._elevation = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['elevation'] = str(self._elevation) if self._elevation is not None else ''
-    
-    @property
-    def get_optics_from_telescope(self):
-        return self._get_optics_from_telescope
-    @get_optics_from_telescope.setter
-    def get_optics_from_telescope(self, value):
-        self._get_optics_from_telescope = bool(value)
-        self._config['site']['get_optics_from_telescope'] = str(self._get_optics_from_telescope)
-        if self._get_optics_from_telescope:
-            self.diameter = self.telescope.ApertureDiameter
-            self.focal_length = self.telescope.FocalLength
 
     @property
     def diameter(self):
         return self._diameter
     @diameter.setter
     def diameter(self, value):
-        if self._get_optics_from_telescope: raise ObservatoryException('Cannot set diameter when get_optics_from_telescope is True')
         self._diameter = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['diameter'] = str(self._diameter) if self._diameter is not None else ''
     
@@ -2302,7 +2274,6 @@ class Observatory:
         return self._focal_length
     @focal_length.setter
     def focal_length(self, value):
-        if self._get_optics_from_telescope: raise ObservatoryException('Cannot set focal_length when get_optics_from_telescope is True')
         self._focal_length = max(float(value), 0) if value is not None or value !='' else None
         self._config['site']['focal_length'] = str(self._focal_length) if self._focal_length is not None else ''
     
@@ -2549,6 +2520,14 @@ class Observatory:
     @property
     def wcs_driver(self):
         return self._wcs_driver
+    
+    @property
+    def slew_rate(self):
+        return self._slew_rate
+    @slew_rate.setter
+    def slew_rate(self, value):
+        self._slew_rate = float(value) if value is not None or value !='' else None
+        self._config['telescope']['slew_rate'] = str(self._slew_rate) if self._slew_rate is not None else ''
 
     @property
     def last_camera_shutter_status(self):
