@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>syncfiles has config file, updates telrun_status file, etc</li>
 <li>scripts: summary_report, scheduling, reduction, analysis, utils</li>
 <li>Write telrun status variables to file, change logging to be per-instance</li>
 <li>Consider custom exception integration</li>

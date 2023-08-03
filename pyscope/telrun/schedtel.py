@@ -67,8 +67,8 @@ logger = logging.getLogger(__name__)
               show_default=True, help='Quiet output')
 @click.option('-v', '--verbose', default=0, show_default=True,
               count=True, help='Verbose output')
-@click.help_option('-h', '--help')
 @click.version_option(version='0.1.0')
+@click.help_option('-h', '--help')
 def schedtel(catalog, ignore_order, date, observatory, 
             max_altitude, elevation, airmass, 
             moon_separation, scheduler, 
@@ -283,8 +283,8 @@ def schedtel(catalog, ignore_order, date, observatory,
 @click.argument('schedule_table', type=click.Path(exists=True), help='Schedule table to plot.')
 @click.argument('observatory', type=click.Path(exists=True), help='Observatory configuration file.')
 @click.option('-n', '--name', type=str, default='', help='Name of observatory.')
-@click.help_option('-h', '--help')
 @click.version_option('-v', '--version', version='0.1.0')
+@click.help_option('-h', '--help')
 def plot_schedule_gantt(schedule_table, observatory, name):
 
     if type(schedule_table) is not table.Table:
