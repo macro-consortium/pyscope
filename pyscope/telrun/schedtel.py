@@ -590,8 +590,8 @@ def parse_sch_file(filename, location=None, t0=None):
                     constraint_cadence = temp_dur
 
                 constraints = [[astroplan.constraints.TimeConstraint(
-                    utstart + ((i+1)*(j+1)-1)*constraint_cadence - schederr, 
-                    utstart + ((i+1)*(j+1)-1)*constraint_cadence + schederr)] 
+                    utstart + (i+j*len(i))*constraint_cadence - schederr, 
+                    utstart + (i+j*len(i))*constraint_cadence + schederr)] 
                     for j in range(loop_max)]
 
             for j in range(loop_max):
