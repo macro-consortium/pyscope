@@ -1,19 +1,18 @@
 # TODO
 <ul>
 
-<li>scripts: summary_report, scheduling, reduction, analysis, utils</li>
-<li>Write telrun status variables to file, change logging to be per-instance</li>
-<li>Consider custom exception integration</li>
-<li>schedtel, telrun, observatory more detailed logging</li>
 <li>Reconsider how telrun and observatory constructor arguments are stored as attributes/properties, kwargs -> explicit arguments</li>
+<li>Write telrun status variables to file, change logging to initialize in each module</li>
 <li>schedtel should update ephem once scheduled</li>
-<li>Restructure observatory module</li>
+<li>More detailed logging across all modules</li>
+<li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
+
+
 <li>Merge back into master branch on wwgolay repo</li>
 <li>Check for PEP8 compliance</li>
 <li>Write docs</li>
 <li>Write tests</li>
-<li>Installer setup on pip, conda</li>
-
+<li>Installer setup on pip, conda channels</li>
 
 <li>Outreach and use</li>
     <ul>

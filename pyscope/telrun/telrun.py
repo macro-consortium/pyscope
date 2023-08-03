@@ -12,6 +12,7 @@ from astropy import coordinates as coord, time as astrotime, units as u, table
 import tksheet
 
 from ..observatory import Observatory
+from . import TelrunException
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +250,7 @@ class TelrunOperator:
             root.tk.call('set_theme', 'dark')
             # icon_photo = tk.PhotoImage(file='images/UILogo.png')
             # root.iconphoto(False, icon_photo)
-            self._gui = TelrunGUI(root)
+            self._gui = _TelrunGUI(root)
             self._gui.mainloop()
             logger.info('GUI started')
 
@@ -1556,7 +1557,7 @@ class TelrunOperator:
         self._wcs_timeout = float(value)
         self._config['default']['wcs_timeout'] = str(self._wcs_timeout)
 
-class TelrunGUI(ttk.Frame):
+class _TelrunGUI(ttk.Frame):
     def __init__(self, parent, TelrunOperator):
         ttk.Frame.__init__(self, parent)
         self._parent = parent
@@ -1654,9 +1655,6 @@ class TelrunGUI(ttk.Frame):
                 ] for i in range(len(self._telrun.schedule))])
 
         self.after(1000, self._update)
-
-class TelrunError(Exception):
-    pass
 
 class _SystemStatusWidget(ttk.Frame):
     def __init__(self, parent):

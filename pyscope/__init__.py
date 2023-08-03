@@ -43,10 +43,10 @@ Features
 
 '''
 
-
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 __version__ = '0.1.0'
 
-# from .observatory import Observatory
+from . import observatory
+from . import telrun
