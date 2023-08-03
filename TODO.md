@@ -1,16 +1,15 @@
 # TODO
 <ul>
 
-<li>platesolve wcs drivers</li>
 <li>syncfiles has config file, updates telrun_status file, etc</li>
 <li>scripts: summary_report, scheduling, reduction, analysis, utils</li>
 <li>Write telrun status variables to file, change logging to be per-instance</li>
 <li>Consider custom exception integration</li>
 <li>schedtel, telrun, observatory more detailed logging</li>
+<li>Reconsider how telrun and observatory constructor arguments are stored as attributes/properties, kwargs -> explicit arguments</li>
 <li>schedtel should update ephem once scheduled</li>
 <li>Restructure observatory module</li>
-
-
+<li>Merge back into master branch on wwgolay repo</li>
 <li>Check for PEP8 compliance</li>
 <li>Write docs</li>
 <li>Write tests</li>
