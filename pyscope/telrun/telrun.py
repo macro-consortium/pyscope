@@ -245,7 +245,7 @@ class TelrunOperator:
         if self._gui:
             logger.info('Starting GUI')
             root = tk.Tk()
-            root.tk.call('source', '../src/themeSetup.tcl')
+            root.tk.call('source', '../gui/themeSetup.tcl')
             root.tk.call('set_theme', 'dark')
             # icon_photo = tk.PhotoImage(file='images/UILogo.png')
             # root.iconphoto(False, icon_photo)
