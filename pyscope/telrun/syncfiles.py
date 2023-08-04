@@ -91,7 +91,7 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
     log_ssh, log_scp = _get_client(uname, hostname, p, k)
     log_thread = threading.Thread(target=_continuous_sync,
         args=(log_scp,
-        local_logs_dir, remote_logs_dir, 'send', '.log',
+        local_logs_dir, remote_logs_dir, 'send', ('.log', '.ecsv'),
         threads_event), 
         daemon=True,
         name='log_thread')

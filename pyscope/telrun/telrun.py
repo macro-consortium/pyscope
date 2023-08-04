@@ -41,13 +41,15 @@ observing_block_config = {
 _gui_font = tk.font.Font(family='Segoe UI', size=10)
 
 class TelrunOperator:
-    def __init__(self, config_path='./config/', gui=False, **kwargs):
+    def __init__(self, config_path='./config/', gui=True, **kwargs):
 
         # Private attributes
         self._config = configparser.ConfigParser()
         self._gui = gui
         self._execution_thread = None
         self._execution_event = threading.Event()
+        self._status_thread = None
+        self._status_event = threading.Event()
         self._schedule = None
         self._schedule_last_modified = 0
         self._best_focus_result = None
@@ -94,6 +96,7 @@ class TelrunOperator:
         self._check_block_status = True
         self._update_block_status = True
         self._write_to_schedule_log = True
+        self._write_to_status_log = True
         self._autofocus_interval = 3600
         self._initial_autofocus = True
         self._autofocus_filters = None
@@ -148,6 +151,7 @@ class TelrunOperator:
             self._check_block_status = self._config.getboolean('default', 'check_block_status', fallback=self._check_block_status)
             self._update_block_status = self._config.getboolean('default', 'update_block_status', fallback=self._update_block_status)
             self._write_to_schedule_log = self._config.getboolean('default', 'write_to_schedule_log', fallback=self._write_to_schedule_log)
+            self._write_to_status_log = self._config.getboolean('default', 'write_to_status_log', fallback=self._write_to_status_log)
             self._autofocus_interval = self._config.getfloat('default', 'autofocus_interval', fallback=self._autofocus_interval)
             self._initial_autofocus = self._config.getboolean('default', 'initial_autofocus', fallback=self._initial_autofocus)
 
@@ -179,11 +183,6 @@ class TelrunOperator:
 
             self._wcs_timeout = self._config.getfloat('default', 'wcs_timeout', fallback=self._wcs_timeout)
         
-        # Load kwargs
-        self._schedules_path = os.path.abspath(kwargs.get('schedules_path', self._schedules_path))
-        self._images_path = os.path.abspath(kwargs.get('images_path', self._images_path))
-        self._logs_path = os.path.abspath(kwargs.get('logs_path', self._logs_path))
-
         # Parse observatory
         self._observatory = os.path.join(self._config_path, 'observatory.cfg')
         self._observatory = kwargs.get('observatory', self._observatory)
@@ -194,6 +193,11 @@ class TelrunOperator:
             self.observatory.save_config(os.path.join(self._config_path, 'observatory.cfg'))
         else:
             raise TelrunError('observatory must be a string representing an observatory config file path or an Observatory object')
+        
+        # Load kwargs
+        self._schedules_path = os.path.abspath(kwargs.get('schedules_path', self._schedules_path))
+        self._images_path = os.path.abspath(kwargs.get('images_path', self._images_path))
+        self._logs_path = os.path.abspath(kwargs.get('logs_path', self._logs_path))
 
         # Parse dome_type
         self._dome_type = kwargs.get('dome_type', self._dome_type)
@@ -213,6 +217,10 @@ class TelrunOperator:
         self.check_safety_monitors = kwargs.get('check_safety_monitors', self._check_safety_monitors)
         self.wait_for_cooldown = kwargs.get('wait_for_cooldown', self._wait_for_cooldown)
         self.default_readout = kwargs.get('default_readout', self._default_readout)
+        self.check_block_status = kwargs.get('check_block_status', self._check_block_status)
+        self.update_block_status = kwargs.get('update_block_status', self._update_block_status)
+        self.write_to_schedule_log = kwargs.get('write_to_schedule_log', self._write_to_schedule_log)
+        self.write_to_status_log = kwargs.get('write_to_status_log', self._write_to_status_log)
         self.autofocus_interval = kwargs.get('autofocus_interval', self._autofocus_interval)
         self.initial_autofocus = kwargs.get('initial_autofocus', self._initial_autofocus)
         self.autofocus_filters = kwargs.get('autofocus_filters', self._autofocus_filters)
@@ -259,9 +267,11 @@ class TelrunOperator:
             root.tk.call('set_theme', 'dark')
             # icon_photo = tk.PhotoImage(file='images/UILogo.png')
             # root.iconphoto(False, icon_photo)
-            self._gui = _TelrunGUI(root)
+            self._gui = _TelrunGUI(root, self, self.write_to_status_log)
             self._gui.mainloop()
             logger.info('GUI started')
+        elif self.write_to_status_log:
+            raise TelrunException('Cannot write to status log without GUI')
 
         # Connect to observatory hardware
         logger.info('Attempting to connect to observatory hardware')
@@ -509,11 +519,19 @@ class TelrunOperator:
                     schedule_log.write(self.logs_path
                         +filename.split('.ecsv')[0].split('/')[-1] 
                         + '-log.ecsv', format='ascii.ecsv')
+            
+            else:
+                logger.info('Execution event has been set (likely by a new schedule detected), stopping block loop')
+                self._skipped_block_count = 0
+                self._previous_block = None
+                self._next_block = None
+                return
 
         logger.info('Block loop complete')
         self._skipped_block_count = 0
         self._previous_block = None
         self._next_block = None
+        return
 
         logger.info('Generating summary report')
         '''summary_report(self.telpath+'/schedules/telrun.sls', self.telpath+'/logs/'+
@@ -1370,6 +1388,14 @@ class TelrunOperator:
     def write_to_schedule_log(self, value):
         self._write_to_schedule_log = bool(value)
         self._config['default']['write_to_schedule_log'] = str(self._write_to_schedule_log)
+
+    @property
+    def write_to_status_log(self):
+        return self._write_to_status_log
+    @write_to_status_log.setter
+    def write_to_status_log(self, value):
+        self._write_to_status_log = bool(value)
+        self._config['default']['write_to_status_log'] = str(self._write_to_status_log)
     
     @property
     def autofocus_interval(self):
@@ -1598,7 +1624,7 @@ class _TelrunGUI(ttk.Frame):
                                 headers=
                                 ['Target', 'Start Time', 'End Time', 'Duration',
                                 'RA', 'Dec', 'Observer', 'Observer Code', 
-                                'Filename', 'Title', 'Filter', 'Exposure', 
+                                'Title', 'Filename', 'Filter', 'Exposure', 
                                 'Num Exposures', 'Do Not Interrupt', 'Repositioning',
                                 'Shutter State', 'Readout', 'Binning', 'Frame Position',
                                 'Frame Size', 'PM RAcosDec', 'PM Dec', 'Comment', 
@@ -1664,6 +1690,25 @@ class _TelrunGUI(ttk.Frame):
                 self._telrun.schedule[i]['status'],
                 self._telrun.schedule[i]['message']
                 ] for i in range(len(self._telrun.schedule))])
+        
+        if self._telrun.write_to_status_log:
+            with open(os.path.join(self._telrun.log_path, 'telrun_status.log'), 'w'):
+                f.write('# System Status')
+                for row in self.system_status_widget.rows:
+                    for i in range(len(row.labels)):
+                        f.write(row.labels[i]+' '+row.string_vars[i].get()+'\n')
+                
+                f.write('\n# Previous Block')
+                for i in range(len(previous_block_widget.rows.labels)):
+                    f.write(previous_block_widget.rows.labels[i]+' '+previous_block_widget.rows.string_vars[i].get()+'\n')
+                
+                f.write('\n# Current Block')
+                for i in range(len(current_block_widget.rows.labels)):
+                    f.write(current_block_widget.rows.labels[i]+' '+current_block_widget.rows.string_vars[i].get()+'\n')
+                
+                f.write('\n# Next Block')
+                for i in range(len(next_block_widget.rows.labels)):
+                    f.write(next_block_widget.rows.labels[i]+' '+next_block_widget.rows.string_vars[i].get()+'\n')
 
         self.after(1000, self._update)
 
@@ -1733,6 +1778,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.check_block_status = rows3.add_row('Check Block Status:')
         self.update_block_status = rows3.add_row('Update Block Status:')
         self.write_to_schedule_log = rows3.add_row('Write To Schedule Log:')
+        self.write_to_status_log = rows3.add_row('Write To Status Log:')
 
         rows4 = _Rows(self, 8)
         self.autofocus_interval = rows4.add_row('Autofocus Interval:')
@@ -1760,6 +1806,8 @@ class _SystemStatusWidget(ttk.Frame):
         self.wcs_filters = rows5.add_row('WCS Filters:')
         self.wcs_timeout = rows5.add_row('WCS Timeout:')
 
+        self.rows = [rows0, rows1, rows2, rows3, rows4, rows5]
+
     def update(self):
         if self._parent._telrun._execution_thread is not None:
             operator_mode = 'Fully robotic'
@@ -1773,7 +1821,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.ut.set(self._parent._telrun.observatory.observatory_time.iso)
         self.last_autofocus_time.set(astrotime.Time(self._parent._telrun.last_autofocus_time, format='unix').iso)
         self.time_until_next_autofocus.set(str(self._parent._telrun.last_autofocus_time + self._parent._telrun.autofocus_interval - time.time()))
-        self.time_until_block_start.set((self._parent._telrun.current_block['start time (UTC)'] - self.observatory.observatory_time()).second if self._parent._telrun.current_block is not None else '')
+        self.time_until_block_start.set((self._parent._telrun.current_block['start time (UTC)'] - self._parent._telrun.observatory.observatory_time()).second if self._parent._telrun.current_block is not None else '')
         self.skipped_block_count.set(str(self._parent._telrun.skipped_block_count))
         self.total_block_count.set(str(len(self._parent._telrun._schedule)))
         self.schedule_last_modified.set(str(astrotime.Time(self._parent._telrun.schedule_last_modified, format='unix').iso))
@@ -1816,6 +1864,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.check_block_status.set(str(self._parent._telrun.check_block_status))
         self.update_block_status.set(str(self._parent._telrun.update_block_status))
         self.write_to_schedule_log.set(str(self._parent._telrun.write_to_schedule_log))
+        self.write_to_status_log.set(str(self._parent._telrun.write_to_status_log))
 
         self.autofocus_interval.set(str(self._parent._telrun.autofocus_interval))
         self.autofocus_exposure.set(str(self._parent._telrun.autofocus_exposure))
@@ -1850,7 +1899,7 @@ class _BlockWidget(ttk.Frame):
         self.update()
     
     def build_gui(self):
-        rows = _Rows(self, 0)
+        self.rows = _Rows(self, 0)
 
         self.target = rows.add_row('Target:')
         self.start_time = rows.add_row('Start Time:')
@@ -1886,8 +1935,8 @@ class _BlockWidget(ttk.Frame):
             self.dec.set('')
             self.observer.set('')
             self.code.set('')
-            self.filename.set('')
             self.title.set('')
+            self.filename.set('')
             self.filter.set('')
             self.exposure.set('')
             self.n_exp.set('')
@@ -1935,13 +1984,18 @@ class _Rows:
         self._column = column
         self._next_row = 0
 
-    def add_row(self):
+        self.labels = []
+        self.string_vars = []
+
+    def add_row(self, label_text):
         label = ttk.Label(self._parent, text=label_text)
         label.grid(column=self._column, row=self._next_row, sticky='e')
+        self.labels.append(label)
 
         string_var = tk.StringVar()
         entry = ttk.Entry(self._parent, textvariable=string_var)
         entry.grid(column=self._column+1, row=self._next_row, sticky='ew')
+        self.string_vars.append(string_var)
 
         self._next_row += 1
 

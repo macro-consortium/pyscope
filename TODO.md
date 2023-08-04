@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>Write telrun status variables to file, change logging to initialize in each module</li>
 <li>schedtel should update ephem once scheduled</li>
 <li>More detailed logging across all modules</li>
 <li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
