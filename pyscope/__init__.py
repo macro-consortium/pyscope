@@ -50,3 +50,4 @@ __version__ = '0.1.0'
 
 from . import observatory
 from . import telrun
+from . import utils

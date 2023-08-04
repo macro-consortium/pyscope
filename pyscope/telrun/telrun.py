@@ -43,19 +43,18 @@ _gui_font = tk.font.Font(family='Segoe UI', size=10)
 class TelrunOperator:
     def __init__(self, config_path='./config/', gui=False, **kwargs):
 
-        # Non-accessible variables
+        # Private attributes
         self._config = configparser.ConfigParser()
-        self._gui = None
-
+        self._gui = gui
         self._execution_thread = None
         self._execution_event = threading.Event()
         self._schedule = None
         self._schedule_last_modified = 0
         self._best_focus_result = None
-        self._hardware_status = ''
+        self._hardware_status = None
         self._wcs_threads = []
 
-        # Read-only variables without kwarg setters
+        # Read-only attributes with no constructor arguments
         self._do_periodic_autofocus = True
         self._last_autofocus_time = 0
         self._skipped_block_count = 0
@@ -78,15 +77,14 @@ class TelrunOperator:
         self._telescope_status = ''
         self._wcs_status = ''
 
-        # Read-only variables with kwarg setters
+        # Read-only attributes with constructor arguments
         self._config_path = config_path
         self._schedules_path = './schedules/'
         self._images_path = './images/'
         self._log_path = './logs/'
-        self._observatory = None
         self._dome_type = None # None, 'dome' or 'safety-monitor' or 'both'
 
-        # Read/write variables
+        # Public attributes with constructor arguments
         self._initial_home = True
         self._wait_for_sun = True
         self._max_solar_elev = -12
@@ -121,70 +119,81 @@ class TelrunOperator:
         self._wcs_filters = None
         self._wcs_timeout = 30
 
-        # Load config file if there
-        if os.path.isfile(self._config_path):
-            logger.info('Using config file to initialize telrun: %s' % config_file_path)
-            try: self._config.read(config_file_path)
-            except: raise TelrunError('Could not read config file: %s' % config_file_path)
-
+        save_at_end = False
+        if os.path.isdir(self._config_path):
+            read_path = os.path.join(self._config_path, 'telrun.cfg')
+        elif os.path.isfile(self._config_path):
+            read_path = self._config_path
             self._config_path = os.path.abspath(os.path.dirname(self._config_path))
-            self._schedules_path = self._config.get('default', 'schedules_path')
-            self._images_path = self._config.get('default', 'images_path')
-            self._logs_path = self._config.get('default', 'logs_path')
-            self._observatory = self._config.get('default', 'observatory')
-            self._dome_type = self._config.get('default', 'dome_type')
-            self._initial_home = self._config.getboolean('default', 'initial_home')
-            self._wait_for_sun = self._config.getboolean('default', 'wait_for_sun')
+        else:
+            os.mkdir(self._config_path)
+            save_at_end = True
+
+        # Load config file if there
+        if os.path.isfile(read_path):
+            logger.info('Using config file to initialize telrun: %s' % self._config_path)
+            try: self._config.read(self._config_path)
+            except: raise TelrunError('Could not read config file: %s' % self._config_path)
+
+            self._schedules_path = self._config.get('default', 'schedules_path', fallback=self._schedules_path)
+            self._images_path = self._config.get('default', 'images_path', fallback=self._images_path)
+            self._logs_path = self._config.get('default', 'logs_path', fallback=self._logs_path)
+            self._dome_type = self._config.get('default', 'dome_type', fallback=self._dome_type)
+            self._initial_home = self._config.getboolean('default', 'initial_home', fallback=self._initial_home)
+            self._wait_for_sun = self._config.getboolean('default', 'wait_for_sun', fallback=self._wait_for_sun)
             self._max_solar_elev = self._config.getfloat('default', 'max_solar_elev')
-            self._check_safety_monitors = self._config.getboolean('default', 'check_safety_monitors')
-            self._wait_for_cooldown = self._config.getboolean('default', 'wait_for_cooldown')
-            self._default_readout = self._config.getint('default', 'default_readout')
-            self._check_block_status = self._config.getboolean('default', 'check_block_status')
-            self._update_block_status = self._config.getboolean('default', 'update_block_status')
-            self._write_to_schedule_log = self._config.getboolean('default', 'write_to_schedule_log')
-            self._autofocus_interval = self._config.getfloat('default', 'autofocus_interval')
-            self._initial_autofocus = self._config.getboolean('default', 'initial_autofocus')
+            self._check_safety_monitors = self._config.getboolean('default', 'check_safety_monitors', fallback=self._check_safety_monitors)
+            self._wait_for_cooldown = self._config.getboolean('default', 'wait_for_cooldown', fallback=self._wait_for_cooldown)
+            self._default_readout = self._config.getint('default', 'default_readout', fallback=self._default_readout)
+            self._check_block_status = self._config.getboolean('default', 'check_block_status', fallback=self._check_block_status)
+            self._update_block_status = self._config.getboolean('default', 'update_block_status', fallback=self._update_block_status)
+            self._write_to_schedule_log = self._config.getboolean('default', 'write_to_schedule_log', fallback=self._write_to_schedule_log)
+            self._autofocus_interval = self._config.getfloat('default', 'autofocus_interval', fallback=self._autofocus_interval)
+            self._initial_autofocus = self._config.getboolean('default', 'initial_autofocus', fallback=self._initial_autofocus)
+
             self._autofocus_filters = [f.strip() for f in self._config.get('default', 'autofocus_filters').split(',')]
-            self._autofocus_exposure = self._config.getfloat('default', 'autofocus_exposure')
-            self._autofocus_midpoint = self._config.getfloat('default', 'autofocus_midpoint')
-            self._autofocus_nsteps = self._config.getint('default', 'autofocus_nsteps')
-            self._autofocus_step_size = self._config.getfloat('default', 'autofocus_step_size')
-            self._autofocus_use_current_pointing = self._config.getboolean('default', 'autofocus_use_current_pointing')
-            self._autofocus_timeout = self._config.getfloat('default', 'autofocus_timeout')
-            self._wait_for_block_start_time = self._config.getboolean('default', 'wait_for_block_start_time')
-            self._max_block_late_time = self._config.getfloat('default', 'max_block_late_time')
-            self._preslew_time = self._config.getfloat('default', 'preslew_time')
+
+            self._autofocus_exposure = self._config.getfloat('default', 'autofocus_exposure', fallback=self._autofocus_exposure)
+            self._autofocus_midpoint = self._config.getfloat('default', 'autofocus_midpoint', fallback=self._autofocus_midpoint)
+            self._autofocus_nsteps = self._config.getint('default', 'autofocus_nsteps', fallback=self._autofocus_nsteps)
+            self._autofocus_step_size = self._config.getfloat('default', 'autofocus_step_size', fallback=self._autofocus_step_size)
+            self._autofocus_use_current_pointing = self._config.getboolean('default', 'autofocus_use_current_pointing', fallback=self._autofocus_use_current_pointing)
+            self._autofocus_timeout = self._config.getfloat('default', 'autofocus_timeout', fallback=self._autofocus_timeout)
+            self._wait_for_block_start_time = self._config.getboolean('default', 'wait_for_block_start_time', fallback=self._wait_for_block_start_time)
+            self._max_block_late_time = self._config.getfloat('default', 'max_block_late_time', fallback=self._max_block_late_time)
+            self._preslew_time = self._config.getfloat('default', 'preslew_time', fallback=self._preslew_time)
+
             self._recenter_filters = [f.strip() for f in self._config.get('default', 'recenter_filters').split(',')]
-            self._recenter_initial_offset_dec = self._config.getfloat('default', 'recenter_initial_offset_dec')
-            self._recenter_check_and_refine = self._config.getboolean('default', 'recenter_check_and_refine')
-            self._recenter_max_attempts = self._config.getint('default', 'recenter_max_attempts')
-            self._recenter_tolerance = self._config.getfloat('default', 'recenter_tolerance')
-            self._recenter_exposure = self._config.getfloat('default', 'recenter_exposure')
-            self._recenter_save_images = self._config.getboolean('default', 'recenter_save_images')
-            self._recenter_save_path = self._config.get('default', 'recenter_save_path')
-            self._recenter_sync_mount = self._config.getboolean('default', 'recenter_sync_mount')
-            self._hardware_timeout = self._config.getfloat('default', 'hardware_timeout')
+
+            self._recenter_initial_offset_dec = self._config.getfloat('default', 'recenter_initial_offset_dec', fallback=self._recenter_initial_offset_dec)
+            self._recenter_check_and_refine = self._config.getboolean('default', 'recenter_check_and_refine', fallback=self._recenter_check_and_refine)
+            self._recenter_max_attempts = self._config.getint('default', 'recenter_max_attempts', fallback=self._recenter_max_attempts)
+            self._recenter_tolerance = self._config.getfloat('default', 'recenter_tolerance', fallback=self._recenter_tolerance)
+            self._recenter_exposure = self._config.getfloat('default', 'recenter_exposure', fallback=self._recenter_exposure)
+            self._recenter_save_images = self._config.getboolean('default', 'recenter_save_images', fallback=self._recenter_save_images)
+            self._recenter_save_path = self._config.get('default', 'recenter_save_path', fallback=self._recenter_save_path)
+            self._recenter_sync_mount = self._config.getboolean('default', 'recenter_sync_mount', fallback=self._recenter_sync_mount)
+            self._hardware_timeout = self._config.getfloat('default', 'hardware_timeout', fallback=self._hardware_timeout)
+
             self._wcs_filters = [f.strip() for f in self._config.get('default', 'wcs_filters').split(',')]
-            self._wcs_timeout = self._config.getfloat('default', 'wcs_timeout')
+
+            self._wcs_timeout = self._config.getfloat('default', 'wcs_timeout', fallback=self._wcs_timeout)
         
         # Load kwargs
-        self._schedules_path = kwargs.get('schedules_path', self._schedules_path)
-        self._images_path = kwargs.get('images_path', self._images_path)
-        self._logs_path = kwargs.get('logs_path', self._logs_path)
+        self._schedules_path = os.path.abspath(kwargs.get('schedules_path', self._schedules_path))
+        self._images_path = os.path.abspath(kwargs.get('images_path', self._images_path))
+        self._logs_path = os.path.abspath(kwargs.get('logs_path', self._logs_path))
 
         # Parse observatory
+        self._observatory = os.path.join(self._config_path, 'observatory.cfg')
         self._observatory = kwargs.get('observatory', self._observatory)
-        if self._observatory is None:
-            raise TelrunError('observatory must be specified')
-        elif type(self._observatory) is str:
-            self._config['default']['observatory'] = self._observatory
-            self._observatory = Observatory(config_file_path=self._observatory)
+        if type(self._observatory) is str:
+            self._observatory = Observatory(config_path=self._observatory)
+            self.observatory.save_config(os.path.join(self._config_path, 'observatory.cfg'))
         elif type(self._observatory) is Observatory:
-            self._config['default']['observatory'] = str(self.config_path + 'observatory.cfg')
-            self.observatory.save_config(self._config['default']['observatory'])
+            self.observatory.save_config(os.path.join(self._config_path, 'observatory.cfg'))
         else:
-            raise TelrunError('observatory must be a string representing a config file path \
-                or an Observatory object')
+            raise TelrunError('observatory must be a string representing an observatory config file path or an Observatory object')
 
         # Parse dome_type
         self._dome_type = kwargs.get('dome_type', self._dome_type)
@@ -279,11 +288,13 @@ class TelrunOperator:
         self._telescope_status = 'Idle'
         if self.observatory.wcs is not None:
             self._wcs_status = 'Idle'
+        
+        if save_at_end:
+            self.save_config('telrun.cfg')
     
     def save_config(self, filename):
-        self.observatory.save_config(self.config_path+'observatory.cfg')
-        self._config['default']['observatory'] = self.config_path+'observatory.cfg'
-        with open(self.config_path + filename, 'w') as config_file:
+        self.observatory.save_config(os.path.join(self.config_path, 'observatory.cfg'))
+        with open(os.path.join(self.config_path, filename), 'w') as config_file:
             self._config.write(config_file)
 
     def mainloop(self):
@@ -1521,7 +1532,7 @@ class TelrunOperator:
         return self._recenter_save_path
     @recenter_save_path.setter
     def recenter_save_path(self, value):
-        self._recenter_save_path = value
+        self._recenter_save_path = os.path.abspath(value)
         self._config['default']['recenter_save_path'] = str(self._recenter_save_path)
     
     @property

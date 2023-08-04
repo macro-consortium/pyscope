@@ -26,9 +26,9 @@ class Observatory:
     the Observatory class allows a user to save focus offsets for individual filters, which
     requires access to both the filter wheel and the focusing instrument.'''
 
-    def __init__(self, config_file_path=None, **kwargs):
-        '''Initializes the observatory. If config_file_path is not None, the observatory will be initialized
-        using the config file at config_file_path. Otherwise, the observatory will be initialized using the
+    def __init__(self, config_path=None, **kwargs):
+        '''Initializes the observatory. If config_path is not None, the observatory will be initialized
+        using the config file at config_path. Otherwise, the observatory will be initialized using the
         provided objects. If a config file is provided, the objects will be ignored. If no config file is
         provided, the objects must be provided.'''
 
@@ -78,10 +78,10 @@ class Observatory:
 
         self._maxim = None
 
-        if config_file_path is not None:
+        if config_path is not None:
             logger.info('Using config file to initialize observatory: %s' % config_file)
-            try: self._config.read(config_file_path)
-            except: raise ObservatoryException("Error parsing config file '%s'" % config_file_path)
+            try: self._config.read(config_path)
+            except: raise ObservatoryException("Error parsing config file '%s'" % config_path)
 
             # Camera
             self._camera_driver = self._config['camera']['camera_driver']
@@ -482,7 +482,7 @@ class Observatory:
         self._read_out_kwargs(kwargs)
         logger.debug('kwargs read out')
 
-        # Non-keyword properties
+        # Non-keyword attributes
         self._last_camera_shutter_status = None
         self.camera.OriginalStartExposure = self.camera.StartExposure
         def NewStartExposure(self, Duration, Light):

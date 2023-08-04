@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>Reconsider how telrun and observatory constructor arguments are stored as attributes/properties, kwargs -> explicit arguments</li>
 <li>Write telrun status variables to file, change logging to initialize in each module</li>
 <li>schedtel should update ephem once scheduled</li>
 <li>More detailed logging across all modules</li>
