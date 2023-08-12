@@ -1,11 +1,15 @@
 import time
 import platform
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..utils import _force_async
 from .wcs import WCS
 
 class PinpointWCS(WCS):
     def __init__(self):
+        logger.debug('PinpointWCS.__init__() called')
         if platform.system() != 'Windows':
             raise Exception('PinPoint is only available on Windows.')
         else:
@@ -16,6 +20,10 @@ class PinpointWCS(WCS):
                 ra=None, dec=None, ra_dec_units=('hour', 'deg'), 
                 solve_timeout=60, catalog=3, 
                 catalog_path='C:\GSC-1.1'):
+        logger.debug(f'''PinpointWCS.Solve(
+            {filepath}, {scale_est}, {ra_key}, {dec_key}, {ra}, {dec},
+            {ra_dec_units}, {solve_timeout}, {catalog}, {catalog_path}
+        ) called''')
 
         self._solver.AttachFITS(filepath)
 

@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 from ._docstring_inheritee import _DocstringInheritee
 
 from .driver import Driver

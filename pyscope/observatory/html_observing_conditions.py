@@ -17,6 +17,48 @@ class HTMLObservingConditions(ObservingConditions):
                     wind_gust_keyword=b'WINDGUST', wind_gust_units='mph', wind_gust_numeric=True,
                     wind_speed_keyword=b'WINDSPEED', wind_speed_units='mph', wind_speed_numeric=True, 
                     last_updated_keyword=b'LASTUPDATED', last_updated_units=None, last_updated_numeric=True):
+        logger.debug(f'''HTMLObservingConditions.__init__(
+                    {url},
+                    cloud_cover_keyword={cloud_cover_keyword},
+                    cloud_cover_units={cloud_cover_units},
+                    cloud_cover_numeric={cloud_cover_numeric},
+                    dew_point_keyword={dew_point_keyword},
+                    dew_point_units={dew_point_units},
+                    dew_point_numeric={dew_point_numeric},
+                    humidity_keyword={humidity_keyword},
+                    humidity_units={humidity_units},
+                    humidity_numeric={humidity_numeric},
+                    pressure_keyword={pressure_keyword},
+                    pressure_units={pressure_units},
+                    pressure_numeric={pressure_numeric},
+                    rain_rate_keyword={rain_rate_keyword},
+                    sky_brightness_keyword={sky_brightness_keyword},
+                    sky_brightness_units={sky_brightness_units},
+                    sky_brightness_numeric={sky_brightness_numeric},
+                    sky_quality_keyword={sky_quality_keyword},
+                    sky_quality_units={sky_quality_units},
+                    sky_quality_numeric={sky_quality_numeric},
+                    sky_temperature_keyword={sky_temperature_keyword},
+                    sky_temperature_units={sky_temperature_units},
+                    sky_temperature_numeric={sky_temperature_numeric},
+                    star_fwhm_keyword={star_fwhm_keyword},
+                    star_fwhm_units={star_fwhm_units},
+                    star_fwhm_numeric={star_fwhm_numeric},
+                    temperature_keyword={temperature_keyword},
+                    temperature_units={temperature_units},
+                    temperature_numeric={temperature_numeric},
+                    wind_direction_keyword={wind_direction_keyword},
+                    wind_direction_units={wind_direction_units},
+                    wind_direction_numeric={wind_direction_numeric},
+                    wind_gust_keyword={wind_gust_keyword},
+                    wind_gust_units={wind_gust_units},
+                    wind_gust_numeric={wind_gust_numeric},
+                    wind_speed_keyword={wind_speed_keyword},
+                    wind_speed_units={wind_speed_units},
+                    wind_speed_numeric={wind_speed_numeric},
+                    last_updated_keyword={last_updated_keyword},
+                    last_updated_units={last_updated_units},
+                    last_updated_numeric={last_updated_numeric}) called''')
 
         self._url = url
 
@@ -80,6 +122,7 @@ class HTMLObservingConditions(ObservingConditions):
         self.Refresh()
     
     def Refresh(self):
+        logger.debug(f'HTMLObservingConditions.Refresh() called')
         stream = urllib.request.urlopen(self._url)
         lines = stream.readlines()
 
@@ -115,9 +158,11 @@ class HTMLObservingConditions(ObservingConditions):
             if last_updated is not None: self._last_updated = last_updated
 
     def SensorDescription(self, PropertyName):
+        logger.debug('HTMLObservingConditions.SensorDescription({PropertyName}) called')
         return
 
     def TimeSinceLastUpdate(self, PropertyName):
+        logger.debug('HTMLObservingConditions.TimeSinceLastUpdate({PropertyName}) called')
         stream = urllib.request.urlopen(self._url)
         lines = stream.readlines()
 
@@ -128,61 +173,76 @@ class HTMLObservingConditions(ObservingConditions):
     
     @property
     def AveragePeriod(self):
+        logger.debug('HTMLObservingConditions.AveragePeriod property called')
         return
     @AveragePeriod.setter
     def AveragePeriod(self, value):
+        logger.debug(f'HTMLObservingConditions.AveragePeriod({value}) called')
         return
     
     @property
     def CloudCover(self):
+        logger.debug('HTMLObservingConditions.CloudCover property called')
         return self._cloud_cover
     
     @property
     def DewPoint(self):
+        logger.debug('HTMLObservingConditions.DewPoint property called')
         return self._dew_point
     
     @property
     def Humidity(self):
+        logger.debug('HTMLObservingConditions.Humidity property called')
         return self._humidity
     
     @property
     def Pressure(self):
+        logger.debug('HTMLObservingConditions.Pressure property called')
         return self._pressure
     
     @property
     def RainRate(self):
+        logger.debug('HTMLObservingConditions.RainRate property called')
         return self._rain_rate
 
     @property
     def SkyBrightness(self):
+        logger.debug('HTMLObservingConditions.SkyBrightness property called')
         return self._sky_brightness
     
     @property
     def SkyQuality(self):
+        logger.debug('HTMLObservingConditions.SkyQuality property called')
         return self._sky_quality
     
     @property
     def SkyTemperature(self):
+        logger.debug('HTMLObservingConditions.SkyTemperature property called')
         return self._sky_temperature
     
     @property
     def StarFWHM(self):
+        logger.debug('HTMLObservingConditions.StarFWHM property called')
         return self._star_fwhm
     
     @property
     def Temperature(self):
+        logger.debug('HTMLObservingConditions.Temperature property called')
         return self._temperature
     
     @property
     def WindDirection(self):
+        logger.debug('HTMLObservingConditions.WindDirection property called')
         return self._wind_direction
     
     @property
     def WindGust(self):
+        logger.debug('HTMLObservingConditions.WindGust property called')
         return self._wind_gust
     
     @property
     def WindSpeed(self):
+        logger.debug('HTMLObservingConditions.WindSpeed property called')
         return self._wind_speed
 
     def _get_number_from_line(self, line, expected_keyword, expected_units, is_numeric):
@@ -243,4 +303,5 @@ class HTMLObservingConditions(ObservingConditions):
     
     @property
     def LastUpdated(self):
+        logger.debug('HTMLObservingConditions.LastUpdated property called')
         return self._last_updated

@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class PWIAutofocus(Autofocus):
     def __init__(self):
+        logger.debug("PWIAutofocus.__init__ called")
         if platform.system() != 'Windows':
             raise Exception('This class is only available on Windows.')
         else:
@@ -30,6 +31,7 @@ class PWIAutofocus(Autofocus):
             self._com_object.PreventFilterChange = True
     
     def Run(self, exposure=10, timeout=120):
+        logger.debug(f"PWIAutofocus.Run called with args: exposure={exposure}, timeout={timeout}")
         self._com_object.ExposureLengthSeconds = exposure
 
         if not self._com_object.IsFocuserConnected:
@@ -51,6 +53,7 @@ class PWIAutofocus(Autofocus):
             return None
     
     def Abort(self):
+        logger.debug("PWIAutofocus.Abort called")
         self._com_object.StopAutofocus
 
     def _forward_autofocus_messages(self):

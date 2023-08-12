@@ -45,8 +45,7 @@ Features
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-__version__ = '0.1.0'
+logger.setLevel(logging.INFO)
 
 from . import observatory
 from . import telrun
