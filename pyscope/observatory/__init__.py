@@ -33,10 +33,45 @@ from .html_safety_monitor import HTMLSafetyMonitor
 from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pinpoint_wcs import PinpointWCS
-from .platesolve2_wcs import Platesolve2WCS
-from .platesolve3_wcs import Platesolve3WCS
+# from .platesolve2_wcs import Platesolve2WCS
+# from .platesolve3_wcs import Platesolve3WCS
 from .pwi_autofocus import PWIAutofocus
-from .skyx import SkyX
+# from .skyx import SkyX
 
 from .observatory import Observatory
 from .observatory_exception import ObservatoryException
+
+__all__ = [
+    'ASCOMCamera',
+    'ASCOMCoverCalibrator',
+    'ASCOMDome',
+    'ASCOMDriver',
+    'ASCOMFilterWheel',
+    'ASCOMFocuser',
+    'ASCOMObservingConditions',
+    'ASCOMRotator',
+    'ASCOMSwitch',
+    'ASCOMTelescope',
+    'AstrometryNetWCS',
+    'Autofocus',
+    'Camera',
+    'CoverCalibrator',
+    'Dome',
+    'Driver',
+    'FilterWheel',
+    'Focuser',
+    'HTMLObservingConditions',
+    'HTMLSafetyMonitor',
+    'IPCoverCalibrator',
+    'Maxim',
+    'ObservatoryException',
+    'Observatory',
+    'ObservingConditions',
+    'PinpointWCS',
+    'PWIAutofocus',
+    'Rotator',
+    'SafetyMonitor',
+    'Switch',
+    'Telescope',
+    'WCS',
+]
