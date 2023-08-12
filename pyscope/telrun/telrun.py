@@ -9,6 +9,7 @@ import tkinter.ttk as ttk
 
 import astroplan
 from astropy import coordinates as coord, time as astrotime, units as u, table
+from astroquery import mpc
 import tksheet
 
 from ..observatory import Observatory
@@ -781,7 +782,8 @@ class TelrunOperator:
             if (self.previous_block['ra'].hourangle == block['ra'].hourangle 
                     and self.previous_block['dec'].deg == block['dec'].deg
                     and self.previous_block['configuration']['status'] == 'S'
-                    and best_focus_result is not None):
+                    and best_focus_result is not None
+                    and not block['configuration']['do_not_interrupt']):
                 logger.info('Previous target is same ra and dec, skipping initial slew...')
                 slew = False
             else:
@@ -795,6 +797,21 @@ class TelrunOperator:
                 if self.observatory.rotator is not None:
                     logger.info('Turning off derotation...')
                     self.observatory.stop_derotation_thread()
+        
+        # Update ephem for non-sidereal targets
+        if (block['configuration']['pm_ra_cosdec'].value != 0
+                or block['configuration']['pm_dec'].value != 0):
+            ephemerides = mpc.MPC.get_ephemeris(
+                target=block['target'],
+                location=self.observatory.observatory_location,
+                start=block['start time (UTC)'],
+                number=1,
+                proper_motion='sky')
+            block['ra'] = ephemerides['RA'][0]
+            block['dec'] = ephemerides['DEC'][0]
+            block['configuration']['pm_ra_cosdec'] = ephemerides['dRA cos(Dec)'][0]*u.arcsec/u.hour
+            block['configuration']['pm_dec'] = ephemerides['dDec'][0]*u.arcsec/u.hour
+            logger.info('Updated target ra and dec with proper motion')
         
         target = coord.SkyCoord(ra=block['ra'].hourangle, dec=block['dec'].deg, unit=(u.hourangle, u.deg))
         

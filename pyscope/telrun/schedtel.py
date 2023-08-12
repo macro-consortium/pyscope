@@ -212,6 +212,20 @@ def schedtel(catalog, ignore_order, date, observatory,
 
     # Generate schedule table
     schedule_table = schedule.to_table(show_transitions=False, show_unused=False)
+
+    # Update ephem for non-sidereal targets
+    for row in schedule_table:
+        if (row['configuration']['pm_ra_cosdec'].value != 0 or 
+                row['configuration']['pm_dec'].value != 0):
+            ephemerides = mpc.MPC.get_ephemeris(target=row['target'],
+                location=observatory.location,
+                start=row['start time (UTC)'],
+                number=1,
+                proper_motion='sky')
+            row['ra'] = ephemerides['RA'][0]
+            row['dec'] = ephemerides['DEC'][0]
+            row['configuration']['pm_ra_cosdec'] = ephemerides['dRA cos(Dec)'][0]*u.arcsec/u.hour
+            row['configuration']['pm_dec'] = ephemerides['dDec'][0]*u.arcsec/u.hour
     
     # Re-assign filenames
     name_dict = {}

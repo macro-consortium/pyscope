@@ -1,10 +1,8 @@
 # TODO
 <ul>
 
-<li>schedtel should update ephem once scheduled</li>
 <li>More detailed logging across all modules</li>
 <li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
-
 
 <li>Merge back into master branch on wwgolay repo</li>
 <li>Check for PEP8 compliance</li>
