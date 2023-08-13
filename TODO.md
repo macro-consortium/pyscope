@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>Merge back into master branch on wwgolay repo</li>
 <li>Fix telrun timeout function to use threading events</li>
 <li>Fix syncfiles config parsing at start of function</li>
 <li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
