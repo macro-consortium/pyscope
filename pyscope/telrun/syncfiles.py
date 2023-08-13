@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
 def syncfiles(username, host, port, key, config, schedules, images, logs):
+
+    logger.info('Starting syncfiles')
+    logger.debug(f'syncfiles({username}, {host}, {port}, {key}, {config}, {schedules}, {images}, {logs})')
     
     # Get local and remote config directories
     local_config_dir, remote_config_dir = config
@@ -65,6 +68,7 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
         local_logs_dir, remote_logs_dir = logs
     
     # Initial config directory sync
+    logger.info('Performing initial config directory sync')
     cfg_ssh, cfg_scp = _get_client(uname, hostname, p, k)
     _sync_directory(cfg_scp, local_config_dir, remote_config_dir, 'send', '.cfg')
     
@@ -72,6 +76,7 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
     threads_event = threading.Event()
 
     # Create clients and threads
+    logger.info('Creating clients and threads')
     sch_ssh, sch_scp = _get_client(uname, hostname, p, k)
     sch_thread = threading.Thread(target=_continuous_sync, 
         args=(sch_scp,
@@ -100,16 +105,22 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
     atexit.register(_close_connection, (cfg_ssh, sch_ssh, img_ssh, log_ssh))
 
     # Start threads
+    logger.info('Starting threads')
     sch_thread.start()
     img_thread.start()
     log_thread.start()
 
+    logger.info('Starting loop')
     while True:
         if (os.path.getmtime(local_config_dir+'/syncfiles.cfg') > syncfiles_mtime):
+            logger.info('syncfiles.cfg has been modified')
+
             # Update mtime
+            logger.info('Updating mtime')
             syncfiles_mtime = os.path.getmtime(local_config_dir+'/syncfiles.cfg')
 
             # Stop threads from starting next loop sync and wait for them to finish
+            logger.info('Stopping threads')
             threads_event.set()
             sch_thread.join()
             img_thread.join()
@@ -117,19 +128,23 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
             threads_event.clear()
 
             # End old ssh connections
+            logger.info('Closing old connections')
             _close_connection((cfg_ssh, sch_ssh, img_ssh, log_ssh))
 
             # Re-parse the syncfiles.cfg
+            logger.info('Re-parsing syncfiles.cfg')
             (uname, hostname, p, k,
             local_schedules_dir, remote_schedules_dir, 
             local_images_dir, remote_images_dir,
             local_logs_dir, remote_logs_dir) = _read_syncfiles_cfg(local_config_dir+'/syncfiles.cfg')
 
             # Sync config directory
+            logger.info('Syncing config directory')
             cfg_ssh, cfg_scp = _get_client(uname, hostname, p, k)
             _sync_directory(cfg_scp, local_config_dir, remote_config_dir, 'send', '.cfg')
 
             # Create clients and threads
+            logger.info('Creating clients and threads')
             sch_ssh, sch_scp = _get_client(uname, hostname, p, k)
             sch_thread = threading.Thread(target=_continuous_sync, 
                 args=(sch_scp,
@@ -158,11 +173,13 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
             atexit.register(_close_connection, (cfg_ssh, sch_ssh, img_ssh, log_ssh))
 
             # Start threads
+            logger.info('Starting threads')
             sch_thread.start()
             img_thread.start()
             log_thread.start()
 
         else:
+            logger.debug('syncfiles.cfg has not been modified')
             _sync_directory(cfg_scp, local_config_dir, remote_config_dir, 'send', '.cfg') # Sync config directory
             time.sleep(1) # Sleep for 1 second
 
@@ -207,6 +224,7 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
                 continue
             if f in scp.listdir():
                 if scp.stat(f).st_mtime < os.path.getmtime(local_dir+f):
+                    logger.info('Putting local path %s to remote path %s', local_dir+f, remote_dir+f)
                     scp.put(local_dir+f, f)
             else:
                 scp.put(local_dir+f, f)
@@ -216,6 +234,7 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
                 continue
             if f in os.listdir(local_dir):
                 if scp.stat(f).st_mtime < os.path.getmtime(local_dir+f):
+                    logger.info('Getting remote path %s to local path %s', remote_dir+f, local_dir+f)
                     scp.get(f, local_dir+f)
             else:
                 scp.get(f, local_dir+f)
