@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>Fix telrun timeout function to use threading events</li>
 <li>Fix syncfiles config parsing at start of function</li>
 <li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
 <li>Check for PEP8 compliance</li>
@@ -22,6 +21,7 @@
     <ul>
     <li>Support scheduling calibration observations</li>
     <li>Notification support via courier.com, others</li>
+    <li>telrun timeout has auto-recovery feature for affected hardware</li>
     <li>TheSkyX support</li>
     <li>Nasmyth telescope control</li>
     <li>SBIGUniversal driver</li>

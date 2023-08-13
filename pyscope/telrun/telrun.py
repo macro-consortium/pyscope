@@ -49,12 +49,10 @@ class TelrunOperator:
         self._gui = gui
         self._execution_thread = None
         self._execution_event = threading.Event()
-        self._status_thread = None
         self._status_event = threading.Event()
         self._schedule = None
         self._schedule_last_modified = 0
         self._best_focus_result = None
-        self._hardware_status = None
         self._wcs_threads = []
 
         # Read-only attributes with no constructor arguments
@@ -796,12 +794,11 @@ class TelrunOperator:
             logger.info('Setting camera readout mode to %s' % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
+            logger.info('Starting autofocus...')
             t = threading.Thread(target=self._is_process_complete, 
-                args=(self._best_focus_result, self.autofocus_timeout),
+                args=(self.autofocus_timeout, self._status_event),
                 daemon=True, name='is_autofocus_done_thread')
             t.start()
-
-            logger.info('Starting autofocus...')
             self._autofocus_status = 'Running'
             self._best_focus_result = self.observatory.run_autofocus(
                 exposure=self.autofocus_exposure,
@@ -809,6 +806,9 @@ class TelrunOperator:
                 nsteps=self.autofocus_nsteps,
                 step_size=self.autofocus_step_size,
                 use_current_pointing=self.autofocus_use_current_pointing)
+            self._status_event.set()
+            t.join()
+            self._status_event.clear()
             self._autofocus_status = 'Idle'
             
             if self._best_focus_result is None:
@@ -886,28 +886,32 @@ class TelrunOperator:
 
                     for i in range(self.observatory.filter_wheel.Position+1, len(self.observatory.filters)):
                         if self.observatory.filters[i] in self.recenter_filters:
-                            self._hardware_status = ''
                             t = threading.Thread(target=self._is_process_complete, 
-                                args=(self._hardware_status, self.hardware_timeout),
+                                args=(self.hardware_timeout, self._status_event),
                                 daemon=True, name='is_filter_change_done_thread')
                             t.start()
                             self._filter_wheel_status = 'Changing filter'
                             self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
-                            self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                            self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                            self._status_event.set()
+                            t.join()
+                            self._status_event.clear()
                             self._filter_wheel_status = 'Idle'
                             self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                             break
                     else:
                         for i in range(self.observatory.filter_wheel.Position-1):
                             if self.observatory.filters[i] in self.recenter_filters:
-                                self._hardware_status = ''
                                 t = threading.Thread(target=self._is_process_complete,
-                                    args=(self._hardware_status, self.hardware_timeout),
+                                    args=(self.hardware_timeout, self._status_event),
                                     daemon=True, name='is_filter_change_done_thread')
                                 t.start()
                                 self._filter_wheel_status = 'Changing filter'
                                 self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
-                                self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                                self.observatory.set_filter_offset_focuser(filter_name=self.observatory.filters[i])
+                                self._status_event.set()
+                                t.join()
+                                self._status_event.clear()
                                 self._filter_wheel_status = 'Idle'
                                 self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                                 break
@@ -918,9 +922,8 @@ class TelrunOperator:
             if not slew: add_attempt = 1
             else: add_attempt = 0
 
-            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
-                args=(self._hardware_status, self.hardware_timeout),
+                args=(self.hardware_timeout, self._status_event),
                 daemon=True, name='is_recenter_done_thread')
             t.start()
             self._camera_status = 'Recentering'
@@ -928,7 +931,7 @@ class TelrunOperator:
             self._wcs_status = 'Recentering' if self.observatory.wcs is not None else ''
             self._dome_status = 'Recentering' if self.observatory.dome is not None else ''
             self._rotator_status = 'Recentering' if self.observatory.rotator is not None else ''
-            self._hardware_status = self.observatory.recenter(obj=target, 
+            centered = self.observatory.recenter(obj=target, 
                         target_x_pixel=block['configuration']['respositioning'][0], target_y_pixel=block['configuration']['respositioning'][1],
                         initial_offset_dec=self.recenter_initial_offset_dec,
                         check_and_refine=self.recenter_check_and_refine,
@@ -939,7 +942,6 @@ class TelrunOperator:
                         save_path=self.recenter_save_path,
                         sync_mount=self.recenter_sync_mount, 
                         do_initial_slew=slew)
-            centered = self._hardware_status
             self._camera_status = 'Idle'
             self._telescope_status = 'Idle'
             self._wcs_status = 'Idle' if self.observatory.wcs is not None else ''
@@ -954,29 +956,34 @@ class TelrunOperator:
         elif slew and target is not None:
             logger.info('Slewing to source...')
 
-            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
-                args=(self._hardware_status, self.hardware_timeout),
+                args=(self.hardware_timeout, self._status_event),
                 daemon=True, name='is_slew_done_thread')
             t.start()
             self._telescope_status = 'Slewing'
             self._dome_status = 'Slewing' if self.observatory.dome is not None else ''
             self._rotator_status = 'Slewing' if self.observatory.rotator is not None else ''
-            self._hardware_status = self.observatory.slew_to_coordinates(obj=target, control_dome=(self.dome is not None), 
+            self.observatory.slew_to_coordinates(obj=target, control_dome=(self.dome is not None), 
             control_rotator=(self.rotator is not None), wait_for_slew=False, track=False)
+            self._status_event.set()
+            t.join()
+            self._status_event.clear()
         
         # Set filter and focus offset
         if self.filter_wheel is not None:
             logger.info('Setting filter and focus offset...')
-            self._hardware_status = ''
             t = threading.Thread(target=self._is_process_complete,
-                args=(self._hardware_status, self.hardware_timeout),
+                args=(self.hardware_timeout, self._status_event),
                 daemon=True, name='is_filter_change_done_thread')
             t.start()
             self._filter_wheel_status = 'Changing filter'
             self._focuser_status = 'Offsetting for filter selection' if self.observatory.focuser is not None else ''
-            self._hardware_status = self.observatory.set_filter_offset_focuser(filter_name=block['configuration']['filter'])
+            self.observatory.set_filter_offset_focuser(filter_name=block['configuration']['filter'])
+            self._status_event.set()
+            t.join()
+            self._status_event.clear()
             self._filter_wheel_status = 'Idle'
+            self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
 
         # Set binning
         if block['configuration']['binning'][0] >= 1 and block['configuration']['binning'][0] <= self.observatory.camera.MaxBinX:
@@ -1202,12 +1209,14 @@ class TelrunOperator:
         logger.info('File %s complete' % image_path.replace('.tmp', ''))
         self._wcs_status = 'Idle'
     
-    def _is_process_complete(self, check_var, timeout):
+    def _is_process_complete(self, timeout, event):
         t0 = time.time()
-        while time.time() < t0 + timeout and check_var is None:
-            pass
+        while time.time() < t0 + timeout:
+            if not event.is_set():
+                time.sleep(0.1)
         else:
-            raise TelrunException('Hardware timed out')
+            logger.warning('Process timed out after %.1f seconds' % timeout)
+            # TODO: Add auto-recovery capability for the affected hardware
     
     def _terminate(self):
         self.observatory.shutdown()
