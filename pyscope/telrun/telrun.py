@@ -81,7 +81,7 @@ class TelrunOperator:
         self._wcs_status = ''
 
         # Read-only attributes with constructor arguments
-        self._config_path = config_path
+        self._config_path = os.path.abspath(config_path)
         self._schedules_path = './schedules/'
         self._images_path = './images/'
         self._log_path = './logs/'
@@ -125,11 +125,14 @@ class TelrunOperator:
 
         save_at_end = False
         if os.path.isdir(self._config_path):
+            logger.info('config_path is a directory, looking for telrun.cfg')
             read_path = os.path.join(self._config_path, 'telrun.cfg')
         elif os.path.isfile(self._config_path):
+            logger.info('config_path is a file, setting config directory to its parent')
             read_path = self._config_path
             self._config_path = os.path.abspath(os.path.dirname(self._config_path))
         else:
+            logger.info('config_path does not exist, creating a directory at %s' % self._config_path)
             os.mkdir(self._config_path)
             save_at_end = True
 
@@ -137,7 +140,7 @@ class TelrunOperator:
         if os.path.isfile(read_path):
             logger.info('Using config file to initialize telrun: %s' % self._config_path)
             try: self._config.read(self._config_path)
-            except: raise TelrunError('Could not read config file: %s' % self._config_path)
+            except: raise TelrunException('Could not read config file: %s' % self._config_path)
 
             self._schedules_path = self._config.get('default', 'schedules_path', fallback=self._schedules_path)
             self._images_path = self._config.get('default', 'images_path', fallback=self._images_path)
@@ -188,12 +191,14 @@ class TelrunOperator:
         self._observatory = os.path.join(self._config_path, 'observatory.cfg')
         self._observatory = kwargs.get('observatory', self._observatory)
         if type(self._observatory) is str:
+            logger.info('Observatory is string, loading from config file and saving to config path')
             self._observatory = Observatory(config_path=self._observatory)
             self.observatory.save_config(os.path.join(self._config_path, 'observatory.cfg'))
         elif type(self._observatory) is Observatory:
+            logger.info('Observatory is Observatory object, saving to config path')
             self.observatory.save_config(os.path.join(self._config_path, 'observatory.cfg'))
         else:
-            raise TelrunError('observatory must be a string representing an observatory config file path or an Observatory object')
+            raise TelrunException('observatory must be a string representing an observatory config file path or an Observatory object')
         
         # Load kwargs
         self._schedules_path = os.path.abspath(kwargs.get('schedules_path', self._schedules_path))
@@ -204,11 +209,12 @@ class TelrunOperator:
         self._dome_type = kwargs.get('dome_type', self._dome_type)
         match self._dome_type:
             case None | 'None' | 'none':
+                logger.info('dome_type is None, setting to None')
                 self._dome_type = 'None'
             case 'dome' | 'safety-monitor' | 'safety_monitor' | 'safetymonitor' | 'safety monitor' | 'both':
                 pass
             case _:
-                raise TelrunError('dome_type must be None, "dome", "safety-monitor", "both", or "None"')
+                raise TelrunException('dome_type must be None, "dome", "safety-monitor", "both", or "None"')
         self._config['default']['dome_type'] = str(self._dome_type)
 
         # Parse other kwargs
@@ -254,6 +260,26 @@ class TelrunOperator:
             self.recenter_filters = self.observatory.filters
         if self.wcs_filters is None:
             self.wcs_filters = self.observatory.filters
+        
+        # Verify filter restrictions appear in filter wheel
+        if self.observatory.filter_wheel is not None:
+            for filt in self.autofocus_filters:
+                if filt in self.observatory.filters:
+                    break
+            else:
+                raise TelrunException('At least one autofocus filter must be in filter wheel')
+            
+            for filt in self.recenter_filters:
+                if filt in self.observatory.filters:
+                    break
+            else:
+                raise TelrunException('At least one recenter filter must be in filter wheel')
+            
+            for filt in self.wcs_filters:
+                if filt in self.observatory.filters:
+                    break
+            else:
+                raise TelrunException('At least one WCS filter must be in filter wheel')
         
         # Register shutdown with atexit
         logger.debug('Registering observatory shutdown with atexit')
@@ -304,6 +330,7 @@ class TelrunOperator:
             self.save_config('telrun.cfg')
     
     def save_config(self, filename):
+        logger.debug('Saving config to %s' % filename)
         self.observatory.save_config(os.path.join(self.config_path, 'observatory.cfg'))
         with open(os.path.join(self.config_path, filename), 'w') as config_file:
             self._config.write(config_file)
@@ -344,8 +371,10 @@ class TelrunOperator:
                     logger.info('Started.')
                 
                 else:
+                    logger.debug('Waiting for new schedule...')
                     time.sleep(1)
             else:
+                logger.debug('Waiting for new schedule...')
                 time.sleep(1)
     
     def execute_schedule(self, schedule, *args):
@@ -353,27 +382,42 @@ class TelrunOperator:
         if schedule is str:
             schedule = table.Table.read(schedule, format='ascii.ecsv')
         elif type(schedule) is not table.QTable:
-            raise TypeError('schedule must be a path to an ECSV file or an astropy QTable')
+            logger.exception('schedule must be a path to an ECSV file or an astropy QTable')
+            return
         
         # Schedule validation
+        logger.info('Validating schedule...')
         if 'target' not in schedule.colnames:
-            raise ValueError('schedule must have a target column')
+            logger.exception('schedule must have a target column')
+            return
         if 'start time (UTC)' not in schedule.colnames:
-            raise ValueError('schedule must have a start time (UTC) column')
+            logger.exception('schedule must have a start time (UTC) column')
+            return
         if 'end time (UTC)' not in schedule.colnames:
-            raise ValueError('schedule must have an end time (UTC) column')
+            logger.exception('schedule must have an end time (UTC) column')
+            return
         if 'duration (minutes)' not in schedule.colnames:
-            raise ValueError('schedule must have a duration (minutes) column')
+            logger.exception('schedule must have a duration (minutes) column')
+            return
         if 'ra' not in schedule.colnames:
-            raise ValueError('schedule must have an ra column')
+            logger.exception('schedule must have an ra column')
+            return
         if 'dec' not in schedule.colnames:
-            raise ValueError('schedule must have a dec column')
+            logger.exception('schedule must have a dec column')
+            return
         if 'configuration' not in schedule.colnames:
-            raise ValueError('schedule must have a configuration column')
+            logger.exception('schedule must have a configuration column')
+            return
 
+        logger.info('Validating observing blocks...')
         for i in range(len(schedule)):
-            schedule[i] = self._block_validation(schedule[i])
-
+            logger.debug('Validating block %i of %i' % (i+1, len(schedule)))
+            block = self._block_validation(schedule[i])
+            if block is None:
+                logger.warning('Block %i of %i is invalid, removing from schedule' % (i+1, len(schedule)))
+                block['configuration']['status'] = 'F'
+            schedule[i] = block
+        
         self._schedule = schedule
 
         if args[0] is not None:
@@ -383,6 +427,7 @@ class TelrunOperator:
                 self.observatory.observatory_time().strftime('%m-%d-%Y') + '.ecsv')
 
         if self.write_to_schedule_log:
+            logger.info('Writing to schedule log.')
             if os.path.exists(self.logs_path
                 +filename.split('.ecsv')[0].split('/')[-1] + '-log.ecsv'):
                 schedule_log = table.Table.read(self.logs_path
@@ -400,7 +445,7 @@ class TelrunOperator:
 
         # Wait for sunset?
         while self.observatory.sun_altaz()[0] > self.max_solar_elev and self.wait_for_sun:
-            logger.info('Sun altitude: %.3f degs (above limit of %s)' % (
+            logger.info('Sun altitude: %.3f degs (above limit of %s), waiting 60 seconds' % (
                 self.observatory.sun_altaz()[0], self.max_solar_elev))
             time.sleep(60)
         logger.info('Sun altitude: %.3f degs (below limit of %s), continuing...' % (
@@ -470,7 +515,7 @@ class TelrunOperator:
         while (self.observatory.camera.CCDTemperature > 
                 self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
                 and self.wait_for_cooldown):
-            logger.info('CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance)' % (
+            logger.info('CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance), waiting for 10 seconds' % (
                 self.observatory.camera.CCDTemperature,
                 self.observatory.cooler_setpoint, 
                 self.observatory.cooler_tolerance))
@@ -544,7 +589,8 @@ class TelrunOperator:
 
         # Check for block
         if len(args) > 1:
-            raise TypeError('execute_block() takes 1 positional argument but %i were given' % len(args))
+            logger.exception('execute_block() takes 1 positional argument but %i were given' % len(args))
+            return
         elif len(args) == 1:
             block = args[0]
         elif len(args) == 0:
@@ -563,21 +609,32 @@ class TelrunOperator:
                 names=('target', 'start time (UTC)', 'end time (UTC)', 
                 'duration (minutes)', 'ra', 'dec', 'configuration'))
         elif type(block) is None:
-            block = table.Row([
-                kwargs.get('target', None),
-                None,
-                None,
-                kwargs.get('duration', None),
-                kwargs['ra'],
-                kwargs['dec'],
-                kwargs['configuration']
-                ], 
-                names=('target', 'start time (UTC)', 'end time (UTC)',
-                'duration (minutes)', 'ra', 'dec', 'configuration'))
+            try: 
+                block = table.Row([
+                    kwargs.get('target', None),
+                    None,
+                    None,
+                    kwargs.get('duration', None),
+                    kwargs['ra'],
+                    kwargs['dec'],
+                    kwargs['configuration']
+                    ], 
+                    names=('target', 'start time (UTC)', 'end time (UTC)',
+                    'duration (minutes)', 'ra', 'dec', 'configuration'))
+            except:
+                logger.exception('Passed block is None and no kwargs were given, skipping this block')
+                return
         elif type(block) is not table.Row:
-            raise TypeError('Block must be an astroplan ObservingBlock or astropy Row object.')
+            logger.exception('Block must be an astroplan ObservingBlock or astropy Row object.')
+            return
 
-        block = self._block_validation(block)
+        val_block = self._block_validation(block)
+        if val_block is None:
+            logger.warning('Block failed validation, skipping...')
+            return ('F', 'Block failed validation', block)
+        else:
+            logger.info('Block passed validation, continuing...')
+            block = val_block
 
         self._current_block = block
 
@@ -735,9 +792,8 @@ class TelrunOperator:
                                 self._filter_wheel_status = 'Idle'
                                 self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                                 break
-                        else:
-                            raise TelrunError('No filters in filter wheel are autofocus filters')
 
+            logger.info('Setting camera readout mode to %s' % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
             t = threading.Thread(target=self._is_process_complete, 
@@ -745,6 +801,7 @@ class TelrunOperator:
                 daemon=True, name='is_autofocus_done_thread')
             t.start()
 
+            logger.info('Starting autofocus...')
             self._autofocus_status = 'Running'
             self._best_focus_result = self.observatory.run_autofocus(
                 exposure=self.autofocus_exposure,
@@ -759,6 +816,7 @@ class TelrunOperator:
                 logger.warning('Autofocus failed, will try again on next block')
             else:
                 self._last_autofocus_time = time.time()
+                logger.info('Autofocus complete, best focus position: %i' % self._best_focus_result)
         
         # Check 7: Camera temperature
         while (self.observatory.camera.CCDTemperature > 
@@ -801,6 +859,7 @@ class TelrunOperator:
         # Update ephem for non-sidereal targets
         if (block['configuration']['pm_ra_cosdec'].value != 0
                 or block['configuration']['pm_dec'].value != 0):
+            logger.info('Non-zero proper motion specified, updating ephemeris...')
             ephemerides = mpc.MPC.get_ephemeris(
                 target=block['target'],
                 location=self.observatory.observatory_location,
@@ -811,7 +870,7 @@ class TelrunOperator:
             block['dec'] = ephemerides['DEC'][0]
             block['configuration']['pm_ra_cosdec'] = ephemerides['dRA cos(Dec)'][0]*u.arcsec/u.hour
             block['configuration']['pm_dec'] = ephemerides['dDec'][0]*u.arcsec/u.hour
-            logger.info('Updated target ra and dec with proper motion')
+            logger.info('Ephemeris updates')
         
         target = coord.SkyCoord(ra=block['ra'].hourangle, dec=block['dec'].deg, unit=(u.hourangle, u.deg))
         
@@ -819,7 +878,7 @@ class TelrunOperator:
         centered = None
         if None not in (block['configuration']['respositioning'][0], block['configuration']['respositioning'][1], 
                 block['ra'], block['dec']):
-            logger.info('Refining telescope pointing for this block...')
+            logger.info('Telescope pointing repositioning requested...')
 
             if self.observatory.filter_wheel is not None and self.recenter_filters is not None:
                 if self.observatory.filters[self.observatory.filter_wheel.Position] not in self.recenter_filters:
@@ -852,8 +911,6 @@ class TelrunOperator:
                                 self._filter_wheel_status = 'Idle'
                                 self._focuser_status = 'Idle' if self.observatory.focuser is not None else ''
                                 break
-                        else:
-                            raise TelrunError('No filters in filter wheel are recenter filters')
 
             logger.info('Setting camera readout mode to default for recentering...')
             self.observatory.camera.ReadoutMode = self.default_readout
@@ -947,23 +1004,23 @@ class TelrunOperator:
 
         # Set subframe
         if block['configuration']['frame_size'][0] == 0: 
-            block['configuration']['frame_size'][0] = self.observatory.camera.CameraXSize/self.observatory.camera.BinX
+            block['configuration']['frame_size'][0] = int(self.observatory.camera.CameraXSize/self.observatory.camera.BinX)
         if block['configuration']['frame_size'][1] == 0: 
-            block['configuration']['frame_size'][1] = self.observatory.camera.CameraYSize/self.observatory.camera.BinY
+            block['configuration']['frame_size'][1] = int(self.observatory.camera.CameraYSize/self.observatory.camera.BinY)
 
         if (block['configuration']['frame_position'][0] + block['configuration']['frame_size'][0] < 
-            self.observatory.camera.CameraXSize/self.observatory.camera.BinX):
+            int(self.observatory.camera.CameraXSize/self.observatory.camera.BinX)):
             logger.info('Setting startx and numx to %i, %i' % (block['configuration']['frame_position'][0], block['configuration']['frame_size'][0]))
             self.observatory.camera.StartX = block['configuration']['frame_position'][0]
             self.observatory.camera.NumX = block['configuration']['frame_size'][0]
         else:
             logger.warning('Requested startx and numx of %i, %i is not supported, skipping...' % (
                 block['configuration']['frame_position'][0], block['configuration']['frame_size'][0]))
-            return('F', 'Requested startx and numx of %i, %i is not supported' % (
+            return ('F', 'Requested startx and numx of %i, %i is not supported' % (
                 block['configuration']['frame_position'][0], block['configuration']['frame_size'][0]))
 
         if (block['configuration']['frame_position'][1] + block['configuration']['frame_size'][1] <
-            self.observatory.camera.CameraYSize/self.observatory.camera.BinY):
+            int(self.observatory.camera.CameraYSize/self.observatory.camera.BinY)):
             logger.info('Setting starty and numy to %i, %i' % (block['configuration']['frame_position'][1], block['configuration']['frame_size'][1]))
             self.observatory.camera.StartY = block['configuration']['frame_position'][1]
             self.observatory.camera.NumY = block['configuration']['frame_size'][1]
@@ -1077,11 +1134,13 @@ class TelrunOperator:
                 block['configuration']['filename'] = block['configuration']['filename'] + '_%i' % i
 
             # WCS thread cleanup
+            logger.info('Cleaning up WCS threads...')
             self._wcs_threads = [t for t in self._wcs_threads if t.is_alive()]
 
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
                 if self.observatory.filter_wheel.Position in self.wcs_filters:
+                    logger.info('Current filter in wcs filters, attempting WCS solve...')
                     save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
                     self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
@@ -1089,10 +1148,11 @@ class TelrunOperator:
                                                 daemon=True, name='wcs_threads'))
                     self._wcs_threads[-1].start()
                 else:
+                    logger.info('Current filter not in wcs filters, skipping WCS solve...')
                     save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename'], frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
-                    logger.info('Current filter not in wcs filters, skipping WCS solve...')
             else:
+                logger.info('No filter wheel, attempting WCS solve...')
                 save_success = self.observatory.save_last_image(self.images_path + 
                             block['configuration']['filename']+'.tmp', frametyp=block['configuration']['shutter_state'], custom_header=custom_header)
                 self._wcs_threads.append(threading.Thread(target=self._async_wcs_solver,
@@ -1147,108 +1207,102 @@ class TelrunOperator:
         while time.time() < t0 + timeout and check_var is None:
             pass
         else:
-            raise TelrunError('Hardware timed out')
+            raise TelrunException('Hardware timed out')
     
     def _terminate(self):
         self.observatory.shutdown()
 
     @staticmethod
     def _block_validation(block):
+        try: 
+            # Check for all required config vals, fill in defaults if not present
+            block['configuration']['observer'] = block['configuration'].get('observer', observing_block_config['observer'])
+            block['configuration']['code'] = block['configuration'].get('code', observing_block_config['code'])
+            block['configuration']['title'] = block['configuration'].get('title', observing_block_config['title'])
+            block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
+            block['configuration']['filter'] = block['configuration'].get('filter', observing_block_config['filter'])
+            block['configuration']['exposure'] = block['configuration'].get('exposure', observing_block_config['exposure'])
+            block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
+            block['configuration']['do_not_interrupt'] = block['configuration'].get('do_not_interrupt', observing_block_config['do_not_interrupt'])
+            block['configuration']['repositioning'] = block['configuration'].get('repositioning', observing_block_config['repositioning'])
+            block['configuration']['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
+            block['configuration']['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
+            block['configuration']['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
+            block['configuration']['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
+            block['configuration']['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
+            block['configuration']['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
+            block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
+            block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
+            block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
+            block['configuration']['message'] = block['configuration'].get('message', observing_block_config['message'])
 
-        # Check for all required config vals, fill in defaults if not present
-        block['configuration']['observer'] = block['configuration'].get('observer', observing_block_config['observer'])
-        block['configuration']['code'] = block['configuration'].get('code', observing_block_config['code'])
-        block['configuration']['title'] = block['configuration'].get('title', observing_block_config['title'])
-        block['configuration']['filename'] = block['configuration'].get('filename', observing_block_config['filename'])
-        block['configuration']['filter'] = block['configuration'].get('filter', observing_block_config['filter'])
-        block['configuration']['exposure'] = block['configuration'].get('exposure', observing_block_config['exposure'])
-        block['configuration']['n_exp'] = block['configuration'].get('n_exp', observing_block_config['n_exp'])
-        block['configuration']['do_not_interrupt'] = block['configuration'].get('do_not_interrupt', observing_block_config['do_not_interrupt'])
-        block['configuration']['repositioning'] = block['configuration'].get('repositioning', observing_block_config['repositioning'])
-        block['configuration']['shutter_state'] = block['configuration'].get('shutter_state', observing_block_config['shutter_state'])
-        block['configuration']['readout'] = block['configuration'].get('readout', observing_block_config['readout'])
-        block['configuration']['binning'] = block['configuration'].get('binning', observing_block_config['binning'])
-        block['configuration']['frame_position'] = block['configuration'].get('frame_position', observing_block_config['frame_position'])
-        block['configuration']['frame_size'] = block['configuration'].get('frame_size', observing_block_config['frame_size'])
-        block['configuration']['pm_ra_cosdec'] = block['configuration'].get('pm_ra_cosdec', observing_block_config['pm_ra_cosdec'])
-        block['configuration']['pm_dec'] = block['configuration'].get('pm_dec', observing_block_config['pm_dec'])
-        block['configuration']['comment'] = block['configuration'].get('comment', observing_block_config['comment'])
-        block['configuration']['status'] = block['configuration'].get('status', observing_block_config['status'])
-        block['configuration']['message'] = block['configuration'].get('message', observing_block_config['message'])
+            # Input validation
+            block['target'] = str(block['target'])
+            block['start time (UTC)'] = astrotime.Time(block['start time (UTC)'], format='iso', scale='utc')
+            block['end time (UTC)'] = astrotime.Time(block['end time (UTC)'], format='iso', scale='utc')
+            block['duration (minutes)'] = float(block['duration (minutes)'])
+            block['ra'] = coord.Longitude(block['ra'])
+            block['dec'] = coord.Latitude(block['dec'])
 
-        # Input validation
-        block['target'] = str(block['target'])
-        block['start time (UTC)'] = astrotime.Time(block['start time (UTC)'], format='iso')
-        block['end time (UTC)'] = astrotime.Time(block['end time (UTC)'], format='iso')
-        block['duration (minutes)'] = float(block['duration (minutes)'])
-        block['ra'] = coord.Longitude(block['ra'])
-        block['dec'] = coord.Latitude(block['dec'])
+            block['configuration']['observer'] = str(block['configuration']['observer'])
+            block['configuration']['code'] = str(block['configuration']['code'])
+            block['configuration']['title'] = str(block['configuration']['title'])
 
-        block['configuration']['observer'] = str(block['configuration']['observer'])
-        block['configuration']['code'] = str(block['configuration']['code'])
-        block['configuration']['title'] = str(block['configuration']['title'])
+            block['configuration']['filename'] = str(block['configuration']['filename'])
+            if block['configuration']['filename'] == '':
+                name = block['configuration']['code'] + '_'
+                if block['target'] != '':
+                    name += block['target'].replace(' ', '-') + '_'
+                # name += block['configuration']['exposure'] + 's_'
+                # name += 'FILT-'+block['configuration']['filter'] + '_'
+                # name += 'BIN-'+block['configuration']['binning'] + '_'
+                # name += 'READ-'+block['configuration']['readout'] + '_' 
+                name += block['start time (UTC)'].datetime.strftime('%Y-%m-%dT%H:%M:%S') + '.fts'
+                block['configuration']['filename'] = name
+            if block['configuration']['filename'].split('.')[-1] not in ('fts', 'fits', 'fit'):
+                block['configuration']['filename'].split('.')[0] + '.fts'
+            
+            block['configuration']['filter'] = str(block['configuration']['filter'])
 
-        block['configuration']['filename'] = str(block['configuration']['filename'])
-        if block['configuration']['filename'] == '':
-            name = block['configuration']['code'] + '_'
-            if block['target'] != '':
-                name += block['target'].replace(' ', '-') + '_'
-            # name += block['configuration']['exposure'] + 's_'
-            # name += 'FILT-'+block['configuration']['filter'] + '_'
-            # name += 'BIN-'+block['configuration']['binning'] + '_'
-            # name += 'READ-'+block['configuration']['readout'] + '_' 
-            name += block['start time (UTC)'].datetime.strftime('%Y-%m-%dT%H:%M:%S') + '.fts'
-            block['configuration']['filename'] = name
-        if block['configuration']['filename'].split('.')[-1] not in ('fts', 'fits', 'fit'):
-            block['configuration']['filename'].split('.')[0] + '.fts'
-        
-        block['configuration']['filter'] = str(block['configuration']['filter'])
+            block['configuration']['exposure'] = float(block['configuration']['exposure'])
+            block['configuration']['n_exp'] = int(block['configuration']['n_exp'])
+            block['configuration']['do_not_interrupt'] = bool(block['configuration']['do_not_interrupt'])
+            if do_not_interrupt:
+                if 60*block['duration (minutes)'] < block['configuration']['exposure']*block['configuration']['n_exp']:
+                    logger.error('Insufficient time to complete exposures allocated.')
+                    return None
+            else:
+                if (block['configuration']['exposure'] != 60*block['duration (minutes)']
+                        or block['configuration']['n_exp'] != 1):
+                    logger.error('n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False.')
+                    return None
 
-        block['configuration']['exposure'] = float(block['configuration']['exposure'])
-        block['configuration']['n_exp'] = int(block['configuration']['n_exp'])
-        block['configuration']['do_not_interrupt'] = bool(block['configuration']['do_not_interrupt'])
-        if do_not_interrupt:
-            if 60*block['duration (minutes)'] < block['configuration']['exposure']*block['configuration']['n_exp']:
-                raise TelrunError('Insufficient time to complete exposures allocated.')
-        else:
-            if (block['configuration']['exposure'] != 60*block['duration (minutes)']
-                    or block['configuration']['n_exp'] != 1):
-                raise TelrunError('n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False.')
-
-        if type(block['configuration']['repositioning']) not in [iter, tuple, list]:
-            raise TypeError('repositioning must be an iterable of pixel coordinates.')
-        else:
             block['configuration']['repositioning'][0] = int(block['configuration']['repositioning'][0]) if block['configuration']['repositioning'][0] is not None else None
             block['configuration']['repositioning'][1] = int(block['configuration']['repositioning'][1]) if block['configuration']['repositioning'][1] is not None else None
-        
-        block['configuration']['shutter_state'] = bool(block['configuration']['shutter_state'])
-        block['configuration']['readout'] = int(block['configuration']['readout'])
+            
+            block['configuration']['shutter_state'] = bool(block['configuration']['shutter_state'])
+            block['configuration']['readout'] = int(block['configuration']['readout'])
 
-        if type(block['configuration']['binning']) not in [iter, tuple, list]:
-            raise TypeError('binning must be an iterable of integers.')
-        else:
             block['configuration']['binning'][0] = int(block['configuration']['binning'][0])
             block['configuration']['binning'][1] = int(block['configuration']['binning'][1])
-        
-        if type(block['configuration']['frame_position']) not in [iter, tuple, list]:
-            raise TypeError('frame_position must be an iterable of pixel coordinates.')
-        else:
+            
             block['configuration']['frame_position'][0] = int(block['configuration']['frame_position'][0])
             block['configuration']['frame_position'][1] = int(block['configuration']['frame_position'][1])
 
-        if type(block['configuration']['frame_size']) not in [iter, tuple, list]:
-            raise TypeError('frame_size must be an iterable of pixel sizes.')
-        else:
+
             block['configuration']['frame_size'][0] = int(block['configuration']['frame_size'][0])
             block['configuration']['frame_size'][1] = int(block['configuration']['frame_size'][1])
-        
-        block['configuration']['pm_ra_cosdec'] = u.Quantity(block['configuration']['pm_ra_cosdec'], unit=u.arcsec/u.hour)
-        block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
-        block['configuration']['comment'] = str(block['configuration']['comment'])
-        block['configuration']['status'] = str(block['configuration']['status'])
-        block['configuration']['message'] = str(block['configuration']['message'])
+            
+            block['configuration']['pm_ra_cosdec'] = u.Quantity(block['configuration']['pm_ra_cosdec'], unit=u.arcsec/u.hour)
+            block['configuration']['pm_dec'] = u.Quantity(block['configuration']['pm_dec'], unit=u.arcsec/u.hour)
+            block['configuration']['comment'] = str(block['configuration']['comment'])
+            block['configuration']['status'] = str(block['configuration']['status'])
+            block['configuration']['message'] = str(block['configuration']['message'])
 
-        return block
+            return block
+        
+        except:
+            return None
     
     @property
     def do_periodic_autofocus(self):
