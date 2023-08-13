@@ -138,6 +138,7 @@ def schedtel(catalog, ignore_order, date, observatory,
         blocks = [[blocks[i][j] for i in range(len(blocks)) for j in range(len(blocks[i]))]]
 
     # Define the observatory
+    logger.info('Parsing the observatory')
     if type(observatory) is not astroplan.Observer:
         if type(observatory) is str:
             obs_cfg = configparser.ConfigParser()
@@ -162,6 +163,7 @@ def schedtel(catalog, ignore_order, date, observatory,
             raise TypeError('Observatory must be, a string, Observatory object, or astroplan.Observer object.')
     
     # Constraints
+    logger.info('Defining global constraints')
     global_constraints = [
         astroplan.AltitudeConstraint(min=elevation*u.deg),
         astroplan.AtNightConstraint(max_solar_altitude=max_altitude*u.deg),
@@ -170,12 +172,14 @@ def schedtel(catalog, ignore_order, date, observatory,
         ]
 
     # Transitioner
+    logger.info('Defining transitioner')
     transitioner = astroplan.Transitioner(
         slew_rate,
         instrument_reconfiguration_times=instrument_reconfiguration_times)
 
     # Schedule
     if date is None:
+        logger.info('Using current date at observatory location')
         tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_long, lat=obs_lat)
         date = datetime.datetime.now(pytz.timezone(tz))
 
@@ -183,17 +187,20 @@ def schedtel(catalog, ignore_order, date, observatory,
             format='datetime', scale='utc') 
             - ((astrotime.Time(date, format='datetime', scale='utc') - astrotime.Time.now()).day % 1)*u.day)
     t1 = t0 + 1*u.day
+    logger.info('Schedule time range: %s to %s' % (t0.iso, t1.iso))
 
     schedule = astroplan.Schedule(t0, t1)
 
     # Scheduler
     if scheduler[0] == '':
+        logger.info('Using default scheduler: astroplan.PriorityScheduler')
         schedule_handler = astroplan.PriorityScheduler(constraints=global_constraints,
             observer=observatory,
             transitioner=transitioner,
             gap_time=gap_time*u.second,
             time_resolution=time_resolution*u.second)
     else:
+        logger.info(f'Using custom scheduler: {scheduler[0]}')
         spec = importlib.util.spec_from_file_location(scheduler[0].split('/')[-1].split('.')[0], scheduler[0])
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -207,8 +214,10 @@ def schedtel(catalog, ignore_order, date, observatory,
             gap_time=gap_time*u.second,
             time_resolution=time_resolution*u.second)
     
-    for block in blocks:
-        schedule_handler(blocks, schedule)
+    logger.info('Scheduling ObservingBlocks')
+    for i in range(len(blocks)):
+        logger.debug('Block group %i of i' % (i+1, len(blocks)))
+        schedule_handler(blocks[i], schedule)
 
     # Generate schedule table
     schedule_table = schedule.to_table(show_transitions=False, show_unused=False)
@@ -217,6 +226,7 @@ def schedtel(catalog, ignore_order, date, observatory,
     for row in schedule_table:
         if (row['configuration']['pm_ra_cosdec'].value != 0 or 
                 row['configuration']['pm_dec'].value != 0):
+            logger.info('Updating ephemeris for %s at scheduled time' % row['target'])
             ephemerides = mpc.MPC.get_ephemeris(target=row['target'],
                 location=observatory.location,
                 start=row['start time (UTC)'],
@@ -241,6 +251,7 @@ def schedtel(catalog, ignore_order, date, observatory,
         schedule_table[i]['configuration']['filename'] = name
 
     # Write the telrun.ecsv file
+    logger.info('Writing schedule to file')
     if filename is None or telrun:
         first_time = astrotime.Time(schedule_table[0]['start time (UTC)'], format='iso', scale='utc').strftime('%m-%d-%Y')
         filename = 'telrun_' + first_time + '.ecsv'
@@ -248,25 +259,32 @@ def schedtel(catalog, ignore_order, date, observatory,
     if telrun:
         try:
             path = os.environ.get('TELRUN_EXECUTE')
+            logger.info('-t/--telrun flag set, writing schedule to %s from $TELRUN_EXECUTE environment variable' % path)
         except:
             path = os.getcwd() + '/schedules/'
+            logger.info('-t/--telrun flag set, writing schedule to %s' % path)
         if not os.path.isdir(path):
-            raise FileNotFoundError(f'Path {path} does not exist.')
+            logger.exception(f'Path {path} does not exist.')
+            return
     else:
         path = os.getcwd() + '/'
+        logger.info('-t/--telrun flag not set, writing schedule to %s' % path)
     schedule_table.write(path+filename, format='ascii.ecsv', overwrite=True)
 
     # Plot the schedule
     ax = None
     match plot:
         case 1: # Gantt chart
+            logger.info('Plotting schedule as a Gantt chart')
             ax = plot_schedule_gantt(schedule, observatory, name=instrument_name)
             return schedule_table, ax
         case 2: # Plot by target w/ altitude
+            logger.info('Plotting schedule by target with airmass')
             ax = astroplan.plots.plot_schedule_airmass(schedule)
             plt.legend()
             return schedule_table, ax
         case 3: # Sky chart
+            logger.info('Plotting schedule on a sky chart')
             objects = []; times = []
             for i in range(len(schedule_table)):
                 if schedule_table[i]['ra'] not in [obj.ra.dms for obj in objects]:
@@ -289,6 +307,7 @@ def schedtel(catalog, ignore_order, date, observatory,
             plt.legend()
             return schedule_table, ax
         case _:
+            logger.info('No plot requested')
             pass
 
     return schedule_table
@@ -399,6 +418,7 @@ def parse_sch_file(filename, location=None, t0=None):
     # Remove equal signs, quotes, and blank lines
     lines = []
     for line in raw_lines:
+        logger.debug(f'Parsing line: {line}')
         line = line.replace('=', ' ')
         line = line.replace("`", "'")
         line = line.replace('"', "'")
@@ -634,7 +654,11 @@ def parse_sch_file(filename, location=None, t0=None):
                         'comment': comment,
                         'status': 'N',
                         'message':'unprocessed'},
-                    constrains=constraints[j]))
+                    constraints=constraints[j]))
+                logger.debug(f'''Created ObservingBlock: {blocks[-1].target}, 
+                                {blocks[-1].duration}, {blocks[-1].priority}, 
+                                {blocks[-1].name}, {blocks[-1].constraints},
+                                {blocks[-1].configuration}''')
 
     return blocks
 
