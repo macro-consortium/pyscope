@@ -1,13 +1,13 @@
 # TODO
 <ul>
 
-<li>More detailed logging across all modules</li>
-<li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
-
 <li>Merge back into master branch on wwgolay repo</li>
+<li>Fix telrun timeout function to use threading events</li>
+<li>Fix syncfiles config parsing at start of function</li>
+<li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
 <li>Check for PEP8 compliance</li>
 <li>Write docs</li>
-<li>Write tests</li>
+<li>Write and run tests</li>
 <li>Installer setup on pip, conda channels</li>
 
 <li>Outreach and use</li>
