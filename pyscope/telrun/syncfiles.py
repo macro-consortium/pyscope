@@ -41,6 +41,10 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
     # Get local and remote config directories
     local_config_dir, remote_config_dir = config
 
+    if os.path.isfile(local_config_dir):
+        logger.info('Local config directory is a file, getting parent directory')
+        local_config_dir = os.path.abspath(os.path.dirname(local_config_dir))
+
     # Get mtime of syncfiles.cfg
     syncfiles_mtime = os.path.getmtime(local_config_dir+'/syncfiles.cfg')
 

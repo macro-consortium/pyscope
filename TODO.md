@@ -1,7 +1,6 @@
 # TODO
 <ul>
 
-<li>Fix syncfiles config parsing at start of function</li>
 <li>scripts: (summary_report, scheduling, mk_dir) to telrun, reduction module, analysis module, utils module</li>
 <li>Check for PEP8 compliance</li>
 <li>Write docs</li>
