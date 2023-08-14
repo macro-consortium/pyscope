@@ -10,10 +10,12 @@ import paramiko
 logger = logging.getLogger(__name__)
 
 @click.command()
-@click.option('-c', '--config', nargs=2,
-                default=('./config/', '/home/telrun/config/'), show_default=True,
-                type=(click.Path(exists=True, resolve_path=True), click.Path()), 
+@click.option('-c', '--config',
+                default='./config/', show_default=True,
+                type=click.Path(exists=True, resolve_path=True), 
                 help='Path to config directory on local and remote machines')
+@click.option('-r', '--remote-config', 'remote_config', type=str,
+                help='Path to config directory on remote machine')
 @click.option('-u', '--username', type=str, 
                 help='Username for remote server')
 @click.option('-h', '--host', type=str,
@@ -33,13 +35,13 @@ logger = logging.getLogger(__name__)
                 help='Path to logs directory on local and remote machines')
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def syncfiles(username, host, port, key, config, schedules, images, logs):
+def syncfiles(config, remote_config, username, host, port, key, schedules, images, logs):
 
     logger.info('Starting syncfiles')
     logger.debug(f'syncfiles({username}, {host}, {port}, {key}, {config}, {schedules}, {images}, {logs})')
     
     # Get local and remote config directories
-    local_config_dir, remote_config_dir = config
+    local_config_dir = config
 
     if os.path.isfile(local_config_dir):
         logger.info('Local config directory is a file, getting parent directory')
@@ -49,13 +51,16 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
     syncfiles_mtime = os.path.getmtime(local_config_dir+'/syncfiles.cfg')
 
     # Read syncfiles.cfg
-    (uname, hostname, p, k,
+    (uname, hostname, p, k, 
+    remote_config_dir,
     local_schedules_dir, remote_schedules_dir, 
     local_images_dir, remote_images_dir,
     local_logs_dir, remote_logs_dir) = _read_syncfiles_cfg(
                                     local_config_dir+'/syncfiles.cfg')
 
     # Override with any arguments passed in
+    if remote_config is not None:
+        remote_config_dir = remote_config
     if username is not None:
         uname = username
     if host is not None:
@@ -138,6 +143,7 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
             # Re-parse the syncfiles.cfg
             logger.info('Re-parsing syncfiles.cfg')
             (uname, hostname, p, k,
+            remote_config_dir,
             local_schedules_dir, remote_schedules_dir, 
             local_images_dir, remote_images_dir,
             local_logs_dir, remote_logs_dir) = _read_syncfiles_cfg(local_config_dir+'/syncfiles.cfg')
@@ -168,7 +174,7 @@ def syncfiles(username, host, port, key, config, schedules, images, logs):
             log_ssh, log_scp = _get_client(uname, hostname, p, k)
             log_thread = threading.Thread(target=_continuous_sync,
                 args=(log_scp,
-                local_logs_dir, remote_logs_dir, 'send', '.log',
+                local_logs_dir, remote_logs_dir, 'send', ('.log', '.ecsv'),
                 threads_event), 
                 daemon=True,
                 name='log_thread')
@@ -196,6 +202,7 @@ def _read_syncfiles_cfg(syncfiles_cfg):
     p = cfg.getint('DEFAULT', 'port', fallback=22)
     k = cfg.get('DEFAULT', 'key', fallback='./config/id_rsa')
 
+    remote_config_dir = cfg.get('DEFAULT', 'remote_config_dir', fallback='/home/telrun/config/')
     local_schedules_dir = cfg.get('DEFAULT', 'local_schedules_dir', fallback='./schedules/')
     remote_schedules_dir = cfg.get('DEFAULT', 'remote_schedules_dir', fallback='/home/telrun/schedules/')
     local_images_dir = cfg.get('DEFAULT', 'local_images_dir', fallback='./images/')
@@ -204,6 +211,7 @@ def _read_syncfiles_cfg(syncfiles_cfg):
     remote_logs_dir = cfg.get('DEFAULT', 'remote_logs_dir', fallback='/home/telrun/logs/')
 
     return (uname, hostname, p, k,
+            remote_config_dir,
             local_schedules_dir, remote_schedules_dir, 
             local_images_dir, remote_images_dir,
             local_logs_dir, remote_logs_dir)
