@@ -49,12 +49,12 @@ def init_telrun_dir(path):
     if platform.system() == 'Windows':
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__),
-            '../scripts/start_telrun.bat'), 
+            'start_telrun.bat'), 
             os.path.join(path, 'start_telrun.bat'))
     else:
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__),
-            '../scripts/start_telrun'), 
+            'start_telrun'), 
             os.path.join(path, 'start_telrun'))
     
     logger.info('Done')
@@ -127,10 +127,10 @@ def init_remote_dir(path):
     if platform.system() == 'Windows':
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__),
-            '../scripts/start_syncfiles.bat'), 
+            'start_syncfiles.bat'), 
             os.path.join(path, 'start_syncfiles.bat'))
     else:
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__),
-            '../scripts/start_syncfiles'), 
+            'start_syncfiles'), 
             os.path.join(path, 'start_syncfiles'))
