@@ -1,2 +1,0 @@
-exec $TELHOME/bin/screen -s 2 -e scanstat $*
-

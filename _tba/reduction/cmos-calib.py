@@ -1,0 +1,220 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+'''
+Fully calibrate a raw science image taken with CMOS camera using master calibration images [bias, dark, flat] 
+Optionally, purge hot pixels, correct bad columns 
+
+Scheme:
+R= raw science frame
+D = master dark (median averaged) with same exposure time as raw science image
+F = master flat (filter specfic, median averaged)
+
+calibrated frame = (R - D) / NF
+
+N.B. 
+0. This scheme (subtract a dark using same exposure time as science image, 
+don't subtract bias), is recommended for CMOS images [e.g. Doug George email Oct 2021]
+1. This assumes the flat exposure time is small so no dark correction is needed).
+2. Output is 16-bit for compatibility with Talon software
+3. Does not use border pixels to calculate mean (outer 20 rows,columns)
+4. Uses the cosmics library to removed hot pixels
+
+3 Nov 2021  RLM
+7 Feb 2020  replace cosmics library with astroscrappy (5x faster)
+'''
+version = '1.1 (7 Feb 2022)'
+
+# import needed modules
+import sys, os, time
+from astropy.io import fits as pyfits
+from astropy.io.fits import getheader, getdata
+from optparse import OptionParser
+import numpy as np
+
+import astroscrappy
+
+# Default directory for calibration images
+calib_dir = '/usr/local/telescope/archive/calib/'
+
+def get_args():
+    d_txt = 'Program cmos-calib calibrates raw FITS images by applying bias, dark, flat corrections, \
+    and optionally removing hot pixels using Cosmics. Default calibration images are retrieved from  %s' % calib_dir
+    parser = OptionParser(description=d_txt, version = 'cmos_calib %s' % version )
+    
+    parser.add_option('-H', dest = 'Hot_pixel'  , type=int, default = 1, action='store', metavar="Hot pixel removal", help="Number of hot pixel removal iterations [default 1]")      
+    parser.add_option('-d', dest = 'dark_frame' , metavar='Dark frame', action = 'store',  default = '', help='Dark frame' )
+    parser.add_option('-f', dest = 'flat_frame' , metavar='Flat frame', action = 'store',  default = '', help='Flat frame' )
+    parser.add_option('-c', dest = 'cal_image'  , metavar='Calibrated image' , action = 'store',  default = '', help='Calibrated image [default: overwrites input image]' )
+    parser.add_option('-C', dest = 'bad_columns', metavar='Bad columns',action='store', default ='', help ='Bad column list [default none]' )
+    parser.add_option('-v', dest = 'verbose'    , metavar='Verbose'   , action = 'store_true',  default = 'False', help='Verbose output' )
+    return parser.parse_args()    
+    
+
+''' Not currently used: bad columns are fixed below'''
+def fix_badcolumns(im,badcolumns):
+    ''' 
+    Fixes user-specfified bad columns in FITS images 
+    Affected columns are repaired by replacing column values with mean of adjacent columns.
+    Returns corrected image and list of fixed columns 
+    '''
+    
+    window = 5; min_diff = 5  
+    for n in range(border,imsize-border): 
+        win_median= np.median(im[:,n-window:n+window])
+        diff = np.median(im[:,n]) - win_median
+        if abs(diff) > min_diff: badcols.append(n)
+    for bc in badcolumns: 
+        m1 = im[:,bc-1]
+        m2 = im[:,bc+1] 
+        im[:,bc] = (m1 + m2)/2.
+    return im
+    
+# ====== main program  ======= 
+
+RN = 3.0 # Read noise for AC4040
+
+# Get command  line arguments, assign parameter values
+(opts, args) = get_args()
+N_iter =      opts.Hot_pixel
+dark_image =  opts.dark_frame
+flat_image =  opts.flat_frame
+cal_image =   opts.cal_image
+if opts.bad_columns != '':
+    bad_columns = [int(x) for x in opts.bad_columns.split(',')]
+else:
+    bad_columns = ''
+verbose = opts.verbose
+raw_image = args[0]
+
+# Retrieve camera-specific parameters 
+hdr = pyfits.getheader(raw_image)
+nbin = hdr['XBINNING']
+xpixels = hdr['NAXIS1']; ypixels = hdr['NAXIS2']
+readout_mode = hdr['READOUTM']
+exptime = hdr['EXPTIME']
+
+pmax = 2**16 -1  # Hack for now, should get from header info
+
+
+
+# Set xmin, xmax, ymin ,ymax for calculating means etc ( i.e., do not use borders) 
+border = 1024
+xmin = ymin  = border
+xmax = xpixels - border
+ymax = ypixels - border
+
+# Determine which dark to use by selecting dark whose exposure time is closest to science image exposure time
+dark_t_vals = [2**n for n in range(-3,12)]  # List of exposure times of available darks
+f_diff = lambda  t: abs(t - exptime)
+tdark = min(dark_t_vals, key=f_diff)
+if verbose: print('Warning: Science image has different exposure time than dark image (%.1f sec vs. %.1f sec)' % (exptime, tdark))
+
+# Set default file names using binning and readout mdoe
+if readout_mode == 'High Gain':
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'high',tdark, nbin, nbin)
+elif readout_mode == 'Low Gain':
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'low', tdark, nbin, nbin)
+elif readout_mode == 'High Gain StackPro':
+    dark_master = '%smaster-dark-%s-%.4g-%ix%i.fts' % (calib_dir, 'spro',tdark, nbin, nbin)
+else:
+    sys.exit('Mode %s is not currently supported, exiting' % readout_mode)
+if verbose: print('Calibrating using mode %s' % readout_mode)
+
+# set dark, flat, output image defaults if filenames not specified
+if dark_image == '' : dark_image = dark_master
+
+if flat_image == '':
+    hdr_raw = getheader(raw_image)
+    filter_raw = hdr_raw['filter'][0].upper()
+    flat_image = '%smaster-flat-%s-%ix%i.fts'% (calib_dir,filter_raw.upper(), nbin, nbin)
+if cal_image == '' : cal_image = raw_image
+
+# Check for existence of user-specified calibration and science images
+if not os.path.isfile(raw_image) : sys.exit('Raw image %s does not exist, exiting'  % raw_image)
+if not os.path.isfile(dark_image): sys.exit('Dark image %s does not exist, exiting' % dark_image)
+if not os.path.isfile(flat_image): sys.exit('Flat image %s does not exist, exiting' % flat_image)
+
+# set variables
+im_raw =  getdata(raw_image)  ; hdr_raw =  getheader(raw_image)
+im_dark = getdata(dark_image) ; hdr_dark = getheader(dark_image)
+im_flat =  getdata(flat_image)     ; hdr_flat   = getheader(flat_image)
+
+# Ensure all images arrays are floats
+im_raw = im_raw.astype (float)
+im_dark = im_dark.astype(float)
+im_flat = im_flat.astype(float)
+
+# add pedestal back to dark if we find PEDESTAL keyword 
+if 'PEDESTAL' in hdr_dark: im_dark += hdr_dark['PEDESTAL']
+
+# Check if flat image has a filter matched to science image
+filter_raw = hdr_raw['filter']; filter_flat = hdr_flat['filter']
+if filter_raw[0] != filter_flat[0]: sys.exit('Raw (%s), flat (%s) filters do not match, exiting' % (filter_raw, filter_flat) )
+
+# Flat: Normalize to one y dividing by median
+if verbose:
+    print('User flat image %s' % flat_image)
+    print('Flat image statistics:  min = %5.1f, median = %5.1f, max = %5.1f' % (np.min(im_flat), np.median(im_flat), np.max(im_flat) ))
+
+im_flat = im_flat/np.mean(im_flat[xmin:xmax,ymin:ymax])
+im_flat[im_flat <= 0] = 1
+im_flat[im_flat >= 65535] = 65535
+
+# Print all files to log
+if verbose:
+    print('Calibrating %s using %s, %s' % (raw_image, dark_image, flat_image))
+    print('Medians:  image = %.1f, dark = %.1f' % (np.median(im_raw),  np.median(im_dark) ))
+
+# Do image arithmetic: add pedestal, subtract dark, divide by normalized flat
+pedestal = 3*np.std(im_raw)
+im_cal = (im_raw - im_dark)/im_flat + pedestal
+# restrict  pixel  range to 16 bits [0, pmax]
+im_cal[im_cal<0] = 0; im_cal[im_cal > pmax] = pmax 
+im_cal = np.floor(im_cal)
+# Fix bad columns 
+#im_cal, badcols = fix_badcolumns(im_cal, imsize, border)
+if len(bad_columns) != 0:
+    for badcol in bad_columns:
+        im_cal[:,badcol] = (im_cal[:,badcol-1] + im_cal[:,badcol+1])/2.
+
+# Add comments to header documenting calibration
+hdr_cal = pyfits.getheader(raw_image)
+s0 = 'Calibrated using cmos-calib'
+s1 = 'Dark frame = %s' % dark_image 
+s2 = 'Flat frame = %s' % flat_image
+s3 = 'Pedestal added during calibration = %i' % pedestal
+hdr_cal['PEDESTAL'] = pedestal
+hdr_cal.add_comment(s0); hdr_cal.add_comment(s1) ; hdr_cal.add_comment(s2); hdr_cal.add_comment(s3)
+#hdr_cal.add_comment('Replaced bad columns: %s' % badcols)
+
+# Add CALSTAT keyword to calibrate images, so other programs realize this image is already calibrated
+hdr_cal.insert('INSTRUME',('CALSTAT','DF','CMOS_calib run'))
+
+# Remove hot pixels if requested
+if N_iter > 0:
+    t0 = time.time()
+    mask,im_clean = astroscrappy.detect_cosmics(im_cal, niter = N_iter, readnoise= RN)
+    hdr_cal.add_comment('Removed hot pixels using astroscrappy, %i iterations' % N_iter)
+    hdu = pyfits.PrimaryHDU(im_clean,hdr_cal)
+    # Convert to 16-bit for Talon (camera,etc)
+    hdu.scale('int16','',bzero=32768)  
+    hdulist = pyfits.HDUList([hdu])
+    hdulist.writeto(cal_image, overwrite=True, output_verify='ignore')
+    if verbose: print('Wrote %s' % (cal_image))
+    t1 = time.time()
+    if verbose: print('Hot pixel removal took: %.1f sec' % (t1-t0))
+
+else:
+    # Construct new header from original raw image, adding appropriate comments
+    hdu = pyfits.PrimaryHDU(im_cal,hdr_cal)
+    # Convert to 16-bit for Talon (camera,etc)
+    hdu.scale('int16','',bzero=32768)
+    
+    # write FITS file
+    hdulist = pyfits.HDUList([hdu])
+    outfile = cal_image
+    hdulist.writeto(outfile, overwrite=True, output_verify='ignore')
+    if verbose: print('Wrote %s' % (outfile))
+    hdulist.close()
+
