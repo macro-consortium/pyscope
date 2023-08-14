@@ -1,5 +1,6 @@
 import atexit
 import configparser
+import errno
 import logging
 import os
 import threading
@@ -229,8 +230,20 @@ def _continuous_sync(scp, local_dir, remote_dir, mode, ext, event):
         time.sleep(1)
 
 def _sync_directory(scp, local_dir, remote_dir, mode, ext):
-    scp.chdir(remote_dir)
+    logger.debug(f'_sync_directory({local_dir}, {remote_dir}, {mode}, {ext})')
+
     if mode == 'send':
+        try: 
+            scp.stat(remote_dir)
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                logger.info('Creating remote directory %s', remote_dir)
+                scp.mkdir(remote_dir)
+            else:
+                raise e
+        scp.chdir(remote_dir)
+        if not os.path.isdir(local_dir):
+            raise NotADirectoryError(f'{local_dir} is not a directory')
         for f in os.listdir(local_dir):
             if not f.endswith(ext):
                 continue
@@ -239,8 +252,13 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
                     logger.info('Putting local path %s to remote path %s', local_dir+f, remote_dir+f)
                     scp.put(local_dir+f, f)
             else:
+                logger.info('Putting local path %s to remote path %s', local_dir+f, remote_dir+f)
                 scp.put(local_dir+f, f)
     elif mode == 'receive':
+        scp.chdir(remote_dir)
+        if not os.path.isdir(local_dir):
+            logger.info('Creating local directory %s', local_dir)
+            os.mkdir(local_dir)
         for f in scp.listdir():
             if not f.endswith(ext):
                 continue
@@ -249,7 +267,30 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
                     logger.info('Getting remote path %s to local path %s', remote_dir+f, local_dir+f)
                     scp.get(f, local_dir+f)
             else:
+                logger.info('Getting remote path %s to local path %s', remote_dir+f, local_dir+f)
                 scp.get(f, local_dir+f)
+    elif mode == 'both':
+        scp.chdir(remote_dir)
+        for f in scp.listdir():
+            if not f.endswith(ext):
+                continue
+            if f in os.listdir(local_dir):
+                if scp.stat(f).st_mtime < os.path.getmtime(local_dir+f):
+                    logger.info('Getting remote path %s to local path %s', remote_dir+f, local_dir+f)
+                    scp.get(f, local_dir+f)
+            else:
+                logger.info('Getting remote path %s to local path %s', remote_dir+f, local_dir+f)
+                scp.get(f, local_dir+f)
+        for f in os.listdir(local_dir):
+            if not f.endswith(ext):
+                continue
+            if f in scp.listdir():
+                if scp.stat(f).st_mtime < os.path.getmtime(local_dir+f):
+                    logger.info('Putting local path %s to remote path %s', local_dir+f, remote_dir+f)
+                    scp.put(local_dir+f, f)
+            else:
+                logger.info('Putting local path %s to remote path %s', local_dir+f, remote_dir+f)
+                scp.put(local_dir+f, f)
 
 def _close_connection(sshs):
     for s in sshs:
