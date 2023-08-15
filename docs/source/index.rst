@@ -7,8 +7,6 @@
 Telescope Control with Python (pyscope)
 ***************************************
 
-.. automodule:: pyscope
-
 Getting Started
 ===============
 .. toctree:: 
@@ -50,7 +48,7 @@ How to Guides
 
 Modules
 -------
-* :doc:`pyscope.drivers.abstract </api/pyscope.drivers.abstract>`
+
 
 Authors
 =======

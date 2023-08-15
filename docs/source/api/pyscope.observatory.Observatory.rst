@@ -1,7 +1,7 @@
 Observatory
 ===========
 
-.. currentmodule:: pyscope
+.. currentmodule:: pyscope.observatory
 
 .. autoclass:: Observatory
    :show-inheritance:
@@ -17,7 +17,6 @@ Observatory
       ~Observatory.camera_ascom
       ~Observatory.camera_driver
       ~Observatory.camera_info
-      ~Observatory.config
       ~Observatory.cooler_setpoint
       ~Observatory.cooler_tolerance
       ~Observatory.cover_calibrator
@@ -26,7 +25,7 @@ Observatory
       ~Observatory.cover_calibrator_az
       ~Observatory.cover_calibrator_driver
       ~Observatory.cover_calibrator_info
-      ~Observatory.default_readout_mode
+      ~Observatory.current_focus_offset
       ~Observatory.diameter
       ~Observatory.dome
       ~Observatory.dome_ascom
@@ -45,14 +44,13 @@ Observatory
       ~Observatory.focuser_driver
       ~Observatory.focuser_info
       ~Observatory.focuser_max_error
-      ~Observatory.get_optics_from_telescope
-      ~Observatory.get_site_from_telescope
       ~Observatory.instrument_description
       ~Observatory.instrument_name
       ~Observatory.last_camera_shutter_status
       ~Observatory.latitude
       ~Observatory.longitude
       ~Observatory.max_dimension
+      ~Observatory.maxim
       ~Observatory.min_altitude
       ~Observatory.observatory_info
       ~Observatory.observatory_location
@@ -74,7 +72,9 @@ Observatory
       ~Observatory.safety_monitor_ascom
       ~Observatory.safety_monitor_driver
       ~Observatory.safety_monitor_info
+      ~Observatory.settle_time
       ~Observatory.site_name
+      ~Observatory.slew_rate
       ~Observatory.switch
       ~Observatory.switch_ascom
       ~Observatory.switch_driver
@@ -100,9 +100,11 @@ Observatory
       ~Observatory.moon_altaz
       ~Observatory.moon_illumination
       ~Observatory.recenter
+      ~Observatory.run_autofocus
       ~Observatory.safety_status
       ~Observatory.save_config
       ~Observatory.save_last_image
+      ~Observatory.set_filter_offset_focuser
       ~Observatory.shutdown
       ~Observatory.slew_to_coordinates
       ~Observatory.start_derotation_thread
@@ -125,7 +127,6 @@ Observatory
    .. autoattribute:: camera_ascom
    .. autoattribute:: camera_driver
    .. autoattribute:: camera_info
-   .. autoattribute:: config
    .. autoattribute:: cooler_setpoint
    .. autoattribute:: cooler_tolerance
    .. autoattribute:: cover_calibrator
@@ -134,7 +135,7 @@ Observatory
    .. autoattribute:: cover_calibrator_az
    .. autoattribute:: cover_calibrator_driver
    .. autoattribute:: cover_calibrator_info
-   .. autoattribute:: default_readout_mode
+   .. autoattribute:: current_focus_offset
    .. autoattribute:: diameter
    .. autoattribute:: dome
    .. autoattribute:: dome_ascom
@@ -153,14 +154,13 @@ Observatory
    .. autoattribute:: focuser_driver
    .. autoattribute:: focuser_info
    .. autoattribute:: focuser_max_error
-   .. autoattribute:: get_optics_from_telescope
-   .. autoattribute:: get_site_from_telescope
    .. autoattribute:: instrument_description
    .. autoattribute:: instrument_name
    .. autoattribute:: last_camera_shutter_status
    .. autoattribute:: latitude
    .. autoattribute:: longitude
    .. autoattribute:: max_dimension
+   .. autoattribute:: maxim
    .. autoattribute:: min_altitude
    .. autoattribute:: observatory_info
    .. autoattribute:: observatory_location
@@ -182,7 +182,9 @@ Observatory
    .. autoattribute:: safety_monitor_ascom
    .. autoattribute:: safety_monitor_driver
    .. autoattribute:: safety_monitor_info
+   .. autoattribute:: settle_time
    .. autoattribute:: site_name
+   .. autoattribute:: slew_rate
    .. autoattribute:: switch
    .. autoattribute:: switch_ascom
    .. autoattribute:: switch_driver
@@ -206,9 +208,11 @@ Observatory
    .. automethod:: moon_altaz
    .. automethod:: moon_illumination
    .. automethod:: recenter
+   .. automethod:: run_autofocus
    .. automethod:: safety_status
    .. automethod:: save_config
    .. automethod:: save_last_image
+   .. automethod:: set_filter_offset_focuser
    .. automethod:: shutdown
    .. automethod:: slew_to_coordinates
    .. automethod:: start_derotation_thread

@@ -1,6 +1,6 @@
 airmass
 =======
 
-.. currentmodule:: pyscope
+.. currentmodule:: pyscope.utils
 
 .. autofunction:: airmass

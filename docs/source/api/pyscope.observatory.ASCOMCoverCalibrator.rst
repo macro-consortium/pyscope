@@ -1,0 +1,43 @@
+ASCOMCoverCalibrator
+====================
+
+.. currentmodule:: pyscope.observatory
+
+.. autoclass:: ASCOMCoverCalibrator
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~ASCOMCoverCalibrator.Brightness
+      ~ASCOMCoverCalibrator.CalibratorState
+      ~ASCOMCoverCalibrator.CoverState
+      ~ASCOMCoverCalibrator.MaxBrightness
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~ASCOMCoverCalibrator.CalibratorOff
+      ~ASCOMCoverCalibrator.CalibratorOn
+      ~ASCOMCoverCalibrator.Choose
+      ~ASCOMCoverCalibrator.CloseCover
+      ~ASCOMCoverCalibrator.HaltCover
+      ~ASCOMCoverCalibrator.OpenCover
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: Brightness
+   .. autoattribute:: CalibratorState
+   .. autoattribute:: CoverState
+   .. autoattribute:: MaxBrightness
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: CalibratorOff
+   .. automethod:: CalibratorOn
+   .. automethod:: Choose
+   .. automethod:: CloseCover
+   .. automethod:: HaltCover
+   .. automethod:: OpenCover

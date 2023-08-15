@@ -1,5 +1,19 @@
 # TODO
-- reduction module, analysis module, utils module
+- Scripts
+    - analysis
+        - calc-zmag.py
+    - observatory
+        - collect-calibration-set.py
+    - reduction
+        - avg-fits.py
+        - calib-images.py
+        - ccd-calib / cmos-calib.py
+        - fitslist.py
+    - telrun
+        - exoplanet_transits.py
+        - mk_mosaic_schedule.py
+        - rst.py
+        - summary_report.py
 - Check for PEP8 compliance
 - Write docs
 - Write and run tests
