@@ -4,10 +4,17 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the package modules we need
-from pyscope.observatory.observatory import _import_driver
+from pyscope.telrun import init_telrun_dir, TelrunOperator
+import inspect
+import types
+import pprint
 
+pprint.pprint(inspect.getmembers(init_telrun_dir))
+print(callable(init_telrun_dir))
+print(isinstance(init_telrun_dir.callback, types.FunctionType))
+print(inspect.isroutine(init_telrun_dir.callback))
 
-test = _import_driver(device='ObservingConditions', driver_name='HTMLObservingConditions', url='https://winer.org/Site/Weather.php')
+# test = _import_driver(device='ObservingConditions', driver_name='HTMLObservingConditions', url='https://winer.org/Site/Weather.php')
 
 '''
 # Initialize the hardware, names can be found using the ProfileExplorer

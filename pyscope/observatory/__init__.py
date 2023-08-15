@@ -13,8 +13,10 @@ from .filter_wheel import FilterWheel
 from .focuser import Focuser
 from .observing_conditions import ObservingConditions
 from .rotator import Rotator
+from .safety_monitor import SafetyMonitor
 from .switch import Switch
 from .telescope import Telescope
+from .wcs import WCS
 
 from .ascom_driver import ASCOMDriver
 from .ascom_camera import ASCOMCamera
@@ -24,6 +26,7 @@ from .ascom_filter_wheel import ASCOMFilterWheel
 from .ascom_focuser import ASCOMFocuser
 from .ascom_observing_conditions import ASCOMObservingConditions
 from .ascom_rotator import ASCOMRotator
+from .ascom_safety_monitor import ASCOMSafetyMonitor
 from .ascom_switch import ASCOMSwitch
 from .ascom_telescope import ASCOMTelescope
 
@@ -38,8 +41,8 @@ from .pinpoint_wcs import PinpointWCS
 from .pwi_autofocus import PWIAutofocus
 # from .skyx import SkyX
 
-from .observatory import Observatory
 from .observatory_exception import ObservatoryException
+from .observatory import Observatory
 
 __all__ = [
     'ASCOMCamera',

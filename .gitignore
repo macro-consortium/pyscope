@@ -128,12 +128,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-*.fts*
+# Custom
+*.fts
 *.fit
-*.log*
-!*sample*
-telrun.new
-telrun.sls
-pyscope_chronos.*
+*.fits
+*.log_*
+*.ecsv
 .vscode
 .DS_Store
