@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
                 help='Path to logs directory on local and remote machines')
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def syncfiles(config, remote_config, username, host, port, key, schedules, images, logs):
+def syncfiles_cli(config, remote_config, username, host, port, key, schedules, images, logs):
 
     logger.info('Starting syncfiles')
     logger.debug(f'syncfiles({username}, {host}, {port}, {key}, {config}, {schedules}, {images}, {logs})')
@@ -295,3 +295,5 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
 def _close_connection(sshs):
     for s in sshs:
         s.close()
+
+syncfiles = syncfiles_cli.callback

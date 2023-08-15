@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 @click.command()
 @click.argument('path', type=click.Path(resolve_path=True),
-                default='./pyscope-observatory/', show_default=True,
-                required=False, 
-                help='Path to the telrun home directory')
+                default='./pyscope-observatory/',
+                required=False)
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def init_telrun_dir(path):
+def init_telrun_dir_cli(path):
+    '''test'''
     logger.debug(f'init_telrun_dir(path={path})')
 
     logger.info('Initializing a telrun home directory at %s' % path)
@@ -61,12 +61,11 @@ def init_telrun_dir(path):
 
 @click.command()
 @click.argument('path', type=click.Path(resolve_path=True, exists=True),
-                default='./pyscope-observatory/', show_default=True,
-                required=False,
-                help='Path to the telrun home directory')
+                default='./pyscope-observatory/',
+                required=False)
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def init_remote_dir(path):
+def init_remote_dir_cli(path):
     logger.debug(f'init_remote_dir(path={path})')
 
     logger.info('Initializing a remote telrun home directory from %s' % path)
@@ -134,3 +133,6 @@ def init_remote_dir(path):
             os.path.join(os.path.dirname(__file__),
             'start_syncfiles'), 
             os.path.join(path, 'start_syncfiles'))
+
+init_telrun_dir = init_telrun_dir_cli.callback
+init_remote_dir = init_remote_dir_cli.callback

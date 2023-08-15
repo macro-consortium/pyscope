@@ -1,6 +1,8 @@
 import platform
 import logging
 
+from .driver import Driver
+
 logger = logging.getLogger(__name__)
 
 if platform.system() == 'Windows':

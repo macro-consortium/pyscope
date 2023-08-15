@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
               count=True, help='Verbose output')
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def schedtel(catalog, ignore_order, date, observatory, 
+def schedtel_cli(catalog, ignore_order, date, observatory, 
             max_altitude, elevation, airmass, 
             moon_separation, scheduler, 
             gap_time, resolution, filename, 
@@ -313,12 +313,12 @@ def schedtel(catalog, ignore_order, date, observatory,
     return schedule_table
 
 @click.command()
-@click.argument('schedule_table', type=click.Path(exists=True), help='Schedule table to plot.')
-@click.argument('observatory', type=click.Path(exists=True), help='Observatory configuration file.')
+@click.argument('schedule_table', type=click.Path(exists=True))
+@click.argument('observatory', type=click.Path(exists=True))
 @click.option('-n', '--name', type=str, default='', help='Name of observatory.')
-@click.version_option('-v', '--version', version='0.1.0')
+@click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
-def plot_schedule_gantt(schedule_table, observatory, name):
+def plot_schedule_gantt_cli(schedule_table, observatory, name):
 
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format='ascii.ecsv')
@@ -689,3 +689,6 @@ def _get_flag(line, keyword):
             return True
     
     return False
+
+schedtel = schedtel_cli.callback
+plot_schedule_gantt = plot_schedule_gantt_cli.callback
