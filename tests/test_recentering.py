@@ -1,20 +1,20 @@
 # Only necessary for testing development installations of the package
+import logging
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import matplotlib.pyplot as plt
+
 # Import the package modules we need
-from pyscope.telrun import init_telrun_dir, TelrunOperator
-import inspect
-import types
-import pprint
+from pyscope import analysis
 
-pprint.pprint(inspect.getmembers(init_telrun_dir))
-print(callable(init_telrun_dir))
-print(isinstance(init_telrun_dir.callback, types.FunctionType))
-print(inspect.isroutine(init_telrun_dir.callback))
+logging.basicConfig(level=logging.INFO)
 
-# test = _import_driver(device='ObservingConditions', driver_name='HTMLObservingConditions', url='https://winer.org/Site/Weather.php')
+zmags, zmags_err, fig, (ax0, ax1, ax2) = analysis.calc_zmag('tests/xwg206100c.fts', filt='G', threshold=10,
+                    plot=True, verbose=False)
+fig.savefig('tests/test_recentering.png')
+# plt.show()
 
 '''
 # Initialize the hardware, names can be found using the ProfileExplorer
