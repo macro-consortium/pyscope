@@ -1,13 +1,11 @@
 # TODO
 - Scripts
-    - analysis
-        - calc-zmag.py
     - observatory
         - collect-calibration-set.py
     - reduction
-        - avg-fits.py
-        - calib-images.py
-        - ccd-calib / cmos-calib.py
+        - avg_fits.py
+        - ccd_calib / cmos_calib.py
+        - calib_images.py
         - fitslist.py
     - telrun
         - exoplanet_transits.py

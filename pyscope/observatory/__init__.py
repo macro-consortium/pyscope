@@ -44,6 +44,8 @@ from .pwi_autofocus import PWIAutofocus
 from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
+from .collect_calibration_set import collect_calibration_set
+
 __all__ = [
     'ASCOMCamera',
     'ASCOMCoverCalibrator',
@@ -77,4 +79,5 @@ __all__ = [
     'Switch',
     'Telescope',
     'WCS',
+    'collect_calibration_set'
 ]

@@ -59,6 +59,8 @@ setup(
             'start-telrun = pyscope.telrun:start_telrun_cli',
             'start-syncfiles = pyscope.telrun:start_syncfiles_cli',
             'syncfiles = pyscope.telrun:syncfiles_cli',
+            'calc-zmag = pyscope.analysis.calc_zmag_cli',
+            'collect-calibration-set = pyscope.observatory.collect_calibration_set_cli',
         ],
     },
     

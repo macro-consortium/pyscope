@@ -1413,18 +1413,20 @@ class Observatory:
         if len(filter_exposure) != len(self.filters):
             logger.warn('Number of filter exposures does not match the number of filters, exiting')
             return False
-        
+
         if save_path is None:
             save_path = os.getcwd()
             logger.debug('Setting save path to current working directory: %s' % save_path)
         
         if type(new_folder) is bool:
-            save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
-            os.makedirs(save_path)
-            logger.info('Created new directory: %s' % save_path)
+            if new_folder:
+                save_path = os.path.join(save_path, datetime.datetime.now().strftime('Flats_%Y-%m-%d_%H-%M-%S'))
+                os.makedirs(save_path)
+                logger.info('Created new directory: %s' % save_path)
         elif type(new_folder) is str:
             save_path = os.path.join(save_path, new_folder)
-            os.makedirs(save_path)
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
             logger.info('Created new directory: %s' % save_path)
 
         if home_telescope and self.telescope.CanFindHome:
