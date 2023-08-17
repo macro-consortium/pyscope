@@ -1,9 +1,6 @@
 # TODO
 - Scripts
-    - observatory
-        - collect_calibration_set.py
     - reduction
-        - calib_images.py
         - fitslist.py
     - telrun
         - exoplanet_transits.py
@@ -14,3 +11,17 @@
 - Write docs
 - Write and run tests
 - Installer setup on pip, conda channels
+
+- Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles
+- Handle API defaults for all scripts
+- Calibration file names with filters should know names
+- Recursively search for latest calibration set in calib_images
+- calib_images should select dark with nearest exposure time to science image in ccd case
+- Remove help_option
+- Figure out how --version option works
+- tqdm for potentially long operations
+- verbosity option should be a counter with multiple levels, use more logging levels in scripts
+- Unify logging format across scripts
+- Images -> fnames
+- Consistent order of options and arguments
+- os.path.join everywhere
