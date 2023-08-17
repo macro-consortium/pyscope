@@ -3,7 +3,6 @@
     - observatory
         - collect_calibration_set.py
     - reduction
-        - ccd_calib / cmos_calib.py
         - calib_images.py
         - fitslist.py
     - telrun

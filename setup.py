@@ -62,6 +62,7 @@ setup(
             'calc-zmag = pyscope.analysis.calc_zmag_cli',
             'collect-calibration-set = pyscope.observatory.collect_calibration_set_cli',
             'avg-fits = pyscope.reduction.avg_fits_cli',
+            'ccd-calib = pyscope.reduction.ccd_calib_cli',
         ],
     },
     
