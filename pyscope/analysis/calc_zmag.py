@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
 def calc_zmag_cli(images, filt=None, background_params=(50, 3), 
-                    threshold=1.5, gaussian_params=(5, 3),
+                    threshold=25, gaussian_params=(5, 3),
                     effective_gain=1, connectivity=8, npixels=10, nlevels=32,
                     deblend_contrast=0.005, search_radius=3, write=False, 
                     plot=False, 

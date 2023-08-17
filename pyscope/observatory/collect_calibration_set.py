@@ -39,8 +39,10 @@ TODO:
     help='Number of times to repeat each exposure.')
 @click.option('-s', '--save-path', type=click.Path(exists=True), default='./images/',
     show_default=True, help='Path to save calibration set.')
-@click.option('-m', '--mode', type=click.Option([0, 1]), default=0, show_default=True,
+@click.option('-m', '--mode', type=click.Option(['0', '1']), default=0, show_default=True,
     help='Mode to use for averaging FITS files (0 = median, 1 = mean).')
+@click.version_option(version='0.1.0')
+@click.help_option('-h', '--help')
 def collect_calibration_set_cli(observatory,
                                 camera,
                                 dark_exposures,
@@ -157,8 +159,8 @@ def collect_calibration_set_cli(observatory,
                 flat_paths = []
                 for i in range(repeat):
                     flat_paths.append(os.path.join(os.path.join(save_folder, 'flats'), 
-                        ('flat_%s_%ix%i_%4.4gs__%i.fts' % (
-                        readout,
+                        ('flat_%s_%s_%ix%i_%4.4gs__%i.fts' % (
+                        filt, readout,
                         binning[0], binning[1], 
                         exposure, i))))
                     

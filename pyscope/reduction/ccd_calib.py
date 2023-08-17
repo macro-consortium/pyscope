@@ -347,6 +347,9 @@ def ccd_calib_cli(camera_type, dark_frame, flat_frame, bias_frame, flat_dark_fra
         cal_image = np.clip(cal_image, 0, 65535)
         cal_image = cal_image.astype(np.uint16)
 
+        logger.info('Writing calibrated status to header...')
+        hdr['CALSTAT'] = True
+
         if in_place:
             logger.info(f'Overwriting {fname}')
             fits.writeto(fname, cal_image, hdr, overwrite=True)
