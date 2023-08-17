@@ -8,7 +8,6 @@ from astropy import wcs, units as u
 import click
 import matplotlib.pyplot as plt
 import numpy as np
-import smplotlib
 
 from ..observatory import AstrometryNetWCS
 from ..utils import _get_image_source_catalog
