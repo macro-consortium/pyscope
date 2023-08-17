@@ -1,9 +1,8 @@
 # TODO
 - Scripts
     - observatory
-        - collect-calibration-set.py
+        - collect_calibration_set.py
     - reduction
-        - avg_fits.py
         - ccd_calib / cmos_calib.py
         - calib_images.py
         - fitslist.py

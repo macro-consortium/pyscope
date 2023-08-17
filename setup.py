@@ -61,6 +61,7 @@ setup(
             'syncfiles = pyscope.telrun:syncfiles_cli',
             'calc-zmag = pyscope.analysis.calc_zmag_cli',
             'collect-calibration-set = pyscope.observatory.collect_calibration_set_cli',
+            'avg-fits = pyscope.reduction.avg_fits_cli',
         ],
     },
     
