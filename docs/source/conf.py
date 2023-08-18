@@ -36,4 +36,3 @@ def linkcode_resolve(domain, info):
     return result
 
 intersphinx_mapping['click'] = ('https://click.palletsprojects.com/en/8.1.x/', None)
-intersphinx_mapping['astropy'] = ('https://docs.astropy.org/en/stable/', None)

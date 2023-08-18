@@ -71,11 +71,10 @@ procedure  for doing so. The general outline is as follows:
 
 Congratulations! You have successfully contributed to :py:mod:`~pyscope`!
 
-.. note::
-    `astropy <https://docs.astropy.org/en/stable/index.html>`_ 
-    provides a good tutorial on contributing to open-source
-    projects on GitHub 
-    `here <https://docs.astropy.org/en/stable/development/workflow/development_workflow.html>`_.
+.. note:: 
+    `Here <https://docs.astropy.org/en/stable/development/workflow/development_workflow.html>`_
+    is the astropy-written guide to contributing to astropy and affiliated
+    packages.
 
 Building the script file
 ------------------------

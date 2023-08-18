@@ -23,7 +23,6 @@ module, which provides a simple interface for fully-robotic observatory
 control.
 
 :doc:`pyscope </index>` is aiming to become an 
-`Astropy <https://www.astropy.org/>`_ 
 `affiliated package <https://www.astropy.org/affiliated/>`_.
 
 Features
@@ -36,7 +35,7 @@ Features
 * :py:mod:`pyscope.telrun` module for fully-robotic operation of 
   an observatory
 * Basic data reduction tools like
-* Powered by `Astropy <https://www.astropy.org/>`_, 
+* Powered by Astropy, 
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`_ 
   packages, and `ASCOM <https://ascom-standards.org/>`_
 
