@@ -5,7 +5,7 @@ What is pyscope?
 controlling astronomical instrumentation.
 
 .. important::
-  If you use :doc:`pyscope </index>` for data collection or work 
+  If you use :doc:`pyscope <index>` for data collection or work 
   presented in a publication or talk, please help the project by 
   properly `acknowledging or citing </cite>`_ the package.
 
@@ -17,9 +17,8 @@ add support for new devices and observatories. :doc:`pyscope </index>`
 is built on top of the `ASCOM <https://ascom-standards.org/>`_ 
 standard, but also provides support for non-ASCOM devices. Users may 
 also access their devices through third-party applications such as
-`MaxIm DL <https://diffractionlimited.com/product/maxim-dl/>`_ and 
-`TheSkyX <https://www.bisque.com/the-sky-x-professional-edition/>`_. 
-:doc:`pyscope </index>` also includes the :doc:`~/api/pyscope.telrun` 
+`MaxIm DL <https://diffractionlimited.com/product/maxim-dl/>`_. 
+:doc:`pyscope </index>` also includes the :doc:`/api/pyscope.telrun` 
 module, which provides a simple interface for fully-robotic observatory 
 control.
 
@@ -31,10 +30,10 @@ Features
 ========
 * Control observatory hardware with Python
 * Support for both ASCOM and non-ASCOM devices
-* :py:class:`~pyscope.Observatory` convenience methods like 
-  :py:meth:`~pyscope.Observatory.autofocus` and 
-  :py:meth:`~pyscope.Observatory.recenter`
-* :doc:`~/api/pyscope.telrun` module for fully-robotic operation of 
+* :py:class:`~pyscope.observatory.Observatory` convenience methods like 
+  :py:meth:`~pyscope.observatory.Observatory.autofocus` and 
+  :py:meth:`~pyscope.observatory.Observatory.recenter`
+* :py:mod:`pyscope.telrun` module for fully-robotic operation of 
   an observatory
 * Basic data reduction tools like
 * Powered by `Astropy <https://www.astropy.org/>`_, 

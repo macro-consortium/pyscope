@@ -1,3 +1,7 @@
+'''telrun test docstring
+
+This is a test docstring for the telrun module.'''
+
 import logging
 
 logger = logging.getLogger(__name__)

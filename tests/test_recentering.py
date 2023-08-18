@@ -7,13 +7,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import matplotlib.pyplot as plt
 
 # Import the package modules we need
-from pyscope import analysis
+import pyscope
+
+print(getattr(pyscope, '__version__'))
 
 logging.basicConfig(level=logging.INFO)
 
-zmags, zmags_err, fig, (ax0, ax1, ax2) = analysis.calc_zmag('tests/xwg206100c.fts', filt='G', threshold=10,
-                    plot=True, verbose=False)
-fig.savefig('tests/test_recentering.png')
+# zmags, zmags_err, fig, (ax0, ax1, ax2) = analysis.calc_zmag('tests/xwg206100c.fts', filt='G', threshold=10,
+#                     plot=True, verbose=False)
+# fig.savefig('tests/test_recentering.png')
 # plt.show()
 
 '''
