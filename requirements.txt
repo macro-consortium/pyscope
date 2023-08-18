@@ -1,5 +1,6 @@
 astropy>=5.3.1
 astroquery>=0.4.6
+astroscrappy>=1.1.0
 astroplan>=0.8
 click>=8.1.6
 numpy>=1.24.4
@@ -9,6 +10,7 @@ photutils>=1.7.0
 matplotlib>=3.5.1
 smplotlib>=0.0.6
 cmcrameri>=1.4.0
+timezonefinder>=6.0.2
 tksheet>=6.2.3
 tqdm>=4.66.1
 astropy-sphinx-theme>=1.1.0

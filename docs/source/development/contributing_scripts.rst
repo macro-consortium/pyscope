@@ -72,7 +72,8 @@ procedure  for doing so. The general outline is as follows:
 Congratulations! You have successfully contributed to :py:mod:`~pyscope`!
 
 .. note::
-    :external:py:mod:`astropy` provides a good tutorial on contributing to open-source
+    `astropy <https://docs.astropy.org/en/stable/index.html>`_ 
+    provides a good tutorial on contributing to open-source
     projects on GitHub 
     `here <https://docs.astropy.org/en/stable/development/workflow/development_workflow.html>`_.
 

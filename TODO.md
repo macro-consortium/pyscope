@@ -1,7 +1,5 @@
 # TODO
 - Scripts
-    - reduction
-        - fitslist.py
     - telrun
         - exoplanet_transits.py
         - mk_mosaic_schedule.py
@@ -12,6 +10,7 @@
 - Write and run tests
 - Installer setup on pip, conda channels
 
+- html_observing_conditions replace pycurl
 - Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles
 - Handle API defaults for all scripts
 - Calibration file names with filters should know names

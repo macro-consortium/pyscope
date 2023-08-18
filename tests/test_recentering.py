@@ -7,9 +7,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import matplotlib.pyplot as plt
 
 # Import the package modules we need
-import pyscope
-
-print(getattr(pyscope, '__version__'))
+import pyscope.analysis
+import pyscope.reduction
+import pyscope.observatory
+import pyscope.utils
+import pyscope.telrun
 
 logging.basicConfig(level=logging.INFO)
 

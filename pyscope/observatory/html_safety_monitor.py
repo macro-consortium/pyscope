@@ -1,5 +1,5 @@
-import pycurl
-import io
+# import pycurl
+# import io
 
 from .safety_monitor import SafetyMonitor
 
@@ -15,8 +15,9 @@ class HTMLSafetyMonitor(SafetyMonitor):
     def IsSafe(self):
         logger.debug(f'''HTMLSafetyMonitor.IsSafe property called''')
         safe = False
-        buffer = io.BytesIO()
-        c = pycurl.Curl()
+        c = None
+        # buffer = io.BytesIO()
+        # c = pycurl.Curl()
         c.setopt(c.URL, self._url)
         c.setopt(c.WRITEDATA, buffer)
         c.perform()
