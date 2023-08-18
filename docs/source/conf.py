@@ -9,7 +9,7 @@ from urllib.parse import quote
 project = 'pyscope'
 copyright = '2023, Walter Golay'
 author = 'Walter Golay'
-version = '0.1.0'
+version = release = '0.1.0'
 
 graphviz_dot = '/usr/local/bin/dot'
 

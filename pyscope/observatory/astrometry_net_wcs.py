@@ -2,7 +2,6 @@ from .wcs import WCS
 
 import os
 import astropy.io.fits as pyfits
-from astroquery.astrometry_net import AstrometryNet
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,6 +9,10 @@ logger = logging.getLogger(__name__)
 class AstrometryNetWCS(WCS):
     def __init__(self):
         logger.debug(f"AstrometryNetWCS.__init__() called")
+
+        # Avoid documentation build failure by importing here
+        from astroquery.astrometry_net import AstrometryNet
+
         self._solver = AstrometryNet()
     
     def Solve(self, filepath, **kwargs):
