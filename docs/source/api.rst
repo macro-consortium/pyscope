@@ -4,8 +4,8 @@ API Reference
 .. toctree::
     :maxdepth: 3
     
-    pyscope.observatory
-    pyscope.telrun
-    pyscope.reduction
-    pyscope.analysis
-    pyscope.utils
+    api/pyscope.observatory
+    api/pyscope.telrun
+    api/pyscope.reduction
+    api/pyscope.analysis
+    api/pyscope.utils

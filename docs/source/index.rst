@@ -1,59 +1,29 @@
-.. pyscope documentation master file, created by
-   sphinx-quickstart on Tue Jun  6 16:53:47 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 ***************************************
 Telescope Control with Python (pyscope)
 ***************************************
 
+.. automodule:: pyscope
+
 Getting Started
 ===============
 .. toctree:: 
-   :maxdepth: 2
-   
-   whats-new
-   installation
-   quickstart
-   how-to
-   examples
-   help
-   report
-   cite
-   about
-   license
+  :maxdepth: 2
 
-
-
-.. toctree:: 
-   :maxdepth: 2
-
-   how-to
-
-User Documentation
-==================
-.. toctree:: 
-   :maxdepth: 2
-
-   api
-   setup-reference
-
-
-Developer Documentation
-=======================
-How to Guides
--------------
-* :doc:`Write a custom driver </how-to/custom-driver>`
-* :doc:`Contribute to pyscope </how-to/contribute>`
-
-Modules
--------
-
+  installation
+  user_guide
+  api
+  development
+  cite
+  report
+  license
 
 Authors
 =======
-* Walter Golay, Former Undergraduate at the University of Iowa and 
-  Graduate Student at Harvard University, Department of Astronomy
+* Walter Golay
+
+  - Graduate Student at Harvard University, Department of Astronomy
+  - Former Undergraduate at University of Iowa, Department of 
+    Physics and Astronomy
 
 
 Acknowledgements

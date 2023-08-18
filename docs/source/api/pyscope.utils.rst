@@ -1,20 +1,22 @@
 utils Module
 ============
 
+.. automodule:: pyscope.utils
+
 Classes
 -------
 .. automodsumm:: pyscope.utils
     :classes-only:
-    :toctree: api
+    :toctree: auto_api
 
 Functions
 ---------
 .. automodsumm:: pyscope.utils
     :functions-only:
-    :toctree: api
+    :toctree: auto_api
 
 Variables
 ---------------
 .. automodsumm:: pyscope.utils
     :variables-only:
-    :toctree: api
+    :toctree: auto_api

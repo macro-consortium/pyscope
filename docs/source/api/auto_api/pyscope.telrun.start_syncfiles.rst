@@ -3,4 +3,4 @@ start_syncfiles
 
 .. currentmodule:: pyscope.telrun
 
-.. autodata:: start_syncfiles
+.. autofunction:: start_syncfiles
