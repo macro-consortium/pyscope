@@ -39,7 +39,7 @@ TODO:
     help='Number of times to repeat each exposure.')
 @click.option('-s', '--save-path', type=click.Path(exists=True), default='./images/',
     show_default=True, help='Path to save calibration set.')
-@click.option('-m', '--mode', type=click.Option(['0', '1']), default=0, show_default=True,
+@click.option('-m', '--mode', type=click.Choice(['0', '1']), default=0, show_default=True,
     help='Mode to use for averaging FITS files (0 = median, 1 = mean).')
 @click.version_option(version='0.1.0')
 @click.help_option('-h', '--help')
