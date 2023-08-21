@@ -1,11 +1,13 @@
 import functools
 import asyncio
 
+
 def _force_async(fn):
-    '''
+    """
     turns a sync function to async function using threads
-    '''
+    """
     from concurrent.futures import ThreadPoolExecutor
+
     pool = ThreadPoolExecutor()
 
     @functools.wraps(fn)
@@ -17,9 +19,9 @@ def _force_async(fn):
 
 
 def _force_sync(fn):
-    '''
+    """
     turn an async function to sync function
-    '''
+    """
     import asyncio
 
     @functools.wraps(fn)

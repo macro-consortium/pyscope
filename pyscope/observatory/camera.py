@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from ._docstring_inheritee import _DocstringInheritee
 
+
 class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -37,6 +38,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def BinX(self):
         pass
+
     @BinX.setter
     @abstractmethod
     def BinX(self, value):
@@ -46,6 +48,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def BinY(self):
         pass
+
     @BinY.setter
     @abstractmethod
     def BinY(self, value):
@@ -110,6 +113,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def CoolerOn(self):
         pass
+
     @CoolerOn.setter
     @abstractmethod
     def CoolerOn(self, value):
@@ -144,6 +148,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def FastReadout(self):
         pass
+
     @FastReadout.setter
     @abstractmethod
     def FastReadout(self, value):
@@ -158,6 +163,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Gain(self):
         pass
+
     @Gain.setter
     @abstractmethod
     def Gain(self, value):
@@ -237,6 +243,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def NumX(self):
         pass
+
     @NumX.setter
     @abstractmethod
     def NumX(self, value):
@@ -246,6 +253,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def NumY(self):
         pass
+
     @NumY.setter
     @abstractmethod
     def NumY(self, value):
@@ -255,6 +263,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Offset(self):
         pass
+
     @Offset.setter
     @abstractmethod
     def Offset(self, value):
@@ -294,6 +303,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def ReadoutMode(self):
         pass
+
     @ReadoutMode.setter
     @abstractmethod
     def ReadoutMode(self, value):
@@ -318,6 +328,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SetCCDTemperature(self):
         pass
+
     @SetCCDTemperature.setter
     @abstractmethod
     def SetCCDTemperature(self, value):
@@ -327,6 +338,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def StartX(self):
         pass
+
     @StartX.setter
     @abstractmethod
     def StartX(self, value):
@@ -336,6 +348,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def StartY(self):
         pass
+
     @StartY.setter
     @abstractmethod
     def StartY(self, value):
@@ -345,6 +358,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SubExposureDuration(self):
         pass
+
     @SubExposureDuration.setter
     @abstractmethod
     def SubExposureDuration(self, value):

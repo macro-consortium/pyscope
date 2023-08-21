@@ -7,35 +7,48 @@ logger = logging.getLogger(__name__)
 from ..utils import _force_async
 from .wcs import WCS
 
+
 class PinpointWCS(WCS):
     def __init__(self):
-        logger.debug('PinpointWCS.__init__() called')
-        if platform.system() != 'Windows':
-            raise Exception('PinPoint is only available on Windows.')
+        logger.debug("PinpointWCS.__init__() called")
+        if platform.system() != "Windows":
+            raise Exception("PinPoint is only available on Windows.")
         else:
             from win32com.client import Dispatch
-            self._solver = Dispatch('PinPoint.Plate')
 
-    def Solve(self, filepath, scale_est, ra_key='RA', dec_key='DEC',
-                ra=None, dec=None, ra_dec_units=('hour', 'deg'), 
-                solve_timeout=60, catalog=3, 
-                catalog_path='C:\GSC-1.1'):
-        logger.debug(f'''PinpointWCS.Solve(
+            self._solver = Dispatch("PinPoint.Plate")
+
+    def Solve(
+        self,
+        filepath,
+        scale_est,
+        ra_key="RA",
+        dec_key="DEC",
+        ra=None,
+        dec=None,
+        ra_dec_units=("hour", "deg"),
+        solve_timeout=60,
+        catalog=3,
+        catalog_path="C:\GSC-1.1",
+    ):
+        logger.debug(
+            f"""PinpointWCS.Solve(
             {filepath}, {scale_est}, {ra_key}, {dec_key}, {ra}, {dec},
             {ra_dec_units}, {solve_timeout}, {catalog}, {catalog_path}
-        ) called''')
+        ) called"""
+        )
 
         self._solver.AttachFITS(filepath)
 
-        if kwargs.get('ra', None) is None or kwargs.get('dec', None) is None:
+        if kwargs.get("ra", None) is None or kwargs.get("dec", None) is None:
             with pyfits.open(filepath) as hdul:
                 ra = hdul[0].header[ra_key]
                 dec = hdul[0].header[dec_key]
         else:
-            ra = kwargs.get('ra', self._solver.TargetRightAscension)
-            dec = kwargs.get('dec', self._solver.TargetDeclination)
+            ra = kwargs.get("ra", self._solver.TargetRightAscension)
+            dec = kwargs.get("dec", self._solver.TargetDeclination)
 
-        obj = coord.SkyCoord(ra, dec, unit=ra_dec_units, frame='icrs')
+        obj = coord.SkyCoord(ra, dec, unit=ra_dec_units, frame="icrs")
         self._solver.RightAscension = obj.ra.hour
         self._solver.Declination = obj.dec.deg
 
@@ -51,14 +64,14 @@ class PinpointWCS(WCS):
             time.sleep(1)
         else:
             if solved is None:
-                raise Exception('Pinpoint solve timed out.')
+                raise Exception("Pinpoint solve timed out.")
             else:
                 return solved
 
         self._solver.UpdateFITS()
         self._solver.DetachFITS()
         return True
-    
+
     @_force_async
     def _async_solve(self):
         self.Solver.Solve()

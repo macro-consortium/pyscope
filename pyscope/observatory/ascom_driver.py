@@ -5,18 +5,22 @@ from .driver import Driver
 
 logger = logging.getLogger(__name__)
 
-if platform.system() == 'Windows':
+if platform.system() == "Windows":
     from win32com.client import Dispatch
 else:
-    logger.warning('ASCOM drivers are only supported on Windows, import allowed for testing purposes only')
+    logger.warning(
+        "ASCOM drivers are only supported on Windows, import allowed for testing purposes only"
+    )
+
 
 class ASCOMDriver(Driver):
     def __init__(self, com_object_name):
         logger.debug(f"ASCOMDriver.__init__({com_object_name}) called")
         self._com_object_name = com_object_name
         self._com_object = None
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             from win32com.client import Dispatch
+
             self._com_object = Dispatch(self._com_object_name)
 
     def Action(self, ActionName, ActionParameters):
@@ -47,26 +51,27 @@ class ASCOMDriver(Driver):
     def Connected(self):
         logger.debug(f"ASCOMDriver.Connected property called")
         return self._com_object.Connected
+
     @Connected.setter
     def Connected(self, value):
         logger.debug(f"ASCOMDriver.Connected property set to {value}")
         self._com_object.Connected = value
-    
+
     @property
     def Description(self):
         logger.debug(f"ASCOMDriver.Description property called")
         return self._com_object.Description
-    
+
     @property
     def DriverInfo(self):
         logger.debug(f"ASCOMDriver.DriverInfo property called")
         return self._com_object.DriverInfo
-    
+
     @property
     def DriverVersion(self):
         logger.debug(f"ASCOMDriver.DriverVersion property called")
         return self._com_object.DriverVersion
-    
+
     @property
     def InterfaceVersion(self):
         logger.debug(f"ASCOMDriver.InterfaceVersion property called")
@@ -76,7 +81,7 @@ class ASCOMDriver(Driver):
     def Name(self):
         logger.debug(f"ASCOMDriver.Name property called")
         return self._com_object.Name
-    
+
     @property
     def SupportedActions(self):
         logger.debug(f"ASCOMDriver.SupportedActions property called")

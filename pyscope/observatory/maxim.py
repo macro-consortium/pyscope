@@ -10,14 +10,16 @@ from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
+
 class Maxim(Driver):
     def __init__(self):
         logger.debug("Maxim.Maxim __init__ called")
-        if platform.system() != 'Windows':
-            raise Exception('This class is only available on Windows.')
+        if platform.system() != "Windows":
+            raise Exception("This class is only available on Windows.")
         else:
             from win32com.client import Dispatch
-            self._app = Dispatch('MaxIm.Application')
+
+            self._app = Dispatch("MaxIm.Application")
             self._app.LockApp = True
 
             self._camera = _MaximCamera()
@@ -31,21 +33,22 @@ class Maxim(Driver):
                 self._autofocus = _MaximAutofocus(self.app)
 
             self._wcs = _MaximPinpointWCS(self.camera)
-    
+
     @property
     def Connected(self):
         logger.debug("Maxim.Connected called")
         return self.camera.Connected
+
     @Connected.setter
     def Connected(self, value):
         logger.debug(f"Connected setter called with value={value}")
         self.camera.Connected = value
-    
+
     @property
     def Name(self):
         logger.debug("Maxim.Name called")
-        return 'MaxIm DL'
-    
+        return "MaxIm DL"
+
     @property
     def app(self):
         logger.debug("Maxim.app called")
@@ -55,11 +58,12 @@ class Maxim(Driver):
     def autofocus(self):
         logger.debug("Maxim.autofocus called")
         return self._autofocus
-    
+
     @property
     def camera(self):
         logger.debug("Maxim.camera called")
         return self._camera
+
 
 class _MaximAutofocus(Autofocus):
     def __init__(self, maxim):
@@ -72,7 +76,7 @@ class _MaximAutofocus(Autofocus):
 
         while self.maxim.AutofocusStatus == -1:
             time.sleep(1)
-        
+
         if self.maxim.AutofocusStatus == 1:
             return True
         else:
@@ -82,10 +86,11 @@ class _MaximAutofocus(Autofocus):
         logger.debug("_MaximAutofocus.Abort called")
         raise NotImplementedError
 
+
 class _MaximCamera(Camera):
     def __init__(self):
         logger.debug("_MaximCamera_MaximCamera __init__ called")
-        self._com_object = Dispatch('MaxIm.CCDCamera')
+        self._com_object = Dispatch("MaxIm.CCDCamera")
         self._com_object.DisableAutoShutdown = True
 
         self._last_exposure_duration = None
@@ -95,22 +100,25 @@ class _MaximCamera(Camera):
     def Connected(self):
         logger.debug("_MaximCameraConnected called")
         return self._com_object is not None and self._com_object.LinkEnabled
+
     @Connected.setter
     def Connected(self, value):
         logger.debug(f"Connected setter called with value={value}")
         self._com_object.LinkEnabled = value
-    
+
     @property
     def Name(self):
         logger.debug("_MaximCameraName called")
         return self._com_object.CameraName
-    
+
     def AbortExposure(self):
         logger.debug("_MaximCameraAbortExposure called")
         self._com_object.AbortExposure()
 
     def PulseGuide(self, Direction, Duration):
-        logger.debug(f"PulseGuide called with Direction={Direction}, Duration={Duration}")
+        logger.debug(
+            f"PulseGuide called with Direction={Direction}, Duration={Duration}"
+        )
         raise NotImplementedError
 
     def StartExposure(self, Duration, Light):
@@ -137,6 +145,7 @@ class _MaximCamera(Camera):
     def BinX(self):
         logger.debug("_MaximCameraBinX called")
         return self._com_object.BinX
+
     @BinX.setter
     def BinX(self, value):
         logger.debug(f"BinX setter called with value={value}")
@@ -146,6 +155,7 @@ class _MaximCamera(Camera):
     def BinY(self):
         logger.debug("_MaximCameraBinY called")
         return self._com_object.BinY
+
     @BinY.setter
     def BinY(self, value):
         logger.debug(f"BinY setter called with value={value}")
@@ -210,6 +220,7 @@ class _MaximCamera(Camera):
     def CoolerOn(self):
         logger.debug("_MaximCameraCoolerOn called")
         return self._com_object.CoolerOn
+
     @CoolerOn.setter
     def CoolerOn(self, value):
         logger.debug(f"CoolerOn setter called with value={value}")
@@ -244,6 +255,7 @@ class _MaximCamera(Camera):
     def FastReadout(self):
         logger.debug("_MaximCameraFastReadout called")
         raise DeprecationWarning
+
     @FastReadout.setter
     def FastReadout(self, value):
         logger.debug(f"FastReadout setter called with value={value}")
@@ -258,6 +270,7 @@ class _MaximCamera(Camera):
     def Gain(self):
         logger.debug("_MaximCameraGain called")
         return self._com_object.Speed
+
     @Gain.setter
     def Gain(self, value):
         logger.debug(f"Gain setter called with value={value}")
@@ -337,6 +350,7 @@ class _MaximCamera(Camera):
     def NumX(self):
         logger.debug("_MaximCameraNumX called")
         return self._com_object.NumX
+
     @NumX.setter
     def NumX(self, value):
         logger.debug(f"NumX setter called with value={value}")
@@ -346,6 +360,7 @@ class _MaximCamera(Camera):
     def NumY(self):
         logger.debug("_MaximCameraNumY called")
         return self._com_object.NumY
+
     @NumY.setter
     def NumY(self, value):
         logger.debug(f"NumY setter called with value={value}")
@@ -355,6 +370,7 @@ class _MaximCamera(Camera):
     def Offset(self):
         logger.debug("_MaximCameraOffset called")
         raise NotImplementedError
+
     @Offset.setter
     def Offset(self, value):
         logger.debug(f"Offset setter called with value={value}")
@@ -394,6 +410,7 @@ class _MaximCamera(Camera):
     def ReadoutMode(self):
         logger.debug("_MaximCameraReadoutMode called")
         return self._com_object.ReadoutMode
+
     @ReadoutMode.setter
     def ReadoutMode(self, value):
         logger.debug(f"ReadoutMode setter called with value={value}")
@@ -418,6 +435,7 @@ class _MaximCamera(Camera):
     def SetCCDTemperature(self):
         logger.debug("_MaximCameraSetCCDTemperature called")
         return self._com_object.TemperatureSetpoint
+
     @SetCCDTemperature.setter
     def SetCCDTemperature(self, value):
         logger.debug(f"SetCCDTemperature setter called with value={value}")
@@ -427,6 +445,7 @@ class _MaximCamera(Camera):
     def StartX(self):
         logger.debug("_MaximCameraStartX called")
         return self._com_object.StartX
+
     @StartX.setter
     def StartX(self, value):
         logger.debug(f"StartX setter called with value={value}")
@@ -436,6 +455,7 @@ class _MaximCamera(Camera):
     def StartY(self):
         logger.debug("_MaximCameraStartY called")
         return self._com_object.StartY
+
     @StartY.setter
     def StartY(self, value):
         logger.debug(f"StartY setter called with value={value}")
@@ -445,10 +465,12 @@ class _MaximCamera(Camera):
     def SubExposureDuration(self):
         logger.debug("_MaximCameraSubExposureDuration called")
         raise NotImplementedError
+
     @SubExposureDuration.setter
     def SubExposureDuration(self, value):
         logger.debug(f"SubExposureDuration setter called with value={value}")
         raise NotImplementedError
+
 
 class _MaximFilterWheel(FilterWheel):
     def __init__(self, maxim_camera):
@@ -459,11 +481,12 @@ class _MaximFilterWheel(FilterWheel):
     def Connected(self):
         logger.debug("_MaximFilterWheelConnected called")
         return self.maxim_camera.Connected and self.maxim_camera.HasFilterWheel
+
     @Connected.setter
     def Connected(self, value):
         logger.debug(f"Connected setter called with value={value}")
         self.maxim_camera.Connected = value
-    
+
     @property
     def Name(self):
         logger.debug("_MaximFilterWheelName called")
@@ -483,10 +506,12 @@ class _MaximFilterWheel(FilterWheel):
     def Position(self):
         logger.debug("_MaximFilterWheelPosition called")
         return self.maxim_camera.Filter
+
     @Position.setter
     def Position(self, value):
         logger.debug(f"Position setter called with value={value}")
         self.maxim_camera.Filter = value
+
 
 class _MaximPinpointWCS(WCS):
     def __init__(self, maxim_camera):
@@ -494,12 +519,14 @@ class _MaximPinpointWCS(WCS):
         self.maxim_camera = maxim_camera
 
     def Solve(self, ra=None, dec=None, scale_est=None, *args, **kwargs):
-        logger.debug(f"_MaximPinpointWCS.Solve called with ra={ra}, dec={dec}, and scale_est={scale_est}")
+        logger.debug(
+            f"_MaximPinpointWCS.Solve called with ra={ra}, dec={dec}, and scale_est={scale_est}"
+        )
         self.maxim_camera.document.PinpointSolve(ra, dec, scale_est, scale_est)
 
         while self.maxim_camera.document.PinpointStatus == 3:
             time.sleep(1)
-        
+
         if self.maxim_camera.document.PinpointStatus == 2:
             return True
         else:

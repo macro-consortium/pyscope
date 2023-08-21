@@ -2,7 +2,8 @@
 import logging
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import matplotlib.pyplot as plt
 
@@ -20,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 # fig.savefig('tests/test_recentering.png')
 # plt.show()
 
-'''
+"""
 # Initialize the hardware, names can be found using the ProfileExplorer
 camera = Camera('ASCOM.DLImaging.Camera', ascom=True)
 telescope = Telescope('ASCOM.PWI4.Telescope', ascom=True)
@@ -41,4 +42,4 @@ while observatory.camera.CCDTemperature > -19:
 
 # Attempt to recenter the telescope
 success = observatory.recenter(obj='M95')
-print('The recentering was a success: %s' % success)'''
+print('The recentering was a success: %s' % success)"""

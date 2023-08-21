@@ -5,6 +5,6 @@ from .airmass import airmass
 from .pyscope_exception import PyscopeException
 
 __all__ = [
-    'airmass',
-    'PyscopeException',
+    "airmass",
+    "PyscopeException",
 ]

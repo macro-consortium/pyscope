@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from ._docstring_inheritee import _DocstringInheritee
 
+
 class Rotator(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -51,6 +52,7 @@ class Rotator(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Reverse(self):
         pass
+
     @Reverse.setter
     @abstractmethod
     def Reverse(self, value):

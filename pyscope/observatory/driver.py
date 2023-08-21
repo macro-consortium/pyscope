@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from ._docstring_inheritee import _DocstringInheritee
 
+
 class Driver(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -11,6 +12,7 @@ class Driver(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Connected(self):
         pass
+
     @Connected.setter
     @abstractmethod
     def Connected(self, value):

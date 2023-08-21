@@ -1,6 +1,6 @@
-'''telrun test docstring
+"""telrun test docstring
 
-This is a test docstring for the telrun module.'''
+This is a test docstring for the telrun module."""
 
 import logging
 
@@ -14,14 +14,14 @@ from .syncfiles import syncfiles
 from .telrun_operator import TelrunOperator
 
 __all__ = [
-    'init_telrun_dir',
-    'init_remote_dir',
-    'schedtel',
-    'plot_schedule_gantt',
-    'parse_sch_file',
-    'start_telrun',
-    'start_syncfiles',
-    'syncfiles',
-    'TelrunOperator',
-    'TelrunException',
+    "init_telrun_dir",
+    "init_remote_dir",
+    "schedtel",
+    "plot_schedule_gantt",
+    "parse_sch_file",
+    "start_telrun",
+    "start_syncfiles",
+    "syncfiles",
+    "TelrunOperator",
+    "TelrunException",
 ]

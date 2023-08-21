@@ -8,12 +8,13 @@ from .cover_calibrator import CoverCalibrator
 
 logger = logging.getLogger(__name__)
 
+
 class IPCoverCalibrator(CoverCalibrator):
     def __init__(self, tcp_ip, tcp_port, buffer_size):
         self._tcp_ip = tcp_ip
         self._tcp_port = tcp_port
         self._buffer_size = buffer_size
-    
+
     def CalibratorOff(self):
         logger.debug("IPCoverCalibrator.CalibratorOff called")
         return self._send_packet(0)
@@ -53,7 +54,7 @@ class IPCoverCalibrator(CoverCalibrator):
     def MaxBrightness(self):
         logger.debug("IPCoverCalibrator.MaxBrightness called")
         return 254
-    
+
     def _send_packet(self, intensity):
         logger.debug(f"_send_packet called with intensity={intensity}")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -61,8 +62,10 @@ class IPCoverCalibrator(CoverCalibrator):
 
         # Create 4 byte array
         my_bytes = bytearray()
-        my_bytes.append(253);       my_bytes.append(0)
-        my_bytes.append(intensity); my_bytes.append(1)
+        my_bytes.append(253)
+        my_bytes.append(0)
+        my_bytes.append(intensity)
+        my_bytes.append(1)
 
         try:
             s.send(my_bytes)
@@ -70,15 +73,16 @@ class IPCoverCalibrator(CoverCalibrator):
             return False
         finally:
             data = s.recv(self.buffer_size)
-            if data != 'U': return False
+            if data != "U":
+                return False
             s.close()
             return True
-    
+
     @property
     def tcp_ip(self):
         logger.debug("IPCoverCalibrator.tcp_ip called")
         return self._tcp_ip
-    
+
     @property
     def tcp_port(self):
         logger.debug("IPCoverCalibrator.tcp_port called")

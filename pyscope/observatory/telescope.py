@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from ._docstring_inheritee import _DocstringInheritee
 
+
 class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -87,6 +88,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def AlignmentMode(self):
         pass
+
     @AlignmentMode.setter
     @abstractmethod
     def AlignmentMode(self, value):
@@ -206,6 +208,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Declination(self):
         pass
+
     @Declination.setter
     @abstractmethod
     def Declination(self, value):
@@ -215,6 +218,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def DeclinationRate(self):
         pass
+
     @DeclinationRate.setter
     @abstractmethod
     def DeclinationRate(self, value):
@@ -224,6 +228,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def DoesRefraction(self):
         pass
+
     @DoesRefraction.setter
     @abstractmethod
     def DoesRefraction(self, value):
@@ -243,6 +248,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def GuideRateDeclination(self):
         pass
+
     @GuideRateDeclination.setter
     @abstractmethod
     def GuideRateDeclination(self, value):
@@ -252,6 +258,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def GuideRateRightAscension(self):
         pass
+
     @GuideRateRightAscension.setter
     @abstractmethod
     def GuideRateRightAscension(self, value):
@@ -271,6 +278,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def RightAscensionRate(self):
         pass
+
     @RightAscensionRate.setter
     @abstractmethod
     def RightAscensionRate(self, value):
@@ -280,6 +288,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SideOfPier(self):
         pass
+
     @SideOfPier.setter
     @abstractmethod
     def SideOfPier(self, value):
@@ -289,11 +298,12 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SiderealTime(self):
         pass
-        
+
     @property
     @abstractmethod
     def SiteElevation(self):
         pass
+
     @SiteElevation.setter
     @abstractmethod
     def SiteElevation(self, value):
@@ -303,6 +313,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SiteLatitude(self):
         pass
+
     @SiteLatitude.setter
     @abstractmethod
     def SiteLatitude(self, value):
@@ -322,6 +333,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def SlewSettleTime(self):
         pass
+
     @SlewSettleTime.setter
     @abstractmethod
     def SlewSettleTime(self, value):
@@ -331,6 +343,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def TargetDeclination(self):
         pass
+
     @TargetDeclination.setter
     @abstractmethod
     def TargetDeclination(self, value):
@@ -340,6 +353,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def TargetRightAscension(self):
         pass
+
     @TargetRightAscension.setter
     @abstractmethod
     def TargetRightAscension(self, value):
@@ -349,6 +363,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Tracking(self):
         pass
+
     @Tracking.setter
     @abstractmethod
     def Tracking(self, value):
@@ -358,6 +373,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def TrackingRate(self):
         pass
+
     @TrackingRate.setter
     @abstractmethod
     def TrackingRate(self, value):
@@ -372,6 +388,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def UTCDate(self):
         pass
+
     @UTCDate.setter
     @abstractmethod
     def UTCDate(self, value):

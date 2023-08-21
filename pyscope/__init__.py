@@ -1,4 +1,4 @@
-'''
+"""
 What is pyscope?
 ================
 :doc:`pyscope </index>` is an open-source Python package for 
@@ -39,9 +39,10 @@ Features
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`_ 
   packages, and `ASCOM <https://ascom-standards.org/>`_
 
-'''
+"""
 
 import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -51,4 +52,4 @@ from . import reduction
 from . import telrun
 from . import utils
 
-__all__ = ['analysis', 'observatory', 'reduction', 'telrun', 'utils']
+__all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]

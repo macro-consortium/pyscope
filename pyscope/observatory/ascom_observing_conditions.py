@@ -3,47 +3,53 @@ from .observing_conditions import ObservingConditions
 
 logger = logging.getLogger(__name__)
 
+
 class ASCOMObservingConditions(ObservingConditions):
     def Choose(self, ObservingConditionsID):
         logger.debug(f"ASCOMObservingConditions.Choose({ObservingConditionsID}) called")
         self._com_object.Choose(ObservingConditionsID)
-    
+
     def Refresh(self):
         logger.debug("ASCOMObservingConditions.Refresh() called")
         self._com_object.Refresh()
-    
+
     def SensorDescription(self, PropertyName):
-        logger.debug(f"ASCOMObservingConditions.SensorDescription({PropertyName}) called")
+        logger.debug(
+            f"ASCOMObservingConditions.SensorDescription({PropertyName}) called"
+        )
         return self._com_object.SensorDescription(PropertyName)
 
     def TimeSinceLastUpdate(self, PropertyName):
-        logger.debug(f"ASCOMObservingConditions.TimeSinceLastUpdate({PropertyName}) called")
+        logger.debug(
+            f"ASCOMObservingConditions.TimeSinceLastUpdate({PropertyName}) called"
+        )
         return self._com_object.TimeSinceLastUpdate(PropertyName)
-    
+
     @property
     def AveragePeriod(self):
         logger.debug("ASCOMObservingConditions.AveragePeriod property called")
         return self._com_object.AveragePeriod
+
     @AveragePeriod.setter
     def AveragePeriod(self, value):
         logger.debug(f"ASCOMObservingConditions.AveragePeriod property set to {value}")
         self._com_object.AveragePeriod = value
-    
+
     @property
     def CloudCover(self):
         logger.debug("ASCOMObservingConditions.CloudCover property called")
         return self._com_object.CloudCover
-    
+
     @property
     def DewPoint(self):
         logger.debug("ASCOMObservingConditions.DewPoint property called")
         return self._com_object.DewPoint
-    
+
     @property
     def Humidity(self):
         logger.debug("ASCOMObservingConditions.Humidity property called")
         return self._com_object.Humidity
-    
+
     @property
     def Pressure(self):
         logger.debug("ASCOMObservingConditions.Pressure property called")
@@ -53,7 +59,7 @@ class ASCOMObservingConditions(ObservingConditions):
     def RainRate(self):
         logger.debug("ASCOMObservingConditions.RainRate property called")
         return self._com_object.RainRate
-    
+
     @property
     def SkyBrightness(self):
         logger.debug("ASCOMObservingConditions.SkyBrightness property called")
@@ -68,22 +74,22 @@ class ASCOMObservingConditions(ObservingConditions):
     def SkyTemperature(self):
         logger.debug("ASCOMObservingConditions.SkyTemperature property called")
         return self._com_object.SkyTemperature
-    
+
     @property
     def StarFWHM(self):
         logger.debug("ASCOMObservingConditions.StarFWHM property called")
         return self._com_object.StarFWHM
-    
+
     @property
     def Temperature(self):
         logger.debug("ASCOMObservingConditions.Temperature property called")
         return self._com_object.Temperature
-    
+
     @property
     def WindDirection(self):
         logger.debug("ASCOMObservingConditions.WindDirection property called")
         return self._com_object.WindDirection
-    
+
     @property
     def WindGust(self):
         logger.debug("ASCOMObservingConditions.WindGust property called")

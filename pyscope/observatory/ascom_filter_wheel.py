@@ -3,6 +3,7 @@ from .filter_wheel import FilterWheel
 
 logger = logging.getLogger(__name__)
 
+
 class ASCOMFilterWheel(FilterWheel):
     def Choose(self, FilterWheelID):
         logger.debug(f"ASCOMFilterWheel.Choose({FilterWheelID}) called")
@@ -22,6 +23,7 @@ class ASCOMFilterWheel(FilterWheel):
     def Position(self):
         logger.debug(f"ASCOMFilterWheel.Position property called")
         return self._com_object.Position
+
     @Position.setter
     def Position(self, value):
         logger.debug(f"ASCOMFilterWheel.Position property set to {value}")

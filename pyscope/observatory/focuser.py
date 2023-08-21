@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from ._docstring_inheritee import _DocstringInheritee
 
+
 class Focuser(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -19,6 +20,7 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Absolute(self):
         pass
+
     @Absolute.setter
     @abstractmethod
     def Absolute(self, value):
@@ -33,6 +35,7 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Link(self):
         pass
+
     @Link.setter
     @abstractmethod
     def Link(self, value):
@@ -62,6 +65,7 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def TempComp(self):
         pass
+
     @TempComp.setter
     @abstractmethod
     def TempComp(self, value):
@@ -76,6 +80,7 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Temperature(self):
         pass
+
     @Temperature.setter
     @abstractmethod
     def Temperature(self, value):
