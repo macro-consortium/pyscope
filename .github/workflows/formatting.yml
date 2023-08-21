@@ -1,0 +1,15 @@
+name: Formatting
+
+on: [push, pull_request]
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
+        with:
+          jupyter: true
+      - uses: isort/isort-action@v1
+        with:
+          profile: black
