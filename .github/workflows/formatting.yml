@@ -13,4 +13,4 @@ jobs:
           jupyter: true
       - uses: isort/isort-action@v1.1.0
         with:
-          profile: black
+          configuration: profile=black
