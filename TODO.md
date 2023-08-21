@@ -1,7 +1,6 @@
 # TODO
 - Scripts
     - telrun
-        - exoplanet_transits.py
         - mk_mosaic_schedule.py
         - rst.py
         - summary_report.py
@@ -9,6 +8,8 @@
 - Write and run tests
 - Installer setup on pip, conda channels
 
+- Change requirements.txt, setup.cfg, and .readthedocs.yml to handle dev and doc cases specifically
+- pre-commit setup
 - html_observing_conditions replace pycurl
 - Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles
 - Handle API defaults for all scripts
