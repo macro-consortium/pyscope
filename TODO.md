@@ -5,7 +5,6 @@
         - mk_mosaic_schedule.py
         - rst.py
         - summary_report.py
-- Check for PEP8 compliance
 - Write docs
 - Write and run tests
 - Installer setup on pip, conda channels

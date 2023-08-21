@@ -1,7 +1,11 @@
 # pyScope
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+<!--- ![PyPI - Version](https://img.shields.io/pypi/v/pyscope) --->
+<!--- ![PyPI - Downloads](https://img.shields.io/pypi/dm/pyscope) --->
+<!--- ![Conda](https://img.shields.io/conda/dn/conda-forge/pyscope) --->
 [![Documentation Status](https://readthedocs.org/projects/pyscope/badge/?version=latest)](https://pyscope.readthedocs.io/en/latest/?badge=latest)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 This is the repository for the [pyScope](https://github.com/WWGolay/pyScope) package. pyScope is a pure-Python package for robotic scheduling, operation, and control of small optical telescopes. 
 
