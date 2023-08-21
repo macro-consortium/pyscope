@@ -11,6 +11,6 @@ jobs:
         with:
           src: pyscope
           jupyter: true
-      - uses: isort/isort-action@v1
+      - uses: isort/isort-action@v1.1.0
         with:
           profile: black

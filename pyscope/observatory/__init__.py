@@ -31,6 +31,7 @@ from .observatory import Observatory
 from .observatory_exception import ObservatoryException
 from .observing_conditions import ObservingConditions
 from .pinpoint_wcs import PinpointWCS
+
 # from .platesolve2_wcs import Platesolve2WCS
 # from .platesolve3_wcs import Platesolve3WCS
 from .pwi_autofocus import PWIAutofocus
@@ -41,7 +42,6 @@ from .telescope import Telescope
 from .wcs import WCS
 
 # from .skyx import SkyX
-
 
 
 __all__ = [
