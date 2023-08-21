@@ -41,11 +41,13 @@ Features
 
 """
 
+# isort: skip_file
+
 import logging
+
+from . import utils, observatory, telrun, reduction, analysis
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-from . import analysis, observatory, reduction, telrun, utils
 
 __all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]
