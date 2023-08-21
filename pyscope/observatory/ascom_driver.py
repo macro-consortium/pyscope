@@ -7,10 +7,10 @@ logger = logging.getLogger(__name__)
 
 if platform.system() == "Windows":
     from win32com.client import Dispatch
-'''else:
+"""else:
     logger.warning(
         "ASCOM drivers are only supported on Windows, import allowed for testing purposes only"
-    )'''
+    )"""
 
 
 class ASCOMDriver(Driver):
