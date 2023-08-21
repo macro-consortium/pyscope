@@ -45,7 +45,11 @@ Features
 
 import logging
 
-from . import utils, observatory, telrun, reduction, analysis
+from . import utils
+from . import observatory
+from . import telrun
+from . import reduction
+from . import analysis
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

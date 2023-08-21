@@ -3,9 +3,9 @@ import sys
 
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
-from urllib.parse import quote
-
 from sphinx_astropy.conf.v2 import *
+
+from urllib.parse import quote
 
 project = "pyscope"
 copyright = "2023, Walter Golay"
