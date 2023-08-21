@@ -12,7 +12,15 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
-This is the repository for the [pyscope](https://github.com/WWGolay/pyScope) package. pyScope is a pure-Python package for robotic scheduling, operation, and control of small optical telescopes. 
+<div align="center">
+<img src="pyScopeCrop.png" alt="Placeholder Logo" width="400"></img>
+</div>
+
+<div align="center">
+<img src="pyScopeCrop.png" alt="Placeholder Logo" width="400"></img>
+</div>
+
+This is the repository for the [pyscope](https://github.com/WWGolay/pyscope) package. pyScope is a pure-Python package for robotic scheduling, operation, and control of small optical telescopes. 
 
 This work began with the Iowa Robotic Observatory (IRO) and has since migrated to become the core of the [Macro Consortium](https://macroconsortium.org/)'s robotic telescope operations. Now named the Robert L. Mutel Telescope (RLMT), the main instrument is located at the [Winer Observatory](https://winer.org/) in Sonoita, Arizona. The RLMT is a Planewave CDK-20, 17" diameter f/6.8 Corrected Dall-Kirkham tekescope with an SBIG Aluma AC-4040 CMOS camera. With 11 filters and a miniature grating-prism (grism) spectrometer, the RLMT is capable of a wide variety of science. This package is designed to be flexible and extensible, allowing for easy integration of new instruments and observatory control systems. 
 
