@@ -154,11 +154,14 @@ The outline of your function should look like this::
    logger = logging.getLogger(__name__)
 
    @click.command(epilog='''Check out the documentation at
-                  https://pyscope.readthedocs.io/ for more
-                  information.''')
-   @click.option('--option', '-o', default=1, help='An option')
+                  https://pyscope.readthedocs.io/en/latest/ 
+                  for more information.''')
+   @click.option('-o', '--option', default=1, help='An option')
+   @click.option('-v', '--verbose', count=True, 
+                 type=click.IntRange(0, 3), # Range can be changed
+                 help='Increase verbosity')
    @click.argument('argument', type=click.Path(exists=True))
-   def my_script_cli(*args, **kwargs):
+   def my_script_cli(option, argument, *args, **kwargs):
       '''A description of the function.
 
       Parameters
@@ -173,7 +176,10 @@ The outline of your function should look like this::
       None
       '''
 
-      logger.setLevel(10 * (3 - verbose))
+      logger.setLevel(int(10 * (3 - verbose))) # Change range via 3
+      logger.debug(f'Verbosity level set to {verbose}')
+      logger.debug(f'my_script_cli(args={args}, kwargs={kwargs})')
+
       logger.info('Starting my_script')
       # Do stuff here, logging output as needed
       # using logger.debug, logger.info, logger.warning,
