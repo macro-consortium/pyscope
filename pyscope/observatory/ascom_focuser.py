@@ -1,4 +1,5 @@
 import logging
+
 from .focuser import Focuser
 
 logger = logging.getLogger(__name__)

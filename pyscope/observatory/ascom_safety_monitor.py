@@ -1,4 +1,5 @@
 import logging
+
 from .safety_monitor import SafetyMonitor
 
 logger = logging.getLogger(__name__)

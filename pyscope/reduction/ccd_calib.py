@@ -1,10 +1,10 @@
 import logging
 import time
 
-from astropy.io import fits
 import astroscrappy
 import click
 import numpy as np
+from astropy.io import fits
 
 logger = logging.getLogger(__name__)
 

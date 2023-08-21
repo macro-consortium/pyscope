@@ -1,4 +1,5 @@
 import logging
+
 from .rotator import Rotator
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 import logging
 
-from astropy.io import fits
 import click
 import numpy as np
+from astropy.io import fits
 
 logger = logging.getLogger(__name__)
 

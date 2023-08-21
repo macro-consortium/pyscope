@@ -1,4 +1,5 @@
 import logging
+
 from .camera import Camera
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 # Only necessary for testing development installations of the package
 import logging
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 
 # Import the package modules we need
 import pyscope.analysis
-import pyscope.reduction
 import pyscope.observatory
-import pyscope.utils
+import pyscope.reduction
 import pyscope.telrun
+import pyscope.utils
 
 logging.basicConfig(level=logging.INFO)
 

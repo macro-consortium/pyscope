@@ -1,4 +1,5 @@
 import logging
+
 from .cover_calibrator import CoverCalibrator
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,5 @@
 import logging
+
 from .telescope import Telescope
 
 logger = logging.getLogger(__name__)

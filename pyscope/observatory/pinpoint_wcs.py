@@ -1,6 +1,6 @@
-import time
-import platform
 import logging
+import platform
+import time
 
 logger = logging.getLogger(__name__)
 

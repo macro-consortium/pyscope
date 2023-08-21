@@ -4,12 +4,12 @@ import logging
 import os
 import shutil
 
-from astropy.io import fits
 import click
+from astropy.io import fits
 
 from ..analysis import calc_zmag
-from .ccd_calib import ccd_calib
 from ..observatory import AstrometryNetWCS
+from .ccd_calib import ccd_calib
 
 logger = logging.getLogger(__name__)
 

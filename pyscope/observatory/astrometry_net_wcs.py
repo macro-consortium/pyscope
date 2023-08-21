@@ -1,8 +1,9 @@
-from .wcs import WCS
-
-import os
-import astropy.io.fits as pyfits
 import logging
+import os
+
+import astropy.io.fits as pyfits
+
+from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 

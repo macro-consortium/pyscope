@@ -1,10 +1,11 @@
 import glob
 import logging
 
-from astropy.io import fits
-from astropy import time, coordinates as coord
 import click
 import prettytable
+from astropy import coordinates as coord
+from astropy import time
+from astropy.io import fits
 
 logger = logging.getLogger(__name__)
 

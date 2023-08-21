@@ -1,4 +1,5 @@
 import logging
+
 from .switch import Switch
 
 logger = logging.getLogger(__name__)

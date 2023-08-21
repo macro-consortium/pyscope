@@ -46,10 +46,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-from . import analysis
-from . import observatory
-from . import reduction
-from . import telrun
-from . import utils
+from . import analysis, observatory, reduction, telrun, utils
 
 __all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]

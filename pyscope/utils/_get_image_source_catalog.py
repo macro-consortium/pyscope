@@ -1,7 +1,7 @@
-from astropy import convolution, wcs
-from astropy.io import fits
 import photutils.background as photbackground
 import photutils.segmentation as photsegmentation
+from astropy import convolution, wcs
+from astropy.io import fits
 from photutils.utils import calc_total_error
 
 

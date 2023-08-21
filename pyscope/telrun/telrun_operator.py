@@ -5,13 +5,16 @@ import os
 import shutil
 import threading
 import tkinter as tk
-from tkinter import font
 import tkinter.ttk as ttk
+from tkinter import font
 
 import astroplan
-from astropy import coordinates as coord, time as astrotime, units as u, table
-from astroquery import mpc
 import tksheet
+from astropy import coordinates as coord
+from astropy import table
+from astropy import time as astrotime
+from astropy import units as u
+from astroquery import mpc
 
 from ..observatory import Observatory
 from . import TelrunException

@@ -1,5 +1,5 @@
-import platform
 import logging
+import platform
 
 from .driver import Driver
 

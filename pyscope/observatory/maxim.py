@@ -1,6 +1,6 @@
+import logging
 import platform
 import time
-import logging
 
 from .autofocus import Autofocus
 from .camera import Camera

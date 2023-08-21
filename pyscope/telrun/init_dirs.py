@@ -5,7 +5,7 @@ import shutil
 
 import click
 
-from .syncfiles import _read_syncfiles_cfg, _get_client, _sync_directory
+from .syncfiles import _get_client, _read_syncfiles_cfg, _sync_directory
 
 logger = logging.getLogger(__name__)
 

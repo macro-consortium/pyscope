@@ -1,27 +1,25 @@
-from ast import literal_eval
 import configparser
 import importlib
 import logging
 import shutil
 import sys
 import tempfile
-import time
 import threading
+import time
+from ast import literal_eval
 
-from astropy import coordinates as coord, time as astrotime, units as u
+import numpy as np
+from astropy import coordinates as coord
+from astropy import time as astrotime
+from astropy import units as u
 from astropy.io import fits
 from astroquery.mpc import MPC
-import numpy as np
 
-from .driver import Driver
 from .. import observatory
-from ..utils import (
-    _args_to_config,
-    _kwargs_to_config,
-    _get_image_source_catalog,
-    airmass,
-)
+from ..utils import (_args_to_config, _get_image_source_catalog,
+                     _kwargs_to_config, airmass)
 from . import ObservatoryException
+from .driver import Driver
 
 logger = logging.getLogger(__name__)
 

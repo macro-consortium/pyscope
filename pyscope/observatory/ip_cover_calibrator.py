@@ -1,8 +1,8 @@
+import binascii
+import logging
 import socket
 import struct
-import binascii
 import sys
-import logging
 
 from .cover_calibrator import CoverCalibrator
 

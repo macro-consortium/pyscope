@@ -1,4 +1,5 @@
 import logging
+
 from .observing_conditions import ObservingConditions
 
 logger = logging.getLogger(__name__)

@@ -1,13 +1,14 @@
 import logging
 import os
-import tqdm
 
-from astroquery import sdss
-from astropy.io import fits
-from astropy import wcs, units as u
 import click
 import matplotlib.pyplot as plt
 import numpy as np
+import tqdm
+from astropy import units as u
+from astropy import wcs
+from astropy.io import fits
+from astroquery import sdss
 
 from ..observatory import AstrometryNetWCS
 from ..utils import _get_image_source_catalog

@@ -1,4 +1,5 @@
 import logging
+
 from .filter_wheel import FilterWheel
 
 logger = logging.getLogger(__name__)
