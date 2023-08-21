@@ -856,7 +856,7 @@ class Observatory:
             logger.info('Attempting to solve image for WCS')
             if type(self.wcs) is WCS:
                 logger.info('Using solver %s' % self.wcs_driver)
-                self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                self.wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC', 
                     ra_dec_units=('hour', 'deg'), solve_timeout=60, 
                     scale_units='arcsecperpix', scale_type='ev',
                     scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
@@ -864,7 +864,7 @@ class Observatory:
             else: 
                 for wcs, i in enumerate(self.wcs):
                     logger.info('Using solver %s' % self.wcs_driver[i])
-                    solution = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
+                    solution = wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC',
                         ra_dec_units=('hour', 'deg'), solve_timeout=60,
                         scale_units='arcsecperpix', scale_type='ev',
                         scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
@@ -1324,14 +1324,14 @@ class Observatory:
 
             logger.info('Searching for a WCS solution...')
             if type(self.wcs) is WCS:
-                self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+                self.wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC', 
                     ra_dec_units=('hour', 'deg'), solve_timeout=60, 
                     scale_units='arcsecperpix', scale_type='ev',
                     scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
                     parity=1, crpix_center=True)
             else: 
                 for wcs, i in enumerate(self.wcs):
-                    solution_found = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
+                    solution_found = wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC',
                         ra_dec_units=('hour', 'deg'), solve_timeout=60,
                         scale_units='arcsecperpix', scale_type='ev',
                         scale_est=self.pixel_scale[0], scale_err=self.pixel_scale[0]*0.1,
@@ -2114,10 +2114,10 @@ class Observatory:
                 'TELAZ': (None, 'Telescope azimuth North-referenced positive East (clockwise) [degrees]'),
                 'TELRA': (self.telescope.RightAscension, 'Telescope right ascension in TELEQSYS coordinate frame [hours]'),
                 'TELDEC': (self.telescope.Declination, 'Telescope declination in TELEQSYS coordinate frame [degrees]'),
-                'TARGRA': (None, 'Target right ascension in EQSYS coordinate frame [hours]'),
-                'TARGDEC': (None, 'Target declination in EQSYS coordinate frame [degrees]'),
-                'OBJCTRA': (None, 'Object right ascension in ICRS coordinate frame [hours]'),
-                'OBJCTDEC': (None, 'Object declination in ICRS coordinate frame [degrees]'),
+                'TELRAIC': (None, 'Telescope right ascension in ICRS coordinate frame [hours]'),
+                'TELDECIC': (None, 'Telescope declination in ICRS coordinate frame [degrees]'),
+                'TARGRA': (None, 'Telescope target right ascension in TELEQSYS coordinate frame [hours]'),
+                'TARGDEC': (None, 'Telescope target declination in TELEQSYS coordinate frame [degrees]'),
                 'OBJCTALT': (None, 'Object altitude [degrees]'),
                 'OBJCTAZ': (None, 'Object azimuth North-referenced positive East (clockwise) [degrees]'),
                 'OBJCTHA': (None, 'Object hour angle [hours]'),
@@ -2178,8 +2178,8 @@ class Observatory:
         try: info['TARGDEC'][0] = self.telescope.TargetDeclination
         except: pass
         obj = self.get_current_object()
-        info['OBJCTRA'][0] = obj.ra.to_string(unit=u.hour)
-        info['OBJCTDEC'][0] = obj.dec.to_string(unit=u.degree)
+        info['TELRAIC'][0] = obj.ra.to_string(unit=u.hour)
+        info['TELDECIC'][0] = obj.dec.to_string(unit=u.degree)
         info['OBJCTALT'][0] = obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).alt.to(u.degree)
         info['OBJCTAZ'][0] = obj.transform_to(coord.AltAz(obstime=self.observatory_time, location=self.observatory_location)).az.to(u.degree)
         info['OBJCTHA'][0] = abs(self.lst - obj.ra).to(u.hour)

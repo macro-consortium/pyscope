@@ -1183,7 +1183,7 @@ class TelrunOperator:
 
         if type(self.observatory.wcs) not in (iter, list, tuple):
             logger.info('Using solver %s' % self.wcs_driver)
-            solution = self.wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC', 
+            solution = self.wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC', 
                 ra_dec_units=('hour', 'deg'), solve_timeout=self.wcs_timeout, 
                 scale_units='arcsecperpix', scale_type='ev',
                 scale_est=self.observatory.pixel_scale[0], 
@@ -1192,7 +1192,7 @@ class TelrunOperator:
         else: 
             for wcs, i in enumerate(self.wcs):
                 logger.info('Using solver %s' % self.wcs_driver[i])
-                solution = wcs.Solve(filename, ra_key='OBJCTRA', dec_key='OBJCTDEC',
+                solution = wcs.Solve(filename, ra_key='TELRAIC', dec_key='TELDECIC',
                     ra_dec_units=('hour', 'deg'), solve_timeout=self.wcs_timeout,
                     scale_units='arcsecperpix', scale_type='ev',
                     scale_est=self.observatory.pixel_scale[0], 
