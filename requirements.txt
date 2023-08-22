@@ -19,4 +19,5 @@ sphinx>=4.5.0
 sphinx-astropy>=1.9.1
 sphinx-copybutton>=0.5.0
 sphinx-gallery>=0.13.0
+sphinx-favicon>=1.0.1
 prettytable>=3.8.0

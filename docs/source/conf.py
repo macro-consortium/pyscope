@@ -15,6 +15,7 @@ version = release = "0.1.0"
 graphviz_dot = "/usr/local/bin/dot"
 
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
+extensions.append("sphinx_favicon")
 
 
 def linkcode_resolve(domain, info):
@@ -39,3 +40,14 @@ def linkcode_resolve(domain, info):
 
 
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
+
+html_logo = "images/pyscope_banner.png"
+"""favicons = [
+    "images/logo16.png",
+    "images/logo32.png",
+    "images/logo48.png",
+    "images/logo128.png",
+    "images/logo256.png",
+    "images/pyscope.svg",
+    "images/pyscope_transparent.svg"
+]"""
