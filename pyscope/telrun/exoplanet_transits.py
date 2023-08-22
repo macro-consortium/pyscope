@@ -211,7 +211,7 @@ def exoplanet_transits_cli(
         "# of Photometric Observations",
     ]
 
-    T.align["Planet Name"] = "l"
+    table.align["Planet Name"] = "l"
     click.echo(table)
     click.echo()
     clic, echo(f"Number of exoplanets = {len(print_table)}")
