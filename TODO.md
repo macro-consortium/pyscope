@@ -2,16 +2,17 @@
 - Scripts
     - telrun
         - mk_mosaic_schedule.py
-        - rst.py
         - summary_report.py
 - Write docs
 - Write and run tests
 - Installer setup on pip, conda channels
 
+- t0 exoplanets, schedtel etc should use timezones
 - Change requirements.txt, setup.cfg, and .readthedocs.yml to handle dev and doc cases specifically
 - pre-commit setup
 - code coverage setup
 - readme md -> rst, unification with docs
+- synchronize scripts that parse an observatory keyword with a single function (schedtel, plot_schedule_gantt, exoplanet_transits, rst), ensure not initializing observatory
 - html_observing_conditions replace pycurl
 - Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles
 - Handle API defaults for all scripts
@@ -25,4 +26,5 @@
 - Unify logging format across scripts
 - Images -> fnames
 - Consistent order of options and arguments
+- Initialize astroplan.Observer inside of Observatory object
 - os.path.join everywhere
