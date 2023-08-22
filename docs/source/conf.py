@@ -15,8 +15,9 @@ version = release = "0.1.0"
 graphviz_dot = "/usr/local/bin/dot"
 
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
-extensions.append("sphinx_favicon")
 
+intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
+intersphinx_mapping["astroquery"] = ("https://astroquery.readthedocs.io/en/latest/", None)
 
 def linkcode_resolve(domain, info):
     # print(f"domain={domain}, info={info}")
@@ -39,7 +40,7 @@ def linkcode_resolve(domain, info):
     return result
 
 
-intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
+extensions.append("sphinx_favicon")
 
 html_logo = "images/pyscope_banner.png"
 """favicons = [
@@ -51,3 +52,8 @@ html_logo = "images/pyscope_banner.png"
     "images/pyscope.svg",
     "images/pyscope_transparent.svg"
 ]"""
+
+extensions.append("sphinx.ext.doctest")
+
+# extensions.append("sphinxcontrib.programoutput")
+# extensions.append("sphinx_exec_code")
