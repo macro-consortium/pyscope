@@ -16,12 +16,8 @@ from astropy.io import fits
 from astroquery.mpc import MPC
 
 from .. import observatory
-from ..utils import (
-    _args_to_config,
-    _get_image_source_catalog,
-    _kwargs_to_config,
-    airmass,
-)
+from ..utils import (_args_to_config, _get_image_source_catalog,
+                     _kwargs_to_config, airmass)
 from . import ObservatoryException
 from .driver import Driver
 
