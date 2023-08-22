@@ -161,7 +161,7 @@ The outline of your function should look like this::
                  type=click.IntRange(0, 3), # Range can be changed
                  help='Increase verbosity')
    @click.argument('argument', type=click.Path(exists=True))
-   def my_script_cli(option, argument, *args, **kwargs):
+   def my_script_cli(option, argument, verbose, *args, **kwargs):
       '''A description of the function.
 
       Parameters
@@ -178,7 +178,9 @@ The outline of your function should look like this::
 
       logger.setLevel(int(10 * (3 - verbose))) # Change range via 3
       logger.debug(f'Verbosity level set to {verbose}')
-      logger.debug(f'my_script_cli(args={args}, kwargs={kwargs})')
+      logger.debug(f'''my_script_cli(option={option}, 
+                   argument={argument}, verbose={verbose}, 
+                   args={args}, kwargs={kwargs})''')
 
       logger.info('Starting my_script')
       # Do stuff here, logging output as needed
