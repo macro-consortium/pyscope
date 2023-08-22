@@ -252,6 +252,7 @@ def fitslist_cli(
     print_rows.sort(key=lambda x: x[2])
 
     table = prettytable.PrettyTable()
+    table.add_rows(print_rows)
     table.set_style(prettytable.SINGLE_BORDER)
     table.field_names = [
         "FITS file",

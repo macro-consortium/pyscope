@@ -120,13 +120,13 @@ class Observatory:
         self._wcs_args = None
         self._wcs_kwargs = None
 
-        self.slew_rate = None
-        self.instrument_reconfiguration_times = None
+        self._slew_rate = None
+        self._instrument_reconfiguration_times = None
 
         self._maxim = None
 
         if config_path is not None:
-            logger.info("Using config file to initialize observatory: %s" % config_file)
+            logger.info("Using config file to initialize observatory: %s" % config_path)
             try:
                 self._config.read(config_path)
             except:
