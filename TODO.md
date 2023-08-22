@@ -10,6 +10,8 @@
 
 - Change requirements.txt, setup.cfg, and .readthedocs.yml to handle dev and doc cases specifically
 - pre-commit setup
+- code coverage setup
+- readme md -> rst, unification with docs
 - html_observing_conditions replace pycurl
 - Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles
 - Handle API defaults for all scripts
