@@ -1,18 +1,18 @@
 # pyscope
- <!---
+
 [![PyPI - License](https://img.shields.io/pypi/l/pyscope)](https://pypi.org/project/pyscope/)
 [![PyPI - Package Version](https://img.shields.io/pypi/v/pyscope)](https://pypi.org/project/pyscope/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyscope?logo=Python)](https://pypi.org/project/pyscope/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pyscope?logo=python)](https://pypi.org/project/pyscope/)
-[![Conda](https://img.shields.io/conda/dn/conda-forge/pyscope?logo=Anaconda)](https://anaconda.org/conda-forge/pyscope)
---->
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/formatting.yml?logo=GitHub&label=CI)](https://github.com/WWGolay/pyscope/actions/workflows/formatting.yml)
 [![Code Coverage](https://codecov.io/gh/WWGolay/pyscope/branch/main/graph/badge.svg)](https://app.codecov.io/gh/WWGolay/pyscope/)
 [![Read the Docs](https://img.shields.io/readthedocs/pyscope?logo=ReadtheDocs)](https://pyscope.readthedocs.io/en/latest/)
-<!--- ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit) --->
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![Static Badge](https://img.shields.io/badge/Donate-crimson)](https://github.com/sponsors/WWGolay)
+<!--- [![Conda](https://img.shields.io/conda/dn/conda-forge/pyscope?logo=Anaconda)](https://anaconda.org/conda-forge/pyscope)--->
+<!--- ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit) --->
+
 
 <div align="center">
 <img src="docs/source/images/pyscope_banner.png" alt="Placeholder Logo" width="400"></img>
