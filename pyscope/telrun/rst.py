@@ -133,7 +133,7 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     Perform the same calculation, but on the command line.
 
-    .. code-block:: python
+    .. code-block:: shell
 
         $ rst -o ../tests/observatory.cfg -s M64 -d 2024-01-30
         Times from: 2024-01-30 12:00 (MST), 2024-01-30 19:00 (UTC)
