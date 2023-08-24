@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
     type=click.IntRange(0, 1),  # Range can be changed
     help="Increase verbosity",
 )
-def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verbose=0):
+def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verbose=-1):
     """Calculate the rise, set, and transit times for a given source or dusk and
     dawn times for the observatory.\b
 
@@ -110,7 +110,7 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
     --------
     Compute the rise, set, and transit times for M64 on 2024-01-30.
 
-    .. code-block:: python
+    .. doctest::
 
         >>> from pyscope.telrun import rst
         >>> tbl = rst(observatory="../tests/observatory.cfg", source="M64", date="2024-01-30")
