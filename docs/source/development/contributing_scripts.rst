@@ -149,72 +149,86 @@ interface.
 Once you've completed these steps, your function should be complete.
 The outline of your function should look like this::
 
-   import click
-   import logging
+    import logging
 
-   logger = logging.getLogger(__name__)
+    import click
 
-   @click.command(epilog='''Check out the documentation at
-                  https://pyscope.readthedocs.io/en/latest/
-                  for more information.''')
-   @click.option('-o', '--option', default=1, help='An option')
-   @click.option('-v', '--verbose', count=True,
+    logger = logging.getLogger(__name__)
+
+    @click.command(epilog='''Check out the documentation at
+                   https://pyscope.readthedocs.io/en/latest/
+                   for more information.''')
+    @click.option('-o', '--option', default=1, help='An option')
+    @click.option('-v', '--verbose', count=True,
                  type=click.IntRange(0, 1), # Range can be changed
+                 default=0,
                  help='Increase verbosity')
-   @click.argument('argument', type=click.Path(exists=True))
-   def my_script_cli(option, argument, verbose, *args, **kwargs):
-      '''A description of the function.
+    @click.argument('argument', type=click.Path(exists=True))
+    def my_script_cli(option, argument,
+                      verbose=-1, # Distinguish from CLI callback
+                      *args, **kwargs):
+        '''A description of the function.\b
 
-      Parameters
-      ----------
-      option : int
-         A description of the option.
-      argument : str
-         A description of the argument.
-      verbose : int, {-1, 0, 1}, default=-1
-         Increase verbosity.
+        A longer descriptiou of the function. Note that the short description
+        is ended with `\b` to prevent the remainder of the docstring from
+        being included in the `--help` output.
 
-      Returns
-      -------
-      None
+        Parameters
+        ----------
+        option : int
+            A description of the option.
+        argument : str
+            A description of the argument.
+        verbose : int, {-1, 0, 1}, default=-1
+            Increase verbosity.
 
-      Raises
-      ------
-      None
+        Returns
+        -------
+        None
 
-      See Also
-      --------
-      :ref:`contributing-scripts`
+        Raises
+        ------
+        None
 
-      Notes
-      -----
-      This is a sample function.
+        See Also
+        --------
+        contributing-scripts
 
-      Examples
-      --------
-      .. doctest::
+        Notes
+        -----
+        This is a sample function. Refer to the Sphinx documentation for
+         more information on how to write docstrings that will parse
+         correctly.
 
-         >>> my_script_cli(1, 'argument', 1)
+        Examples
+        --------
+        See https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html
+         for more information on how to write doctests.
 
-      '''
+        .. doctest::
 
-      logger.setLevel(int(10 * (2 - verbose))) # Change range via 2
-      logger.addHandler(logging.StreamHandler()) # Redirect to stdout
-      logger.debug(f'Verbosity level set to {verbose}')
-      logger.debug(f'''my_script_cli(option={option},
-                   argument={argument}, verbose={verbose},
-                   args={args}, kwargs={kwargs})''')
+            >>> my_script_cli(1, 'argument', 1)
 
-      logger.info('Starting my_script')
-      # Do stuff here, logging output as needed
-      # using logger.debug, logger.info, logger.warning,
-      # logger.error, and logger.exception
-      logger.info('Finished my_script')
+        '''
 
-   my_script = my_script_cli.callback
+        if verbose > -1:
+            logger.setLevel(int(10 * (2 - verbose))) # Change range via 2
+            logger.addHandler(logging.StreamHandler()) # Redirect to stdout
+        logger.debug(f'Verbosity level set to {verbose}')
+        logger.debug(f'''my_script_cli(option={option},
+                     argument={argument}, verbose={verbose},
+                     args={args}, kwargs={kwargs})''')
+
+        logger.info('Starting my_script')
+        # Do stuff here, logging output as needed
+        # using logger.debug, logger.info, logger.warning,
+        # logger.error, and logger.exception
+        logger.info('Finished my_script')
+
+    my_script = my_script_cli.callback
 
 .. note::
-   The :py:mod:`~pyscope` package uses the `sphinx <https://www.sphinx-doc.org/en/master/>`_
+   The `~pyscope` package uses the `sphinx <https://www.sphinx-doc.org/en/master/>`_
    package to generate documentation. Sphinx uses the `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_
    format to parse docstrings. For more information on the numpydoc format,
    see the `numpydoc documentation <https://numpydoc.readthedocs.io/en/latest/format.html>`_.
