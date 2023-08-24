@@ -16,7 +16,7 @@ proc set_theme {mode} {
 		    -selectfg       "#ffffff"
 		    -selectbg       "#2f60d8"
 		}
-        
+
         ttk::style configure . \
             -background $colors(-bg) \
             -foreground $colors(-fg) \
@@ -39,13 +39,13 @@ proc set_theme {mode} {
             selectForeground [ttk::style lookup . -selectforeground] \
             activeBackground [ttk::style lookup . -selectbackground] \
             activeForeground [ttk::style lookup . -selectforeground]
-        
+
         ttk::style map . -foreground [list disabled $colors(-disabledfg)]
 
         option add *font [ttk::style lookup . -font]
         option add *Treeview.show tree
         option add *Menu.selectcolor $colors(-fg)
-    
+
 	} elseif {$mode == "light"} {
 		ttk::style theme use "sun-valley-light"
 
@@ -78,7 +78,7 @@ proc set_theme {mode} {
             selectForeground [ttk::style lookup . -selectforeground] \
             activeBackground [ttk::style lookup . -selectbackground] \
             activeForeground [ttk::style lookup . -selectforeground]
-        
+
         ttk::style map . -foreground [list disabled $colors(-disabledfg)]
 
         option add *font [ttk::style lookup . -font]

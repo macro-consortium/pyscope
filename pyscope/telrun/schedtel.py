@@ -963,8 +963,8 @@ def parse_sch_file(filename, location=None, t0=None):
                     )
                 )
                 logger.debug(
-                    f"""Created ObservingBlock: {blocks[-1].target}, 
-                                {blocks[-1].duration}, {blocks[-1].priority}, 
+                    f"""Created ObservingBlock: {blocks[-1].target},
+                                {blocks[-1].duration}, {blocks[-1].priority},
                                 {blocks[-1].name}, {blocks[-1].constraints},
                                 {blocks[-1].configuration}"""
                 )

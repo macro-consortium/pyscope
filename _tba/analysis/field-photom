@@ -1,217 +1,345 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 # field-photom
 # Finds all stars in FITS image using sextractor, does absolute photometry based on the zero-point magnitude, eith in the FITS header or user-specified
 # v. 1.0 26 March 2019 RLM
 
-vers ='%prog 1.0, 26 Mar 2019'
+vers = "%prog 1.0, 26 Mar 2019"
 
-import sys,os,glob, warnings
-import numpy as np
-from scipy.optimize import minimize
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-from astropy.io import fits
-from astropy.io.fits import getheader,update,setval
+import glob
+import os
+import sys
+import warnings
+
 import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
+import numpy as np
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
+from astropy.io.fits import getheader, setval, update
+from scipy.optimize import minimize
+
+mpl.use("Agg")
 from optparse import OptionParser
 
+import matplotlib.pyplot as plt
+
 # Avoid annoying warning about matplotlib building the font cache
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
+
 
 def get_args():
-	usage = "Usage: %prog [options] FITS files[s]"
-	parser = OptionParser(description='Program %prog' ,usage=usage, version = vers)
-	parser.add_option('-s', dest = 'sigma', metavar='sigma'	 , action = 'store', type=float, default = 3, help = 'Sextractor detection threshold [default 3 sigma]')
-	parser.add_option('-t', dest = 'outlier', metavar='outlier'	 , action = 'store', type=float, default = 3, help = 'Outlier trim threshold [default 3 sigma]')
-	parser.add_option('-d', dest = 'delta', metavar='delta'	 , action = 'store', type=float, default = 5, help = 'Sextractor position tolerance, arcsec [default 5]')
-	parser.add_option('-z', dest = 'zmag', metavar='Write', action = 'store', type=float, default = 0, help='Zero point magnitude [overrides FITS header value]')
-	parser.add_option('-v', dest = 'verbose', metavar='Verbose', action = 'store_true', default = False, help='Verbose output')
-	return parser.parse_args()
-	
+    usage = "Usage: %prog [options] FITS files[s]"
+    parser = OptionParser(description="Program %prog", usage=usage, version=vers)
+    parser.add_option(
+        "-s",
+        dest="sigma",
+        metavar="sigma",
+        action="store",
+        type=float,
+        default=3,
+        help="Sextractor detection threshold [default 3 sigma]",
+    )
+    parser.add_option(
+        "-t",
+        dest="outlier",
+        metavar="outlier",
+        action="store",
+        type=float,
+        default=3,
+        help="Outlier trim threshold [default 3 sigma]",
+    )
+    parser.add_option(
+        "-d",
+        dest="delta",
+        metavar="delta",
+        action="store",
+        type=float,
+        default=5,
+        help="Sextractor position tolerance, arcsec [default 5]",
+    )
+    parser.add_option(
+        "-z",
+        dest="zmag",
+        metavar="Write",
+        action="store",
+        type=float,
+        default=0,
+        help="Zero point magnitude [overrides FITS header value]",
+    )
+    parser.add_option(
+        "-v",
+        dest="verbose",
+        metavar="Verbose",
+        action="store_true",
+        default=False,
+        help="Verbose output",
+    )
+    return parser.parse_args()
+
 
 def get_hdrdata(ftsfile):
-	hdr = getheader(ftsfile, 0)
-	jd = hdr['JD']
-	date = hdr['DATE-OBS']
-	exptime = hdr['EXPTIME']
-	filter =  hdr['FILTER'][0]
-	airmass = hdr['AIRMASS']
-	if 'ZMAG' in hdr:
-		zmag = hdr['ZMAG']
-	else:
-		zmag = ''
-	if 'EGAIN' in hdr:
-		egain = hdr['EGAIN']
-	else:
-		egain = 1.00
-	nbin = hdr['XBINNING']	# Assume same for y binning
-	arcsec_pixel = np.abs(hdr['CDELT1']*3600.)
-	return jd, date, exptime, filter, arcsec_pixel, nbin, airmass, zmag, egain
+    hdr = getheader(ftsfile, 0)
+    jd = hdr["JD"]
+    date = hdr["DATE-OBS"]
+    exptime = hdr["EXPTIME"]
+    filter = hdr["FILTER"][0]
+    airmass = hdr["AIRMASS"]
+    if "ZMAG" in hdr:
+        zmag = hdr["ZMAG"]
+    else:
+        zmag = ""
+    if "EGAIN" in hdr:
+        egain = hdr["EGAIN"]
+    else:
+        egain = 1.00
+    nbin = hdr["XBINNING"]  # Assume same for y binning
+    arcsec_pixel = np.abs(hdr["CDELT1"] * 3600.0)
+    return jd, date, exptime, filter, arcsec_pixel, nbin, airmass, zmag, egain
+
 
 def get_sexinfo(sexname, exptime, arcsec_pixel):
-	fn = open(sexname,'r')
-	lines = fn.readlines()[15:]
-	Nr = []; Ra = []; Dec = []; Snr = []; Flux = []; Fluxerr = []; Fwhm = []; V = []; Verr = []
-	for line in lines:
-		nr, flux, fluxerr, dum, dum, x_pix, y_pix, ra_deg, dec_deg, profile_x, profile_y, pa, fwhm_pixel, dum, flag = [float(x) for x in line.split()]
-		v =	 - 2.5*np.log10(flux/exptime)
-		if np.isnan(v) or flux == 0 or fluxerr == 0: continue
-		snr = flux/fluxerr
-		verr =	2.5*(fluxerr/flux)	# Expanding log10(1+x) ~ 2.5x
-		Ra.append(ra_deg); Dec.append(dec_deg); Flux.append(flux)
-		Fluxerr.append(fluxerr); Fwhm.append(fwhm_pixel * np.abs(arcsec_pixel))
-		Snr.append(snr); V.append(v); Verr.append(verr)
-	fn.close()
-	
-	# Trim list to stars by restricting fwhm values
-	fwhm_min = 1.4; fwhm_max = 4.0
-	A = list(zip(Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr)); B = []
-	for j in range(len(A)):
-		if fwhm_min < A[j][5] < fwhm_max: 
-			B.append(A[j])
-	Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr = list(zip(*B))
-	V = np.array(V); Verr= np.array(Verr)
-	return Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr
+    fn = open(sexname, "r")
+    lines = fn.readlines()[15:]
+    Nr = []
+    Ra = []
+    Dec = []
+    Snr = []
+    Flux = []
+    Fluxerr = []
+    Fwhm = []
+    V = []
+    Verr = []
+    for line in lines:
+        (
+            nr,
+            flux,
+            fluxerr,
+            dum,
+            dum,
+            x_pix,
+            y_pix,
+            ra_deg,
+            dec_deg,
+            profile_x,
+            profile_y,
+            pa,
+            fwhm_pixel,
+            dum,
+            flag,
+        ) = [float(x) for x in line.split()]
+        v = -2.5 * np.log10(flux / exptime)
+        if np.isnan(v) or flux == 0 or fluxerr == 0:
+            continue
+        snr = flux / fluxerr
+        verr = 2.5 * (fluxerr / flux)  # Expanding log10(1+x) ~ 2.5x
+        Ra.append(ra_deg)
+        Dec.append(dec_deg)
+        Flux.append(flux)
+        Fluxerr.append(fluxerr)
+        Fwhm.append(fwhm_pixel * np.abs(arcsec_pixel))
+        Snr.append(snr)
+        V.append(v)
+        Verr.append(verr)
+    fn.close()
+
+    # Trim list to stars by restricting fwhm values
+    fwhm_min = 1.4
+    fwhm_max = 4.0
+    A = list(zip(Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr))
+    B = []
+    for j in range(len(A)):
+        if fwhm_min < A[j][5] < fwhm_max:
+            B.append(A[j])
+    Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr = list(zip(*B))
+    V = np.array(V)
+    Verr = np.array(Verr)
+    return Ra, Dec, Snr, Flux, Fluxerr, Fwhm, V, Verr
+
 
 def calc_snr(mag_star, mag_sky):
-	''' SNR of a star, given star magnitude, exp. time, zero point mag, camera parameters, and sky brightness
-	gain is in e/ADU; fwhm is in arcsec; plate_scale is arcsec/binned pixel '''
-	global RN, DC, gain, arcsec_pixel, nbin, zp, exptime, fwhm
-	# Binned pixels in FWHM
-	npix = (fwhm/arcsec_pixel)**2
-	star_counts = gain * exptime * (10 ** ( 0.4*(zp - mag_star) ) )
-	# mag_sky is in magnitudes per square arcsec
-	sky_counts =  gain * exptime * fwhm**2 * (10 ** ( 0.4*(zp - mag_sky) ) )
-	# Dark current is in e/pixel/sec
-	dc_counts =   DC   * exptime * (npix*nbin)**2
-	# All counts in electrons
-	snr = star_counts / np.sqrt( star_counts + sky_counts  + dc_counts + RN**2 )
-	return snr
-	
+    """SNR of a star, given star magnitude, exp. time, zero point mag, camera parameters, and sky brightness
+    gain is in e/ADU; fwhm is in arcsec; plate_scale is arcsec/binned pixel"""
+    global RN, DC, gain, arcsec_pixel, nbin, zp, exptime, fwhm
+    # Binned pixels in FWHM
+    npix = (fwhm / arcsec_pixel) ** 2
+    star_counts = gain * exptime * (10 ** (0.4 * (zp - mag_star)))
+    # mag_sky is in magnitudes per square arcsec
+    sky_counts = gain * exptime * fwhm**2 * (10 ** (0.4 * (zp - mag_sky)))
+    # Dark current is in e/pixel/sec
+    dc_counts = DC * exptime * (npix * nbin) ** 2
+    # All counts in electrons
+    snr = star_counts / np.sqrt(star_counts + sky_counts + dc_counts + RN**2)
+    return snr
+
+
 def solve_mag_sky(Snr_obs):
-	mag_sky = 20	# Initial guess for sky background (mag per sec^2)
-	res = minimize(chisq_snr, mag_sky, args = (Snr_obs, Mag_obs), method = 'Nelder-Mead' )
-	mag_sky = res.x[0]; success = res.success
-	return mag_sky, success
+    mag_sky = 20  # Initial guess for sky background (mag per sec^2)
+    res = minimize(chisq_snr, mag_sky, args=(Snr_obs, Mag_obs), method="Nelder-Mead")
+    mag_sky = res.x[0]
+    success = res.success
+    return mag_sky, success
 
-def chisq_snr(mag_sky,*args):
-	Snr_obs, Mag_obs = args
-	Snr_mod = calc_snr(Mag_obs, mag_sky)
-	diff_wt = (Snr_obs - Snr_mod) /Snr_mod
-	chisq = np.sum( np.abs(diff_wt))
-	return chisq
-	
+
+def chisq_snr(mag_sky, *args):
+    Snr_obs, Mag_obs = args
+    Snr_mod = calc_snr(Mag_obs, mag_sky)
+    diff_wt = (Snr_obs - Snr_mod) / Snr_mod
+    chisq = np.sum(np.abs(diff_wt))
+    return chisq
+
+
 def fchisq(zp, *args):
-	Mag_ref, Mag_obs, Mag_obs_err = args
-	if len(Mag_ref) > 0:
-		chisq = np.sum( (( Mag_ref - (Mag_obs + zp)) / Mag_obs_err)**2 ) / len(Mag_ref)
-	else:
-		chisq = 1.e99
-	return chisq
+    Mag_ref, Mag_obs, Mag_obs_err = args
+    if len(Mag_ref) > 0:
+        chisq = np.sum(((Mag_ref - (Mag_obs + zp)) / Mag_obs_err) ** 2) / len(Mag_ref)
+    else:
+        chisq = 1.0e99
+    return chisq
 
-def trim(indices,A):
-	# Trims arrays packed in A, dropping elements with given indices
-	B = []
-	for a in A:
-		B.append(np.delete(a, indices))
-	return B
+
+def trim(indices, A):
+    # Trims arrays packed in A, dropping elements with given indices
+    B = []
+    for a in A:
+        B.append(np.delete(a, indices))
+    return B
+
 
 def solve_k_color(Mag_obs, Mag_obs_err, Mag_ref, Color):
-	k_color = 0.1 # initial guess
-	res = minimize(kcolor_chisq,k_color,args=(Mag_obs, Mag_obs_err, Mag_ref, Color),  method = 'Nelder-Mead')
-	k_color = res.x[0]; success = res.success
-	return k_color, success
+    k_color = 0.1  # initial guess
+    res = minimize(
+        kcolor_chisq,
+        k_color,
+        args=(Mag_obs, Mag_obs_err, Mag_ref, Color),
+        method="Nelder-Mead",
+    )
+    k_color = res.x[0]
+    success = res.success
+    return k_color, success
 
-def kcolor_chisq(k_color,*args):
-	Mag_obs, Mag_obs_err, Mag_ref, Color= args
-	diff_wt = (Mag_obs + k_color*Color - Mag_ref) / Mag_obs_err
-	chisq = np.sum( diff_wt**2 )
-	return chisq
+
+def kcolor_chisq(k_color, *args):
+    Mag_obs, Mag_obs_err, Mag_ref, Color = args
+    diff_wt = (Mag_obs + k_color * Color - Mag_ref) / Mag_obs_err
+    chisq = np.sum(diff_wt**2)
+    return chisq
+
 
 def sigma_mark(sigma):
-	if sigma < 2.0:
-		mark = '   '
-	elif 2.0 <= sigma <= 2.5:
-		mark = '*  '
-	elif  2.5 < sigma <= 3.0:
-		mark = '** '
-	elif sigma > 3.0:
-		mark = '***'
-	return mark
+    if sigma < 2.0:
+        mark = "   "
+    elif 2.0 <= sigma <= 2.5:
+        mark = "*  "
+    elif 2.5 < sigma <= 3.0:
+        mark = "** "
+    elif sigma > 3.0:
+        mark = "***"
+    return mark
+
 
 # ======== MAIN ================
 
 # Sextractor config file path
-sex_path	= '/usr/local/sextractor/default.sex'
+sex_path = "/usr/local/sextractor/default.sex"
 
 # Camera parameters  IKON L936
-gain_unbinned = 1.0  # e/ADU 
-RN = 6.5    # e, From manufacturers spec sheet
-DC = 0.001    # e/unbinned pixel/sec at -30 C
+gain_unbinned = 1.0  # e/ADU
+RN = 6.5  # e, From manufacturers spec sheet
+DC = 0.001  # e/unbinned pixel/sec at -30 C
 
-# Extinction coefficients 
-k_g = 0.28; k_r = 0.11
+# Extinction coefficients
+k_g = 0.28
+k_r = 0.11
 
-k_color_g = 0.10; k_color_r = 0.10
+k_color_g = 0.10
+k_color_r = 0.10
 
 # Get command  line arguments, assign parameter values
 (opts, args) = get_args()
 
 ftsfile = args[0]
-detect_threshold = opts.sigma	   # Sextractor detection threshold [sigma]
-outlier_threshold = opts.outlier   # Threshold level to reject a star if obs-calc > threshold (sigma)
-delta = opts.delta/3600.		   # Sextractor Tolerance for matching star positions [deg]
+detect_threshold = opts.sigma  # Sextractor detection threshold [sigma]
+outlier_threshold = (
+    opts.outlier
+)  # Threshold level to reject a star if obs-calc > threshold (sigma)
+delta = opts.delta / 3600.0  # Sextractor Tolerance for matching star positions [deg]
 verbose = opts.verbose
 zmag = opts.zmag
 
 # Run sextractor, generate output file, get header info, fill arrays, solve for zero-point magnitude
-Zp = []; Zperr = []; Diff = []; Mag_obs_all = []
+Zp = []
+Zperr = []
+Diff = []
+Mag_obs_all = []
 
 # Make sure FTS file is valid and has a WCS solution, quit if not
 try:
-	hdr = getheader(ftsfile, 0)
+    hdr = getheader(ftsfile, 0)
 except:
-	sys.exit('Cannot retrieve header information from %s, exiting' % ftsfile)
-if 'CRVAL1' not in hdr: sys.exit( 'No WCS solution in %s, exiting' % ftsfile)
-	
+    sys.exit("Cannot retrieve header information from %s, exiting" % ftsfile)
+if "CRVAL1" not in hdr:
+    sys.exit("No WCS solution in %s, exiting" % ftsfile)
+
 # Get useful header info [NB not currently using nbin]. Note: EGAIN parameter doesn't seem to be correct, so use gain at top of program
-jd, date, exptime, filter, arcsec_pixel, nbin, airmass, zmag_hdr, do_not_use_this_gain = get_hdrdata(ftsfile)
-gain = gain_unbinned *np.sqrt(nbin)
-	
+(
+    jd,
+    date,
+    exptime,
+    filter,
+    arcsec_pixel,
+    nbin,
+    airmass,
+    zmag_hdr,
+    do_not_use_this_gain,
+) = get_hdrdata(ftsfile)
+gain = gain_unbinned * np.sqrt(nbin)
+
 # Decide which zpmag to use
 if zmag != 0:
-	zpmag = zmag
-	if verbose: print('%s: Using specified zero-point magnitude = %.2f' % (ftsfile,zmag))
-elif zmag_hdr != '':
-	zpmag = zmag_hdr
-	if verbose: print('%s: Using zero-point magnitude = %.2f in FITS header' % (ftsfile,zmag))
+    zpmag = zmag
+    if verbose:
+        print("%s: Using specified zero-point magnitude = %.2f" % (ftsfile, zmag))
+elif zmag_hdr != "":
+    zpmag = zmag_hdr
+    if verbose:
+        print("%s: Using zero-point magnitude = %.2f in FITS header" % (ftsfile, zmag))
 else:
-	sys.exit('No ZP magnitude specified (-z) and none in FITS header, exiting')
-	
+    sys.exit("No ZP magnitude specified (-z) and none in FITS header, exiting")
+
 # Run sextractor
-sexname = os.path.abspath(ftsfile).split('.')[0] + '.sexout'
-if verbose: print('Running sextractor on %s with detection threshold = %.1f sigma' % (ftsfile, detect_threshold))
-os.system('/usr/local/bin/sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET' \
-% (ftsfile, sex_path, sexname, detect_threshold) )
-	
+sexname = os.path.abspath(ftsfile).split(".")[0] + ".sexout"
+if verbose:
+    print(
+        "Running sextractor on %s with detection threshold = %.1f sigma"
+        % (ftsfile, detect_threshold)
+    )
+os.system(
+    "/usr/local/bin/sex %s -c %s -CATALOG_NAME %s -DETECT_THRESH %.1f -VERBOSE_TYPE QUIET"
+    % (ftsfile, sex_path, sexname, detect_threshold)
+)
+
 # Get position, magnitude info for each listed star in output file
-Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err = get_sexinfo(sexname, exptime, arcsec_pixel)
+Ra_obs, Dec_obs, Snr, Flux, Fluxerr, Fwhm_obs, Mag_obs, Mag_obs_err = get_sexinfo(
+    sexname, exptime, arcsec_pixel
+)
 nobs = len(Ra_obs)
-if verbose: print('Sextractor found %i stars' % nobs)
+if verbose:
+    print("Sextractor found %i stars" % nobs)
 
 # Add zero-point magnitude
 Mag_obs += zpmag
 
 # Write output to a file
 N = len(Ra_obs)
-rootname =os.path.splitext(ftsfile)[0]
-outfile = rootname + '.field_photom'
-fn = open(outfile,'w')
-fn.write('RA[deg]      Dec[deg]     Mag    Sigma  Snr\n')
+rootname = os.path.splitext(ftsfile)[0]
+outfile = rootname + ".field_photom"
+fn = open(outfile, "w")
+fn.write("RA[deg]      Dec[deg]     Mag    Sigma  Snr\n")
 for j in range(N):
-	fn.write('%9.5f   %9.5f    %5.2f  %5.2f %6.1f\n'  % (Ra_obs[j],Dec_obs[j],Mag_obs[j], Mag_obs_err[j], Snr[j]))
+    fn.write(
+        "%9.5f   %9.5f    %5.2f  %5.2f %6.1f\n"
+        % (Ra_obs[j], Dec_obs[j], Mag_obs[j], Mag_obs_err[j], Snr[j])
+    )
 fn.close()
-print('Wrote output file %s' % outfile)
+print("Wrote output file %s" % outfile)

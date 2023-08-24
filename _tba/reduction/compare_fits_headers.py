@@ -1,6 +1,6 @@
 """
-Given the names of two FITS files, compare the FITS headers 
-to determine which entries are unique to each image and 
+Given the names of two FITS files, compare the FITS headers
+to determine which entries are unique to each image and
 which entries are common to both.
 
 Useful for figuring out what needs to be added to a Maxim
@@ -12,11 +12,12 @@ import sys
 
 from astropy.io import fits as pyfits
 
+
 def main():
     if len(sys.argv) != 3:
         print("Usage: %s file1.fits file2.fits" % os.path.basename(__file__))
         sys.exit(1)
-    
+
     filename1 = sys.argv[1]
     filename2 = sys.argv[2]
 
@@ -64,7 +65,6 @@ def main():
     for key in file2_key_lines:
         print(key)
     print()
-
 
 
 if __name__ == "__main__":

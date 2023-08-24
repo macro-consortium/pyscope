@@ -3,9 +3,9 @@ import sys
 
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
-from sphinx_astropy.conf.v2 import *
-
 from urllib.parse import quote
+
+from sphinx_astropy.conf.v2 import *
 
 project = "pyscope"
 copyright = "2023, Walter Golay"
@@ -17,7 +17,11 @@ graphviz_dot = "/usr/local/bin/dot"
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
-intersphinx_mapping["astroquery"] = ("https://astroquery.readthedocs.io/en/latest/", None)
+intersphinx_mapping["astroquery"] = (
+    "https://astroquery.readthedocs.io/en/latest/",
+    None,
+)
+
 
 def linkcode_resolve(domain, info):
     # print(f"domain={domain}, info={info}")

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
     "-s",
     "--source",
     type=str,
-    help="""Source name. 
+    help="""Source name.
     Is resolved by astropy.coordinates.SkyCoord.from_name() first, then
     if not found, attempts to check the Minor Planet Center via astroquery.
     Finally, it attempts to use astropy.coordinates.get_body for solar system
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
     "-d",
     "--date",
     type=str,
-    help="""Date of observation [YYYY-MM-DD]. 
+    help="""Date of observation [YYYY-MM-DD].
     If none is given, the current date at the observatory is used.""",
 )
 @click.option(

@@ -3,7 +3,7 @@ User Guide
 
 
 
-.. toctree:: 
+.. toctree::
   :maxdepth: 2
 
   user_guide/examples

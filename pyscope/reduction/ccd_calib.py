@@ -97,8 +97,8 @@ def ccd_calib_cli(
         logger.setLevel(logging.DEBUG)
 
     logger.debug(
-        f"""ccd_calib(camera_type={camera_type}, dark_frame={dark_frame}, 
-    flat_frame={flat_frame}, bias_frame={bias_frame}, astro_scrappy={astro_scrappy}, 
+        f"""ccd_calib(camera_type={camera_type}, dark_frame={dark_frame},
+    flat_frame={flat_frame}, bias_frame={bias_frame}, astro_scrappy={astro_scrappy},
     bad_columns={bad_columns}, in_place={in_place}, fnames={fnames})"""
     )
 
@@ -348,7 +348,7 @@ def ccd_calib_cli(
             if dark_frame is not None:
                 logger.info(
                     """Applying the dark frame. CCD selected so a bias-subtracted
-                            dark frame is scaled by the ratio of the image exposure time over 
+                            dark frame is scaled by the ratio of the image exposure time over
                             the dark exposure time then subtracted from the image."""
                 )
 

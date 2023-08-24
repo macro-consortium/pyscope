@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
     "filt",
     type=click.Choice(["u", "b", "g", "r", "i", "z"]),
     show_choices=True,
-    help="""Sloan filter to use for computing the 
+    help="""Sloan filter to use for computing the
                 zero-point magnitude. Overrides the header filter.""",
 )
 @click.option(
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
     type=(float, float),
     default=(50, 3),
     show_default=True,
-    help="""Background2D box_size and filter_size 
+    help="""Background2D box_size and filter_size
                 parameters in pixels.""",
 )
 @click.option(
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
     type=float,
     default=3.0,
     show_default=True,
-    help="""Threshhold for source detection in units of 
+    help="""Threshhold for source detection in units of
                 background RMS.""",
 )
 @click.option(
@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
     type=float,
     default=1,
     show_default=True,
-    help="""Effective gain for computing the Poisson noise 
+    help="""Effective gain for computing the Poisson noise
                 contribution to the total error. In units of electrons
                 or photons per count""",
 )
@@ -78,7 +78,7 @@ logger = logging.getLogger(__name__)
     show_default=True,
     show_choices=True,
     help="""Definition of pixel connectivity, i.e. whether
-                diagonal pixels are considered to be connected (8 if 
+                diagonal pixels are considered to be connected (8 if
                 yes, 4 if no).""",
 )
 @click.option(
@@ -113,7 +113,7 @@ logger = logging.getLogger(__name__)
     "search_radius",
     type=float,
     default=3.0,
-    help="""Radius to search for nearby 
+    help="""Radius to search for nearby
                 sources in the SDSS catalog [arcsec].""",
 )
 @click.option(

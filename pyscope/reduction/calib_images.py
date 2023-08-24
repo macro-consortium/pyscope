@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
     "-r",
     "--raw-archive-dir",
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    help="""Directory to archive raw images. If none given, no archiving is done, 
+    help="""Directory to archive raw images. If none given, no archiving is done,
                 however, the '--in-place' option is not allowed.""",
 )
 @click.option(

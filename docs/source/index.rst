@@ -6,7 +6,7 @@ Telescope Control with Python (pyscope)
 
 Getting Started
 ===============
-.. toctree:: 
+.. toctree::
   :maxdepth: 2
 
   installation
@@ -22,36 +22,36 @@ Authors
 * Walter Golay
 
   - Graduate Student at Harvard University, Department of Astronomy
-  - Former Undergraduate at University of Iowa, Department of 
+  - Former Undergraduate at University of Iowa, Department of
     Physics and Astronomy
 
 
 Acknowledgements
 ================
-* Robert Mutel, Professor Emeritus at University of Iowa, 
+* Robert Mutel, Professor Emeritus at University of Iowa,
   Department of Physics and Astronomy
-* The former students and contributors to the 
-  Iowa Robotic Telescope Facility (RTF), the Van Allen Observatory 
-  (VAO), and the Iowa Robotic Observatory (IRO), including the 
-  Rigel Telescope and the Gemini Telescope, now known as the 
+* The former students and contributors to the
+  Iowa Robotic Telescope Facility (RTF), the Van Allen Observatory
+  (VAO), and the Iowa Robotic Observatory (IRO), including the
+  Rigel Telescope and the Gemini Telescope, now known as the
   *Robert L. Mutel Telescope* (RLMT).
-* The Macalester-Augustana Coe Robotic Observatory 
-  (`MACRO <https://macroconsortium.org>`_) 
-  Consortium for providing unrestricted access to the 
-  *Robert L. Mutel Telescope* for testing the early iterations of 
+* The Macalester-Augustana Coe Robotic Observatory
+  (`MACRO <https://macroconsortium.org>`_)
+  Consortium for providing unrestricted access to the
+  *Robert L. Mutel Telescope* for testing the early iterations of
   this software.
 
-  * John Cannon, Professor at Macalester College, Department of 
+  * John Cannon, Professor at Macalester College, Department of
     Physics and Astronomy
-  * William Peterson, Professor at Augustana College, Department 
+  * William Peterson, Professor at Augustana College, Department
     of Physics and Astronomy
   * James Wetzel, Professor at Coe College, Department of Physics
 
-* Mark and Pat Trueblood, Directors of the 
-  `Winer Observatory <https://www.winer.org/>`_ where the 
+* Mark and Pat Trueblood, Directors of the
+  `Winer Observatory <https://www.winer.org/>`_ where the
   *Robert L. Mutel Telescope* is located
 * Kevin Ivarsen
-* The astronomy faculty and staff at the University of Iowa, 
+* The astronomy faculty and staff at the University of Iowa,
   Department of Physics and Astronomy
 
 Index

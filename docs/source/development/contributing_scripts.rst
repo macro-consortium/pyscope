@@ -2,12 +2,12 @@ Contributing scripts
 ====================
 
 If you have a script that you think would be useful to others, please
-consider contributing it to this repository. This page documents the 
+consider contributing it to this repository. This page documents the
 procedure  for doing so. The general outline is as follows:
 
 
-1. Fork `this repository <https://github.com/WWGolay/pyScope>`_ on GitHub. 
-   this will create a copy of the repository in your own GitHub account, 
+1. Fork `this repository <https://github.com/WWGolay/pyScope>`_ on GitHub.
+   this will create a copy of the repository in your own GitHub account,
    which you are then free to modify. You can do this by clicking the
    "Fork" button on the top right of the page.
 
@@ -22,20 +22,20 @@ procedure  for doing so. The general outline is as follows:
      already been acquired and calibrated.
    - :py:mod:`~pyscope.reduction` is best-suited for scripts that perform
      a type of calibration or modification to the data that is not intended
-     to elucidate any conclusions about the data itself. For example, the 
+     to elucidate any conclusions about the data itself. For example, the
      :py:func:`~pyscope.reduction.ccd_calib` function applies a set of
      calibration frames to a raw image, but does not perform any analysis
      on the resulting image. Additionally, scripts in this module should
      not depend on any of the hardware modules.
    - :py:mod:`~pyscope.observatory` is a good choice for automating repetitive
      functions of the complete telescope system, such as collecting a set of
-     calibration frames or grid-searching a portion of the sky. Scripts in 
+     calibration frames or grid-searching a portion of the sky. Scripts in
      this module should at some point utilize the
      :py:obj:`~pyscope.observatory.Observatory` object.
-   - :py:mod:`~pyscope.telrun` support the configuration, setup, and 
+   - :py:mod:`~pyscope.telrun` support the configuration, setup, and
      execution of the `~pyscope.telrun.TelrunOperator` class. These scripts
      should assist users as they are configuring the fully-robotic observing
-     mode. In general, most user-contributed scripts will not fit into this 
+     mode. In general, most user-contributed scripts will not fit into this
      module, however, there may be exceptions.
    - :py:mod:`~pyscope.utils` is for scripts that do not fit into any of the
      other modules. These scripts should be general-purpose and not depend
@@ -43,11 +43,11 @@ procedure  for doing so. The general outline is as follows:
 
 4. Turn your script into a function and isolate it in a single Python file.
    The function should be well-documented and should have a docstring that
-   describes the function and its arguments. Your function should use the 
+   describes the function and its arguments. Your function should use the
    `click <https://click.palletsprojects.com/>`_ package to define its
-   command-line interface behavior. 
+   command-line interface behavior.
 
-5. Add your script to the appropriate module's :file:`__init__.py` file. 
+5. Add your script to the appropriate module's :file:`__init__.py` file.
    This will make your script available to users who import the module.
    You should also add your script to the :file:`setup.py` file so that
    it will be installed when users install the package.
@@ -71,7 +71,7 @@ procedure  for doing so. The general outline is as follows:
 
 Congratulations! You have successfully contributed to :py:mod:`~pyscope`!
 
-.. note:: 
+.. note::
     `Here <https://docs.astropy.org/en/stable/development/workflow/development_workflow.html>`_
     is the astropy-written guide to contributing to astropy and affiliated
     packages.
@@ -83,7 +83,7 @@ For a script to have the full functionality required of it by the
 and conventions. The :py:mod:`~pyscope` package uses the
 `click <https://click.palletsprojects.com/>`_ package to define the
 command-line interface of each script. This allows the user to run the
-script from the command line with a set of options and arguments. For a 
+script from the command line with a set of options and arguments. For a
 function to retain its ability to be called as a importable function, the
 main function with the :external:py:func:`click.command` decorator must
 have a different name. We recommend using the same name as the script file
@@ -108,7 +108,7 @@ options and arguments. For example::
    def my_script_cli(*args, **kwargs):
       # Do stuff here
 
-The script file should end in a line which sets the intended 
+The script file should end in a line which sets the intended
 name of the script to the  defined function's `callback` attribute::
 
    my_script = my_script_cli.callback
@@ -130,7 +130,7 @@ verbosity level::
 
 A user can then set the verbosity level by passing the `-v` option multiple
 times on the CLI, e.g.::
-   
+
       $ my_script -vvv
 
 We can connect the option to the logger level by adding the following
@@ -145,19 +145,19 @@ the `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_
 format. The docstring should also include a description of the command-line
 interface.
 
-Once you've completed these steps, your function should be complete. 
+Once you've completed these steps, your function should be complete.
 The outline of your function should look like this::
-   
+
    import click
    import logging
 
    logger = logging.getLogger(__name__)
 
    @click.command(epilog='''Check out the documentation at
-                  https://pyscope.readthedocs.io/en/latest/ 
+                  https://pyscope.readthedocs.io/en/latest/
                   for more information.''')
    @click.option('-o', '--option', default=1, help='An option')
-   @click.option('-v', '--verbose', count=True, 
+   @click.option('-v', '--verbose', count=True,
                  type=click.IntRange(0, 3), # Range can be changed
                  help='Increase verbosity')
    @click.argument('argument', type=click.Path(exists=True))
@@ -178,8 +178,8 @@ The outline of your function should look like this::
 
       logger.setLevel(int(10 * (3 - verbose))) # Change range via 3
       logger.debug(f'Verbosity level set to {verbose}')
-      logger.debug(f'''my_script_cli(option={option}, 
-                   argument={argument}, verbose={verbose}, 
+      logger.debug(f'''my_script_cli(option={option},
+                   argument={argument}, verbose={verbose},
                    args={args}, kwargs={kwargs})''')
 
       logger.info('Starting my_script')
@@ -187,7 +187,7 @@ The outline of your function should look like this::
       # using logger.debug, logger.info, logger.warning,
       # logger.error, and logger.exception
       logger.info('Finished my_script')
-   
+
    my_script = my_script_cli.callback
 
 .. note::
@@ -200,7 +200,7 @@ Preparing the script for distribution
 -------------------------------------
 Once you have written your script, you must add it to the appropriate
 module's :file:`__init__.py` file::
-   
+
       from .my_script import my_script
 
 You should also add your script to the :file:`setup.cfg` file, referencing
@@ -213,7 +213,7 @@ dashes::
       my-script = pyscope.analysis.my_script:pyscope.module.my_script_cli
 
 You can test your script by running::
-   
+
       $ pip install --editable .
 
 in your repository, then running::

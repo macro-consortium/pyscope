@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
     "-d",
     "--date",
     type=str,
-    help="""Date of observation in YYYY-MM-DD format. 
+    help="""Date of observation in YYYY-MM-DD format.
               If not specified, defaults to today.""",
 )
 @click.option(

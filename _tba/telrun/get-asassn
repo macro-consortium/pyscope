@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import requests as rs
-import pandas as pd
 from optparse import OptionParser
+
+import pandas as pd
+import requests as rs
 
 url = "https://docs.google.com/spreadsheets/d/1QdWCXJ0wRlNpTK0Ux4EfAybYJKKm9EXAa_wamQisajA/export?format=csv&id=1QdWCXJ0wRlNpTK0Ux4EfAybYJKKm9EXAa_wamQisajA&gid=0"
 email = 'tyler-roth@uiowa.edu'

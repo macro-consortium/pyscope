@@ -1,6 +1,6 @@
 # Copyright © 2021 rdbende <rdbende@gmail.com>
 
-# A stunning dark theme for ttk based on Microsoft's Sun Valley visual style 
+# A stunning dark theme for ttk based on Microsoft's Sun Valley visual style
 
 package require Tk 8.6
 
@@ -31,7 +31,7 @@ namespace eval ttk::theme::sun-valley-dark {
             Button.button -children {
                 Button.padding -children {
                     Button.label -side left -expand 1
-                } 
+                }
             }
         }
 
@@ -39,7 +39,7 @@ namespace eval ttk::theme::sun-valley-dark {
             Toolbutton.button -children {
                 Toolbutton.padding -children {
                     Toolbutton.label -side left -expand 1
-                } 
+                }
             }
         }
 
@@ -65,7 +65,7 @@ namespace eval ttk::theme::sun-valley-dark {
             AccentButton.button -children {
                 AccentButton.padding -children {
                     AccentButton.label -side left -expand 1
-                } 
+                }
             }
         }
 
@@ -91,7 +91,7 @@ namespace eval ttk::theme::sun-valley-dark {
             ToggleButton.button -children {
                 ToggleButton.padding -children {
                     ToggleButton.label -side left -expand 1
-                } 
+                }
             }
         }
 
@@ -134,23 +134,23 @@ namespace eval ttk::theme::sun-valley-dark {
                 Combobox.arrow -sticky nsew
             }
         }
-        
+
         ttk::style layout TSpinbox {
             Spinbox.field -sticky nsew -children {
                 Spinbox.padding -expand 1 -sticky nsew -children {
                     Spinbox.textarea -sticky nsew
                 }
-                
+
             }
             null -side right -sticky nsew -children {
                 Spinbox.uparrow -side left -sticky nsew
                 Spinbox.downarrow -side right -sticky nsew
             }
-        }  
-        
+        }
+
         ttk::style layout Card.TFrame {
             Card.field {
-                Card.padding -expand 1 
+                Card.padding -expand 1
             }
         }
 
@@ -221,7 +221,7 @@ namespace eval ttk::theme::sun-valley-dark {
                 disabled $images(button-disabled) \
                 pressed $images(button-pressed) \
                 active $images(button-hover) \
-            ] -border 4 -sticky nsew 
+            ] -border 4 -sticky nsew
 
         ttk::style element create Menubutton.indicator image $images(arrow-down) -width 28 -sticky {}
 
@@ -233,7 +233,7 @@ namespace eval ttk::theme::sun-valley-dark {
                 disabled $images(button-disabled) \
                 pressed $images(button-pressed) \
                 active $images(button-hover) \
-            ] -border 4 -sticky nsew 
+            ] -border 4 -sticky nsew
 
         ttk::style element create OptionMenu.indicator image $images(arrow-down) -width 28 -sticky {}
 
@@ -405,7 +405,7 @@ namespace eval ttk::theme::sun-valley-dark {
                 focus $images(entry-focus) \
                 hover $images(entry-hover) \
             ] -border 5 -padding {8 8 28 8}
-            
+
         ttk::style element create Combobox.arrow image $images(arrow-down) -width 35 -sticky {}
 
         # Spinbox
@@ -441,7 +441,7 @@ namespace eval ttk::theme::sun-valley-dark {
         # Labelframe
         ttk::style element create Labelframe.border image $images(card) \
             -border 5 -padding 4 -sticky nsew
-        
+
         # Notebook
         ttk::style configure TNotebook -padding 1
 
@@ -465,7 +465,7 @@ namespace eval ttk::theme::sun-valley-dark {
                 pressed $images(treeheading-pressed) \
                 active $images(treeheading-hover)
             ] -border 5 -padding 15 -sticky nsew
-        
+
         ttk::style element create Treeitem.indicator \
             image [list $images(arrow-right) \
                 user2 $images(empty) \

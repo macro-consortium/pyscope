@@ -1,0 +1,31 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+  - id: check-ast
+  - id: check-case-conflict
+  - id: check-toml
+  - id: end-of-file-fixer
+  - id: requirements-txt-fixer
+  - id: trailing-whitespace
+- repo: https://github.com/PyCQA/isort
+  rev: 5.12.0
+  hooks:
+  - id: isort
+    args: [--profile=black]
+- repo: https://github.com/psf/black
+  rev: 23.7.0
+  hooks:
+  - id: black
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: v1.10.0
+  hooks:
+  - id: python-check-mock-methods
+    # Prevent common mistakes of assert mck.not_called(), assert
+    # mck.called_once_with(...) and mck.assert_called.
+  - id: rst-directive-colons
+    # Detect mistake of rst directive not ending with double colon.
+  - id: rst-inline-touching-normal
+    # Detect mistake of inline code touching normal text in rst.
+  - id: text-unicode-replacement-char
+    # Forbid files which have a UTF-8 Unicode replacement character.

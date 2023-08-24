@@ -92,7 +92,7 @@ foreach $obc (@obscodes) {
 	&sendEmail();
     }
 }
-    
+
 # send email to @emails and tell them @files are ready
 # also append to $logfn
 sub sendEmail

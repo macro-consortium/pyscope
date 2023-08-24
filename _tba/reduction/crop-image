@@ -8,22 +8,26 @@ RLM 23 Oct 2014
 3 Nov 2014: Check if WCS solution exists before changing CRPIX1,CRPIX2
 '''
 
-import os, sys, getopt
+import getopt
+import os
+import sys
+
 import astropy.io.fits as pyfits
+
 
 def usage():
     print('Usage: crop-image [-X ] [-Y] [-W] [-H]  [-v verbose] [-h = help] FITS_file[s]')
     sys.exit(1)
-   
+
 def help_usage():
     print('crop-image crops FITS images in place, wildcard spec allowed')
     print('(X,Y) lower left corner of crop, pixels')
     print('W,H = width, height of cropped image, pixels')
-    print('Note: Defaults to inner 1/4 of image') 
+    print('Note: Defaults to inner 1/4 of image')
     print('Warning: Crop is in place (overwrites original files)')
     print('Example of usage: crop-image -X 100 -Y 100 -W 512 -H 512 *.fts')
     sys.exit(1)
-    
+
 def getargs():
     # retrieves filenames and optional arguments from command line
     try:
@@ -33,7 +37,7 @@ def getargs():
         usage()
     if len(arg) == 0: usage()
     verbose = False; fnames = arg
-    X = Y = W = H = 0 
+    X = Y = W = H = 0
     for opt in opts:
         if opt[0] in ('-v','--verbose'):
         	verbose = True

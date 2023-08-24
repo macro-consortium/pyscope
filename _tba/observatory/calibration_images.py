@@ -1,19 +1,16 @@
-from datetime import datetime
 import math
 import os
 import sys
 import tempfile
 import time
+from datetime import datetime
+
 import astropy.io.fits as fits
-import numpy
-
-import relimport
-from iotalib import convert
-from iotalib import talonwcs
-from iotalib import rst
-import pulsar_dimmer
-
 import ephem
+import numpy
+import pulsar_dimmer
+import relimport
+from iotalib import convert, rst, talonwcs
 from win32com.client import Dispatch
 
 """
@@ -32,38 +29,46 @@ target position and running the calibrate_target_pixel script.
 
 ### CONFIGURATION VALUES ########################
 
-#configuration_file = sys.argv[1]
+# configuration_file = sys.argv[1]
 configuration_file = "calibration_config.txt"
 config = []
 with open(configuration_file) as infile:
     for line in infile:
-        config.append((line.split()[0]))    
+        config.append((line.split()[0]))
 
-#MOUNT_DRIVER = "ASCOM.SoftwareBisque.Telescope"  # Use this for the Paramount ME (controlled through TheSky)
+# MOUNT_DRIVER = "ASCOM.SoftwareBisque.Telescope"  # Use this for the Paramount ME (controlled through TheSky)
 MOUNT_DRIVER = "SiTech.Telescope"
 HOME_MOUNT = True
 
-OBJECT_NAME = ""                       # Provides the name of an object to search for in the SIMBAD Database (If empty string, use provided coordinates)
-TARGET_AZ = float(config[1]) # RA coordinates of the target star, in J2000 hours
-TARGET_ALT = float(config[2]) # Dec coordinates of the target star, in J2000 degrees
-SETTLE_TIME_SECONDS = float(config[3])               # Pause for this many seconds after slewing to each target before taking an image
+OBJECT_NAME = ""  # Provides the name of an object to search for in the SIMBAD Database (If empty string, use provided coordinates)
+TARGET_AZ = float(config[1])  # RA coordinates of the target star, in J2000 hours
+TARGET_ALT = float(config[2])  # Dec coordinates of the target star, in J2000 degrees
+SETTLE_TIME_SECONDS = float(
+    config[3]
+)  # Pause for this many seconds after slewing to each target before taking an image
 
-BINNING = float(config[4])                            # Image binning (higher binning reduces resolution but speeds up image readout time) 
+BINNING = float(
+    config[4]
+)  # Image binning (higher binning reduces resolution but speeds up image readout time)
 
-EXPOSURE_LENGTH_SECONDS_DARK = float(config[8])           # Exposure length of each dark image, in seconds
+EXPOSURE_LENGTH_SECONDS_DARK = float(
+    config[8]
+)  # Exposure length of each dark image, in seconds
 NUMBER_DARKS = float(config[6])
 NUMBER_BIAS = float(config[7])
 NUMBER_FLATS = float(config[5])
-FILTER_NAMES = config[9].split(',') #["L","R","V","B","H","G","W","N"]
-#FILTER_EXPOSURE_TIME = [2,2,2.5,7,15,0,2,2]
-FILTER_EXPOSURE_TIME = [float(x) for x in config[10].split(',')]
-FILTER_LAMP_INTENSITY =[int(x) for x in config[11].split(',')] #[1,100,150,254,254,0,150,1]
+FILTER_NAMES = config[9].split(",")  # ["L","R","V","B","H","G","W","N"]
+# FILTER_EXPOSURE_TIME = [2,2,2.5,7,15,0,2,2]
+FILTER_EXPOSURE_TIME = [float(x) for x in config[10].split(",")]
+FILTER_LAMP_INTENSITY = [
+    int(x) for x in config[11].split(",")
+]  # [1,100,150,254,254,0,150,1]
 
-MIRRORED = False                       # If image can be rotated so that North is Up and East is Right, this should be True to ensure that a WCS solution can be found.
+MIRRORED = False  # If image can be rotated so that North is Up and East is Right, this should be True to ensure that a WCS solution can be found.
 
-SAVE_IMAGES = True                     # If True, each image will be saved to SAVE_DATA_PATH
-#SAVE_DATA_PATH = r"{MyDocuments}\Calibration\{Timestamp}"
-SAVE_DATA_PATH = config[0] # Script data will be saved to this location.
+SAVE_IMAGES = True  # If True, each image will be saved to SAVE_DATA_PATH
+# SAVE_DATA_PATH = r"{MyDocuments}\Calibration\{Timestamp}"
+SAVE_DATA_PATH = config[0]  # Script data will be saved to this location.
 MASTER_DATA_PATH = config[12]
 
 print(SAVE_DATA_PATH)
@@ -86,7 +91,7 @@ def main():
     print("Launching MaxIm DL...")
     maxim = Dispatch("MaxIm.Application")
     maxim.LockApp = True
-    
+
     camera = Dispatch("MaxIm.CCDCamera")
     camera.DisableAutoShutdown = True
 
@@ -96,109 +101,120 @@ def main():
     if HOME_MOUNT:
         print("Homing Mount")
         mount.FindHome
-    
+
     if mount.CanSetTracking:
         # Not all mount drivers support turning tracking on/off.
         # For example, the ASCOM driver for TheSky does not support it.
         # However, if it is supported, make sure tracking is on before slewing
         mount.Tracking = False
-    
+
     save_data_path = parse_filepath_template(SAVE_DATA_PATH)
     master_data_path = parse_filepath_template(MASTER_DATA_PATH)
-    
+
     if SAVE_IMAGES and not os.path.isdir(save_data_path):
         print("Creating directory %s" % save_data_path)
         os.makedirs(save_data_path)
 
+    print("Slewing to Azimuth %s, Altitude %s" % (TARGET_AZ, TARGET_ALT))
 
-        
-    print("Slewing to Azimuth %s, Altitude %s" % (TARGET_AZ,TARGET_ALT))
-    
     mount.SlewToAltAz(TARGET_AZ, TARGET_ALT)
     mount.Tracking = False
     print("Settling...")
     time.sleep(SETTLE_TIME_SECONDS)
-    
+
     darknum = 0
-    print("Taking %d dark images with %d second exposure..." % (NUMBER_DARKS,EXPOSURE_LENGTH_SECONDS_DARK))
+    print(
+        "Taking %d dark images with %d second exposure..."
+        % (NUMBER_DARKS, EXPOSURE_LENGTH_SECONDS_DARK)
+    )
     while darknum < NUMBER_DARKS:
-        
         camera.BinX = BINNING
         camera.BinY = BINNING
-        camera.Expose(EXPOSURE_LENGTH_SECONDS_DARK, 0) #The 0 indicates that the shutter is closed
+        camera.Expose(
+            EXPOSURE_LENGTH_SECONDS_DARK, 0
+        )  # The 0 indicates that the shutter is closed
         while not camera.ImageReady:
             time.sleep(0.1)
-        
-        darknum = darknum+1
-        print("Dark %d of %d complete" % (darknum,NUMBER_DARKS))
-        
+
+        darknum = darknum + 1
+        print("Dark %d of %d complete" % (darknum, NUMBER_DARKS))
+
         tempfilename = os.path.join(tempfile.gettempdir(), "Dark.fits")
         camera.SaveImage(tempfilename)
 
         if SAVE_IMAGES:
             filename = "Dark_%03d.fits" % (darknum)
-            #filename = "Dark.fits"
+            # filename = "Dark.fits"
             filepath = os.path.join(save_data_path, filename)
-            #print "Saving image to", filepath
+            # print "Saving image to", filepath
             camera.SaveImage(filepath)
-    
+
     biasnum = 0
     print("Taking %d bias images..." % (NUMBER_BIAS))
     while biasnum < NUMBER_BIAS:
         camera.BinX = BINNING
         camera.BinY = BINNING
-        camera.Expose(0, 0) #Bias image take as a 0 second dark exposure
+        camera.Expose(0, 0)  # Bias image take as a 0 second dark exposure
         while not camera.ImageReady:
             time.sleep(0.1)
 
-        biasnum = biasnum+1
-        print("Bias %d of %d complete" % (biasnum,NUMBER_BIAS))
-
+        biasnum = biasnum + 1
+        print("Bias %d of %d complete" % (biasnum, NUMBER_BIAS))
 
         tempfilename = os.path.join(tempfile.gettempdir(), "Bias.fits")
         camera.SaveImage(tempfilename)
 
         if SAVE_IMAGES:
             filename = "Bias_%03d.fits" % (biasnum)
-            #filename = "Bias.fits" 
+            # filename = "Bias.fits"
             filepath = os.path.join(save_data_path, filename)
-            #print "Saving image to", filepath
+            # print "Saving image to", filepath
             camera.SaveImage(filepath)
-    
-    filternum=0
+
+    filternum = 0
     for fname in FILTER_NAMES:
-        #camera.set_active_filter(filternum)
+        # camera.set_active_filter(filternum)
         if FILTER_EXPOSURE_TIME[filternum] == 0:
             print("Skipping filter %s." % (fname))
         else:
-            flatnum=0
-            print("Setting flat field lamps to brightness level %d" % (FILTER_LAMP_INTENSITY[filternum]))
+            flatnum = 0
+            print(
+                "Setting flat field lamps to brightness level %d"
+                % (FILTER_LAMP_INTENSITY[filternum])
+            )
             pulsar_dimmer.dimmer(FILTER_LAMP_INTENSITY[filternum])
             time.sleep(2)
-            print("Taking %d flat images with %d second exposure in filter %s..." % (NUMBER_FLATS,FILTER_EXPOSURE_TIME[filternum],fname))
+            print(
+                "Taking %d flat images with %d second exposure in filter %s..."
+                % (NUMBER_FLATS, FILTER_EXPOSURE_TIME[filternum], fname)
+            )
             while flatnum < NUMBER_FLATS:
                 camera.BinX = BINNING
                 camera.BinY = BINNING
                 camera.Expose(FILTER_EXPOSURE_TIME[filternum], 1, filternum)
                 while not camera.ImageReady:
                     time.sleep(0.1)
-                flatnum=flatnum+1
-                print("Flat %d of %d for filter %s complete" % (flatnum,NUMBER_FLATS,fname))
-                camera.SetFITSKey('IMAGETYP','FLAT    ')
+                flatnum = flatnum + 1
+                print(
+                    "Flat %d of %d for filter %s complete"
+                    % (flatnum, NUMBER_FLATS, fname)
+                )
+                camera.SetFITSKey("IMAGETYP", "FLAT    ")
                 tempfilename = os.path.join(tempfile.gettempdir(), "Flat.fits")
                 camera.SaveImage(tempfilename)
 
                 if SAVE_IMAGES:
-                    filename = "Flat_%03d%s.fits" % (flatnum,fname)
+                    filename = "Flat_%03d%s.fits" % (flatnum, fname)
                     filepath = os.path.join(save_data_path, filename)
-                    #print "Saving image to", filepath
+                    # print "Saving image to", filepath
                     camera.SaveImage(filepath)
-        filternum=filternum + 1
-        print('30 second cooldown...')
+        filternum = filternum + 1
+        print("30 second cooldown...")
         time.sleep(30)
     print("Turning off calibration lamps...")
-    pulsar_dimmer.dimmer(0) # Turn off the flat field lamps when finished exposing
-    
+    pulsar_dimmer.dimmer(0)  # Turn off the flat field lamps when finished exposing
+
+
 """
     print "Now median averaging the dark frames..."
     darknum=0
@@ -219,7 +235,7 @@ def main():
         hdu_list = fits.open(filepath)
         prihdr = hdu_list[0].header
         dark_image = fits.getdata(filepath)
-        if not 'dark_stack' in locals(): 
+        if not 'dark_stack' in locals():
             dark_stack = numpy.zeros(shape=dark_image.shape + (NUMBER_DARKS,))
         dark_stack[:,:,darknum]
 
@@ -250,7 +266,7 @@ def main():
         hdu_list = fits.open(filepath)
         prihdr = hdu_list[0].header
         bias_image = fits.getdata(filepath)
-        if not 'bias_stack' in locals(): 
+        if not 'bias_stack' in locals():
             bias_stack = numpy.zeros(shape=bias_image.shape + (NUMBER_BIAS,))
         bias_stack[:,:,biasnum]
         # if not 'bias_stack' in locals():
@@ -273,7 +289,7 @@ def main():
         filepath = os.path.join(master_data_path,filename)
         biashdulist.writeto(filepath,clobber=True)
         biashdulist.close()
-        
+
         bias_stack=None
         bias_master=None
 
@@ -293,11 +309,11 @@ def main():
                 hdu_list = fits.open(filepath)
                 prihdr = hdu_list[0].header
                 flat_image = fits.getdata(filepath)
-                if not 'flat_stack' in locals(): 
+                if not 'flat_stack' in locals():
                     flat_stack = numpy.zeros(shape=flat_image.shape + (NUMBER_FLATS,))
                 #if flat_stack is None:
                 #    flat_stack = numpy.zeros(shape=flat_image.shape + (NUMBER_FLATS,))
-                
+
                 flat_stack[:,:,flatnum-1]
 
                 # if flatnum==1:
@@ -320,19 +336,20 @@ def main():
                 flathdulist.writeto(filepath,clobber=True)
                 flathdulist.close()
                 hdu_list.close()
- 
+
         filternum=filternum+1
 """
 
+
 def parse_filepath_template(template):
-    my_documents_path = os.path.expanduser(r'~\My Documents')
+    my_documents_path = os.path.expanduser(r"~\My Documents")
     timestamp = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
-    
-    template = template.replace('{MyDocuments}', my_documents_path)
-    template = template.replace('{Timestamp}', timestamp)
-    
+
+    template = template.replace("{MyDocuments}", my_documents_path)
+    template = template.replace("{Timestamp}", timestamp)
+
     return template
+
 
 if __name__ == "__main__":
     main()
-
