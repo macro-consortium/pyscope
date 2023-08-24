@@ -14,6 +14,26 @@ version = release = "0.1.0"
 
 graphviz_dot = "/usr/local/bin/dot"
 
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/WWGolay/pyscope",
+            "icon": "fa-brands fa-square-github",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/pyscope/",
+            "icon": "fa-brands fa-python",
+        },
+        {
+            "name": "macro",
+            "url": "macroconsortium.org",
+            "icon": "fa-solid fa-shuttle-space",
+        },
+    ]
+}
+
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
