@@ -87,8 +87,9 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
     observatory : str or `~pyscope.observatory.Observatory`, default='./config/observatory.cfg'
         Observatory configuration file or :py:class:`~pyscope.observatory.Observatory` object.
 
-    verbose : int, {-1, 0, 1}, default=0
-        Increase verbosity.
+    verbose : int, {-1, 0, 1}, default=-1
+        Verbosity level. 0: no debug messages, 1: debug messages. Default set to -1
+        for API use and 0 for CLI use.
 
     Returns
     -------
@@ -155,8 +156,9 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     """
 
-    logger.setLevel(int(10 * (2 - verbose)))
-    logger.addHandler(logging.StreamHandler())
+    if verbose > -1:
+        logger.setLevel(int(10 * (2 - verbose)))
+        logger.addHandler(logging.StreamHandler())
     logger.debug(f"Verbosity level set to {verbose}")
     logger.debug(
         f"""rst(source={source}, date={date}, observatory={observatory}
