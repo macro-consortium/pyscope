@@ -45,24 +45,12 @@ intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/
 
 
 def linkcode_resolve(domain, info):
-    # print(f"domain={domain}, info={info}")
     if domain != "py":
         return None
     if not info["module"]:
         return None
-    filename = quote(info["module"].replace(".", "/"))
-    if not filename.startswith("tests"):
-        filename = "src/" + filename
-    if "fullname" in info:
-        anchor = info["fullname"]
-        anchor = "#:~:text=" + quote(anchor.split(".")[-1])
-    else:
-        anchor = ""
-
-    # github
-    result = "https://<github>/<user>/<repo>/blob/master/%s.py%s" % (filename, anchor)
-    # print(result)
-    return result
+    filename = info["module"].replace(".", "/")
+    return "https://github.com/WWGolay/pyscope/%s.py" % filename
 
 
 extensions.append("sphinx_favicon")
