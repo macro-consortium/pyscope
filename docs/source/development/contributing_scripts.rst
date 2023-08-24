@@ -1,10 +1,11 @@
+.. _contributing-scripts:
+
 Contributing scripts
 ====================
 
 If you have a script that you think would be useful to others, please
 consider contributing it to this repository. This page documents the
 procedure  for doing so. The general outline is as follows:
-
 
 1. Fork `this repository <https://github.com/WWGolay/pyScope>`_ on GitHub.
    this will create a copy of the repository in your own GitHub account,
@@ -131,7 +132,7 @@ verbosity level::
 A user can then set the verbosity level by passing the `-v` option multiple
 times on the CLI, e.g.::
 
-      $ my_script -vvv
+      $ my_script -vv
 
 We can connect the option to the logger level by adding the following
 line to the function::
@@ -158,7 +159,7 @@ The outline of your function should look like this::
                   for more information.''')
    @click.option('-o', '--option', default=1, help='An option')
    @click.option('-v', '--verbose', count=True,
-                 type=click.IntRange(0, 3), # Range can be changed
+                 type=click.IntRange(0, 1), # Range can be changed
                  help='Increase verbosity')
    @click.argument('argument', type=click.Path(exists=True))
    def my_script_cli(option, argument, verbose, *args, **kwargs):
@@ -166,17 +167,39 @@ The outline of your function should look like this::
 
       Parameters
       ----------
-      argument : str
-         A description of the argument.
       option : int
          A description of the option.
+      argument : str
+         A description of the argument.
+      verbose : int, {-1, 0, 1}, default=-1
+         Increase verbosity.
 
       Returns
       -------
       None
+
+      Raises
+      ------
+      None
+
+      See Also
+      --------
+      :ref:`contributing-scripts`
+
+      Notes
+      -----
+      This is a sample function.
+
+      Examples
+      --------
+      .. doctest::
+
+         >>> my_script_cli(1, 'argument', 1)
+
       '''
 
-      logger.setLevel(int(10 * (3 - verbose))) # Change range via 3
+      logger.setLevel(int(10 * (2 - verbose))) # Change range via 2
+      logger.addHandler(logging.StreamHandler()) # Redirect to stdout
       logger.debug(f'Verbosity level set to {verbose}')
       logger.debug(f'''my_script_cli(option={option},
                    argument={argument}, verbose={verbose},
