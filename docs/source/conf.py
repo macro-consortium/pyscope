@@ -28,7 +28,7 @@ html_theme_options = {
         },
         {
             "name": "macro",
-            "url": "macroconsortium.org",
+            "url": "https://macroconsortium.org",
             "icon": "fa-solid fa-shuttle-space",
         },
     ]
@@ -41,6 +41,7 @@ intersphinx_mapping["astroquery"] = (
     "https://astroquery.readthedocs.io/en/latest/",
     None,
 )
+intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/", None)
 
 
 def linkcode_resolve(domain, info):
