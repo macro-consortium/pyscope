@@ -4,7 +4,7 @@
 [![PyPI - Package Version](https://img.shields.io/pypi/v/pyscope)](https://pypi.org/project/pyscope/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyscope?logo=Python)](https://pypi.org/project/pyscope/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pyscope?logo=python)](https://pypi.org/project/pyscope/)
-[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/formatting.yml?logo=GitHub&label=CI)](https://github.com/WWGolay/pyscope/actions/workflows/formatting.yml)
+[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/ci.yml?logo=GitHub&label=CI)](https://github.com/WWGolay/pyscope/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/WWGolay/pyscope/branch/main/graph/badge.svg)](https://app.codecov.io/gh/WWGolay/pyscope/)
 [![Read the Docs](https://img.shields.io/readthedocs/pyscope?logo=ReadtheDocs)](https://pyscope.readthedocs.io/en/latest/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
