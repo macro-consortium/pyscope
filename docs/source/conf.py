@@ -5,6 +5,7 @@ import subprocess
 import sys
 from urllib.parse import quote
 
+from packaging.version import parse
 from sphinx_astropy.conf.v2 import *
 
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
@@ -39,8 +40,6 @@ html_theme_options = {
     ]
 }
 
-extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
-
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
 intersphinx_mapping["astroquery"] = (
     "https://astroquery.readthedocs.io/en/latest/",
@@ -48,45 +47,21 @@ intersphinx_mapping["astroquery"] = (
 )
 intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/", None)
 
-
-linkcode_revision = "main"
-try:
-    # lock to commit number
-    cmd = "git log -n1 --pretty=%H"
-    head = subprocess.check_output(cmd.split()).strip().decode("utf-8")
-    linkcode_revision = head
-
-    # if we are on main's HEAD, use main as reference
-    cmd = "git log --first-parent main -n1 --pretty=%H"
-    main = subprocess.check_output(cmd.split()).strip().decode("utf-8")
-    if head == main:
-        linkcode_revision = "main"
-
-    # if we have a tag, use tag as reference
-    cmd = "git describe --exact-match --tags " + head
-    tag = (
-        subprocess.check_output(cmd.split(" "), stderr=subprocess.DEVNULL)
-        .strip()
-        .decode("utf-8")
-    )
-    linkcode_revision = tag
-
-except subprocess.CalledProcessError:
-    pass
-
-linkcode_url = (
-    "https://github.com/WWGolay/pyscope/blob/"
-    + linkcode_revision
-    + "/{filepath}#L{linestart}-L{linestop}"
-)
+extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
 
 def linkcode_resolve(domain, info):
-    if domain != "py" or not info["module"]:
+    """
+    Determine the URL corresponding to Python object.
+
+    Inspired by:
+    - https://gist.github.com/nlgranger/55ff2e7ff10c280731348a16d569cb73
+    - https://github.com/matplotlib/matplotlib/blob/main/doc/conf.py
+    """
+    if domain != "py":
         return None
 
     modname = info["module"]
-    topmodulename = modname.split(".")[0]
     fullname = info["fullname"]
 
     submod = sys.modules.get(modname)
@@ -97,26 +72,63 @@ def linkcode_resolve(domain, info):
     for part in fullname.split("."):
         try:
             obj = getattr(obj, part)
-        except Exception:
+        except AttributeError:
             return None
 
+    if inspect.isfunction(obj):
+        obj = inspect.unwrap(obj)
     try:
-        modpath = pkg_resources.require(topmodulename)[0].location
-        filepath = os.path.relpath(inspect.getsourcefile(obj), modpath)
-        if filepath is None:
-            return
-    except Exception:
+        fn = inspect.getsourcefile(obj)
+    except TypeError:
+        fn = None
+    if not fn or fn.endswith("__init__.py"):
+        try:
+            fn = inspect.getsourcefile(sys.modules[obj.__module__])
+        except (TypeError, AttributeError, KeyError):
+            fn = None
+    if not fn:
         return None
 
     try:
         source, lineno = inspect.getsourcelines(obj)
-    except OSError:
-        return None
-    else:
-        linestart, linestop = lineno, lineno + len(source) - 1
+    except (OSError, TypeError):
+        lineno = None
 
-    return linkcode_url.format(
-        filepath=filepath, linestart=linestart, linestop=linestop
+    linespec = f"#L{lineno:d}-L{lineno + len(source) - 1:d}" if lineno else ""
+
+    startdir = pathlib.Path(pyscope.__file__).parent.parent
+    try:
+        fn = os.path.relpath(fn, start=startdir).replace(os.path.sep, "/")
+    except ValueError:
+        return None
+
+    linkcode_revision = "main"
+    try:
+        # lock to commit number
+        cmd = "git log -n1 --pretty=%H"
+        head = subprocess.check_output(cmd.split()).strip().decode("utf-8")
+        linkcode_revision = head
+
+        # if we are on main's HEAD, use main as reference
+        cmd = "git log --first-parent main -n1 --pretty=%H"
+        main = subprocess.check_output(cmd.split()).strip().decode("utf-8")
+        if head == main:
+            linkcode_revision = "main"
+
+        # if we have a tag, use tag as reference
+        cmd = "git describe --exact-match --tags " + head
+        tag = (
+            subprocess.check_output(cmd.split(" "), stderr=subprocess.DEVNULL)
+            .strip()
+            .decode("utf-8")
+        )
+        linkcode_revision = tag
+
+    except subprocess.CalledProcessError:
+        pass
+
+    return (
+        "https://github.com/WWGolay/pyscope/blob" f"/{linkcode_revision}/{fn}{linespec}"
     )
 
 
