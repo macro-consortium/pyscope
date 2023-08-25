@@ -64,7 +64,11 @@ try:
 
     # if we have a tag, use tag as reference
     cmd = "git describe --exact-match --tags " + head
-    tag = subprocess.check_output(cmd.split(" ")).strip().decode("utf-8")
+    tag = (
+        subprocess.check_output(cmd.split(" "), stderr=subprocess.DEVNULL)
+        .strip()
+        .decode("utf-8")
+    )
     linkcode_revision = tag
 
 except subprocess.CalledProcessError:
