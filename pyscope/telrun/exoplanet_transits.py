@@ -71,6 +71,7 @@ logger = logging.getLogger(__name__)
     type=click.IntRange(0, 1),  # Range can be changed
     help="Increase verbosity",
 )
+@click.version_option()
 def exoplanet_transits_cli(
     filt, max_mag, transit_depth, transit_depth_percent, date, observatory, verbose
 ):

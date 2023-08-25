@@ -106,8 +106,7 @@ logger = logging.getLogger(__name__)
 @click.argument(
     "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def calib_images_cli(
     camera_type,
     image_dir,

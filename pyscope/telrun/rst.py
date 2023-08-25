@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
     type=click.IntRange(0, 1),  # Range can be changed
     help="Increase verbosity",
 )
+@click.version_option()
 def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verbose=-1):
     """Calculate the rise, set, and transit times for a given source or dusk and
     dawn times for the observatory.\b

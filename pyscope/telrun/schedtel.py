@@ -150,8 +150,7 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-v", "--verbose", default=0, show_default=True, count=True, help="Verbose output"
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def schedtel_cli(
     catalog,
     ignore_order,
@@ -784,7 +783,7 @@ def parse_sch_file(filename, location=None, t0=None):
         priority = _get_keyvalue(line, "pri")
         priority = int(priority) if priority is not None else 1
 
-        repositioning = _get_keyvalue(line, "rep")
+        repositioning = _get_keyvalue(line, "repo")
         if repositioning is not None:
             repositioning = (
                 int(repositioning.split(",")[0]),
@@ -805,7 +804,7 @@ def parse_sch_file(filename, location=None, t0=None):
 
         binning = _get_keyvalue(line, "bin")
         if binning is not None:
-            binning = (int(binning.split(",")[0]), int(binning.split(",")[1]))
+            binning = (int(binning.split("x")[0]), int(binning.split("x")[1]))
         else:
             binning = telrun.observing_block_config["binning"]
 
@@ -854,7 +853,7 @@ def parse_sch_file(filename, location=None, t0=None):
             schederr = 60 * u.second
 
         # Get exposure behavior keywords
-        n_exp = _get_keyvalue(line, ("n_e", "nex", "rep"))
+        n_exp = _get_keyvalue(line, ("n_e", "nex", "repe"))
         if n_exp is not None:
             n_exp = int(n_exp)
         else:

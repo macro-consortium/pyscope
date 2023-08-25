@@ -104,8 +104,7 @@ TODO:
     show_default=True,
     help="Mode to use for averaging FITS files (0 = median, 1 = mean).",
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def collect_calibration_set_cli(
     observatory,
     camera,

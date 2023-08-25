@@ -3,17 +3,19 @@ import os
 import pathlib
 import subprocess
 import sys
-
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
-
 from urllib.parse import quote
 
 from sphinx_astropy.conf.v2 import *
 
+sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+
+import pyscope
+
 project = "pyscope"
 copyright = "2023, Walter Golay"
 author = "Walter Golay"
-version = release = "0.1.0"
+version = pyscope.__version__
+release = version
 
 graphviz_dot = "/usr/local/bin/dot"
 

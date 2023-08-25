@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
     default="./pyscope-observatory/",
     required=False,
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def init_telrun_dir_cli(path):
     """test"""
     logger.debug(f"init_telrun_dir(path={path})")
@@ -71,8 +70,7 @@ def init_telrun_dir_cli(path):
     default="./pyscope-observatory/",
     required=False,
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def init_remote_dir_cli(path):
     logger.debug(f"init_remote_dir(path={path})")
 

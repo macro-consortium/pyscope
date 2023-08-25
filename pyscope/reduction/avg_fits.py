@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
     help="Print verbose output.",
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def avg_fits_cli(mode, outfile, fnames, verbose):
     if verbose:
         logger.setLevel(logging.DEBUG)

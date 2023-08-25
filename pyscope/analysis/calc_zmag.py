@@ -128,8 +128,7 @@ logger = logging.getLogger(__name__)
     "-v", "--verbose", is_flag=True, default=False, help="""Print verbose output."""
 )
 @click.argument("images", type=click.Path(exists=True), nargs=-1)
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def calc_zmag_cli(
     images,
     filt=None,

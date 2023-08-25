@@ -57,8 +57,7 @@ logger = logging.getLogger(__name__)
     type=(click.Path(exists=True, resolve_path=True), click.Path()),
     help="Path to logs directory on local and remote machines",
 )
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
+@click.version_option()
 def syncfiles_cli(
     config, remote_config, username, host, port, key, schedules, images, logs
 ):
