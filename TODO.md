@@ -1,7 +1,6 @@
 # TODO
 - Scripts
     - telrun
-        - mk_mosaic_schedule.py
         - summary_report.py
 - Write docs
 - Write and run tests
@@ -28,3 +27,4 @@
 - Consistent order of options and arguments
 - Initialize astroplan.Observer inside of Observatory object
 - os.path.join everywhere
+- io module for .sch files, unify utstart and other keyword readings
