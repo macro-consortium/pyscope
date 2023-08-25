@@ -164,6 +164,7 @@ The outline of your function should look like this::
                  default=0,
                  help='Increase verbosity')
     @click.argument('argument', type=click.Path(exists=True))
+    @click.version_option()
     def my_script_cli(option, argument,
                       verbose=-1, # Distinguish from CLI callback
                       *args, **kwargs):
