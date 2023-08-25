@@ -56,11 +56,11 @@ try:
     head = subprocess.check_output(cmd.split()).strip().decode("utf-8")
     linkcode_revision = head
 
-    # if we are on master's HEAD, use master as reference
-    cmd = "git log --first-parent master -n1 --pretty=%H"
-    master = subprocess.check_output(cmd.split()).strip().decode("utf-8")
-    if head == master:
-        linkcode_revision = "master"
+    # if we are on main's HEAD, use main as reference
+    cmd = "git log --first-parent main -n1 --pretty=%H"
+    main = subprocess.check_output(cmd.split()).strip().decode("utf-8")
+    if head == main:
+        linkcode_revision = "main"
 
     # if we have a tag, use tag as reference
     cmd = "git describe --exact-match --tags " + head
