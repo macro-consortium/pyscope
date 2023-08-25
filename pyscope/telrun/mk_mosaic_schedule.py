@@ -209,7 +209,7 @@ def mk_mosaic_schedule_cli(
 
     Raises
     ------
-    `click.BadParameter
+    `click.BadParameter`
 
     See Also
     --------
