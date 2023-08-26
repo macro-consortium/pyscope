@@ -5,8 +5,6 @@
 - Write docs
 
 - t0 exoplanets, schedtel etc should use timezones
-- Change requirements.txt, setup.cfg, and .readthedocs.yml to handle dev and doc cases specifically
-- readme md -> rst, unification with docs
 - synchronize scripts that parse an observatory keyword with a single function (schedtel, plot_schedule_gantt, exoplanet_transits, rst), ensure not initializing observatory
 - html_observing_conditions replace pycurl
 - Unify directory + filename conventions across collect_calibration_set, ccd_calib, calib_images, and syncfiles

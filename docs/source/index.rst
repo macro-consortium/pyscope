@@ -1,6 +1,6 @@
-***************************************
-Telescope Control with Python (pyscope)
-***************************************
+*****************************
+Telescope Control with Python
+*****************************
 
 .. automodule:: pyscope
 
