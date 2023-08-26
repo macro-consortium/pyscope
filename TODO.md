@@ -1,15 +1,11 @@
 # TODO
-- Scripts
-    - telrun
-        - summary_report.py
-- Write docs
+
 - Write and run tests
-- Installer setup on pip, conda channels
+- code coverage setup
+- Write docs
 
 - t0 exoplanets, schedtel etc should use timezones
 - Change requirements.txt, setup.cfg, and .readthedocs.yml to handle dev and doc cases specifically
-- pre-commit setup
-- code coverage setup
 - readme md -> rst, unification with docs
 - synchronize scripts that parse an observatory keyword with a single function (schedtel, plot_schedule_gantt, exoplanet_transits, rst), ensure not initializing observatory
 - html_observing_conditions replace pycurl
@@ -18,13 +14,19 @@
 - Calibration file names with filters should know names
 - Recursively search for latest calibration set in calib_images
 - calib_images should select dark with nearest exposure time to science image in ccd case
-- Remove help_option
-- Figure out how --version option works
 - tqdm for potentially long operations
 - verbosity option should be a counter with multiple levels, use more logging levels in scripts
 - Unify logging format across scripts
-- Images -> fnames
+- images variables renamed to fnames
 - Consistent order of options and arguments
-- Initialize astroplan.Observer inside of Observatory object
+- Initialize astroplan.Observer inside of Observatory object, remove redudant functions
 - os.path.join everywhere
+- Support for $TELHOME environment variable in all scripts
 - io module for .sch files, unify utstart and other keyword readings
+- Docs with types should be links to Python documentation (eg use "`str`" instead of str)
+- fitslist should return an astropy Table, unify with summary_report code
+- Scripts requiring observatory should have ability to manually input values retrieved from the observatory cfg file
+- For scripts that save a file, allow input to be a directory but then use the default naming convention
+- summary_report should have an option to hide the summary table
+- summary_report should generate plots
+- script to synthesize a generate and summarize a list of summary reports

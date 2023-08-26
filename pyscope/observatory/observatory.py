@@ -3089,6 +3089,8 @@ class Observatory:
             "OBSELEV": (self.elevation, "Observatory altitude"),
             "OBSDIA": (self.diameter, "Observatory diameter"),
             "OBSFL": (self.focal_length, "Observatory focal length"),
+            "XPIXSCAL": (self.pixel_scale[0], "Observatory x-pixel scale"),
+            "YPIXSCAL": (self.pixel_scale[1], "Observatory y-pixel scale"),
         }
 
     @property

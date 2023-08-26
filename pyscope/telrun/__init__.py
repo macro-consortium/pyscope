@@ -15,6 +15,7 @@ from .mk_mosaic_schedule import mk_mosaic_schedule
 from .rst import rst
 from .schedtel import schedtel, plot_schedule_gantt, parse_sch_file
 from .startup import start_telrun, start_syncfiles
+from .summary_report import summary_report
 from .syncfiles import syncfiles
 from .telrun_operator import TelrunOperator
 
@@ -29,6 +30,7 @@ __all__ = [
     "parse_sch_file",
     "start_telrun",
     "start_syncfiles",
+    "summary_report",
     "syncfiles",
     "TelrunOperator",
     "TelrunException",
