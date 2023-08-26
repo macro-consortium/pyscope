@@ -10,4 +10,4 @@ This project is still in the beta-testing phase. In general, security is not gua
 
 ## Reporting a Vulnerability
 
-Please send an email to macro@macroconsortium.org to report a vulnerability.
+Please send an email to macro@macalester.edu to report a vulnerability.

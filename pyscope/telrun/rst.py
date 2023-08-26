@@ -94,7 +94,7 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     Returns
     -------
-    list
+    events: list
         List of tuples containing the event name and a `~astropy.time.Time` object.
 
     Raises
