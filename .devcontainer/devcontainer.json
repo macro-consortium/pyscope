@@ -1,0 +1,29 @@
+{
+    "name":"pyscope",
+    "image":"mcr.microsoft.com/devcontainers/python:0-3.10-bullseye",
+    "postCreateCommand": "pip install -e '.[dev]'",
+    "waitFor":"postCreateCommand",
+    "customizations": {
+        "vscode" : {
+            "extensions": [
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "ms-python.black-formatter",
+                "ms-python.isort",
+                "GitHub.copilot",
+                "github.vscode-github-actions",
+                "eamodio.gitlens",
+                "usernamehw.errorlens",
+                "swyddfa.esbonio",
+                "trond-snekvik.simple-rst",
+                "DavidAnson.vscode-markdownlint",
+                "george-alisson.html-preview-vscode",
+                "christian-kohler.path-intellisense",
+                "aaron-bond.better-comments",
+                "oderwat.indent-rainbow",
+                "vscode-icons-team.vscode-icons",
+                "zhuangtongfa.material-theme"
+            ]
+        }
+    }
+}
