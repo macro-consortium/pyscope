@@ -1,6 +1,5 @@
 astroplan>=0.9
 astropy>=5.3.1
-astropy-sphinx-theme>=1.1.0
 astroquery>=0.4.6
 astroscrappy>=1.1.0
 click>=8.1.6
@@ -8,18 +7,11 @@ cmcrameri>=1.4.0
 markdown>=3.4.4
 matplotlib>=3.5.1
 numpy>=1.24.4
-numpydoc>=1.5.0
 paramiko>=3.3.1
 photutils>=1.7.0
 prettytable>=3.8.0
-pydata-sphinx-theme>=0.8.1
+pywin32>=304;platform_system=='Windows'
 smplotlib>=0.0.6
-sphinx>=4.5.0
-sphinx-astropy>=1.9.1
-sphinx-copybutton>=0.5.0
-sphinx-favicon>=1.0.1
-sphinx-gallery>=0.13.0
-sphinxcontrib-programoutput>=0.17
 timezonefinder>=6.0.2
 tksheet>=6.2.3
 tqdm>=4.66.1
