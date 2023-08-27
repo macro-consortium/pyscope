@@ -72,6 +72,11 @@ If you are adding new functionality, it may be useful to add an example to the
 
 Pull requests
 -------------
+.. important::
+
+    Before submitting a pull request, be sure to update the CHANGELOG.md
+    file with a description of your changes.
+
 Once you have committed your changes to your local repository, you can submit
 a pull request to the public repository. You can do this by visiting the
 `<https://github.com/WWGolay/pyscope/pulls>`_ and clicking the
