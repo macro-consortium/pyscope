@@ -4,7 +4,7 @@ Development
 
 .. container::
 
-    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate| |Codespaces|
+    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This documentation is relevant to users who want to contribute to `pyscope`. The
 developer's version is hosted on GitHub at `<https://github.com/WWGolay/pyscope>`_. These
@@ -12,9 +12,11 @@ pages are intended to guide a user through installing the development environmen
 contribution, running tests, writing documentation, and submitting this contribution for
 review.
 
+|Codespaces|
+
 .. tip::
     If you are new to contributing to open source projects, you may find the
-    `astropy developer documentation <https://docs.astropy.org/en/stable/development/>`_
+    `Astropy developer documentation <https://docs.astropy.org/en/stable/development/>`_
     helpful.
 
 
@@ -54,6 +56,10 @@ review.
 .. |Documentation Status| image:: https://img.shields.io/readthedocs/pyscope?logo=ReadtheDocs
     :target: https://pyscope.readthedocs.io/en/latest/
     :alt: Documentation Status
+
+.. |Codespaces Status| image:: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds/badge.svg
+    :target: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds
+    :alt: Codespaces Status
 
 .. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
     :target: https://github.com/pre-commit/pre-commit

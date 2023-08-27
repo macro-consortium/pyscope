@@ -4,7 +4,7 @@ pyscope
 
 .. container::
 
-    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate|
+    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This is the repository for `pyscope <https://pyscope.readthedocs.io/en/latest/>`_,
 a pure-Python package for robotic scheduling, operation, and control of small
@@ -144,6 +144,10 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
 .. |Documentation Status| image:: https://img.shields.io/readthedocs/pyscope?logo=ReadtheDocs
     :target: https://pyscope.readthedocs.io/en/latest/
     :alt: Documentation Status
+
+.. |Codespaces Status| image:: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds/badge.svg
+    :target: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds
+    :alt: Codespaces Status
 
 .. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
     :target: https://github.com/pre-commit/pre-commit
