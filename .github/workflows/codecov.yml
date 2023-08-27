@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[tests]"
       - name: Run tests and collect coverage
-        run: pytest --cov app
+        run: pytest --cov -cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         env:
