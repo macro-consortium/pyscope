@@ -17,12 +17,15 @@ review.
 .. tip::
     If you are new to contributing to open source projects, you may find the
     `Astropy developer documentation <https://docs.astropy.org/en/stable/development/>`_
-    helpful.
+    helpful. This documentation is a higher-level summary of many of the concepts
+    discussed there.
 
 
 .. toctree::
     :maxdepth: 1
 
+    setup
+    workflow
     contributing_scripts
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
