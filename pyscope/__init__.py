@@ -82,4 +82,4 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 __all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]
-__version__ = "0.1.0"
+__version__ = "0.1.1"
