@@ -23,7 +23,13 @@
                 "oderwat.indent-rainbow",
                 "vscode-icons-team.vscode-icons",
                 "zhuangtongfa.material-theme"
-            ]
+            ],
+            "settings" : {
+                "workbench.colorTheme": "One Dark Pro",
+                "[python]": {
+                    "editor.defaultFormatter": "ms-python.black-formatter"
+                }
+            }
         }
     }
 }
