@@ -1,7 +1,7 @@
 """
 .. container::
 
-  |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Donate|
+  |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |Donate|
 
 `pyscope` is a pure-Python package for robotic scheduling, operation, and control of small
 optical telescopes.
@@ -42,10 +42,6 @@ Features
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`__
   packages, and `ASCOM <https://ascom-standards.org/>`__
 
-.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
-    :target: http://www.astropy.org
-    :alt: Powered by Astropy
-
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
     :alt: License
@@ -62,7 +58,11 @@ Features
     :target: https://pypi.org/project/pyscope/
     :alt: PyPI Downloads
 
-.. |Donate| image:: https://img.shields.io/badge/Donate-crimson
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
+
+.. |Donate| image:: https://img.shields.io/badge/Donate-to_pyscope-crimson
   :target: https://github.com/sponsors/WWGolay
   :alt: Donate
 

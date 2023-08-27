@@ -4,7 +4,7 @@ Development
 
 .. container::
 
-    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
+    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This documentation is relevant to users who want to contribute to `pyscope`. The
 developer's version is hosted on GitHub at `<https://github.com/WWGolay/pyscope>`_. These
@@ -25,10 +25,6 @@ review.
 
     contributing_scripts
 
-.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
-    :target: http://www.astropy.org
-    :alt: Powered by Astropy
-
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
     :alt: License
@@ -44,6 +40,10 @@ review.
 .. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/pyscope?logo=python
     :target: https://pypi.org/project/pyscope/
     :alt: PyPI Downloads
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
 
 .. |GitHub CI| image:: https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/ci.yml?logo=GitHub&label=CI
     :target: https://github.com/WWGolay/pyscope/actions/workflows/ci.yml
@@ -73,7 +73,7 @@ review.
     :target: https://pycqa.github.io/isort/
     :alt: isort
 
-.. |Donate| image:: https://img.shields.io/badge/Donate-crimson
+.. |Donate| image:: https://img.shields.io/badge/Donate-to_pyscope-crimson
     :target: https://github.com/sponsors/WWGolay
     :alt: Donate
 

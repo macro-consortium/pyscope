@@ -4,7 +4,7 @@ pyscope
 
 .. container::
 
-    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
+    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This is the repository for `pyscope <https://pyscope.readthedocs.io/en/latest/>`_,
 a pure-Python package for robotic scheduling, operation, and control of small
@@ -19,7 +19,7 @@ allowing users to easily add support for new devices and observatories.
 non-ASCOM devices. Users may also access their devices through third-party applications
 such as `MaxIm DL <https://diffractionlimited.com/product/maxim-dl/>`_.
 
-Observatories who use `pyscope <https://pyscope.readthedocs.io/en/latest/>` can take
+Observatories who use `pyscope <https://pyscope.readthedocs.io/en/latest/>`_ can take
 advantage of the `telrun <https://pyscope.readthedocs.io/en/latest/api/pyscope.telrun.html>`_
 module, which provides a simple interface for fully-robotic observatory control.
 
@@ -107,15 +107,11 @@ Please see the `developer documentation <https://pyscope.readthedocs.io/en/lates
 
 License
 -------
-This project is licensed under the `GNU AGPLv3 License<LICENSE>`.
+This project is licensed under the `GNU AGPLv3 License<LICENSE>`_.
 
 Issues
 ------
 Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues>`_.
-
-.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
-    :target: http://www.astropy.org
-    :alt: Powered by Astropy
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
@@ -132,6 +128,10 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
 .. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/pyscope?logo=python
     :target: https://pypi.org/project/pyscope/
     :alt: PyPI Downloads
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
 
 .. |GitHub CI| image:: https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/ci.yml?logo=GitHub&label=CI
     :target: https://github.com/WWGolay/pyscope/actions/workflows/ci.yml
@@ -161,7 +161,7 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
     :target: https://pycqa.github.io/isort/
     :alt: isort
 
-.. |Donate| image:: https://img.shields.io/badge/Donate-crimson
+.. |Donate| image:: https://img.shields.io/badge/Donate-to_pyscope-crimson
     :target: https://github.com/sponsors/WWGolay
     :alt: Donate
 
