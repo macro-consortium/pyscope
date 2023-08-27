@@ -58,7 +58,7 @@ pyscope is available on PyPI and can be installed with pip:
 
     pip install pyscope
 
-pyscope will be availabl on conda-forge soon.
+pyscope will be available on conda-forge soon.
 
 Development Installation
 ========================
@@ -107,7 +107,7 @@ Please see the `developer documentation <https://pyscope.readthedocs.io/en/lates
 
 License
 -------
-This project is licensed under the `GNU AGPLv3 License<LICENSE>`_.
+This project is licensed under the `GNU AGPLv3 License <LICENSE>`_.
 
 Issues
 ------
