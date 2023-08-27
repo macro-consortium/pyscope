@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .focuser import Focuser
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMFocuser(Focuser):
+class ASCOMFocuser(Focuser, ASCOMDriver):
     def Choose(self, FocuserID):
         logger.debug(f"ASCOMFocuser.Choose({FocuserID}) called")
         self._com_object.Choose(FocuserID)

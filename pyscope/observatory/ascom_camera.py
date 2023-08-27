@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .camera import Camera
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMCamera(Camera):
+class ASCOMCamera(Camera, ASCOMDriver):
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._com_object.AbortExposure()

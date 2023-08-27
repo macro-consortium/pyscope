@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .dome import Dome
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMDome(Dome):
+class ASCOMDome(Dome, ASCOMDriver):
     def AbortSlew(self):
         logger.debug(f"ASCOMDome.AbortSlew() called")
         self._com_object.AbortSlew()

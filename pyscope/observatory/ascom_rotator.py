@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .rotator import Rotator
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMRotator(Rotator):
+class ASCOMRotator(Rotator, ASCOMDriver):
     def Choose(self, RotatorID):
         logger.debug(f"ASCOMRotator.Choose({RotatorID}) called")
         self._com_object.Choose(RotatorID)

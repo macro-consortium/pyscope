@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .observing_conditions import ObservingConditions
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMObservingConditions(ObservingConditions):
+class ASCOMObservingConditions(ObservingConditions, ASCOMDriver):
     def Choose(self, ObservingConditionsID):
         logger.debug(f"ASCOMObservingConditions.Choose({ObservingConditionsID}) called")
         self._com_object.Choose(ObservingConditionsID)

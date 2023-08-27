@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .cover_calibrator import CoverCalibrator
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMCoverCalibrator(CoverCalibrator):
+class ASCOMCoverCalibrator(CoverCalibrator, ASCOMDriver):
     def CalibratorOff(self):
         logger.debug(f"ASCOMCoverCalibrator.CalibratorOff() called")
         self._com_object.CalibratorOff()

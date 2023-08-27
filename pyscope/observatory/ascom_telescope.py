@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .telescope import Telescope
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMTelescope(Telescope):
+class ASCOMTelescope(Telescope, ASCOMDriver):
     def AbortSlew(self):
         logger.debug("ASCOMTelescope.AbortSlew() called")
         self._com_object.AbortSlew()

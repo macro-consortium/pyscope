@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .filter_wheel import FilterWheel
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMFilterWheel(FilterWheel):
+class ASCOMFilterWheel(FilterWheel, ASCOMDriver):
     def Choose(self, FilterWheelID):
         logger.debug(f"ASCOMFilterWheel.Choose({FilterWheelID}) called")
         self._com_object.Choose(FilterWheelID)

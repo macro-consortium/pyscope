@@ -1,11 +1,12 @@
 import logging
 
+from .ascom_driver import ASCOMDriver
 from .switch import Switch
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMSwitch(Switch):
+class ASCOMSwitch(Switch, ASCOMDriver):
     def CanWrite(self, ID):
         logger.debug(f"ASCOMSwitch.CanWrite({ID}) called")
         return self._com_object.CanWrite(ID)
