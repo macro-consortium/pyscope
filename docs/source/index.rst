@@ -10,11 +10,11 @@ Getting Started
   :maxdepth: 2
 
   installation
-  user_guide
-  api
-  development
+  user_guide/index
+  api/index
+  development/index
   cite
-  report
+  Report an Issue <https://github.com/WWGolay/pyscope/issues>
   license
 
 Authors
@@ -36,7 +36,7 @@ Acknowledgements
   Rigel Telescope and the Gemini Telescope, now known as the
   *Robert L. Mutel Telescope* (RLMT).
 * The Macalester-Augustana Coe Robotic Observatory
-  (`MACRO <https://macroconsortium.org>`_)
+  (`MACRO <https://macroconsortium.org>`__)
   Consortium for providing unrestricted access to the
   *Robert L. Mutel Telescope* for testing the early iterations of
   this software.
@@ -48,14 +48,8 @@ Acknowledgements
   * James Wetzel, Professor at Coe College, Department of Physics
 
 * Mark and Pat Trueblood, Directors of the
-  `Winer Observatory <https://www.winer.org/>`_ where the
+  `Winer Observatory <https://www.winer.org/>`__ where the
   *Robert L. Mutel Telescope* is located
 * Kevin Ivarsen
 * The astronomy faculty and staff at the University of Iowa,
   Department of Physics and Astronomy
-
-Index
-=====
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -4,7 +4,7 @@ Development
 
 .. container::
 
-    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate|
+    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate| |Codespaces|
 
 This documentation is relevant to users who want to contribute to `pyscope`. The
 developer's version is hosted on GitHub at `<https://github.com/WWGolay/pyscope>`_. These
@@ -21,7 +21,11 @@ review.
 .. toctree::
     :maxdepth: 1
 
-    development/contributing_scripts
+    contributing_scripts
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
@@ -66,3 +70,7 @@ review.
 .. |Donate| image:: https://img.shields.io/badge/Donate-crimson
     :target: https://github.com/sponsors/WWGolay
     :alt: Donate
+
+.. |Codespaces| image:: https://github.com/codespaces/badge.svg
+    :target: https://codespaces.new/WWGolay/pyscope
+    :alt: Codespaces

@@ -4,14 +4,14 @@ pyscope
 
 .. container::
 
-    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate|
+    |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |GitHub CI| |Code Coverage| |Documentation Status| |pre-commit| |Black| |isort| |Donate|
 
 This is the repository for `pyscope <https://pyscope.readthedocs.io/en/latest/>`_,
 a pure-Python package for robotic scheduling, operation, and control of small
 optical telescopes.
 
 `pyscope <https://pyscope.readthedocs.io/en/latest/>`_ is an
-`open-source <LICENSE>` project that provides a set of tools to rapidly and easily
+`open-source <LICENSE>`_ project that provides a set of tools to rapidly and easily
 control astronomical instrumentation. It is designed to be modular and extensible,
 allowing users to easily add support for new devices and observatories.
 `pyscope <https://pyscope.readthedocs.io/en/latest/>`_ is built on top of the
@@ -41,17 +41,17 @@ Features
 
 * Basic data reduction tools like
   `avg_fits <https://pyscope.readthedocs.io/en/latest/api/auto_api/pyscope.reduction.avg_fits.html>`_
-  and `ccd_calib <https://pyscope.readthedocs.io/en/latest/api/auto_api/pyscope.reduction.ccd_calib.html#pyscope.reduction.ccd_calib>`
+  and `ccd_calib <https://pyscope.readthedocs.io/en/latest/api/auto_api/pyscope.reduction.ccd_calib.html#pyscope.reduction.ccd_calib>`_
 
 * Simple analysis scripts like
-  `calc_zmag <https://pyscope.readthedocs.io/en/latest/api/auto_api/pyscope.analysis.calc_zmag.html#pyscope.analysis.calc_zmag>`
+  `calc_zmag <https://pyscope.readthedocs.io/en/latest/api/auto_api/pyscope.analysis.calc_zmag.html#pyscope.analysis.calc_zmag>`_
 
 * Powered by `Astropy <https://www.astropy.org/>`_,
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`_
   packages, and `ASCOM <https://ascom-standards.org/>`_
 
 Installation
-============
+------------
 pyscope is available on PyPI and can be installed with pip:
 
 .. code-block:: bash
@@ -61,7 +61,9 @@ pyscope is available on PyPI and can be installed with pip:
 pyscope will be availabl on conda-forge soon.
 
 Development Installation
-------------------------
+========================
+|Codespaces|
+
 We recommend using a virtual environment for development. You may create a new
 virtual environment with pip:
 
@@ -86,30 +88,34 @@ To install pyscope for development, clone the repository and install with pip:
     pip install -e ".[dev]"
 
 Usage
-=====
+-----
 TBD
 
 Documentation
-=============
+-------------
 All supporting documentation can be found at `readthedocs <https://pyscope.readthedocs.io/en/latest/>`_.
 
 Citing
-======
+------
 If you use this package in your research, please cite it using the following:
 
 .. include:: CITATION
 
 Contributing
-============
+------------
 Please see the `developer documentation <https://pyscope.readthedocs.io/en/latest/development.html>`_.
 
 License
-=======
+-------
 This project is licensed under the `GNU AGPLv3 License<LICENSE>`.
 
 Issues
-======
+------
 Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues>`_.
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
@@ -154,3 +160,7 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
 .. |Donate| image:: https://img.shields.io/badge/Donate-crimson
     :target: https://github.com/sponsors/WWGolay
     :alt: Donate
+
+.. |Codespaces| image:: https://github.com/codespaces/badge.svg
+    :target: https://codespaces.new/WWGolay/pyscope
+    :alt: Codespaces

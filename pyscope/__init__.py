@@ -1,7 +1,7 @@
 """
 .. container::
 
-  |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Donate|
+  |Astropy| |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Donate|
 
 `pyscope` is a pure-Python package for robotic scheduling, operation, and control of small
 optical telescopes.
@@ -16,21 +16,21 @@ optical telescopes.
 control astronomical instrumentation. It is designed to be modular and extensible,
 allowing users to easily add support for new devices and observatories.
 `pyscope` is built on top of the
-`ASCOM <https://ascom-standards.org/>`_ standard, but also provides support for
+`ASCOM <https://ascom-standards.org/>`__ standard, but also provides support for
 non-ASCOM devices. Users may also access their devices through third-party applications
-such as `MaxIm DL <https://diffractionlimited.com/product/maxim-dl/>`_.
+such as `MaxIm DL <https://diffractionlimited.com/product/maxim-dl/>`__.
 
 Observatories who use `pyscope` can take
 advantage of the `~pyscope.telrun`
 module, which provides a simple interface for fully-robotic observatory control.
 
 `pyscope` is aiming to become an
-`astropy-affiliated package <https://www.astropy.org/affiliated/>`_.
+`Astropy-affiliated package <https://www.astropy.org/affiliated/>`__.
 
 Features
 ========
 * Control observatory hardware with Python
-* Support for both `ASCOM <https://ascom-standards.org/>`_ and non-ASCOM devices
+* Support for both `ASCOM <https://ascom-standards.org/>`__ and non-ASCOM devices
 * `~pyscope.observatory.Observatory` convenience methods like
   `~pyscope.observatory.Observatory.autofocus` and
   `~pyscope.observatory.Observatory.recenter`
@@ -38,9 +38,13 @@ Features
   an observatory
 * Basic data reduction tools like `~pyscope.reduction.avg_fits` and `~pyscope.reduction.ccd_calib`
 * Simple analysis scripts like `~pyscope.analysis.calc_zmag`
-* Powered by `Astropy <https://www.astropy.org/>`_,
-  `Astropy-affiliated <https://www.astropy.org/affiliated/>`_
-  packages, and `ASCOM <https://ascom-standards.org/>`_
+* Powered by `Astropy <https://www.astropy.org/>`__,
+  `Astropy-affiliated <https://www.astropy.org/affiliated/>`__
+  packages, and `ASCOM <https://ascom-standards.org/>`__
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
