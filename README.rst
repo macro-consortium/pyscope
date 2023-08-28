@@ -24,7 +24,7 @@ advantage of the `telrun <https://pyscope.readthedocs.io/en/latest/api/pyscope.t
 module, which provides a simple interface for fully-robotic observatory control.
 
 `pyscope <https://pyscope.readthedocs.io/en/latest/>`_ is aiming to become an
-`astropy affiliated package <https://www.astropy.org/affiliated/>`_.
+`astropy-affiliated package <https://www.astropy.org/affiliated/>`_.
 
 Features
 --------
