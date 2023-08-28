@@ -103,7 +103,7 @@ If you use this package in your research, please cite it using the following:
 
 Contributing
 ------------
-Please see the `developer documentation <https://pyscope.readthedocs.io/en/latest/development.html>`_.
+Please see the `developer documentation <https://pyscope.readthedocs.io/en/latest/development/>`_.
 
 License
 -------
