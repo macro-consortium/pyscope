@@ -1,0 +1,12 @@
+ignore:
+  - "pyscope/observatory/autofocus.py"
+  - "pyscope/observatory/camera.py"
+  - "pyscope/observatory/dome.py"
+  - "pyscope/observatory/driver.py"
+  - "pyscope/observatory/focuser.py"
+  - "pyscope/observatory/observing_conditions.py"
+  - "pyscope/observatory/rotator.py"
+  - "pyscope/observatory/safety_monitor.py"
+  - "pyscope/observatory/switch.py"
+  - "pyscope/observatory/telescope.py"
+  - "pyscope/observatory/wcs.py"
