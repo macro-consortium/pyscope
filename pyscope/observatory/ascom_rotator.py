@@ -1,12 +1,21 @@
 import logging
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .rotator import Rotator
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMRotator(Rotator, ASCOMDriver):
+class ASCOMRotator(ASCOMDevice, Rotator):
+    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        super().__init__(
+            identifier,
+            alpaca=alpaca,
+            device_type=self.__class__.__name__.replace("ASCOM", ""),
+            device_number=device_number,
+            protocol=protocol,
+        )
+
     def Choose(self, RotatorID):
         logger.debug(f"ASCOMRotator.Choose({RotatorID}) called")
         self._com_object.Choose(RotatorID)

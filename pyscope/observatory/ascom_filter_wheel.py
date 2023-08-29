@@ -1,12 +1,21 @@
 import logging
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .filter_wheel import FilterWheel
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMFilterWheel(FilterWheel, ASCOMDriver):
+class ASCOMFilterWheel(ASCOMDevice, FilterWheel):
+    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        super().__init__(
+            identifier,
+            alpaca=alpaca,
+            device_type=self.__class__.__name__.replace("ASCOM", ""),
+            device_number=device_number,
+            protocol=protocol,
+        )
+
     def Choose(self, FilterWheelID):
         logger.debug(f"ASCOMFilterWheel.Choose({FilterWheelID}) called")
         self._com_object.Choose(FilterWheelID)

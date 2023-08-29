@@ -1,12 +1,21 @@
 import logging
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .observing_conditions import ObservingConditions
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMObservingConditions(ObservingConditions, ASCOMDriver):
+class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
+    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        super().__init__(
+            identifier,
+            alpaca=alpaca,
+            device_type=self.__class__.__name__.replace("ASCOM", ""),
+            device_number=device_number,
+            protocol=protocol,
+        )
+
     def Choose(self, ObservingConditionsID):
         logger.debug(f"ASCOMObservingConditions.Choose({ObservingConditionsID}) called")
         self._com_object.Choose(ObservingConditionsID)

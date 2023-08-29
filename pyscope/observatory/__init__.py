@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 from ._docstring_inheritee import _DocstringInheritee
 
-from .driver import Driver
+from .device import Device
 
 from .autofocus import Autofocus
 from .camera import Camera
@@ -21,7 +21,7 @@ from .switch import Switch
 from .telescope import Telescope
 from .wcs import WCS
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .ascom_camera import ASCOMCamera
 from .ascom_cover_calibrator import ASCOMCoverCalibrator
 from .ascom_dome import ASCOMDome
@@ -56,7 +56,7 @@ __all__ = [
     "ASCOMCamera",
     "ASCOMCoverCalibrator",
     "ASCOMDome",
-    "ASCOMDriver",
+    "ASCOMDevice",
     "ASCOMFilterWheel",
     "ASCOMFocuser",
     "ASCOMObservingConditions",

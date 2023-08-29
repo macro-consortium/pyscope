@@ -1,12 +1,21 @@
 import logging
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .dome import Dome
 
 logger = logging.getLogger(__name__)
 
 
-class ASCOMDome(Dome, ASCOMDriver):
+class ASCOMDome(ASCOMDevice, Dome):
+    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        super().__init__(
+            identifier,
+            alpaca=alpaca,
+            device_type=self.__class__.__name__.replace("ASCOM", ""),
+            device_number=device_number,
+            protocol=protocol,
+        )
+
     def AbortSlew(self):
         logger.debug(f"ASCOMDome.AbortSlew() called")
         self._com_object.AbortSlew()

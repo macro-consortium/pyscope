@@ -23,7 +23,7 @@ from ..utils import (
     airmass,
 )
 from . import ObservatoryException
-from .driver import Driver
+from .device import Device
 
 logger = logging.getLogger(__name__)
 
@@ -633,7 +633,7 @@ class Observatory:
         self._camera = kwargs.get("camera", self._camera)
         _check_class_inheritance(type(self._camera), "Camera")
         self._camera_driver = self._camera.Name
-        self._camera_ascom = ascom.Driver in type(self._camera).__bases__
+        self._camera_ascom = ascom.Device in type(self._camera).__bases__
         self._camera_args = kwargs.get("camera_args", self._camera_args)
         self._camera_kwargs = kwargs.get("camera_kwargs", self._camera_kwargs)
         self._config["camera"]["camera_driver"] = self._camera_driver
@@ -652,7 +652,7 @@ class Observatory:
             self._cover_calibrator.Name if self._cover_calibrator is not None else ""
         )
         self._cover_calibrator_ascom = (
-            (ascom.Driver in type(self._cover_calibrator).__bases__)
+            (ascom.Device in type(self._cover_calibrator).__bases__)
             if self._cover_calibrator is not None
             else False
         )
@@ -681,7 +681,7 @@ class Observatory:
             _check_class_inheritance(type(self._dome), "Dome")
         self._dome_driver = self._dome.Name if self._dome is not None else ""
         self._dome_ascom = (
-            (ascom.Driver in type(self._dome).__bases__)
+            (ascom.Device in type(self._dome).__bases__)
             if self._dome is not None
             else False
         )
@@ -700,7 +700,7 @@ class Observatory:
             self._filter_wheel.Name if self._filter_wheel is not None else ""
         )
         self._filter_wheel_ascom = (
-            (ascom.Driver in type(self._filter_wheel).__bases__)
+            (ascom.Device in type(self._filter_wheel).__bases__)
             if self._filter_wheel is not None
             else False
         )
@@ -725,7 +725,7 @@ class Observatory:
             _check_class_inheritance(type(self._focuser), "Focuser")
         self._focuser_driver = self._focuser.Name if self._focuser is not None else ""
         self._focuser_ascom = (
-            (ascom.Driver in type(self._focuser).__bases__)
+            (ascom.Device in type(self._focuser).__bases__)
             if self._focuser is not None
             else False
         )
@@ -754,7 +754,7 @@ class Observatory:
             else ""
         )
         self._observing_conditions_ascom = (
-            (ascom.Driver in type(self._observing_conditions).__bases__)
+            (ascom.Device in type(self._observing_conditions).__bases__)
             if self._observing_conditions is not None
             else False
         )
@@ -783,7 +783,7 @@ class Observatory:
             _check_class_inheritance(type(self._rotator), "Rotator")
         self._rotator_driver = self._rotator.Name if self._rotator is not None else ""
         self._rotator_ascom = (
-            (ascom.Driver in type(self._rotator).__bases__)
+            (ascom.Device in type(self._rotator).__bases__)
             if self._rotator is not None
             else False
         )
@@ -808,7 +808,7 @@ class Observatory:
                 self._safety_monitor.Name if self._safety_monitor is not None else ""
             )
             self._safety_monitor_ascom = (
-                (ascom.Driver in type(self._safety_monitor).__bases__)
+                (ascom.Device in type(self._safety_monitor).__bases__)
                 if self._safety_monitor is not None
                 else False
             )
@@ -844,7 +844,7 @@ class Observatory:
                     safety_monitor.Name if safety_monitor is not None else ""
                 )
                 self._safety_monitor_ascom[i] = (
-                    (ascom.Driver in type(safety_monitor).__bases__)
+                    (ascom.Device in type(safety_monitor).__bases__)
                     if safety_monitor is not None
                     else False
                 )
@@ -880,7 +880,7 @@ class Observatory:
                 _check_class_inheritance(type(self._switch), "Switch")
             self._switch_driver = self._switch.Name if self._switch is not None else ""
             self._switch_ascom = (
-                (ascom.Driver in type(self._switch).__bases__)
+                (ascom.Device in type(self._switch).__bases__)
                 if self._switch is not None
                 else False
             )
@@ -910,7 +910,7 @@ class Observatory:
                     _check_class_inheritance(switch, "Switch")
                 self._switch_driver[i] = switch.Name if switch is not None else ""
                 self._switch_ascom[i] = (
-                    (ascom.Driver in type(switch).__bases__)
+                    (ascom.Device in type(switch).__bases__)
                     if switch is not None
                     else False
                 )
@@ -942,7 +942,7 @@ class Observatory:
         self._telescope = kwargs.get("telescope", self._telescope)
         _check_class_inheritance(type(self._telescope), "Telescope")
         self._telescope_driver = self._telescope.Name
-        self._telescope_ascom = ascom.Driver in type(self._telescope).__bases__
+        self._telescope_ascom = ascom.Device in type(self._telescope).__bases__
         self._telescope_args = kwargs.get("telescope_args", self._telescope_args)
         self._telescope_kwargs = kwargs.get("telescope_kwargs", self._telescope_kwargs)
         self._config["telescope"]["telescope_driver"] = self._telescope_driver

@@ -5,8 +5,8 @@ import pytest
 from pyscope.observatory import (
     ASCOMCamera,
     ASCOMCoverCalibrator,
+    ASCOMDevice,
     ASCOMDome,
-    ASCOMDriver,
     ASCOMFilterWheel,
     ASCOMFocuser,
     ASCOMObservingConditions,
@@ -16,8 +16,8 @@ from pyscope.observatory import (
     ASCOMTelescope,
     Camera,
     CoverCalibrator,
+    Device,
     Dome,
-    Driver,
     FilterWheel,
     Focuser,
     ObservingConditions,
@@ -31,16 +31,10 @@ from pyscope.observatory._docstring_inheritee import _DocstringInheritee
 
 class TestASCOMDriver:
     def test_meta(self):
-        assert type(ASCOMDriver) is _DocstringInheritee
+        assert type(ASCOMDevice) is _DocstringInheritee
 
     def test_parents(self):
-        assert issubclass(ASCOMDriver, Driver)
-
-    def test_multiplatform(self):
-        if platform.system() == "Windows":
-            assert ASCOMDriver("")._com_object is not None
-        else:
-            assert ASCOMDriver("")._com_object is None
+        assert issubclass(ASCOMDevice, Device)
 
 
 @pytest.mark.parametrize(
@@ -63,7 +57,7 @@ class TestAllASCOMClasses:
         assert type(cls_name) is _DocstringInheritee
 
     def test_driver_parent(self, cls_name):
-        assert issubclass(cls_name, ASCOMDriver)
+        assert issubclass(cls_name, ASCOMDevice)
 
     def test_hardware_parent(self, cls_name):
         assert issubclass(cls_name, eval(cls_name.__name__.replace("ASCOM", "")))
@@ -71,4 +65,4 @@ class TestAllASCOMClasses:
     """def test_docstrings(self, cls_name):
         for name in cls_name.__dict__:
             if name != "__doc__":
-                assert getattr(ASCOMDriver, name).__doc__ is not None"""
+                assert getattr(ASCOMDevice, name).__doc__ is not None"""
