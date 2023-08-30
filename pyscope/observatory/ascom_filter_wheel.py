@@ -18,24 +18,24 @@ class ASCOMFilterWheel(ASCOMDevice, FilterWheel):
 
     def Choose(self, FilterWheelID):
         logger.debug(f"ASCOMFilterWheel.Choose({FilterWheelID}) called")
-        self._com_object.Choose(FilterWheelID)
+        self._device.Choose(FilterWheelID)
 
     @property
     def FocusOffsets(self):
         logger.debug(f"ASCOMFilterWheel.FocusOffsets property called")
-        return self._com_object.FocusOffsets
+        return self._device.FocusOffsets
 
     @property
     def Names(self):
         logger.debug(f"ASCOMFilterWheel.Names property called")
-        return self._com_object.Names
+        return self._device.Names
 
     @property
     def Position(self):
         logger.debug(f"ASCOMFilterWheel.Position property called")
-        return self._com_object.Position
+        return self._device.Position
 
     @Position.setter
     def Position(self, value):
         logger.debug(f"ASCOMFilterWheel.Position property set to {value}")
-        self._com_object.Position = value
+        self._device.Position = value
