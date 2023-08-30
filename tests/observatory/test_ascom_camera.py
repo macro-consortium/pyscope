@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from pyscope.observatory import ASCOMCamera, SimulatorServer
+from pyscope.observatory import ASCOMCamera
 
 
 def test_connectivity(device, disconnect):
@@ -11,6 +11,87 @@ def test_connectivity(device, disconnect):
     assert not device.Connected
     device.Connected = True
     assert device.Connected
+
+
+def test_description(device, disconnect):
+    assert device.Description is not None
+
+
+def test_driver_info(device, disconnect):
+    assert device.DriverInfo is not None
+
+
+def test_driver_version(device, disconnect):
+    assert device.DriverVersion is not None
+
+
+def test_interface_version(device, disconnect):
+    assert device.InterfaceVersion is not None
+
+
+def test_name(device, disconnect):
+    assert device.Name is not None
+
+
+def test_supported_actions(device, disconnect):
+    assert device.SupportedActions is not None
+
+
+def test_start_exposure(device, disconnect):
+    device.StartExposure(1, True)
+    time.sleep(2)
+    assert device.ImageReady
+
+
+def test_stop_exposure(device, disconnect):
+    if device.CanStopExposure:
+        device.StartExposure(1, True)
+        device.StopExposure()
+
+
+def test_abort_exposure(device, disconnect):
+    if device.CanAbortExposure:
+        device.StartExposure(1, True)
+        device.AbortExposure()
+
+
+"""def test_bayeroffsetx(device, disconnect):
+    assert device.BayerOffsetX is not None
+
+def test_bayeroffsety(device, disconnect):
+    assert device.BayerOffsetY is not None"""
+
+
+def test_binx(device, disconnect):
+    assert device.BinX is not None
+    device.BinX = 2
+    assert device.BinX == 2
+
+
+def test_biny(device, disconnect):
+    assert device.BinY is not None
+    device.BinY = 2
+    assert device.BinY == 2
+
+
+def test_camera_state(device, disconnect):
+    assert device.CameraState is not None
+
+
+def test_cameraxsize(device, disconnect):
+    assert device.CameraXSize is not None
+
+
+def test_cameraysize(device, disconnect):
+    assert device.CameraYSize is not None
+
+
+def test_canasymmetricbin(device, disconnect):
+    assert device.CanAsymmetricBin is not None
+
+
+def test_canfastreadout(device, disconnect):
+    assert device.CanFastReadout is not None
 
 
 """def test_properties(device, settings, disconn):
