@@ -2,8 +2,6 @@ import time
 
 import pytest
 
-from pyscope.observatory import ASCOMCamera
-
 
 def test_start_exposure(device, disconnect):
     device.StartExposure(1, True)
