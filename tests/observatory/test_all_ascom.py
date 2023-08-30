@@ -1,5 +1,3 @@
-import platform
-
 import pytest
 
 from pyscope.observatory import (
@@ -23,6 +21,7 @@ from pyscope.observatory import (
     ObservingConditions,
     Rotator,
     SafetyMonitor,
+    SimulatorServer,
     Switch,
     Telescope,
 )
