@@ -33,6 +33,7 @@ development team. All of them are free, some require an academic email address.
      and other version control tools (Pro version free with the GitHub Student Developer Pack)
    * `ErrorLens <https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens>`_: inline error
      highlighting
+   * `CodeCov <https://marketplace.visualstudio.com/items?itemName=codecov.codecov>`_: CodeCov integration
    * `esbonio <https://marketplace.visualstudio.com/items?itemName=swyddfa.esbonio>`_:
      `Sphinx <https://www.sphinx-doc.org/en/master/>`_ documentation preview window with on-the-fly compilation
    * `Simple RST <https://marketplace.visualstudio.com/items?itemName=trond-snekvikl.simple-rst>`_ for RST linting
