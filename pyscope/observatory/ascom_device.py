@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMDevice(Device):
-    def __init__(self, identifier, alpaca=False, device_type="device", **kwargs):
+    def __init__(self, identifier, alpaca=False, device_type="Device", **kwargs):
         logger.debug(f"ASCOMDevice.__init__({identifier}, alpaca={alpaca}, {kwargs})")
         self._identifier = identifier
         self._device = None
@@ -20,7 +20,7 @@ class ASCOMDevice(Device):
                 getattr(
                     __import__("alpaca." + device_type.lower()), device_type.lower()
                 ),
-                device_type.title(),
+                device_type,
             )(self._identifier, **kwargs)
         elif platform.system() == "Windows":
             from win32com.client import Dispatch

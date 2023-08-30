@@ -18,9 +18,9 @@ class ASCOMSafetyMonitor(ASCOMDevice, SafetyMonitor):
 
     def Choose(self, SafetyMonitorID):
         logger.debug(f"ASCOMSafetyMonitor.Choose({SafetyMonitorID}) called")
-        self._com_object.Choose(SafetyMonitorID)
+        self._device.Choose(SafetyMonitorID)
 
     @property
     def IsSafe(self):
         logger.debug(f"ASCOMSafetyMonitor.IsSafe property called")
-        return self._com_object.IsSafe
+        return self._device.IsSafe
