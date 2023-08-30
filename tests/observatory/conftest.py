@@ -18,6 +18,10 @@ def pytest_configure():
     time.sleep(10)
 
 
+def pytest_sessionfinish(session, exitstatus):
+    del pytest.simulator_server
+
+
 @pytest.fixture()
 def device(request):
     global d
