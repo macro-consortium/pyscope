@@ -13,6 +13,10 @@ def test_connectivity(device, disconnect):
     assert device.Connected
 
 
+def test_connected(device, disconnect):
+    assert device.Connected
+
+
 def test_description(device, disconnect):
     assert device.Description is not None
 
