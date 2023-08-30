@@ -13,7 +13,7 @@ TODO:
 - filter-exposures and filter-brightness should be able to handle a single value and apply to all filters
 - add option to specify which filters to use
 - add option to place masters in a different folder + syncfiles recognition of a directory beginning with master_
-- cmos-calib/ccd-calib recognition of most recent directory with master_ prefix
+- cmos-calib/ccd-calib recognition of most recent directory with master_ prefix --Lila and Will working on this
 - observatory calibration script improvements
 """
 
