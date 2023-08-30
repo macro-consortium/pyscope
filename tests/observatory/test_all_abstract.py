@@ -99,7 +99,6 @@ class TestAllAbstractClasses:
                 "HasShutter",
                 "HeatSinkTemperature",
                 "ImageArray",
-                "ImageArrayVariant",
                 "ImageReady",
                 "IsPulseGuiding",
                 "LastExposureDuration",

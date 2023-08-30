@@ -137,9 +137,9 @@ class ASCOMCamera(ASCOMDevice, Camera):
         return self._device.CoolerPower
 
     @property
-    def ElectronsPerADU(self, ADU):
-        logger.debug(f"ASCOMCamera.ElectronsPerADU({ADU}) property called")
-        return self._device.ElectronsPerADU(ADU)
+    def ElectronsPerADU(self):
+        logger.debug(f"ASCOMCamera.ElectronsPerADU() property called")
+        return self._device.ElectronsPerADU
 
     @property
     def ExposureMax(self):
@@ -210,11 +210,6 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def ImageArray(self):
         logger.debug(f"ASCOMCamera.ImageArray property called")
         return self._device.ImageArray
-
-    @property
-    def ImageArrayVariant(self):
-        logger.debug(f"ASCOMCamera.ImageArrayVariant property called")
-        return self._device.ImageArrayVariant
 
     @property
     def ImageReady(self):

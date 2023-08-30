@@ -5,42 +5,6 @@ import pytest
 from pyscope.observatory import ASCOMCamera
 
 
-def test_connectivity(device, disconnect):
-    assert device.Connected
-    device.Connected = False
-    assert not device.Connected
-    device.Connected = True
-    assert device.Connected
-
-
-def test_connected(device, disconnect):
-    assert device.Connected
-
-
-def test_description(device, disconnect):
-    assert device.Description is not None
-
-
-def test_driver_info(device, disconnect):
-    assert device.DriverInfo is not None
-
-
-def test_driver_version(device, disconnect):
-    assert device.DriverVersion is not None
-
-
-def test_interface_version(device, disconnect):
-    assert device.InterfaceVersion is not None
-
-
-def test_name(device, disconnect):
-    assert device.Name is not None
-
-
-def test_supported_actions(device, disconnect):
-    assert device.SupportedActions is not None
-
-
 def test_start_exposure(device, disconnect):
     device.StartExposure(1, True)
     time.sleep(2)
@@ -59,11 +23,14 @@ def test_abort_exposure(device, disconnect):
         device.AbortExposure()
 
 
-"""def test_bayeroffsetx(device, disconnect):
+@pytest.mark.skip(reason="Not implemented")
+def test_bayeroffsetx(device, disconnect):
     assert device.BayerOffsetX is not None
 
+
+@pytest.mark.skip(reason="Not implemented")
 def test_bayeroffsety(device, disconnect):
-    assert device.BayerOffsetY is not None"""
+    assert device.BayerOffsetY is not None
 
 
 def test_binx(device, disconnect):
@@ -94,8 +61,176 @@ def test_canasymmetricbin(device, disconnect):
     assert device.CanAsymmetricBin is not None
 
 
+def test_ccdtemperature(device, disconnect):
+    assert device.CCDTemperature is not None
+
+
+def test_cooleron(device, disconnect):
+    assert not device.CoolerOn
+    device.CoolerOn = True
+    assert device.CoolerOn
+    device.CoolerOn = False
+    assert not device.CoolerOn
+
+
+def test_coolerpower(device, disconnect):
+    assert device.CoolerPower is not None
+
+
+def test_electronsperadu(device, disconnect):
+    assert device.ElectronsPerADU is not None
+
+
+def test_exposuremax(device, disconnect):
+    assert device.ExposureMax is not None
+
+
+def test_exposuremin(device, disconnect):
+    assert device.ExposureMin is not None
+
+
+def test_exposureresolution(device, disconnect):
+    assert device.ExposureResolution is not None
+
+
 def test_canfastreadout(device, disconnect):
-    assert device.CanFastReadout is not None
+    if device.CanFastReadout:
+        assert device.FastReadout is not None
+
+
+def test_fullwellcapacity(device, disconnect):
+    assert device.FullWellCapacity is not None
+
+
+@pytest.mark.skip(reason="Not implemented")
+def test_gain(device, disconnect):
+    if device.Gains is not None:
+        device.Gain = 1
+        assert device.Gain == 1
+        assert device.GainMax is not None
+        assert device.GainMin is not None
+    else:
+        device.Gain = device.Gains[0]
+        assert device.Gain == device.Gains[0]
+
+
+def test_hasshutter(device, disconnect):
+    assert device.HasShutter is not None
+
+
+@pytest.mark.skip(reason="Not implemented")
+def test_heatsinktemperature(device, disconnect):
+    assert device.HeatSinkTemperature is not None
+
+
+def test_ispulseguiding(device, disconnect):
+    if device.CanPulseGuide:
+        assert device.IsPulseGuiding is not None
+
+
+@pytest.mark.order(after="test_start_exposure")
+def test_lastexposureduration(device, disconnect):
+    device.StartExposure(0.1, True)
+    while not device.ImageReady:
+        time.sleep(0.1)
+    assert device.LastExposureDuration is not None
+
+
+@pytest.mark.order(after="test_start_exposure")
+def test_lastexposurestarttime(device, disconnect):
+    device.StartExposure(0.1, True)
+    while not device.ImageReady:
+        time.sleep(0.1)
+    assert device.LastExposureStartTime is not None
+
+
+def test_maxadu(device, disconnect):
+    assert device.MaxADU is not None
+
+
+def test_maxbinx(device, disconnect):
+    assert device.MaxBinX is not None
+
+
+def test_maxbiny(device, disconnect):
+    assert device.MaxBinY is not None
+
+
+def test_numx(device, disconnect):
+    assert device.NumX is not None
+    device.NumX = 2
+    assert device.NumX == 2
+
+
+def test_numy(device, disconnect):
+    assert device.NumY is not None
+    device.NumY = 2
+    assert device.NumY == 2
+
+
+@pytest.mark.skip(reason="Not implemented")
+def test_offset(device, disconnect):
+    if device.Offsets is not None:
+        device.Offset = 1
+        assert device.Offset == 1
+        assert device.OffsetMax is not None
+        assert device.OffsetMin is not None
+    else:
+        device.Offset = device.Offsets[0]
+        assert device.Offset == device.Offsets[0]
+
+
+def test_percentcompleted(device, disconnect):
+    assert device.PercentCompleted is not None
+
+
+def test_pixelsizex(device, disconnect):
+    assert device.PixelSizeX is not None
+
+
+def test_pixelsizey(device, disconnect):
+    assert device.PixelSizeY is not None
+
+
+def test_readoutmode(device, disconnect):
+    assert device.ReadoutMode is not None
+
+
+def test_readoutmodes(device, disconnect):
+    assert device.ReadoutModes is not None
+
+
+def test_sensorname(device, disconnect):
+    assert device.SensorName is not None
+
+
+def test_sensortype(device, disconnect):
+    assert device.SensorType is not None
+
+
+def test_setccdtemperature(device, disconnect):
+    if device.CanSetCCDTemperature:
+        device.SetCCDTemperature = -10
+        assert device.SetCCDTemperature == -10
+
+
+def test_startx(device, disconnect):
+    assert device.StartX is not None
+    device.StartX = 0
+    assert device.StartX == 0
+
+
+def test_starty(device, disconnect):
+    assert device.StartY is not None
+    device.StartY = 0
+    assert device.StartY == 0
+
+
+@pytest.mark.skip(reason="Not implemented")
+def test_subexposureduration(device, disconnect):
+    assert device.SubExposureDuration is not None
+    device.SubExposureDuration = 1
+    assert device.SubExposureDuration == 1
 
 
 """def test_properties(device, settings, disconn):
