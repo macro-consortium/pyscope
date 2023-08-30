@@ -1,8 +1,10 @@
 ignore:
   - "pyscope/observatory/autofocus.py"
   - "pyscope/observatory/camera.py"
+  - "pyscope/observatory/cover_calibrator.py"
+  - "pyscope/observatory/device.py"
   - "pyscope/observatory/dome.py"
-  - "pyscope/observatory/driver.py"
+  - "pyscope/observatory/filter_wheel.py"
   - "pyscope/observatory/focuser.py"
   - "pyscope/observatory/observing_conditions.py"
   - "pyscope/observatory/rotator.py"
