@@ -139,3 +139,4 @@ dmypy.json
 *ascom.alpaca.simulators*
 *OmniSim*
 !.coverage
+docs/source/api/auto_api/
