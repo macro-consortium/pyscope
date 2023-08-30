@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import platform
 import signal
@@ -54,11 +55,17 @@ class SimulatorServer:
             self.process = subprocess.Popen(
                 ("sudo " + dirname + "/ascom.alpaca.simulators").split(),
                 preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
             )
         else:
             self.process = subprocess.Popen(
                 (dirname + "/ascom.alpaca.simulators").split(),
                 preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
             )
 
         self.dirname = dirname
