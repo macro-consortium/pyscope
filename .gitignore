@@ -137,3 +137,4 @@ dmypy.json
 .vscode
 .DS_Store
 *ascom.alpaca.simulators*
+*OmniSim*
