@@ -40,6 +40,8 @@ from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pinpoint_wcs import PinpointWCS
 
+from .simulator_server import SimulatorServer
+
 from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
@@ -86,4 +88,5 @@ __all__ = [
     "Telescope",
     "WCS",
     "collect_calibration_set",
+    "SimulatorServer",
 ]
