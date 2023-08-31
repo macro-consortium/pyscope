@@ -1,6 +1,12 @@
 name: Code Coverage
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   run:
@@ -8,14 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -e ".[tests]"
-      - name: Run tests and collect coverage
-        run: pytest --cov -cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         env:

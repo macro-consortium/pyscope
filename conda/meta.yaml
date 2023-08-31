@@ -1,5 +1,5 @@
 {% set name = "pyscope" %}
-{% set version = "0.1.2" %}
+{% set version = "0.1.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,9 +7,10 @@ package:
 
 source:
   url: https://github.com/WWGolay/pyscope/archive/v{{ version }}.tar.gz
-  sha256: 34e907ef62d1031bc42a114a97bdfda33653a7c448d7e5b7f8063385c2d1cf0b
+  sha256: 2ee8eb2d7bcca22e916730c797a7fbe407dd465c804e41418e6c7be970ec71e5
 
 build:
+  skip: true  # [py<310]
   entry_points:
     - init-telrun-dir = pyscope.telrun.init_dirs:init_telrun_dir_cli
     - init-remote-dir = pyscope.telrun.init_dirs:init_remote_dir_cli
@@ -25,43 +26,37 @@ build:
     - ccd-calib = pyscope.reduction.ccd_calib:ccd_calib_cli
     - fitslist = pyscope.reduction.fitslist:fitslist_cli
     - exoplanet-transits = pyscope.telrun.exoplanet_transits:exoplanet_transits_cli
+    - mk-mosaic-schedule = pyscope.telrun.mk_mosaic_schedule:mk_mosaic_schedule_cli
     - rst = pyscope.telrun.rst:rst_cli
-  noarch: python
+    - summary-report = pyscope.telrun.summary_report:summary_report_cli
   script: {{ PYTHON }} -m pip install . -vv
   number: 0
 
 requirements:
   host:
-    - python >=3.10
+    - python
     - setuptools >=42.0
     - wheel
     - pip
   run:
-    - python >=3.10
+    - python
+    - astroplan >=0.9
     - astropy >=5.3.1
     - astroquery >=0.4.6
     - astroscrappy >=1.1.0
-    - astroplan >=0.8
     - click >=8.1.6
+    - cmcrameri >=1.4.0
+    - markdown >=3.4.4
+    - matplotlib-base >=3.5.1
     - numpy >=1.24.4
-    - numpydoc >=1.5.0
     - paramiko >=3.3.1
     - photutils >=1.7.0
-    - matplotlib-base >=3.5.1
+    - prettytable >=3.8.0
+    - pywin32-on-windows >=304  # [win]
     - smplotlib >=0.0.6
-    - cmcrameri >=1.4.0
     - timezonefinder >=6.0.2
     - tksheet >=6.2.3
     - tqdm >=4.66.1
-    - astropy-sphinx-theme >=1.1.0
-    - pydata-sphinx-theme >=0.8.1
-    - sphinx >=4.5.0
-    - sphinx-astropy >=1.9.1
-    - sphinx-copybutton >=0.5.0
-    - sphinx-gallery >=0.13.0
-    - sphinx-favicon >=1.0.1
-    - sphinxcontrib-programoutput >=0.17
-    - prettytable >=3.8.0
 
 test:
   imports:
@@ -82,12 +77,14 @@ test:
     - ccd-calib --help
     - fitslist --help
     - exoplanet-transits --help
+    - mk-mosaic-schedule --help
     - rst --help
+    - summary-report --help
   requires:
     - pip
 
 about:
-  home: https://github.com/WWGolay/pyScope
+  home: https://github.com/WWGolay/pyscope
   license: AGPL-3.0
   license_file: LICENSE
 
