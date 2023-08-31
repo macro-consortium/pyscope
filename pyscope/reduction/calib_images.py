@@ -189,12 +189,11 @@ def calib_images_cli(
             f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
         )
 
-        # base case for dark
         dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        # move on other file
 
         if camera_type == "ccd":
             bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+            dark_frame = nearest_exptime(fnames)
         elif camera_type == "cmos":
             flat_dark_frame = (
                 f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
@@ -233,6 +232,10 @@ def calib_images_cli(
         calc_zmag(fnames=fnames)
 
     logger.info("Done!")
+
+
+def nearest_exptime(fnames):
+    pass
 
 
 calib_images = calib_images_cli.callback
