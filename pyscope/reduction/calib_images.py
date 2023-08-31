@@ -146,7 +146,8 @@ def calib_images_cli(
                 raw_archive_dir, datetime.datetime.now().strftime("%Y-%m-%d")
             )
             if not os.path.exists(raw_archive_dir):
-                logger.info(f"Creating raw archive directory: {raw_archive_dir}")
+                logger.info(
+                    f"Creating raw archive directory: {raw_archive_dir}")
                 os.makedirs(raw_archive_dir)
             logger.info(f"Archiving {fname} to {raw_archive_dir}")
             shutil.copy(fname, raw_archive_dir)
@@ -187,7 +188,10 @@ def calib_images_cli(
         flat_frame = (
             f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
         )
+
+        # base case for dark
         dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+        # move on other file
 
         if camera_type == "ccd":
             bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
