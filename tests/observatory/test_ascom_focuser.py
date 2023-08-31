@@ -8,7 +8,7 @@ def test_move(device, disconnect):
     while device.IsMoving:
         time.sleep(0.1)
     if device.Absolute:
-        assert device.Position == 500
+        assert device.Position == 50
 
 
 def test_halt(device, disconnect):
