@@ -53,19 +53,21 @@ class SimulatorServer:
 
         if platform.system() == "Darwin":
             self.process = subprocess.Popen(
-                ("sudo " + dirname + "/ascom.alpaca.simulators").split(),
+                ("sudo " + dirname + "/ascom.alpaca.simulators"),
                 preexec_fn=os.setpgrp,
                 start_new_session=True,
                 stderr=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
+                shell=True,
             )
         else:
             self.process = subprocess.Popen(
-                (dirname + "/ascom.alpaca.simulators").split(),
+                (dirname + "/ascom.alpaca.simulators"),
                 preexec_fn=os.setpgrp,
                 start_new_session=True,
                 stderr=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
+                shell=True,
             )
 
         self.dirname = dirname

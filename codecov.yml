@@ -1,14 +1,7 @@
-ignore:
-  - "pyscope/observatory/autofocus.py"
-  - "pyscope/observatory/camera.py"
-  - "pyscope/observatory/cover_calibrator.py"
-  - "pyscope/observatory/device.py"
-  - "pyscope/observatory/dome.py"
-  - "pyscope/observatory/filter_wheel.py"
-  - "pyscope/observatory/focuser.py"
-  - "pyscope/observatory/observing_conditions.py"
-  - "pyscope/observatory/rotator.py"
-  - "pyscope/observatory/safety_monitor.py"
-  - "pyscope/observatory/switch.py"
-  - "pyscope/observatory/telescope.py"
-  - "pyscope/observatory/wcs.py"
+comment: off
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
