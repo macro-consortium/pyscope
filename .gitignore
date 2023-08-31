@@ -136,3 +136,4 @@ dmypy.json
 *.ecsv
 .vscode
 .DS_Store
+Mambaforge-Darwin-arm64.sh
