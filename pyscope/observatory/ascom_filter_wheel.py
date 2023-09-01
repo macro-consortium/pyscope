@@ -16,10 +16,6 @@ class ASCOMFilterWheel(ASCOMDevice, FilterWheel):
             protocol=protocol,
         )
 
-    def Choose(self, FilterWheelID):
-        logger.debug(f"ASCOMFilterWheel.Choose({FilterWheelID}) called")
-        self._device.Choose(FilterWheelID)
-
     @property
     def FocusOffsets(self):
         logger.debug(f"ASCOMFilterWheel.FocusOffsets property called")

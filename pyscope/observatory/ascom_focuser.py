@@ -16,10 +16,6 @@ class ASCOMFocuser(ASCOMDevice, Focuser):
             protocol=protocol,
         )
 
-    def Choose(self, FocuserID):
-        logger.debug(f"ASCOMFocuser.Choose({FocuserID}) called")
-        self._device.Choose(FocuserID)
-
     def Halt(self):
         logger.debug(f"ASCOMFocuser.Halt() called")
         self._device.Halt()
@@ -37,16 +33,6 @@ class ASCOMFocuser(ASCOMDevice, Focuser):
     def IsMoving(self):
         logger.debug(f"ASCOMFocuser.IsMoving property called")
         return self._device.IsMoving
-
-    @property
-    def Link(self):
-        logger.debug(f"ASCOMFocuser.Link property called")
-        return self._device.Link
-
-    @Link.setter
-    def Link(self, value):
-        logger.debug(f"ASCOMFocuser.Link property set to {value}")
-        self._device.Link = value
 
     @property
     def MaxIncrement(self):

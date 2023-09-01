@@ -105,6 +105,13 @@ def test_synctoaltaz(device, disconnect):
         device.SyncToAltAz(45, 90)
 
 
+def test_synctocoordinates(device, disconnect):
+    if device.CanSync:
+        if device.CanSetTracking:
+            device.Tracking = True
+        device.SyncToCoordinates(device.SiderealTime, device.SiteLatitude)
+
+
 def test_synctotarget(device, disconnect):
     if device.CanSync:
         device.TargetDeclination = device.SiteLatitude
@@ -203,10 +210,14 @@ def test_sideofpier(device, disconnect):
 
 def test_siteeleveation(device, disconnect):
     assert device.SiteElevation is not None
+    device.SiteElevation = 100
+    assert device.SiteElevation == 100
 
 
 def test_sitelongitude(device, disconnect):
     assert device.SiteLongitude is not None
+    device.SiteLongitude = 0
+    assert device.SiteLongitude == 0
 
 
 def test_slewsettletime(device, disconnect):
@@ -221,14 +232,15 @@ def test_tracking(device, disconnect):
         assert device.Tracking
 
 
+@pytest.mark.skip(reason="Alpaca implementation issue")
 def test_trackingrate(device, disconnect):
     if device.CanSetTracking:
         assert device.TrackingRate is not None
-
-
-def test_trackingrates(device, disconnect):
-    assert device.TrackingRates is not None
+        device.TrackingRate = device.TrackingRates[0]
+        assert device.TrackingRate == device.TrackingRates[0]
 
 
 def test_utcdate(device, disconnect):
     assert device.UTCDate is not None
+    device.UTCDate = "2020-01-01T00:00:00"
+    assert device.UTCDate.strftime("%Y-%m-%dT%H:%M:%S") == "2020-01-01T00:00:00"

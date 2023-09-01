@@ -20,10 +20,6 @@ class ASCOMCamera(ASCOMDevice, Camera):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._device.AbortExposure()
 
-    def Choose(self, cameraID):
-        logger.debug(f"ASCOMCamera.Choose({cameraID}) called")
-        self._device.Choose(cameraID)
-
     def PulseGuide(self, Direction, Duration):
         logger.debug(f"ASCOMCamera.PulseGuide({Direction}, {Duration}) called")
         self._device.PulseGuide(Direction, Duration)
@@ -37,12 +33,20 @@ class ASCOMCamera(ASCOMDevice, Camera):
         self._device.StopExposure()
 
     @property
-    def BayerOffsetX(self):
+    def BayerOffsetX(self):  # pragma: no cover
+        """
+        .. warning::
+            This property is not implemented in the ASCOM Alpaca protocol.
+        """
         logger.debug(f"ASCOMCamera.BayerOffsetX property called")
         return self._device.BayerOffsetX
 
     @property
-    def BayerOffsetY(self):
+    def BayerOffsetY(self):  # pragma: no cover
+        """
+        .. warning::
+            This property is not implemented in the ASCOM Alpaca protocol.
+        """
         logger.debug(f"ASCOMCamera.BayerOffsetY property called")
         return self._device.BayerOffsetY
 

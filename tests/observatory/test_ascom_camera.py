@@ -104,7 +104,8 @@ def test_cooleron(device, disconnect):
 
 
 def test_coolerpower(device, disconnect):
-    assert device.CoolerPower is not None
+    if device.CanGetCoolerPower:
+        assert device.CoolerPower is not None
 
 
 def test_electronsperadu(device, disconnect):
@@ -163,6 +164,7 @@ def test_lastexposureduration(device, disconnect):
     device.StartExposure(0.1, True)
     while not device.ImageReady:
         time.sleep(0.1)
+    assert device.ImageArray is not None
     assert device.LastExposureDuration is not None
 
 
@@ -224,10 +226,8 @@ def test_pixelsizey(device, disconnect):
 
 def test_readoutmode(device, disconnect):
     assert device.ReadoutMode is not None
-
-
-def test_readoutmodes(device, disconnect):
-    assert device.ReadoutModes is not None
+    device.ReadoutMode = 0
+    assert device.ReadoutMode == 0
 
 
 def test_sensorname(device, disconnect):
