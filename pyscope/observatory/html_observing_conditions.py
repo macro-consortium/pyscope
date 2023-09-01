@@ -1,6 +1,9 @@
+import logging
 import urllib.request
 
 from .observing_conditions import ObservingConditions
+
+logger = logging.getLogger(__name__)
 
 
 class HTMLObservingConditions(ObservingConditions):
@@ -26,7 +29,7 @@ class HTMLObservingConditions(ObservingConditions):
         sky_brightness_units="magdeg2",
         sky_brightness_numeric=True,
         sky_quality_keyword=b"SKYQUALITY",
-        sky_quality_units=None,
+        sky_quality_units="",
         sky_quality_numeric=True,
         sky_temperature_keyword=b"SKYTEMPERATURE",
         sky_temperature_units=b"F",
@@ -47,7 +50,7 @@ class HTMLObservingConditions(ObservingConditions):
         wind_speed_units="mph",
         wind_speed_numeric=True,
         last_updated_keyword=b"LASTUPDATED",
-        last_updated_units=None,
+        last_updated_units="",
         last_updated_numeric=True,
     ):
         logger.debug(
@@ -278,7 +281,7 @@ class HTMLObservingConditions(ObservingConditions):
 
     def SensorDescription(self, PropertyName):
         logger.debug("HTMLObservingConditions.SensorDescription({PropertyName}) called")
-        return
+        return eval(f"self._{PropertyName.lower()}_keyword")
 
     def TimeSinceLastUpdate(self, PropertyName):
         logger.debug(
@@ -288,12 +291,14 @@ class HTMLObservingConditions(ObservingConditions):
         lines = stream.readlines()
 
         for line in lines:
-            self._last_updated = _get_number_from_line(
+            last_updated = self._get_number_from_line(
                 line,
                 self._last_updated_keyword,
                 self._last_updated_units,
                 self._last_updated_numeric,
             )
+            if last_updated is not None:
+                self._last_updated = last_updated
 
         return self.LastUpdated
 

@@ -45,6 +45,22 @@ def disconnect(request):
     )
 
 
+@pytest.fixture()
+def winer_oc(request):
+    global d
+    d = observatory.HTMLObservingConditions(
+        "https://winer.org/Site/Weather.php",
+        rain_rate_keyword="RAIN",
+        rain_rate_units="in",
+        sky_brightness_keyword="BRIGHTNESS",
+        sky_brightness_units="Vmag/sq.asec",
+        star_fwhm_keyword="LAST_SEEING",
+        star_fwhm_units='"',
+        wind_direction_keyword="WINDDIR",
+    )
+    return d
+
+
 """@pytest.fixture()
 def settings(request):
     n = request.module.__name__.split('_')[-1].capitalize()
