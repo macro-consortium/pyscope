@@ -15,7 +15,7 @@ from pyscope import observatory
 
 def pytest_configure():
     pytest.simulator_server = observatory.SimulatorServer()
-    time.sleep(10)
+    time.sleep(12)
 
 
 def pytest_sessionfinish(session, exitstatus):
