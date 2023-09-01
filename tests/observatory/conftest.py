@@ -61,6 +61,16 @@ def winer_oc(request):
     return d
 
 
+@pytest.fixture()
+def winer_sm(request):
+    global d
+    d = observatory.HTMLSafetyMonitor(
+        "https://winer.org/Site/Roof.php",
+        check_phrase=b"ROOFPOSITION=OPEN",
+    )
+    return d
+
+
 """@pytest.fixture()
 def settings(request):
     n = request.module.__name__.split('_')[-1].capitalize()
