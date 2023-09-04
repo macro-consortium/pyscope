@@ -150,7 +150,7 @@ favicons = [
     "logo128.png",
     "logo256.png",
     "pyscopeIcon.svg",
-    "logo180.png",
+    {"rel": "apple-touch-icon", "href": "logo180.png"},
 ]
 
 extensions.append("sphinx.ext.doctest")
