@@ -134,16 +134,17 @@ def linkcode_resolve(domain, info):
 
 extensions.append("sphinx_favicon")
 
-html_logo = "images/pyscope_banner.png"
+html_logo = "images/pyscope_logo_small.png"
 """favicons = [
     "images/logo16.png",
     "images/logo32.png",
     "images/logo48.png",
     "images/logo128.png",
     "images/logo256.png",
-    "images/pyscope.svg",
-    "images/pyscope_transparent.svg"
+    "images/pyscopeIcon.svg"
 ]"""
+
+html_favicon = "images/logo32.png"
 
 extensions.append("sphinx.ext.doctest")
 
