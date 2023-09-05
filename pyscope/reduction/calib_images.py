@@ -120,6 +120,24 @@ def calib_images_cli(
     verbose,
     fnames,
 ):
+    """
+
+    Args:
+        camera_type (_type_): _description_
+        image_dir (_type_): _description_
+        calib_dir (_type_): _description_
+        raw_archive_dir (_type_): _description_
+        in_place (_type_): _description_
+        astro_scrappy (_type_): _description_
+        bad_columns (_type_): _description_
+        wcs (_type_): _description_
+        zmag (_type_): _description_
+        verbose (_type_): _description_
+        fnames (_type_): _description_
+
+    Raises:
+        click.BadParameter: _description_
+    """
     if verbose:
         logger.setLevel(logging.DEBUG)
 
