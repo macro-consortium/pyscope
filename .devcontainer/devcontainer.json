@@ -22,7 +22,8 @@
                 "aaron-bond.better-comments",
                 "oderwat.indent-rainbow",
                 "vscode-icons-team.vscode-icons",
-                "zhuangtongfa.material-theme"
+                "zhuangtongfa.material-theme",
+                "codecov.codecov"
             ],
             "settings" : {
                 "workbench.colorTheme": "One Dark Pro",
