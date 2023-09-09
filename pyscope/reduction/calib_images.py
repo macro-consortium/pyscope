@@ -3,7 +3,7 @@ import glob
 import logging
 import os
 import shutil
- # i will be working on this
+# i will be working on this
 import click
 from astropy.io import fits
 
@@ -120,7 +120,13 @@ def calib_images_cli(
     verbose,
     fnames,
 ):
-    """
+    """Calibrate a set of images by recursively selecting the 
+    appropriate flat, dark, and bias frame and then calling 
+    ccd_calib to do the actual calibration.
+
+    Notes: Vaving an example set up of this function would be helpful.
+    This would allow for me to know what the environment looks like when 
+    calling this function.
 
     Args:
         camera_type (_type_): _description_
@@ -202,11 +208,60 @@ def calib_images_cli(
             ybin = hdr["YBIN"]
 
         # TODO: Update these names, recursively search for latest set
+        # each of these (flat, dark, bais) are calibration frames that are required for ccd_calib
+        # 
+        # if the camera type is ccd, the bias frame is used
+        # if the camera type is cmos, the flat dark frame is used
+        #
+        # this implies that there are 4 possible directories that could exist, but
+        # only 3 would be used for a given camera type
+        #
+        # the 4 directories would live inside the calib_dir
+        #
+        # THIS IS THE PART THAT I AM LESS CONFIDENT ABOUT
+        # if the calib_dir is not passed when the calib_images_cli function is called,
+        # then the frame variables should look in the "default directory" for the latest set of calibration frames
+        #
+        # I have 2 questions, assuming this is the case:
+        # 1. what is the default directory? It it the current working directory? Previous directory?
+        # 2. why would the user not pass the calib_dir when calling the calib_images_cli function?
+        #
+        # For either case, I think the problem can be stated as follows:
+        # We have a series of calibration frames that are required for ccd_calib
+        # If the user passes a calib_dir, then we know where to look for the calibration frames
+        # If the user does not pass a calib_dir, then we need to recursively search for the latest set of 
+        # calibration frames in the default directory
+        # 
+        # Assuming that the problem is correctly stated, here is a potential solution:
+        
+        # if calib_dir is None:
+        #     calib_dir = find_latest_calib_dir()
+        # else:  # use the calib_dir passed by the user
+        #     flat_frame = (
+        #     f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
+        #     )
+        #     dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+
+        #     # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
+        #     if camera_type == "ccd":
+        #         bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+        #     elif camera_type == "cmos":
+        #         flat_dark_frame = (
+        #             f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+        #         )
+        #
+        # One final question I have is:
+        # Does a calib_dir exist for each of the images? Or is there a single calib_dir for all of the images?
+        # If the latter is true, then there is no need for the frames to be set inside the for loop
+        # 
+        # I think I need someone to walk me through the process of calibrating a set of images to get better context.
+
         flat_frame = (
             f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
         )
         dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
 
+        # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
         if camera_type == "ccd":
             bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
         elif camera_type == "cmos":
@@ -214,6 +269,7 @@ def calib_images_cli(
                 f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
             )
 
+        # for each image, print out the calibration frames being used
         logger.debug("Using calibration frames:")
         logger.debug(f"Flat: {flat_frame}")
         logger.debug(f"Dark: {dark_frame}")
@@ -222,6 +278,7 @@ def calib_images_cli(
         elif camera_type == "cmos":
             logger.debug(f"Flat dark: {flat_dark_frame}")
 
+        # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
         ccd_calib(
             camera_type=camera_type,
@@ -235,6 +292,7 @@ def calib_images_cli(
             fnames=fname,
         )
 
+        # world coordinate system
         if wcs:
             logger.debug("Running Astrometry.net WCS solver...")
             solver = AstrometryNetWCS()
@@ -242,6 +300,7 @@ def calib_images_cli(
 
         logger.debug("Done!")
 
+    # outside for loop
     if zmag:
         logger.info("Calculating zero-point magnitudes...")
         calc_zmag(fnames=fnames)
