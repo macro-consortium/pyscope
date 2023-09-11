@@ -14,5 +14,5 @@ prettytable == 3.8.0
 pywin32 == 306;platform_system=='Windows'
 smplotlib == 0.0.9
 timezonefinder == 6.2.0
-tksheet == 6.2.3
+tksheet == 6.2.4
 tqdm == 4.66.1
