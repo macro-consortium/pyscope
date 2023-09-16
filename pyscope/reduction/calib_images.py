@@ -132,7 +132,7 @@ def nearest_exptime(calib_dir, exptime):
 
         # makesure the string is in underscore format
         nearest = abs(exptime - fexptime)
-        if file.rfind('/master-dark') != -1 or imgtype == "Dark Frame":
+        if file.rfind('/master_dark') != -1 or imgtype == "Dark Frame":
             file_name = file[file.rfind('/')+1::]
             if firstrun:
                 nearest_expt = nearest
