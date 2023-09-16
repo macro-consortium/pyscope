@@ -137,6 +137,7 @@ def nearest_exptime(calib_dir, exptime):
             if firstrun:
                 nearest_expt = nearest
                 nearest_fname = file_name
+                firstrun = False
             elif nearest_expt > nearest:
                 nearest_expt = nearest_expt
                 nearest_fname = file_name
