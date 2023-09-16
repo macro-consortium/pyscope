@@ -107,6 +107,44 @@ logger = logging.getLogger(__name__)
     "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
 )
 @click.version_option()
+def nearest_exptime(calib_dir, exptime):
+    nearest_expt = -1
+    nearest_fname = ""
+    firstrun = True
+
+    for file in calib_dir:
+        with fits.open(file) as hdu:
+            hdr = hdu[0].header
+        if "CALSTAT" in hdr.keys():
+            continue
+        try:
+            filt = hdr["FILTER"]
+        except KeyError:
+            filt = ""
+        try:
+            fexptime = round(hdr["EXPTIME"], 3)
+        except KeyError:
+            fexptime = round(hdr["EXPOSURE"], 3)
+        try:
+            imgtype = hdr["IMAGETYP"]
+        except KeyError:
+            imgtype = ""
+
+        # makesure the string is in underscore format
+        nearest = abs(exptime - fexptime)
+        if file.rfind('/master-dark') != -1 or imgtype == "Dark Frame":
+            file_name = file[file.rfind('/')+1::]
+            if firstrun:
+                nearest_expt = nearest
+                nearest_fname = file_name
+            elif nearest_expt > nearest:
+                nearest_expt = nearest_expt
+                nearest_fname = file_name
+    print(f"{nearest_expt} - {nearest_fname}")
+
+    return nearest_fname
+
+
 def calib_images_cli(
     camera_type,
     image_dir,
@@ -186,14 +224,21 @@ def calib_images_cli(
 
         # TODO: Update these names, recursively search for latest set
         flat_frame = (
+            # does not need exptime
             f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
         )
 
         dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
 
         if camera_type == "ccd":
+            # why is it here?
             bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
-            dark_frame = nearest_exptime(fnames)
+            # this return the appropriate frame fro ccd
+            nearest_exptime_filename = nearest_exptime(calib_dir, exptime)
+            dark_frame = f"{calib_dir}/{nearest_exptime_filename}"
+            logger.info(
+                f"Nearest Dark Frame founded {nearest_exptime_filename}")
+
         elif camera_type == "cmos":
             flat_dark_frame = (
                 f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
@@ -232,10 +277,6 @@ def calib_images_cli(
         calc_zmag(fnames=fnames)
 
     logger.info("Done!")
-
-
-def nearest_exptime(fnames):
-    pass
 
 
 calib_images = calib_images_cli.callback
