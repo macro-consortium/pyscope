@@ -4,14 +4,14 @@ import time
 
 from .autofocus import Autofocus
 from .camera import Camera
-from .driver import Driver
+from .device import Device
 from .filter_wheel import FilterWheel
 from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
 
-class Maxim(Driver):
+class Maxim(Device):
     def __init__(self):
         logger.debug("Maxim.Maxim __init__ called")
         if platform.system() != "Windows":
