@@ -1,17 +1,18 @@
-astroplan>=0.9
-astropy>=5.3.1
-astroquery>=0.4.6
-astroscrappy>=1.1.0
-click>=8.1.6
-cmcrameri>=1.4.0
-markdown>=3.4.4
-matplotlib>=3.5.1
-numpy>=1.24.4
-paramiko>=3.3.1
-photutils>=1.7.0
-prettytable>=3.8.0
-pywin32>=304;platform_system=='Windows'
-smplotlib>=0.0.6
-timezonefinder>=6.0.2
-tksheet>=6.2.3
-tqdm>=4.66.1
+alpyca == 2.0.4
+astroplan == 0.9
+astropy == 5.3.3
+astroquery == 0.4.6
+astroscrappy == 1.1.0
+click == 8.1.7
+cmcrameri == 1.7.0
+markdown == 3.4.4
+matplotlib == 3.7.2
+numpy == 1.25.2
+paramiko == 3.3.1
+photutils == 1.9.0
+prettytable == 3.8.0
+pywin32 == 306;platform_system=='Windows'
+smplotlib == 0.0.9
+timezonefinder == 6.2.0
+tksheet == 6.2.4
+tqdm == 4.66.1
