@@ -1,5 +1,5 @@
 alpyca == 2.0.4
-astroplan == 0.9
+astroplan == 0.9.1
 astropy == 5.3.3
 astroquery == 0.4.6
 astroscrappy == 1.1.0
