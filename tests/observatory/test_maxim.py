@@ -6,7 +6,7 @@ import pytest
 from pyscope.observatory import Maxim
 
 
-@pytest.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
+@pytest.mark.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
 def test_maxim():
     m = Maxim()
     assert m.Connected
@@ -16,7 +16,7 @@ def test_maxim():
     m.Connected = False
 
 
-@pytest.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
+@pytest.mark.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
 def test_maxim_autofocus():
     m = Maxim()
     success = m.autofocus.Run(exposure=1)
@@ -28,7 +28,7 @@ def test_maxim_autofocus():
     m.Connected = False
 
 
-@pytest.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
+@pytest.mark.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
 def test_maxim_camera():
     m = Maxim()
     c = m.camera
@@ -174,7 +174,7 @@ def test_maxim_camera():
     m.Connected = False
 
 
-@pytest.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
+@pytest.mark.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
 def test_maxim_filter_wheel():
     m = Maxim()
     f = m.filter_wheel
@@ -194,7 +194,7 @@ def test_maxim_filter_wheel():
     m.Connected = False
 
 
-@pytest.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
+@pytest.mark.skipif(platform.system() != "Windows", reason="Maxim only runs on Windows")
 def test_maxim_pinpoint():
     m = Maxim()
     p = m.pinpoint
