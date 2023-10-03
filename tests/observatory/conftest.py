@@ -15,7 +15,7 @@ from pyscope import observatory
 
 def pytest_configure():
     pytest.simulator_server = observatory.SimulatorServer()
-    time.sleep(10)
+    time.sleep(12)
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -43,6 +43,32 @@ def disconnect(request):
     n = "ASCOM" + "".join(
         [s.capitalize() for s in request.module.__name__.split("_")[2:]]
     )
+
+
+@pytest.fixture()
+def winer_oc(request):
+    global d
+    d = observatory.HTMLObservingConditions(
+        "https://winer.org/Site/Weather.php",
+        rain_rate_keyword="RAIN",
+        rain_rate_units="in",
+        sky_brightness_keyword="BRIGHTNESS",
+        sky_brightness_units="Vmag/sq.asec",
+        star_fwhm_keyword="LAST_SEEING",
+        star_fwhm_units='"',
+        wind_direction_keyword="WINDDIR",
+    )
+    return d
+
+
+@pytest.fixture()
+def winer_sm(request):
+    global d
+    d = observatory.HTMLSafetyMonitor(
+        "https://winer.org/Site/Roof.php",
+        check_phrase=b"ROOFPOSITION=OPEN",
+    )
+    return d
 
 
 """@pytest.fixture()

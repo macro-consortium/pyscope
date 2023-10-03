@@ -4,6 +4,7 @@ import pytest
 def test_calibratoron(device, disconnect):
     device.CalibratorOn(1)
     assert device.Brightness == 1
+    device.CalibratorOff()
 
 
 def test_calibratoroff(device, disconnect):
