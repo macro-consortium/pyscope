@@ -1,7 +1,7 @@
 """
 .. container::
 
-  |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |Donate|
+  |License| |Zenodo| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |Donate|
 
 `pyscope` is a pure-Python package for robotic scheduling, operation, and control of small
 optical telescopes.
@@ -46,6 +46,10 @@ Features
     :target: https://pypi.org/project/pyscope/
     :alt: License
 
+.. |Zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8403570.svg
+    :target: https://doi.org/10.5281/zenodo.8403570
+    :alt: Zenodo
+
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/pyscope
     :target: https://pypi.org/project/pyscope/
     :alt: PyPI Version
@@ -72,7 +76,7 @@ Features
 
 import logging
 
-__version__ = "0.1.2"
+__version__ = "0.1.5"
 
 from . import utils
 from . import observatory

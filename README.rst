@@ -4,7 +4,7 @@ pyscope
 
 .. container::
 
-    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
+    |License| |Zenodo| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This is the repository for `pyscope <https://pyscope.readthedocs.io/en/latest/>`_,
 a pure-Python package for robotic scheduling, operation, and control of small
@@ -99,8 +99,6 @@ Citing
 ------
 If you use this package in your research, please cite it using the following:
 
-.. include:: CITATION
-
 Contributing
 ------------
 Please see the `developer documentation <https://pyscope.readthedocs.io/en/latest/development/>`_.
@@ -116,6 +114,10 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
     :alt: License
+
+.. |Zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8403570.svg
+    :target: https://doi.org/10.5281/zenodo.8403570
+    :alt: Zenodo
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/pyscope
     :target: https://pypi.org/project/pyscope/
