@@ -1,11 +1,11 @@
 import atexit
 import configparser
 import logging
-import os
 import shutil
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
+from pathlib import Path
 from tkinter import font
 
 import astroplan
@@ -45,7 +45,13 @@ observing_block_config = {
 
 
 class TelrunOperator:
-    def __init__(self, config_path="./config/", gui=True, **kwargs):
+    def __init__(self, config_path=Path("config"), gui=True, **kwargs):
+    """Initialize a class instance and load config files
+
+    Attributes:
+      config_path: pathlib.Path to config files directory
+      gui: flag to create gui
+    """
         # Private attributes
         self._config = configparser.ConfigParser()
         self._gui = gui
@@ -81,7 +87,7 @@ class TelrunOperator:
         self._wcs_status = ""
 
         # Read-only attributes with constructor arguments
-        self._config_path = os.path.abspath(config_path)
+        self._config_path = config_path.absolute()
         self._schedules_path = "./schedules/"
         self._images_path = "./images/"
         self._log_path = "./logs/"
@@ -124,31 +130,31 @@ class TelrunOperator:
         self._wcs_timeout = 30
 
         save_at_end = False
-        if os.path.isdir(self._config_path):
+        if self._config_path.is_dir():
             logger.info("config_path is a directory, looking for telrun.cfg")
-            read_path = os.path.join(self._config_path, "telrun.cfg")
-        elif os.path.isfile(self._config_path):
+            read_path = self._config_path / "telrun.cfg"
+        elif self._config_path.is_file():
             logger.info("config_path is a file, setting config directory to its parent")
             read_path = self._config_path
-            self._config_path = os.path.abspath(os.path.dirname(self._config_path))
+            self._config_path = self._config_path.parent
         else:
             logger.info(
                 "config_path does not exist, creating a directory at %s"
                 % self._config_path
             )
-            os.mkdir(self._config_path)
+            self._config_path.mkdir()
             save_at_end = True
 
         # Load config file if there
-        if os.path.isfile(read_path):
+        if read_path.is_file():
             logger.info(
-                "Using config file to initialize telrun: %s" % self._config_path
+                "Using config file to initialize telrun: %s" % read_path
             )
             try:
-                self._config.read(self._config_path)
+                self._config.read(read_path)
             except:
                 raise TelrunException(
-                    "Could not read config file: %s" % self._config_path
+                    "Could not read config file: %s" % read_path
                 )
 
             self._schedules_path = self._config.get(
@@ -281,34 +287,31 @@ class TelrunOperator:
             )
 
         # Parse observatory
-        self._observatory = os.path.join(self._config_path, "observatory.cfg")
+        self._observatory = self._config_path / "observatory.cfg"
         self._observatory = kwargs.get("observatory", self._observatory)
-        if type(self._observatory) is str:
+        if isinstance(self._observatory, (Path, str)):
             logger.info(
-                "Observatory is string, loading from config file and saving to config path"
+                "Observatory is file, loading config from file and saving to config path"
             )
-            self._observatory = Observatory(config_path=self._observatory)
-            self.observatory.save_config(
-                os.path.join(self._config_path, "observatory.cfg")
-            )
-        elif type(self._observatory) is Observatory:
+            self._observatory = Observatory(config_path=Path(self._observatory))
+            self._observatory.save_config(self._config_path / "observatory.cfg")
+        elif isinstance(self._observatory, Observatory):
             logger.info("Observatory is Observatory object, saving to config path")
-            self.observatory.save_config(
-                os.path.join(self._config_path, "observatory.cfg")
-            )
+            self.observatory.save_config(self._config_path / "observatory.cfg")
         else:
             raise TelrunException(
                 "observatory must be a string representing an observatory config file path or an Observatory object"
             )
 
         # Load kwargs
-        self._schedules_path = os.path.abspath(
-            kwargs.get("schedules_path", self._schedules_path)
-        )
-        self._images_path = os.path.abspath(
-            kwargs.get("images_path", self._images_path)
-        )
-        self._logs_path = os.path.abspath(kwargs.get("logs_path", self._logs_path))
+        self._schedules_path = kwargs.get("schedules_path", self._schedules_path)
+        self._images_path = kwargs.get("images_path", self._images_path)
+        self._logs_path = kwargs.get("logs_path", self._logs_path)
+
+        # Make paths absolute
+        self._schedules_path = Path(self._schedules_path).absolute()
+        self._images_path = Path(self._images_path).absolute()
+        self._logs_path = Path(self._logs_path).absolute()
 
         # Parse dome_type
         self._dome_type = kwargs.get("dome_type", self._dome_type)
@@ -489,9 +492,11 @@ class TelrunOperator:
             self.save_config("telrun.cfg")
 
     def save_config(self, filename):
+    """Save this instance's config and the observatory config
+    """
         logger.debug("Saving config to %s" % filename)
-        self.observatory.save_config(os.path.join(self.config_path, "observatory.cfg"))
-        with open(os.path.join(self.config_path, filename), "w") as config_file:
+        self.observatory.save_config(self._config_path / "observatory.cfg")
+        with Path(self._config_path, filename).open("w") as config_file:
             self._config.write(config_file)
 
     def mainloop(self):
@@ -504,19 +509,18 @@ class TelrunOperator:
         logger.info("Starting main operation loop...")
         while True:
             # Check for new schedule
-            filename = (
-                self.schedules_path
-                + "telrun_"
+            filename = Path(self._schedules_path
+                "telrun_"
                 + self.observatory.observatory_time().strftime("%m-%d-%Y")
                 + ".ecsv"
             )
-            if os.path.exists(filename):
+            if filename.is_file():
                 if (
-                    os.path.getmtime(self.schedules_path + "telrun.ecsv")
+                    Path(self._schedules_path, "telrun.ecsv").stat().st_mtime
                     > self._schedule_last_modified
                 ):
                     logger.info("New schedule detected, reloading...")
-                    self._schedule_last_modified = os.path.getmtime(filename)
+                    self._schedule_last_modified = filename.stat().st_mtime
 
                     if self._execution_thread is not None:
                         logger.info("Terminating current schedule execution thread...")
@@ -546,7 +550,7 @@ class TelrunOperator:
                 logger.debug("Waiting for new schedule...")
                 time.sleep(1)
 
-    def execute_schedule(self, schedule, *args):
+    def _execute_schedule(self, schedule, *args):
         if schedule is str:
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         elif type(schedule) is not table.QTable:
@@ -596,24 +600,17 @@ class TelrunOperator:
         if args[0] is not None:
             filename = args[0]
         else:
-            filename = (
-                self.schedules_path
-                + "telrun_"
+            filename = Path(self._schedules_path,
+                "telrun_"
                 + self.observatory.observatory_time().strftime("%m-%d-%Y")
                 + ".ecsv"
             )
 
         if self.write_to_schedule_log:
             logger.info("Writing to schedule log.")
-            if os.path.exists(
-                self.logs_path + filename.split(".ecsv")[0].split("/")[-1] + "-log.ecsv"
-            ):
-                schedule_log = table.Table.read(
-                    self.logs_path
-                    + filename.split(".")[0].split("/")[-1]
-                    + "-log.ecsv",
-                    format="ascii.ecsv",
-                )
+            schedule_logfile = Path(self.logs_path, filename.stem + "-log.ecsv")
+            if schedule_logfile.is_file():
+                schedule_log = table.Table.read(schedule_logfile, format="ascii.ecsv")
             else:
                 schedule_log = astroplan.Schedule(0, 0).to_table()
 
@@ -757,16 +754,11 @@ class TelrunOperator:
                 self._schedule[block_index] = block
 
                 self._schedule.write(filename, format="ascii.ecsv", overwrite=True)
-                self._schedule_last_modified = os.path.getmtime(filename)
+                self._schedule_last_modified = filename.stat().st_mtime
 
                 if self.write_to_schedule_log:
                     schedule_log.add_row(block)
-                    schedule_log.write(
-                        self.logs_path
-                        + filename.split(".ecsv")[0].split("/")[-1]
-                        + "-log.ecsv",
-                        format="ascii.ecsv",
-                    )
+                    schedule_log.write(schedule_logfile, format="ascii.ecsv")
 
             else:
                 logger.info(
@@ -1708,7 +1700,7 @@ class TelrunOperator:
                         "Current filter in wcs filters, attempting WCS solve..."
                     )
                     save_success = self.observatory.save_last_image(
-                        self.images_path + block["configuration"]["filename"] + ".tmp",
+                        self._images_path / block["configuration"]["filename"] + ".tmp"
                         frametyp=block["configuration"]["shutter_state"],
                         custom_header=custom_header,
                     )
@@ -1716,8 +1708,8 @@ class TelrunOperator:
                         threading.Thread(
                             target=self._async_wcs_solver,
                             args=(
-                                self.images_path
-                                + block["configuration"]["filename"]
+                                self._images_path
+                                / block["configuration"]["filename"]
                                 + ".tmp",
                             ),
                             daemon=True,
@@ -1730,14 +1722,14 @@ class TelrunOperator:
                         "Current filter not in wcs filters, skipping WCS solve..."
                     )
                     save_success = self.observatory.save_last_image(
-                        self.images_path + block["configuration"]["filename"],
+                        self._images_path / block["configuration"]["filename"],
                         frametyp=block["configuration"]["shutter_state"],
                         custom_header=custom_header,
                     )
             else:
                 logger.info("No filter wheel, attempting WCS solve...")
                 save_success = self.observatory.save_last_image(
-                    self.images_path + block["configuration"]["filename"] + ".tmp",
+                    self._images_path / block["configuration"]["filename"] + ".tmp",
                     frametyp=block["configuration"]["shutter_state"],
                     custom_header=custom_header,
                 )
@@ -1745,9 +1737,9 @@ class TelrunOperator:
                     threading.Thread(
                         target=self._async_wcs_solver,
                         args=(
-                            self.images_path
-                            + block["configuration"]["filename"]
-                            + ".tmp",
+                            self._images_path
+                            / block["configuration"]["filename"]
+                            + ".tmp"
                         ),
                         daemon=True,
                         name="wcs_threads",
@@ -2379,7 +2371,7 @@ class TelrunOperator:
 
     @recenter_save_path.setter
     def recenter_save_path(self, value):
-        self._recenter_save_path = os.path.abspath(value)
+        self._recenter_save_path = Path(value).absolute()
         self._config["default"]["recenter_save_path"] = str(self._recenter_save_path)
 
     @property
@@ -2566,7 +2558,7 @@ class _TelrunGUI(ttk.Frame):
             )
 
         if self._telrun.write_to_status_log:
-            with open(os.path.join(self._telrun.log_path, "telrun_status.log"), "w"):
+            with (self._telrun.log_path / "telrun_status.log").open("w"):
                 f.write("# System Status")
                 for row in self.system_status_widget.rows:
                     for i in range(len(row.labels)):

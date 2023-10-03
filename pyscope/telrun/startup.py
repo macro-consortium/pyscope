@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import click
 
@@ -15,9 +15,7 @@ from .telrun_operator import TelrunOperator
 )
 @click.version_option()
 def start_telrun_cli(path, gui):
-    telrun = TelrunOperator(
-        config_path=os.path.join(path, "config/telrun.cfg"), gui=gui
-    )
+    telrun = TelrunOperator(config_path=Path(path) / "config" / "telrun.cfg", gui=gui)
     telrun.mainloop()
 
 
@@ -27,7 +25,7 @@ def start_telrun_cli(path, gui):
 )
 @click.version_option()
 def start_syncfiles_cli(path):
-    syncfiles(config=os.path.join(path, "config/"))
+    syncfiles(config=Path(path) / "config")
 
 
 start_telrun = start_telrun_cli.callback

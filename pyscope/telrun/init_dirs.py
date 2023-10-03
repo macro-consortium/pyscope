@@ -2,6 +2,8 @@ import logging
 import os
 import platform
 import shutil
+import subprocess
+from pathlib import Path
 
 import click
 
@@ -13,8 +15,8 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.argument(
     "path",
-    type=click.Path(resolve_path=True),
-    default="./pyscope-observatory/",
+    type=click.Path(resolve_path=True, path_type=Path),
+    default=Path("pyscope-observatory"),
     required=False,
 )
 @click.version_option()
@@ -24,40 +26,37 @@ def init_telrun_dir_cli(path):
 
     logger.info("Initializing a telrun home directory at %s" % path)
 
-    if os.path.exists(path):
+    if Path(path).exists():
         logger.error(f"Path {path} already exists")
         raise click.Abort()
 
-    logger.info(f"Creating directory {path}")
-    os.mkdir(path)
+    logger.info(f"Creating directory {str(path)}")
+    Path(path).mkdir()
 
     logger.info(f"Creating subdirectories")
-    os.mkdir(os.path.join(path, "config"))
-    os.mkdir(os.path.join(path, "schedules"))
-    os.mkdir(os.path.join(path, "images"))
-    os.mkdir(os.path.join(path, "logs"))
+    Path(path, "config").mkdir()
+    Path(path, "schedules").mkdir()
+    Path(path, "images").mkdir()
+    Path(path, "logs").mkdir()
 
     logger.info("Creating empty config files")
     shutil.copyfile(
-        os.path.join(os.path.dirname(__file__), "../config/telrun.cfg"),
-        os.path.join(path, "config/telrun.cfg"),
+        Path(__file__).parents[1] / "config/telrun.cfg", Path(path, "config/telrun.cfg")
     )
 
     shutil.copyfile(
-        os.path.join(os.path.dirname(__file__), "../config/observatory.cfg"),
-        os.path.join(path, "config/observatory.cfg"),
+        Path(__file__).parents[1] / "config/observatory.cfg",
+        Path(path, "config/observatory.cfg"),
     )
 
     logger.info("Copying default shortcut startup script")
     if platform.system() == "Windows":
         shutil.copyfile(
-            os.path.join(os.path.dirname(__file__), "start_telrun.bat"),
-            os.path.join(path, "start_telrun.bat"),
+            Path(__file__).parent / "start_telrun.bat", Path(path, "start_telrun.bat")
         )
     else:
         shutil.copyfile(
-            os.path.join(os.path.dirname(__file__), "start_telrun"),
-            os.path.join(path, "start_telrun"),
+            Path(__file__).parent / "start_telrun", Path(path, "start_telrun")
         )
 
     logger.info("Done")
@@ -76,35 +75,32 @@ def init_remote_dir_cli(path):
 
     logger.info("Initializing a remote telrun home directory from %s" % path)
 
-    if not os.path.exists(os.path.join(path, "config/syncfiles.cfg")):
+    syncfiles_path = Path(path, "config/syncfiles.cfg")
+    if not syncfiles_path.exists():
         logger.info("No syncfiles.cfg found, creating one" % path)
 
         shutil.copyfile(
-            os.path.join(os.path.dirname(__file__), "../config/syncfiles.cfg"),
-            os.path.join(path, "config/syncfiles.cfg"),
+            Path(__file__).parents[1] / "config/syncfiles.cfg", syncfiles_path
         )
 
         logger.info(
             "Opening text editor... Please complete all fields and save the file"
         )
         if platform.system() == "Windows":
-            os.system(os.path.join(path, "config/syncfiles.cfg"))
+            subprocess.call(syncfiles_path, shell=True)
         else:
             try:
                 logger.info("Trying to open $EDITOR")
-                os.system(
-                    "%s %s"
-                    % (os.getenv("EDITOR"), os.path.join(path, "config/syncfiles.cfg"))
-                )
+                subprocess.call(os.getenv("EDITOR", "vi"), syncfiles_path)
             except:
                 logger.warning("Could not open $EDITOR, trying to open vi")
-                os.system("vi " + os.path.join(path, "config/syncfiles.cfg"))
+                subprocess.call("vi", syncfiles_path)
 
         input("Press enter to continue...")
 
     logger.info("Reading syncfiles.cfg")
 
-    local_config_dir = os.path.join(path, "config")
+    local_config_dir = Path(path, "config")
 
     (
         uname,
@@ -118,7 +114,7 @@ def init_remote_dir_cli(path):
         remote_images_dir,
         local_logs_dir,
         remote_logs_dir,
-    ) = _read_syncfiles_cfg(os.path.join(local_config_dir, "syncfiles.cfg"))
+    ) = _read_syncfiles_cfg(Path(local_config_dir, "syncfiles.cfg"))
 
     logger.info("Performing initial single sync")
 
@@ -145,13 +141,12 @@ def init_remote_dir_cli(path):
     logger.info("Copying default shortcut startup script")
     if platform.system() == "Windows":
         shutil.copyfile(
-            os.path.join(os.path.dirname(__file__), "start_syncfiles.bat"),
-            os.path.join(path, "start_syncfiles.bat"),
+            Path(__file__).parent / "start_syncfiles.bat",
+            Path(path, "start_syncfiles.bat"),
         )
     else:
         shutil.copyfile(
-            os.path.join(os.path.dirname(__file__), "start_syncfiles"),
-            os.path.join(path, "start_syncfiles"),
+            Path(__file__).parent / "start_syncfiles", Path(path, "start_syncfiles")
         )
 
 

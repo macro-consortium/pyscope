@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import click
 import markdown
@@ -65,7 +66,7 @@ logger = logging.getLogger(__name__)
 )
 @click.version_option()
 def summary_report_cli(
-    schedule, images_dir="./images/", preamble=None, code=None, verbose=-1
+    schedule=None, images_dir="./images/", preamble=None, code=None, verbose=-1
 ):
     """
     Generates an HTML summary report on the requested schedule.\b
@@ -84,11 +85,11 @@ def summary_report_cli(
 
     Parameters
     ----------
-    schedule : `str`, optional
+    schedule : Path-like, optional
         Path to the schedule file. If none provided, the default behavior
         is to check the ./schedules/ directory for the latest schedule.
 
-    images_dir : `str`, default='./images/'
+    images_dir : Path-like, default='./images/'
         Path to the directory containing the images.
 
     preamble : `str`, optional
@@ -144,28 +145,28 @@ def summary_report_cli(
     # Get schedule
     if schedule is None:
         last_mtime = 0
-        for fname in glob.glob("./schedules/*.ecsv"):
-            if os.path.getmtime(schedule) > last_mtime:
-                last_mtime = os.path.getmtime(schedule)
-                schedule = fname
+        for f in Path("schedules").glob("*.ecsv"):
+            if f.stat().st_mtime > last_mtime:
+                last_mtime = f.stat().st_mtime
+                schedule = f
     schedule = table.Table.read(schedule, format="ascii.ecsv")
 
     # Check images all exist
-    fnames = []
+    files = []
     headers = []
     for row in schedule:
         for fname in row["configuration"]["filename"].split(","):
-            if not os.path.exists(os.path.join(images_dir, fname)):
+            if not Path(images_dir, fname).is_file():
                 raise click.BadOptionUsage(f"Image {fname} does not exist.")
             else:
-                fnames.append(os.path.join(images_dir, fname))
+                files.append(Path(images_dir, fname))
                 headers.append(fits.getheader(fnames[-1]))
 
     tbl = table.Table(
         [
             [hdr["OBSCODE"] for hdr in headers],
             [hdr["OBSERVER"] for hdr in headers],
-            fnames,
+            [str(f) for f in files],
             [hdr["TARGET"] for hdr in headers],
             [
                 astrotime.Time(hdr["DATE-OBS"], format="fits", scale="utc")

@@ -2,11 +2,14 @@ import atexit
 import configparser
 import errno
 import logging
-import os
 import threading
+from pathlib import Path
 
 import click
 import paramiko
+
+# note: paramiko does not support path-like objects (e.g. pathlib.Path) yet,
+#   which requires some casting to str, but seems like it may soon
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +70,14 @@ def syncfiles_cli(
     )
 
     # Get local and remote config directories
-    local_config_dir = config
-
-    if os.path.isfile(local_config_dir):
+    local_config_dir = Path(config).absolute()
+    if local_config_dir.is_file():
         logger.info("Local config directory is a file, getting parent directory")
-        local_config_dir = os.path.abspath(os.path.dirname(local_config_dir))
+        local_config_dir = local_config_dir.parent
 
     # Get mtime of syncfiles.cfg
-    syncfiles_mtime = os.path.getmtime(local_config_dir + "/syncfiles.cfg")
+    syncfiles_cfg = local_config_dir / "syncfiles.cfg"
+    syncfiles_mtime = syncfiles_cfg.stat().st_mtime
 
     # Read syncfiles.cfg
     (
@@ -89,7 +92,7 @@ def syncfiles_cli(
         remote_images_dir,
         local_logs_dir,
         remote_logs_dir,
-    ) = _read_syncfiles_cfg(local_config_dir + "/syncfiles.cfg")
+    ) = _read_syncfiles_cfg(syncfiles_cfg)
 
     # Override with any arguments passed in
     if remote_config is not None:
@@ -175,12 +178,12 @@ def syncfiles_cli(
 
     logger.info("Starting loop")
     while True:
-        if os.path.getmtime(local_config_dir + "/syncfiles.cfg") > syncfiles_mtime:
+        if syncfiles_cfg.stat().st_mtime > syncfiles_mtime:
             logger.info("syncfiles.cfg has been modified")
 
             # Update mtime
             logger.info("Updating mtime")
-            syncfiles_mtime = os.path.getmtime(local_config_dir + "/syncfiles.cfg")
+            syncfiles_mtime = syncfiles_cfg.stat().st_mtime
 
             # Stop threads from starting next loop sync and wait for them to finish
             logger.info("Stopping threads")
@@ -208,7 +211,7 @@ def syncfiles_cli(
                 remote_images_dir,
                 local_logs_dir,
                 remote_logs_dir,
-            ) = _read_syncfiles_cfg(local_config_dir + "/syncfiles.cfg")
+            ) = _read_syncfiles_cfg(syncfiles_cfg)
 
             # Sync config directory
             logger.info("Syncing config directory")
@@ -313,13 +316,13 @@ def _read_syncfiles_cfg(syncfiles_cfg):
         hostname,
         p,
         k,
-        remote_config_dir,
-        local_schedules_dir,
-        remote_schedules_dir,
-        local_images_dir,
-        remote_images_dir,
-        local_logs_dir,
-        remote_logs_dir,
+        Path(remote_config_dir),
+        Path(local_schedules_dir),
+        Path(remote_schedules_dir),
+        Path(local_images_dir),
+        Path(remote_images_dir),
+        Path(local_logs_dir),
+        Path(remote_logs_dir),
     )
 
 
@@ -342,95 +345,95 @@ def _sync_directory(scp, local_dir, remote_dir, mode, ext):
 
     if mode == "send":
         try:
-            scp.stat(remote_dir)
+            scp.stat(str(remote_dir))
         except IOError as e:
             if e.errno == errno.ENOENT:
-                logger.info("Creating remote directory %s", remote_dir)
-                scp.mkdir(remote_dir)
+                logger.info("Creating remote directory %s", str(remote_dir))
+                scp.mkdir(str(remote_dir))
             else:
                 raise e
-        scp.chdir(remote_dir)
-        if not os.path.isdir(local_dir):
-            raise NotADirectoryError(f"{local_dir} is not a directory")
-        for f in os.listdir(local_dir):
-            if not f.endswith(ext):
+        scp.chdir(str(remote_dir))
+        if not local_dir.is_dir():
+            raise NotADirectoryError(f"{str(local_dir)} is not a directory")
+        for f in local_dir.iterdir():
+            if f.suffix != ext:
                 continue
-            if f in scp.listdir():
-                if scp.stat(f).st_mtime < os.path.getmtime(local_dir + f):
+            if f.name in scp.listdir:
+                if scp.stat(str(remote_dir / f.name)).st_mtime < f.stat().st_mtime:
                     logger.info(
-                        "Putting local path %s to remote path %s",
-                        local_dir + f,
-                        remote_dir + f,
+                        "Putting newer local file %s to remote file %s",
+                        str(f),
+                        str(remote_dir / f.name),
                     )
-                    scp.put(local_dir + f, f)
+                    scp.put(str(f), str(remote_dir / f.name))
             else:
                 logger.info(
-                    "Putting local path %s to remote path %s",
-                    local_dir + f,
-                    remote_dir + f,
+                    "Putting local file %s to remote file %s",
+                    str(f),
+                    str(remote_dir / f.name),
                 )
-                scp.put(local_dir + f, f)
+                scp.put(str(f), str(remote_dir / f.name))
     elif mode == "receive":
-        scp.chdir(remote_dir)
-        if not os.path.isdir(local_dir):
+        scp.chdir(str(remote_dir))
+        if not local_dir.is_dir():
             logger.info("Creating local directory %s", local_dir)
-            os.mkdir(local_dir)
+            local_dir.mkdir()
         for f in scp.listdir():
             if not f.endswith(ext):
                 continue
-            if f in os.listdir(local_dir):
-                if scp.stat(f).st_mtime < os.path.getmtime(local_dir + f):
+            if (local_dir / f).is_file():
+                if scp.stat(f).st_mtime < (local_dir / f).stat().st_mtime:
                     logger.info(
-                        "Getting remote path %s to local path %s",
+                        "Getting newer remote file %s to local file %s",
                         remote_dir + f,
-                        local_dir + f,
+                        str(local_dir / f),
                     )
-                    scp.get(f, local_dir + f)
+                    scp.get(f, local_dir / f)
             else:
                 logger.info(
-                    "Getting remote path %s to local path %s",
+                    "Getting remote file %s to local file %s",
                     remote_dir + f,
-                    local_dir + f,
+                    str(local_dir / f),
                 )
-                scp.get(f, local_dir + f)
+                scp.get(f, local_dir / f)
     elif mode == "both":
         scp.chdir(remote_dir)
         for f in scp.listdir():
             if not f.endswith(ext):
                 continue
-            if f in os.listdir(local_dir):
-                if scp.stat(f).st_mtime < os.path.getmtime(local_dir + f):
+            if (local_dir / f).is_file():
+                if scp.stat(f).st_mtime < (local_dir / f).stat().st_mtime:
                     logger.info(
-                        "Getting remote path %s to local path %s",
+                        "Getting newer remote file %s to local file %s",
                         remote_dir + f,
-                        local_dir + f,
+                        str(local_dir / f),
                     )
-                    scp.get(f, local_dir + f)
+                    scp.get(f, local_dir / f)
             else:
                 logger.info(
-                    "Getting remote path %s to local path %s",
+                    "Getting remote file %s to local file %s",
                     remote_dir + f,
-                    local_dir + f,
+                    str(local_dir / f),
                 )
-                scp.get(f, local_dir + f)
-        for f in os.listdir(local_dir):
-            if not f.endswith(ext):
+                scp.get(f, local_dir / f)
+        for f in local_dir.iterdir():
+            if f.suffix != ext:
                 continue
-            if f in scp.listdir():
-                if scp.stat(f).st_mtime < os.path.getmtime(local_dir + f):
+            if f.name in scp.listdir:
+                if scp.stat(str(remote_dir / f.name)).st_mtime < f.stat().st_mtime:
                     logger.info(
-                        "Putting local path %s to remote path %s",
-                        local_dir + f,
-                        remote_dir + f,
+                        "Putting newer local file %s to remote file %s",
+                        str(f),
+                        str(remote_dir / f.name),
                     )
-                    scp.put(local_dir + f, f)
+                    scp.put(str(f), str(remote_dir / f.name))
             else:
                 logger.info(
-                    "Putting local path %s to remote path %s",
-                    local_dir + f,
-                    remote_dir + f,
+                    "Putting local file %s to remote file %s",
+                    str(f),
+                    str(remote_dir / f.name),
                 )
-                scp.put(local_dir + f, f)
+                scp.put(str(f), str(remote_dir / f.name))
 
 
 def _close_connection(sshs):

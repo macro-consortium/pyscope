@@ -167,8 +167,8 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
     )
 
     if type(observatory) is str:
-        observatory = os.path.abspath(observatory)
-        if os.path.exists(observatory):
+        observatory = Path(observatory).absolute()
+        if observatory.is_file():
             config = configparser.ConfigParser()
             config.read(observatory)
             lat = coord.Latitude(config["site"]["latitude"], unit=u.deg)
