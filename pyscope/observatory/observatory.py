@@ -591,15 +591,18 @@ class Observatory:
                 )
         else:
             self._safety_monitor = kwarg
-            self._safety_monitor_driver = [None] * len(self._safety_monitor)
-            self._safety_monitor_kwargs = [None] * len(self._safety_monitor)
             for i, safety_monitor in enumerate(self._safety_monitor):
                 if safety_monitor is not None:
                     _check_class_inheritance(type(safety_monitor), "SafetyMonitor")
                     self._safety_monitor_driver[i] = safety_monitor.__class__.__name__
                     self._safety_monitor_kwargs[i] = (
-                        kwargs.get("safety_monitor_kwargs", None)[i]
-                        if kwargs.get("safety_monitor_kwargs", None) is not None
+                        kwargs.get(
+                            "safety_monitor_kwargs", self._safety_monitor_kwargs
+                        )[i]
+                        if kwargs.get(
+                            "safety_monitor_kwargs", self._safety_monitor_kwargs[i]
+                        )
+                        is not None
                         else None
                     )
                     self._config["safety_monitor"]["driver_%i" % i] = (
@@ -621,15 +624,14 @@ class Observatory:
                 )
         else:
             self._switch = kwarg
-            self._switch_driver = [None] * len(self._switch)
-            self._switch_kwargs = [None] * len(self._switch)
             for i, switch in enumerate(self._switch):
                 if switch is not None:
                     _check_class_inheritance(type(switch), "Switch")
                     self._switch_driver[i] = switch.__class__.__name__
                     self._switch_kwargs[i] = (
-                        kwargs.get("switch_kwargs", None)[i]
-                        if kwargs.get("switch_kwargs", None) is not None
+                        kwargs.get("switch_kwargs", self._switch_kwargs[i])
+                        if kwargs.get("switch_kwargs", self._switch_kwargs[i])
+                        is not None
                         else None
                     )
                     self._config["switch"]["driver_%i" % i] = (
@@ -1215,6 +1217,9 @@ class Observatory:
         if custom_header is not None:
             hdr.update(custom_header)
 
+        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
+        hdu.writeto(filename, overwrite=overwrite)
+
         if do_fwhm:
             logger.info("Attempting to measure FWHM")
             cat = _get_image_source_catalog(filename)
@@ -1237,9 +1242,6 @@ class Observatory:
             )
             logger.info("FWHMH: %.2f +/- %.2f" % (hdr["FWHMH"], hdr["FWHMHS"]))
             logger.info("FWHMV: %.2f +/- %.2f" % (hdr["FWHMV"], hdr["FWHMVS"]))
-
-        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
-        hdu.writeto(filename, overwrite=overwrite)
 
         if do_wcs:
             logger.info("Attempting to solve image for WCS")
@@ -1286,9 +1288,9 @@ class Observatory:
             f"Observatory.set_filter_offset_focuser({filter_index}, {filter_name}) called"
         )
 
-        if filter_index is None:
+        if filter_name is None:
             try:
-                filter_index = self.filters.index(filter_name)
+                filter_name = self.filters[filter_index]
                 logger.info("Filter %s found at index %i" % (filter_name, filter_index))
             except:
                 raise ObservatoryException(
@@ -1308,7 +1310,7 @@ class Observatory:
         if self.focuser is not None:
             if self.focuser.Connected:
                 self._current_focus_offset = (
-                    self.filter_focus_offsets[filter_index] - self.current_focus_offset
+                    self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
 
                 if self.current_focus_offset < self.focuser.MaxIncrement:
@@ -1325,6 +1327,8 @@ class Observatory:
                             self.focuser.Move(
                                 int(self.focuser.Position + self.current_focus_offset)
                             )
+                            while self.focuser.IsMoving:
+                                time.sleep(0.1)
                             logger.info("Focuser moved")
                             return True
                         else:
@@ -1337,6 +1341,8 @@ class Observatory:
                             % self.current_focus_offset
                         )
                         self.focuser.Move(int(self.current_focus_offset))
+                        while self.focuser.IsMoving:
+                            time.sleep(0.1)
                         logger.info("Focuser moved")
                         return True
                 else:
@@ -1370,12 +1376,11 @@ class Observatory:
         obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
         logger.info(
-            "Slewing to RA %i:%i:%.2f and Dec %i:%i:%.2f" % obj.ra.hms[0],
-            obj.ra.hms[1],
-            obj.ra.hms[2],
-            obj.dec.dms[0],
-            obj.dec.dms[1],
-            obj.dec.dms[2],
+            "Slewing to RA %s and Dec %s"
+            % (
+                obj.ra.hms,
+                obj.dec.dms,
+            )
         )
         slew_obj = self.get_object_slew(obj)
         altaz_obj = self.get_object_altaz(obj)
@@ -1402,6 +1407,14 @@ class Observatory:
                     logger.info("Finding home position...")
                     self.telescope.FindHome()
                     logger.info("Found home position.")
+
+        if track and self.telescope.CanSetTracking:
+            logger.info("Turning on sidereal tracking...")
+            # self.telescope.TrackingRate = self.telescope.TrackingRates[0] # ! FIX THIS
+            self.telescope.Tracking = True
+            logger.info("Sidereal tracking is on.")
+        else:
+            logger.warning("Tracking cannot be turned on.")
 
         logger.info("Attempting to slew to coordinates...")
         if self.telescope.CanSlew:
@@ -1464,22 +1477,14 @@ class Observatory:
         condition = wait_for_slew
         while condition:
             condition = self.telescope.Slewing
-            if self.control_dome and self.dome is not None:
+            if control_dome and self.dome is not None:
                 condition = condition or self.dome.Slewing
-            if self.control_rotator and self.rotator is not None:
+            if control_rotator and self.rotator is not None:
                 condition = condition or self.rotator.IsMoving
             time.sleep(0.1)
         else:
             logger.info("Settling for %.2f seconds..." % self.settle_time)
             time.sleep(self.settle_time)
-
-        if track and self.telescope.CanSetTracking:
-            logger.info("Turning on sidereal tracking...")
-            self.telescope.TrackingRate = 0
-            self.telescope.Tracking = True
-            logger.info("Sidereal tracking is on.")
-        else:
-            logger.warning("Tracking cannot be turned on.")
 
         return True
 
@@ -1584,21 +1589,23 @@ class Observatory:
                 return
             time.sleep(wait_time)
 
-    def start_derotation_thread(self, update_interval=0.05):
+    def start_derotation_thread(self, update_interval=0.1):
         """Begin a derotation thread for the current ra and dec"""
 
         if self.rotator is None:
             raise ObservatoryException("There is no rotator object.")
 
         obj = self.get_current_object().transform_to(
-            coord.AltAz(obstime=Time.now(), location=self.location)
+            coord.AltAz(
+                obstime=astrotime.Time.now(), location=self.observatory_location
+            )
         )
 
         logger.info("Starting derotation thread...")
         self._derotation_event = threading.Event()
         self._derotation_thread = threading.Thread(
             target=self._update_rotator,
-            args=(obj,),
+            args=(obj, update_interval),
             daemon=True,
             name="Derotation Thread",
         )
@@ -1623,10 +1630,18 @@ class Observatory:
 
         return True
 
-    def _update_rotator(self, obj, wait_time=0):
+    def _update_rotator(self, obj, wait_time=0.1):
         """Updates the rotator"""
         # mean sidereal rate (at J2000) in radians per second
         SR = 7.292115855306589e-5
+        deg = np.pi / 180
+
+        command = (
+            -(np.cos(obj.az.rad) * np.cos(self.latitude.rad) / np.cos(obj.alt.rad))
+            * SR
+            / deg
+            * wait_time
+        )
 
         while not self._derotation_event.is_set():
             self.rotator.Move(command)
@@ -1640,11 +1655,7 @@ class Observatory:
             )
 
             command = (
-                -(
-                    np.cos(obj.az.rad)
-                    * np.cos(self.latitude * deg)
-                    / np.cos(obj.alt.rad)
-                )
+                -(np.cos(obj.az.rad) * np.cos(self.latitude.rad) / np.cos(obj.alt.rad))
                 * SR
                 / deg
                 * wait_time
@@ -1719,10 +1730,16 @@ class Observatory:
                 logger.info("Moving focuser to %s..." % position)
                 if self.focuser.Absolute:
                     self.focuser.Move(int(position))
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
                 elif i == 0:
                     self.focuser.Move(-int(position[0]))
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
                 else:
                     self.focuser.Move(int(step_size))
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
                 logger.info("Focuser moved.")
 
                 logger.info("Taking %s second exposure..." % exposure)
@@ -1738,15 +1755,19 @@ class Observatory:
                 focus_values.append(np.mean(cat.fwhm.value))
                 logger.info("FWHM = %.1f pixels" % focus_values[-1])
 
-            popt, pcov = np.polyfit(test_positions, focus_values, 2)
-            result = np.round(-popt[1] / (2 * popt[0]), 0)
+            fit = np.polyfit(test_positions, focus_values, 2)
+            result = np.round(-fit[1] / (2 * fit[0]), 0)
             logger.info("Best focus position is %i" % result)
 
             logger.info("Moving focuser to best focus position...")
             if self.focuser.Absolute:
-                self.focuer.Move(result)
+                self.focuser.Move(int(result))
+                while self.focuser.IsMoving:
+                    time.sleep(0.1)
             else:
                 self.focuser.Move(int(test_positions[-1] - result))
+                while self.focuser.IsMoving:
+                    time.sleep(0.1)
             logger.info("Focuser moved.")
             logger.info("Autofocus routine complete.")
 
@@ -2038,7 +2059,7 @@ class Observatory:
         filter_exposure,
         filter_brightness=None,
         readouts=None,
-        binnings=(1, 1),
+        binnings=["1x1"],
         repeat=10,
         save_path=None,
         new_folder=None,
@@ -2085,7 +2106,13 @@ class Observatory:
             logger.info("Homing complete")
 
         logger.info("Slewing to point at cover calibrator")
-        if self.telescope.CanSlewAltAz:
+        if self.telescope.CanSetTracking:
+            self.telescope.Tracking = False
+        if self.telescope.CanSlewAltAzAsync:
+            self.telescope.SlewToAltAzAsync(
+                self.cover_calibrator_az, self.cover_calibrator_alt
+            )
+        elif self.telescope.CanSlewAltAz:
             self.telescope.SlewToAltAz(
                 self.cover_calibrator_az, self.cover_calibrator_alt
             )
@@ -2099,7 +2126,8 @@ class Observatory:
                 )
             )
             self.telescope.SlewToCoordinates(obj.ra.hour, obj.dec.deg)
-        self.telescope.Tracking = False
+        while self.telescope.Slewing:
+            time.sleep(0.1)
         logger.info("Slew complete")
 
         if self.cover_calibrator.CoverState != "NotPresent":
@@ -2113,12 +2141,8 @@ class Observatory:
             for readout in readouts:
                 self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    if type(binnings[0]) is tuple:
-                        self.camera.BinX = binning[0]
-                        self.camera.BinY = binning[1]
-                    else:
-                        self.camera.BinX = binning
-                        self.camera.BinY = binning
+                    self.camera.BinX = binning.split("x")[0]
+                    self.camera.BinY = binning.split("x")[1]
                     for j in range(repeat):
                         if self.camera.CanSetCCDTemperature:
                             while self.camera.CCDTemperature > (
@@ -2139,26 +2163,30 @@ class Observatory:
                             )
                             self.cover_calibrator.CalibratorOn(filter_brightness[i])
                             logger.info("Cover calibrator on")
+                        while self.filter_wheel.Position != i:
+                            time.sleep(0.1)
                         logger.info("Starting %s exposure" % self.filters[i])
-                        camera.StartExposure(filter_exposure[i], False)
+                        self.camera.StartExposure(filter_exposure[i], False)
                         save_string = save_path + (
-                            "flat_%s_%ix%i_%4.4f_%i_%i.fts"
+                            "flat_%s_%ix%i_%ss_%s__%i.fts"
                             % (
                                 self.filters[i],
                                 self.camera.BinX,
                                 self.camera.BinY,
-                                filter_exposure[i],
+                                ("%4.4g" % filter_exposure[i])
+                                .replace(".", "-")
+                                .replace(" ", ""),
                                 self.camera.ReadoutModes[
                                     self.camera.ReadoutMode
                                 ].replace(" ", ""),
                                 j,
                             )
                         )
-                        while not camera.ImageReady:
+                        while not self.camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp="Flat")
-                        logger.info("Flat %i of %i complete" % (j, repeat))
-                        logger.debug("Saved flat frame to %s" % save_string)
+                        logger.info("Flat %i of %i complete" % (j + 1, repeat))
+                        logger.info("Saved flat frame to %s" % save_string)
 
         if self.cover_calibrator.CalibratorState != "NotPresent":
             logger.info("Turning off the cover calibrator")
@@ -2213,12 +2241,8 @@ class Observatory:
             for readout in readouts:
                 self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    if type(binnings[0]) is tuple:
-                        self.camera.BinX = binning[0]
-                        self.camera.BinY = binning[1]
-                    else:
-                        self.camera.BinX = binning
-                        self.camera.BinY = binning
+                    self.camera.BinX = binning.split("x")[0]
+                    self.camera.BinY = binning.split("x")[1]
                     for j in range(repeat):
                         if self.camera.CanSetCCDTemperature:
                             while self.camera.CCDTemperature > (
@@ -2229,24 +2253,24 @@ class Observatory:
                                 )
                                 time.sleep(10)
                         logger.info("Starting %4.4gs dark exposure" % exposure)
-                        camera.StartExposure(exposure, False)
+                        self.camera.StartExposure(exposure, False)
                         save_string = save_path + (
-                            "dark_%s_%ix%i_%4.4gs__%i.fts"
+                            "dark_%ix%i_%ss_%s__%i.fts"
                             % (
+                                self.camera.BinX,
+                                self.camera.BinY,
+                                ("%4.4g" % exposure).replace(".", "-").replace(" ", ""),
                                 self.camera.ReadoutModes[
                                     self.camera.ReadoutMode
                                 ].replace(" ", ""),
-                                self.camera.BinX,
-                                self.camera.BinY,
-                                exposure,
                                 j,
                             )
                         )
-                        while not camera.ImageReady:
+                        while not self.camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp="Dark")
                         logger.info("Dark %i of %i complete" % (j, repeat))
-                        logger.debug("Saved dark frame to %s" % save_string)
+                        logger.info("Saved dark frame to %s" % save_string)
 
         logger.info("Darks complete")
 
@@ -2272,7 +2296,7 @@ class Observatory:
                     if t is None:
                         t = self.observatory_time
                     else:
-                        t = Time(t)
+                        t = astrotime.Time(t)
                     eph = MPC.get_ephemeris(
                         obj,
                         start=t,
@@ -2355,7 +2379,7 @@ class Observatory:
             self.instrument_reconfiguration_times,
         )
         self.instrument_reconfiguration_times = (
-            json.loads(t) if t is not None and t != "" else "{}"
+            json.loads(t) if t is not None and t != "" and t != {} else "{}"
         )
 
     @property
@@ -3639,6 +3663,7 @@ class Observatory:
         self._latitude = (
             coord.Latitude(value) if value is not None or value != "" else None
         )
+        self.telescope.SiteLatitude = self._latitude.deg
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3654,8 +3679,11 @@ class Observatory:
     def longitude(self, value):
         logger.debug(f"Observatory.longitude = {value} called")
         self._longitude = (
-            coord.Longitude(value) if value is not None or value != "" else None
+            coord.Longitude(value, wrap_angle=180 * u.deg)
+            if value is not None or value != ""
+            else None
         )
+        self.telescope.SiteLongitude = self._longitude.deg
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -3869,8 +3897,16 @@ class Observatory:
     @filters.setter
     def filters(self, value, position=None):
         logger.debug(f"Observatory.filters = {value} called")
+        if value is self._filters:
+            return
+        if type(value) is list:
+            self._filters = value
         if position is None:
-            self._filters = list(value) if value is not None or value != "" else None
+            self._filters = (
+                [v for v in value.replace(" ", "").split(",")]
+                if value is not None or value != ""
+                else None
+            )
         else:
             self._filters[position] = (
                 char(value) if value is not None or value != "" else None
@@ -3887,18 +3923,27 @@ class Observatory:
     @filter_focus_offsets.setter
     def filter_focus_offsets(self, value, filt=None):
         logger.debug(f"Observatory.filter_focus_offsets = {value} called")
+        if value is self._filter_focus_offsets:
+            return
+        if type(value) is dict:
+            if value.keys() == self.filters:
+                self._filter_focus_offsets = value
+            else:
+                raise ObservatoryException(
+                    "Filter focus offsets dictionary must have keys matching filters"
+                )
         if filt is None:
             self._filter_focus_offsets = (
-                dict(zip(self.filters, value))
+                dict(zip(self.filters, [int(v) for v in value.split(",")]))
                 if value is not None or value != ""
                 else None
             )
         else:
             self._filter_focus_offsets[filt] = (
-                float(value) if value is not None or value != "" else None
+                int(value) if value is not None or value != "" else None
             )
         self._config["filter_wheel"]["filter_focus_offsets"] = (
-            ", ".join(self._filter_focus_offsets.values())
+            ",".join([str(v) for v in self._filter_focus_offsets.values()])
             if self._filter_focus_offsets is not None
             else ""
         )
@@ -4103,7 +4148,7 @@ class Observatory:
     def slew_rate(self, value):
         logger.debug(f"Observatory.slew_rate = {value} called")
         self._slew_rate = float(value) if value is not None or value != "" else None
-        self._config["telescope"]["slew_rate"] = (
+        self._config["scheduling"]["slew_rate"] = (
             str(self._slew_rate) if self._slew_rate is not None else ""
         )
 
@@ -4118,7 +4163,7 @@ class Observatory:
         self._instrument_reconfiguration_times = (
             value if value is not None or value != "" else {}
         )
-        self._config["site"]["instrument_reconfiguration_times"] = (
+        self._config["scheduling"]["instrument_reconfiguration_times"] = (
             json.dumps(self._instrument_reconfiguration_times)
             if self._instrument_reconfiguration_times is not None
             else ""
