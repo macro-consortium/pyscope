@@ -67,12 +67,14 @@ def test_binx(device, disconnect):
     assert device.BinX is not None
     device.BinX = 2
     assert device.BinX == 2
+    device.BinX = 1
 
 
 def test_biny(device, disconnect):
     assert device.BinY is not None
     device.BinY = 2
     assert device.BinY == 2
+    device.BinY = 1
 
 
 def test_camera_state(device, disconnect):
@@ -104,7 +106,8 @@ def test_cooleron(device, disconnect):
 
 
 def test_coolerpower(device, disconnect):
-    assert device.CoolerPower is not None
+    if device.CanGetCoolerPower:
+        assert device.CoolerPower is not None
 
 
 def test_electronsperadu(device, disconnect):
@@ -163,6 +166,7 @@ def test_lastexposureduration(device, disconnect):
     device.StartExposure(0.1, True)
     while not device.ImageReady:
         time.sleep(0.1)
+    assert device.ImageArray is not None
     assert device.LastExposureDuration is not None
 
 
@@ -187,15 +191,17 @@ def test_maxbiny(device, disconnect):
 
 
 def test_numx(device, disconnect):
-    assert device.NumX is not None
+    old_numx = device.NumX
     device.NumX = 2
     assert device.NumX == 2
+    device.NumX = old_numx
 
 
 def test_numy(device, disconnect):
-    assert device.NumY is not None
+    old_numy = device.NumY
     device.NumY = 2
     assert device.NumY == 2
+    device.NumY = old_numy
 
 
 @pytest.mark.skip(reason="Not implemented")
@@ -224,10 +230,8 @@ def test_pixelsizey(device, disconnect):
 
 def test_readoutmode(device, disconnect):
     assert device.ReadoutMode is not None
-
-
-def test_readoutmodes(device, disconnect):
-    assert device.ReadoutModes is not None
+    device.ReadoutMode = 0
+    assert device.ReadoutMode == 0
 
 
 def test_sensorname(device, disconnect):

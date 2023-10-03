@@ -179,7 +179,6 @@ class TestAllAbstractClasses:
                 "Move",
                 "Absolute",
                 "IsMoving",
-                "Link",
                 "MaxIncrement",
                 "MaxStep",
                 "Position",

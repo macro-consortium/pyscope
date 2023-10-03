@@ -16,10 +16,6 @@ class ASCOMRotator(ASCOMDevice, Rotator):
             protocol=protocol,
         )
 
-    def Choose(self, RotatorID):
-        logger.debug(f"ASCOMRotator.Choose({RotatorID}) called")
-        self._device.Choose(RotatorID)
-
     def Halt(self):
         logger.debug("ASCOMRotator.Halt() called")
         self._device.Halt()

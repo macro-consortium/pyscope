@@ -1,7 +1,10 @@
-# import pycurl
-# import io
+import logging
+import urllib.request
 
+from ..utils import _get_number_from_line
 from .safety_monitor import SafetyMonitor
+
+logger = logging.getLogger(__name__)
 
 
 class HTMLSafetyMonitor(SafetyMonitor):
@@ -17,17 +20,27 @@ class HTMLSafetyMonitor(SafetyMonitor):
     @property
     def IsSafe(self):
         logger.debug(f"""HTMLSafetyMonitor.IsSafe property called""")
-        safe = False
-        c = None
-        # buffer = io.BytesIO()
-        # c = pycurl.Curl()
-        c.setopt(c.URL, self._url)
-        c.setopt(c.WRITEDATA, buffer)
-        c.perform()
-        c.close()
+        safe = None
 
-        body = buffer.getvalue()
-        if body.find(self._check_phrase) > -1:
-            safe = True
+        stream = urllib.request.urlopen(self._url)
+        lines = stream.readlines()
+
+        try:
+            units = self._check_phrase.split(b" ")[1]
+        except IndexError:
+            units = ""
+
+        for line in lines:
+            s = _get_number_from_line(
+                line,
+                self._check_phrase.split(b"=")[0],
+                units,
+                False,
+            )
+            if s == self._check_phrase.split(b"=")[1]:
+                safe = True
+                break
+        else:
+            safe = False
 
         return safe

@@ -20,10 +20,6 @@ class ASCOMSwitch(ASCOMDevice, Switch):
         logger.debug(f"ASCOMSwitch.CanWrite({ID}) called")
         return self._device.CanWrite(ID)
 
-    def Choose(self, SwitchID):
-        logger.debug(f"ASCOMSwitch.Choose({SwitchID}) called")
-        self._device.Choose(SwitchID)
-
     def GetSwitch(self, ID):
         logger.debug(f"ASCOMSwitch.GetSwitch({ID}) called")
         return self._device.GetSwitch(ID)

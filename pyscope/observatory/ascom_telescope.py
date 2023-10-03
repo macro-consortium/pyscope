@@ -28,10 +28,6 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         logger.debug(f"ASCOMTelescope.CanMoveAxis({Axis}) called")
         return self._device.CanMoveAxis(Axis)
 
-    def Choose(self, TelescopeID):
-        logger.debug(f"ASCOMTelescope.Choose({TelescopeID}) called")
-        self._device.Choose(TelescopeID)
-
     def DestinationSideOfPier(self, RightAscension, Declination):
         logger.debug(
             f"ASCOMTelescope.DestinationSideOfPier({RightAscension}, {Declination}) called"
@@ -58,7 +54,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         logger.debug("ASCOMTelescope.SetPark() called")
         self._device.SetPark()
 
-    def SlewToAltAz(self, Azimuth, Altitude):
+    def SlewToAltAz(self, Azimuth, Altitude):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
         logger.debug(f"ASCOMTelescope.SlewToAltAz({Azimuth}, {Altitude}) called")
         self._device.SlewToAltAz(Azimuth, Altitude)
 
@@ -66,7 +66,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         logger.debug(f"ASCOMTelescope.SlewToAltAzAsync({Azimuth}, {Altitude}) called")
         self._device.SlewToAltAzAsync(Azimuth, Altitude)
 
-    def SlewToCoordinates(self, RightAscension, Declination):
+    def SlewToCoordinates(self, RightAscension, Declination):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
         logger.debug(
             f"ASCOMTelescope.SlewToCoordinates({RightAscension}, {Declination}) called"
         )
@@ -78,7 +82,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         )
         self._device.SlewToCoordinatesAsync(RightAscension, Declination)
 
-    def SlewToTarget(self):
+    def SlewToTarget(self):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
         logger.debug("ASCOMTelescope.SlewToTarget() called")
         self._device.SlewToTarget()
 
@@ -184,12 +192,20 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         return self._device.CanSetTracking
 
     @property
-    def CanSlew(self):
+    def CanSlew(self):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this property.
+        """
         logger.debug("ASCOMTelescope.CanSlew property accessed")
         return self._device.CanSlew
 
     @property
-    def CanSlewAltAz(self):
+    def CanSlewAltAz(self):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this property.
+        """
         logger.debug("ASCOMTelescope.CanSlewAltAz property accessed")
         return self._device.CanSlewAltAz
 

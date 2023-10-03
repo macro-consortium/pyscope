@@ -6,6 +6,7 @@ def _force_async(fn):
     """
     turns a sync function to async function using threads
     """
+    import asyncio
     from concurrent.futures import ThreadPoolExecutor
 
     pool = ThreadPoolExecutor()

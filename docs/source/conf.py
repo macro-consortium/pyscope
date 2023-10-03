@@ -25,7 +25,6 @@ html_static_path = [os.path.join(os.path.dirname(__file__), "_static")]
 graphviz_dot = "/usr/local/bin/dot"
 
 html_theme_options = {
-
     "logo": {
         "image_light": "_static/pyscope_logo_small_gray.png",
         "image_dark": "_static/pyscope_logo_small.png",
@@ -46,7 +45,7 @@ html_theme_options = {
             "url": "https://macroconsortium.org",
             "icon": "fa-solid fa-shuttle-space",
         },
-    ]    
+    ],
 }
 
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)

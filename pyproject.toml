@@ -1,8 +1,39 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
+requires = ["setuptools>=42.0", "wheel", "numpy>=1.25"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",
+    "--cov",
+    "--cov-report=xml"
 ]
+
+[tool.black]
+line-length = 88
+
+[tool.coverage]
+    [tool.coverage.run]
+    branch = true
+
+    [tool.coverage.report]
+    # Regexes for lines to exclude from consideration
+    exclude_also = [
+        # Skip any pass lines such as may be used for @abstractmethod
+        "pass",
+
+        # Don't complain about missing debug-only code:
+        "def __repr__",
+        "if self\\.debug",
+
+        # Don't complain if tests don't hit defensive assertion code:
+        "raise AssertionError",
+        "raise NotImplementedError",
+
+        # Don't complain if non-runnable code isn't run:
+        "if 0:",
+        "if __name__ == .__main__.:",
+
+        # Don't complain about abstract methods, they aren't run:
+        "@(abc\\.)?abstractmethod",
+        ]

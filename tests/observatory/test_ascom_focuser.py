@@ -4,15 +4,15 @@ import pytest
 
 
 def test_move(device, disconnect):
-    device.Move(50)
+    device.Move(20000)
     while device.IsMoving:
         time.sleep(0.1)
     if device.Absolute:
-        assert device.Position == 50
+        assert device.Position == 20000
 
 
 def test_halt(device, disconnect):
-    device.Move(50)
+    device.Move(20000)
     time.sleep(0.1)
     device.Halt()
 

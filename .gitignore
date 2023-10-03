@@ -138,5 +138,5 @@ dmypy.json
 .DS_Store
 *ascom.alpaca.simulators*
 *OmniSim*
-!.coverage
+!coverage.xml
 docs/source/api/auto_api/

@@ -20,10 +20,6 @@ class ASCOMDome(ASCOMDevice, Dome):
         logger.debug(f"ASCOMDome.AbortSlew() called")
         self._device.AbortSlew()
 
-    def Choose(self, DomeID):
-        logger.debug(f"ASCOMDome.Choose({DomeID}) called")
-        self._device.Choose(DomeID)
-
     def CloseShutter(self):
         logger.debug(f"ASCOMDome.CloseShutter() called")
         self._device.CloseShutter()
