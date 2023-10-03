@@ -67,12 +67,14 @@ def test_binx(device, disconnect):
     assert device.BinX is not None
     device.BinX = 2
     assert device.BinX == 2
+    device.BinX = 1
 
 
 def test_biny(device, disconnect):
     assert device.BinY is not None
     device.BinY = 2
     assert device.BinY == 2
+    device.BinY = 1
 
 
 def test_camera_state(device, disconnect):
@@ -189,15 +191,17 @@ def test_maxbiny(device, disconnect):
 
 
 def test_numx(device, disconnect):
-    assert device.NumX is not None
+    old_numx = device.NumX
     device.NumX = 2
     assert device.NumX == 2
+    device.NumX = old_numx
 
 
 def test_numy(device, disconnect):
-    assert device.NumY is not None
+    old_numy = device.NumY
     device.NumY = 2
     assert device.NumY == 2
+    device.NumY = old_numy
 
 
 @pytest.mark.skip(reason="Not implemented")

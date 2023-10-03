@@ -1038,7 +1038,7 @@ class Observatory:
         else:
             t = Time(t)
 
-        moon = coord.get_moon(t).transform_to(
+        moon = coord.get_body("moon", t).transform_to(
             coord.AltAz(obstime=t, location=self.observatory_location)
         )
 
@@ -1055,7 +1055,7 @@ class Observatory:
             t = astrotime.Time(t)
 
         sun = coord.get_sun(t)
-        moon = coord.get_moon(t)
+        moon = coord.get_body("moon", t)
         elongation = sun.separation(moon)
         phase_angle = np.arctan2(
             sun.distance * np.sin(elongation),
@@ -1433,14 +1433,14 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterState != 0 and self.CanSetShutter:
-                logger.info("Opening the dome shutter...")
-                self.dome.OpenShutter()
-                logger.info("Opened.")
+            if self.dome.ShutterStatus != 0 and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
                     logger.info("Found.")
+                logger.info("Opening the dome shutter...")
+                self.dome.OpenShutter()
+                logger.info("Opened.")
             if self.dome.CanPark:
                 if self.dome.AtPark and self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
@@ -1470,7 +1470,7 @@ class Observatory:
                 )
                 control_rotator = False
 
-            logger.info("Rotating the rotator to hour angle %.2f" % hour_angle)
+            logger.info("Rotating the rotator to hour angle %.2f" % rotation_angle)
             self.rotator.MoveAbsolute(rotation_angle)
             logger.info("Rotated.")
 
@@ -1709,7 +1709,14 @@ class Observatory:
             if not use_current_pointing:
                 logger.info("Slewing to zenith...")
                 self.slew_to_coordinates(
-                    obj=coord.SkyCoord(alt=90 * u.deg, az=0 * u.deg, frame="altaz"),
+                    obj=coord.SkyCoord(
+                        alt=90 * u.deg,
+                        az=0 * u.deg,
+                        frame=coord.AltAz(
+                            obstime=self.observatory_time,
+                            location=self.observatory_location,
+                        ),
+                    ),
                     control_dome=(self.dome is not None),
                     control_rotator=(self.rotator is not None),
                 )
@@ -1749,7 +1756,7 @@ class Observatory:
                 logger.info("Exposure complete.")
 
                 logger.info("Calculating mean star fwhm...")
-                filename = tempfile.gettempdir() + "/autofocus.fts"
+                filename = tempfile.gettempdir() + "autofocus.fts"
                 self.save_last_image(filename, overwrite=True, do_fwhm=True)
                 cat = _get_image_source_catalog(filename)
                 focus_values.append(np.mean(cat.fwhm.value))
@@ -2385,7 +2392,7 @@ class Observatory:
     @property
     def autofocus_info(self):
         logger.debug("Observatory.autofocus_info() called")
-        return {"Autofocus Driver": self.autofocus_driver}
+        return {"AUTODRIV": self.autofocus_driver}
 
     @property
     def camera_info(self):
@@ -2407,6 +2414,7 @@ class Observatory:
             "DATE-OBS": (None, "YYYY-MM-DDThh:mm:ss observation start [UT]"),
             "JD": (None, "Julian date"),
             "MJD": (None, "Modified Julian date"),
+            "MJD-OBS": (None, "Modified Julian date"),
             "EXPTIME": (None, "Exposure time [seconds]"),
             "EXPOSURE": (None, "Exposure time [seconds]"),
             "SUBEXP": (None, "Subexposure time [seconds]"),
@@ -2495,6 +2503,10 @@ class Observatory:
             info["MJD"] = (
                 astrotime.Time(self.camera.LastExposureStartTime).mjd,
                 info["MJD"][1],
+            )
+            info["MJD-OBS"] = (
+                astrotime.Time(self.camera.LastExposureStartTime).mjd,
+                info["MJD-OBS"][1],
             )
         except:
             pass
@@ -3451,7 +3463,9 @@ class Observatory:
             info["AIRMASS"][1],
         )
         info["MOONANGL"] = (
-            coord.get_moon(self.observatory_time, location=self.observatory_location)
+            coord.get_body(
+                "moon", self.observatory_time, location=self.observatory_location
+            )
             .separation(obj)
             .to(u.degree)
             .value,
