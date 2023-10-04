@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 from ._docstring_inheritee import _DocstringInheritee
 
-from .driver import Driver
+from .device import Device
 
 from .autofocus import Autofocus
 from .camera import Camera
@@ -21,7 +21,7 @@ from .switch import Switch
 from .telescope import Telescope
 from .wcs import WCS
 
-from .ascom_driver import ASCOMDriver
+from .ascom_device import ASCOMDevice
 from .ascom_camera import ASCOMCamera
 from .ascom_cover_calibrator import ASCOMCoverCalibrator
 from .ascom_dome import ASCOMDome
@@ -40,6 +40,8 @@ from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pinpoint_wcs import PinpointWCS
 
+from .simulator_server import SimulatorServer
+
 from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
@@ -55,8 +57,8 @@ from .collect_calibration_set import collect_calibration_set
 __all__ = [
     "ASCOMCamera",
     "ASCOMCoverCalibrator",
+    "ASCOMDevice",
     "ASCOMDome",
-    "ASCOMDriver",
     "ASCOMFilterWheel",
     "ASCOMFocuser",
     "ASCOMObservingConditions",
@@ -67,8 +69,8 @@ __all__ = [
     "Autofocus",
     "Camera",
     "CoverCalibrator",
+    "Device",
     "Dome",
-    "Driver",
     "FilterWheel",
     "Focuser",
     "HTMLObservingConditions",
@@ -86,4 +88,5 @@ __all__ = [
     "Telescope",
     "WCS",
     "collect_calibration_set",
+    "SimulatorServer",
 ]

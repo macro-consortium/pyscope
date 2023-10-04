@@ -4,7 +4,7 @@ Development
 
 .. container::
 
-    |License| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
+    |License| |Zenodo| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
 This documentation is relevant to users who want to contribute to `pyscope`. The
 developer's version is hosted on GitHub at `<https://github.com/WWGolay/pyscope>`_. These
@@ -17,17 +17,24 @@ review.
 .. tip::
     If you are new to contributing to open source projects, you may find the
     `Astropy developer documentation <https://docs.astropy.org/en/stable/development/>`_
-    helpful.
+    helpful. This documentation is a higher-level summary of many of the concepts
+    discussed there.
 
 
 .. toctree::
     :maxdepth: 1
 
+    setup
+    workflow
     contributing_scripts
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
     :alt: License
+
+.. |Zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8403570.svg
+    :target: https://doi.org/10.5281/zenodo.8403570
+    :alt: Zenodo
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/pyscope
     :target: https://pypi.org/project/pyscope/

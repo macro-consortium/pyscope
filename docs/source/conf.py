@@ -18,9 +18,17 @@ author = "Walter Golay"
 version = pyscope.__version__
 release = version
 
+html_theme = "pydata_sphinx_theme"
+
+html_static_path = [os.path.join(os.path.dirname(__file__), "_static")]
+
 graphviz_dot = "/usr/local/bin/dot"
 
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/pyscope_logo_small_gray.png",
+        "image_dark": "_static/pyscope_logo_small.png",
+    },
     "icon_links": [
         {
             "name": "GitHub",
@@ -37,7 +45,7 @@ html_theme_options = {
             "url": "https://macroconsortium.org",
             "icon": "fa-solid fa-shuttle-space",
         },
-    ]
+    ],
 }
 
 intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
@@ -134,16 +142,15 @@ def linkcode_resolve(domain, info):
 
 extensions.append("sphinx_favicon")
 
-html_logo = "images/pyscope_banner.png"
-"""favicons = [
-    "images/logo16.png",
-    "images/logo32.png",
-    "images/logo48.png",
-    "images/logo128.png",
-    "images/logo256.png",
-    "images/pyscope.svg",
-    "images/pyscope_transparent.svg"
-]"""
+favicons = [
+    "logo16.png",
+    "logo32.png",
+    "logo48.png",
+    "logo128.png",
+    "logo256.png",
+    "pyscopeIcon.svg",
+    {"rel": "apple-touch-icon", "href": "logo180.png"},
+]
 
 extensions.append("sphinx.ext.doctest")
 

@@ -33,16 +33,6 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
 
     @property
     @abstractmethod
-    def Link(self):
-        pass
-
-    @Link.setter
-    @abstractmethod
-    def Link(self, value):
-        pass
-
-    @property
-    @abstractmethod
     def MaxIncrement(self):
         pass
 
