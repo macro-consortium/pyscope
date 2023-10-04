@@ -11,3 +11,5 @@ def test_names(device, disconnect):
 
 def test_position(device, disconnect):
     assert device.Position is not None
+    device.Position = 0
+    assert device.Position == 0

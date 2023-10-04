@@ -33,25 +33,32 @@ class ASCOMDevice(Device):
         logger.debug(f"ASCOMDevice.Action({ActionName}, {ActionParameters})")
         return self._device.Action(ActionName, *ActionParameters)
 
-    def CommandBlind(self, Command, Raw):
+    def CommandBlind(self, Command, Raw):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
+
         logger.debug(f"ASCOMDevice.CommandBlind({Command}, {Raw})")
         self._device.CommandBlind(Command, Raw)
 
-    def CommandBool(self, Command, Raw):
+    def CommandBool(self, Command, Raw):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
+
         logger.debug(f"ASCOMDevice.CommandBool({Command}, {Raw})")
         return self._device.CommandBool(Command, Raw)
 
-    def CommandString(self, Command, Raw):
+    def CommandString(self, Command, Raw):  # pragma: no cover
+        """
+        .. deprecated:: 0.1.1
+            ASCOM is deprecating this method.
+        """
+
         logger.debug(f"ASCOMDevice.CommandString({Command}, {Raw})")
         return self._device.CommandString(Command, Raw)
-
-    """def Dispose(self):
-        logger.debug(f"ASCOMDevice.Dispose()")
-        self._device.Dispose()
-
-    def SetupDialog(self):
-        logger.debug(f"ASCOMDevice.SetupDialog()")
-        self._device.SetupDialog()"""
 
     @property
     def Connected(self):
