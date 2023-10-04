@@ -1,6 +1,10 @@
+import logging
 import urllib.request
 
+from ..utils import _get_number_from_line
 from .observing_conditions import ObservingConditions
+
+logger = logging.getLogger(__name__)
 
 
 class HTMLObservingConditions(ObservingConditions):
@@ -26,7 +30,7 @@ class HTMLObservingConditions(ObservingConditions):
         sky_brightness_units="magdeg2",
         sky_brightness_numeric=True,
         sky_quality_keyword=b"SKYQUALITY",
-        sky_quality_units=None,
+        sky_quality_units="",
         sky_quality_numeric=True,
         sky_temperature_keyword=b"SKYTEMPERATURE",
         sky_temperature_units=b"F",
@@ -47,7 +51,7 @@ class HTMLObservingConditions(ObservingConditions):
         wind_speed_units="mph",
         wind_speed_numeric=True,
         last_updated_keyword=b"LASTUPDATED",
-        last_updated_units=None,
+        last_updated_units="",
         last_updated_numeric=True,
     ):
         logger.debug(
@@ -162,85 +166,85 @@ class HTMLObservingConditions(ObservingConditions):
         lines = stream.readlines()
 
         for line in lines:
-            cloud_cover = self._get_number_from_line(
+            cloud_cover = _get_number_from_line(
                 line,
                 self._cloud_cover_keyword,
                 self._cloud_cover_units,
                 self._cloud_cover_numeric,
             )
-            dew_point = self._get_number_from_line(
+            dew_point = _get_number_from_line(
                 line,
                 self._dew_point_keyword,
                 self._dew_point_units,
                 self._dew_point_numeric,
             )
-            humidity = self._get_number_from_line(
+            humidity = _get_number_from_line(
                 line,
                 self._humidity_keyword,
                 self._humidity_units,
                 self._humidity_numeric,
             )
-            pressure = self._get_number_from_line(
+            pressure = _get_number_from_line(
                 line,
                 self._pressure_keyword,
                 self._pressure_units,
                 self._pressure_numeric,
             )
-            rain_rate = self._get_number_from_line(
+            rain_rate = _get_number_from_line(
                 line,
                 self._rain_rate_keyword,
                 self._rain_rate_units,
                 self._rain_rate_numeric,
             )
-            sky_brightness = self._get_number_from_line(
+            sky_brightness = _get_number_from_line(
                 line,
                 self._sky_brightness_keyword,
                 self._sky_brightness_units,
                 self._sky_brightness_numeric,
             )
-            sky_quality = self._get_number_from_line(
+            sky_quality = _get_number_from_line(
                 line,
                 self._sky_quality_keyword,
                 self._sky_quality_units,
                 self._sky_quality_numeric,
             )
-            sky_temperature = self._get_number_from_line(
+            sky_temperature = _get_number_from_line(
                 line,
                 self._sky_temperature_keyword,
                 self._sky_temperature_units,
                 self._sky_temperature_numeric,
             )
-            star_fwhm = self._get_number_from_line(
+            star_fwhm = _get_number_from_line(
                 line,
                 self._star_fwhm_keyword,
                 self._star_fwhm_units,
                 self._star_fwhm_numeric,
             )
-            temperature = self._get_number_from_line(
+            temperature = _get_number_from_line(
                 line,
                 self._temperature_keyword,
                 self._temperature_units,
                 self._temperature_numeric,
             )
-            wind_direction = self._get_number_from_line(
+            wind_direction = _get_number_from_line(
                 line,
                 self._wind_direction_keyword,
                 self._wind_direction_units,
                 self._wind_direction_numeric,
             )
-            wind_gust = self._get_number_from_line(
+            wind_gust = _get_number_from_line(
                 line,
                 self._wind_gust_keyword,
                 self._wind_gust_units,
                 self._wind_gust_numeric,
             )
-            wind_speed = self._get_number_from_line(
+            wind_speed = _get_number_from_line(
                 line,
                 self._wind_speed_keyword,
                 self._wind_speed_units,
                 self._wind_speed_numeric,
             )
-            last_updated = self._get_number_from_line(
+            last_updated = _get_number_from_line(
                 line,
                 self._last_updated_keyword,
                 self._last_updated_units,
@@ -278,7 +282,7 @@ class HTMLObservingConditions(ObservingConditions):
 
     def SensorDescription(self, PropertyName):
         logger.debug("HTMLObservingConditions.SensorDescription({PropertyName}) called")
-        return
+        return eval(f"self._{PropertyName.lower()}_keyword")
 
     def TimeSinceLastUpdate(self, PropertyName):
         logger.debug(
@@ -288,12 +292,14 @@ class HTMLObservingConditions(ObservingConditions):
         lines = stream.readlines()
 
         for line in lines:
-            self._last_updated = _get_number_from_line(
+            last_updated = _get_number_from_line(
                 line,
                 self._last_updated_keyword,
                 self._last_updated_units,
                 self._last_updated_numeric,
             )
+            if last_updated is not None:
+                self._last_updated = last_updated
 
         return self.LastUpdated
 
@@ -371,64 +377,6 @@ class HTMLObservingConditions(ObservingConditions):
     def WindSpeed(self):
         logger.debug("HTMLObservingConditions.WindSpeed property called")
         return self._wind_speed
-
-    def _get_number_from_line(self, line, expected_keyword, expected_units, is_numeric):
-        """
-        Check to see if the provided line looks like a valid telemetry line
-        from the Winer webpage. A typical line looks like this:
-            <!-- TEMPERATURE=7None0 F -->
-
-        If the line matches this format and the contents match expectations, return
-        the extracted value from the line.
-
-        line: the line text to inspect
-        expected_keyword: the line must contain this keyword ('TEMPERATURE' in the example above)
-        expected_units: the line must contain these units after the value ('F' in the example above).
-            If this value is None, then units are not validated
-        is_numeric: if True, the value is validated and converted to a float before being returned.
-                    if False, the string value is returned
-
-        If the line does not match or there is a problem (e.g. converting the value to a float),
-        the function returns None.
-
-        Otherwise, the function returns the value, either as a float (if requested) or as a string
-        """
-
-        line = line.strip()
-        if not line.startswith(b"<!--"):
-            return None
-        if not line.endswith(b"-->"):
-            return None
-
-        line = line[4:-3]  # Strip off beginning and ending comment characters
-
-        fields = line.split(
-            b"=", 1
-        )  # Split into at most two fields (keyword and value)
-        if len(fields) != 2:
-            return None
-
-        line_keyword = fields[0].strip()
-        line_value_and_units = fields[1].strip()
-
-        fields = line_value_and_units.split(b" ", 1)
-        line_value = fields[0].strip()
-        if len(fields) > 1:
-            line_units = fields[1]
-        else:
-            line_units = ""
-
-        if line_keyword != expected_keyword:
-            return None
-        if expected_units is not None and line_units != expected_units:
-            return None
-        if is_numeric:
-            try:
-                return float(line_value)
-            except:
-                return None
-        else:
-            return line_value
 
     @property
     def LastUpdated(self):

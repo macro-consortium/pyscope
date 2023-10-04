@@ -38,7 +38,7 @@ class IPCoverCalibrator(CoverCalibrator):
     @property
     def Brightness(self):
         logger.debug("IPCoverCalibrator.Brightness called")
-        pass
+        return
 
     @property
     def CalibratorState(self):

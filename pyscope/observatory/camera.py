@@ -201,11 +201,6 @@ class Camera(ABC, metaclass=_DocstringInheritee):
 
     @property
     @abstractmethod
-    def ImageArrayVariant(self):
-        pass
-
-    @property
-    @abstractmethod
     def ImageReady(self):
         pass
 
