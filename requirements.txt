@@ -13,7 +13,7 @@ photutils == 1.9.0
 prettytable == 3.9.0
 pywin32 == 306;platform_system=='Windows'
 scikit-image == 0.21.0
-scipy == 1.10.1
+scipy == 1.11.3
 smplotlib == 0.0.9
 timezonefinder == 6.2.0
 tksheet == 6.2.4
