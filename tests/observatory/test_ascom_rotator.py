@@ -3,6 +3,11 @@ import time
 import pytest
 
 
+def test_halt(device, disconnect):
+    device.Move(5)
+    device.Halt()
+
+
 def test_moveabsolute(device, disconnect):
     device.MoveAbsolute(5)
     while device.IsMoving:
@@ -13,6 +18,14 @@ def test_movemechanical(device, disconnect):
     device.MoveMechanical(5)
     while device.IsMoving:
         time.sleep(0.1)
+
+
+def test_sync(device, disconnect):
+    device.Sync(5)
+
+
+def test_position(device, disconnect):
+    assert device.Position is not None
 
 
 def test_reverse(device, disconnect):

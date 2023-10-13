@@ -24,10 +24,6 @@ class ASCOMCoverCalibrator(ASCOMDevice, CoverCalibrator):
         logger.debug(f"ASCOMCoverCalibrator.CalibratorOn({Brightness}) called")
         self._device.CalibratorOn(Brightness)
 
-    def Choose(self, CalibratorID):
-        logger.debug(f"ASCOMCoverCalibrator.Choose({CalibratorID}) called")
-        self._device.Choose(CalibratorID)
-
     def CloseCover(self):
         logger.debug(f"ASCOMCoverCalibrator.CloseCover() called")
         self._device.CloseCover()

@@ -16,10 +16,6 @@ class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
             protocol=protocol,
         )
 
-    def Choose(self, ObservingConditionsID):
-        logger.debug(f"ASCOMObservingConditions.Choose({ObservingConditionsID}) called")
-        self._device.Choose(ObservingConditionsID)
-
     def Refresh(self):
         logger.debug("ASCOMObservingConditions.Refresh() called")
         self._device.Refresh()

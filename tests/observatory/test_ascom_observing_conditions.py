@@ -36,6 +36,9 @@ def test_timesincelastupdate(device, disconnect):
 
 def test_averageperiod(device, disconnect):
     assert device.AveragePeriod is not None
+    # device.AveragePeriod = 0.1
+    # assert device.AveragePeriod == 0.1
+    # alpyca implementation issue
 
 
 def test_cloudcover(device, disconnect):
