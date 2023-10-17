@@ -1,8 +1,19 @@
-from pyscope.observatory import SimulatorServer, ASCOMTelescope
-sim = SimulatorServer()
+import matplotlib.pyplot as plt
+import time
+from pyscope.observatory import SimulatorServer, ASCOMCamera
+# run this by
+# sudo python3 vb.py
 
-telescope = ASCOMTelescope('localhost:32323', alpaca=True)
-telescope.Connected = True
-telescope.SlewToAltAzAsync(45, 45)
+s = SimulatorServer()
+# increase more time if error kept happening
+time.sleep(10)
 
-del sim  # kill server so it doesn't run in the background and it resets every time
+c = ASCOMCamera('localhost:32323', alpaca=True)
+c.Connected = True
+c.StartExposure(60, True)
+while not c.ImageReady:
+    print('not ready')
+    time.sleep(5)
+im = c.ImageArray
+plt.imshow(im)
+plt.show()
