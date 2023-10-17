@@ -136,11 +136,8 @@ dmypy.json
 *.ecsv
 .vscode
 .DS_Store
-<<<<<<< HEAD
 Mambaforge-Darwin-arm64.sh
-=======
 *ascom.alpaca.simulators*
 *OmniSim*
 !coverage.xml
 docs/source/api/auto_api/
->>>>>>> ee22810606853cb1a4ff617abffea73f621f15df
