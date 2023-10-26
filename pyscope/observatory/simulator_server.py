@@ -73,4 +73,5 @@ class SimulatorServer:
         self.dirname = dirname
 
     def __del__(self):
-        subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
+        subprocess.Popen(
+            f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
