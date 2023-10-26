@@ -17,3 +17,5 @@ while not c.ImageReady:
 im = c.ImageArray
 plt.imshow(im)
 plt.show()
+c.Connected = False
+del s
