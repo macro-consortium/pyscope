@@ -233,41 +233,52 @@ def calib_images_cli(
         # calibration frames in the default directory
         # 
         # Assuming that the problem is correctly stated, here is a potential solution:
-        
-        # if calib_dir is None:
-        #     calib_dir = find_latest_calib_dir()
-        # else:  # use the calib_dir passed by the user
-        #     flat_frame = (
-        #     f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        #     )
-        #     dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
 
-        #     # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
-        #     if camera_type == "ccd":
-        #         bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
-        #     elif camera_type == "cmos":
-        #         flat_dark_frame = (
-        #             f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        #         )
-        #
-        # One final question I have is:
-        # Does a calib_dir exist for each of the images? Or is there a single calib_dir for all of the images?
-        # If the latter is true, then there is no need for the frames to be set inside the for loop
-        # 
-        # I think I need someone to walk me through the process of calibrating a set of images to get better context.
+        default_dir = ""
+        if calib_dir is None:
+            flat_frame = ""
+            dark_frame = ""
+            bias_frame = ""
+            flat_dark_frame = ""
 
-        flat_frame = (
+            # recursive moment
+            for filename in glob(f"{default_dir}/*", recursive=True):
+                # find flat_frame, dark_frame, bias_frame, flat_dark_frame
+                pass
+            
+            # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
+            if camera_type == "ccd":
+                bias_frame = ""
+            elif camera_type == "cmos":
+                flat_dark_frame = ""
+            
+        else:  # use the calib_dir passed by the user
+            flat_frame = (
             f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        )
-        dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-
-        # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
-        if camera_type == "ccd":
-            bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
-        elif camera_type == "cmos":
-            flat_dark_frame = (
-                f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
             )
+            dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+
+            # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
+            if camera_type == "ccd":
+                bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+            elif camera_type == "cmos":
+                flat_dark_frame = (
+                    f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                )
+        
+        # OLD SCRIPT
+        # flat_frame = (
+        #     f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
+        # )
+        # dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+
+        # # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
+        # if camera_type == "ccd":
+        #     bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+        # elif camera_type == "cmos":
+        #     flat_dark_frame = (
+        #         f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+        #     )
 
         # for each image, print out the calibration frames being used
         logger.debug("Using calibration frames:")
