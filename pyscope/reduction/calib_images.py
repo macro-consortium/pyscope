@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 import shutil
+
 # i will be working on this
 import click
 from astropy.io import fits
@@ -120,12 +121,12 @@ def calib_images_cli(
     verbose,
     fnames,
 ):
-    """Calibrate a set of images by recursively selecting the 
-    appropriate flat, dark, and bias frame and then calling 
+    """Calibrate a set of images by recursively selecting the
+    appropriate flat, dark, and bias frame and then calling
     ccd_calib to do the actual calibration.
 
     Notes: Vaving an example set up of this function would be helpful.
-    This would allow for me to know what the environment looks like when 
+    This would allow for me to know what the environment looks like when
     calling this function.
 
     Args:
@@ -209,7 +210,7 @@ def calib_images_cli(
 
         # TODO: Update these names, recursively search for latest set
         # each of these (flat, dark, bais) are calibration frames that are required for ccd_calib
-        # 
+        #
         # if the camera type is ccd, the bias frame is used
         # if the camera type is cmos, the flat dark frame is used
         #
@@ -229,43 +230,65 @@ def calib_images_cli(
         # For either case, I think the problem can be stated as follows:
         # We have a series of calibration frames that are required for ccd_calib
         # If the user passes a calib_dir, then we know where to look for the calibration frames
-        # If the user does not pass a calib_dir, then we need to recursively search for the latest set of 
+        # If the user does not pass a calib_dir, then we need to recursively search for the latest set of
         # calibration frames in the default directory
-        # 
+        #
         # Assuming that the problem is correctly stated, here is a potential solution:
 
-        default_dir = ""
-        if calib_dir is None:
-            flat_frame = ""
-            dark_frame = ""
-            bias_frame = ""
-            flat_dark_frame = ""
+        # observatory_home
+        #     images
+        #         masters - where all the master images will live (maybe individual dirs later)
+        #     config
+        #     schedules
+        #     logs
 
+        # checkout setup-telrun
+
+        # go to macro/images to get images (raw, calibration) and write test in tests/test_calib_images.py
+
+        default_dir = "observatory_home/images/masters"  # NOTE: This assumes that the pyscope system is set up like this
+        if calib_dir is None:
             # recursive moment
             for filename in glob(f"{default_dir}/*", recursive=True):
                 # find flat_frame, dark_frame, bias_frame, flat_dark_frame
-                pass
-            
+                with fits.getheader(filename) as hdr:
+                    # if the corresponding header values match, then set the appropriate frame
+                    if (
+                        hdr["FILTER"] == filt
+                        and hdr["READOUTM"] == readout
+                        and hdr["EXPTIME"] == exptime
+                        and hdr["XBINNING"] == xbin
+                        and hdr["YBINNING"] == ybin
+                    ):
+                        if "master_flat" in filename:
+                            flat_frame = filename
+                        elif "master_dark" in filename:
+                            dark_frame = filename
+                        elif "master_bias" in filename:
+                            bias_frame = filename
+                        elif "master_flat_dark" in filename:
+                            flat_dark_frame = filename
+
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
-                bias_frame = ""
+                bias_frame = bias_frame
             elif camera_type == "cmos":
-                flat_dark_frame = ""
-            
+                flat_dark_frame = flat_dark_frame
+
         else:  # use the calib_dir passed by the user
             flat_frame = (
-            f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
             )
-            dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+            dark_frame = (
+                f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+            )
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
                 bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
             elif camera_type == "cmos":
-                flat_dark_frame = (
-                    f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-                )
-        
+                flat_dark_frame = f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+
         # OLD SCRIPT
         # flat_frame = (
         #     f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
