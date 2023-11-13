@@ -31,8 +31,6 @@ class SimulatorServer:
                 sys_name += "-x86"
             elif "x64" in platform.machine():
                 sys_name += "-x64"
-            else:
-                sys_name += "-x64"
 
         else:
             raise Exception("Unsupported platform")
@@ -44,41 +42,36 @@ class SimulatorServer:
             shell=True,
         )
 
-        # if zip_type == ".zip":
-        #     with ZipFile(dirname + zip_type, "r") as zipObj:
-        #         zipObj.extractall()
-        # elif zip_type == ".tar.xz":
-        #     with TarFile.open(dirname + zip_type, "r") as tarObj:
-        #         tarObj.extractall()
+        if zip_type == ".zip":
+            with ZipFile(dirname + zip_type, "r") as zipObj:
+                zipObj.extractall()
+        elif zip_type == ".tar.xz":
+            with TarFile.open(dirname + zip_type, "r") as tarObj:
+                tarObj.extractall()
 
-        os.chmod(dirname + "/ascom.alpaca.simulators.exe", 0o755)
+        os.chmod(dirname + "/ascom.alpaca.simulators", 0o755)
 
-        # if platform.system() == "Darwin":
-        #     self.process = subprocess.Popen(
-        #         ("sudo " + dirname + "/ascom.alpaca.simulators"),
-        #         preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
-        # else:
-        #     self.process = subprocess.Popen(
-        #         (dirname + "/ascom.alpaca.simulators"),
-        #         # preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
+        if platform.system() == "Darwin":
+            self.process = subprocess.Popen(
+                ("sudo " + dirname + "/ascom.alpaca.simulators"),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
+        else:
+            self.process = subprocess.Popen(
+                (dirname + "/ascom.alpaca.simulators"),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
 
         self.dirname = dirname
 
-<<<<<<< HEAD
     def __del__(self):
         subprocess.Popen(
             f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
-=======
-    # def __del__(self):
-    #     subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
->>>>>>> 0f9b6564482ba5d1c8e89e4c415a0e2319dd40f6
