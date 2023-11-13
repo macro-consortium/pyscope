@@ -14,6 +14,41 @@ from .ccd_calib import ccd_calib
 logger = logging.getLogger(__name__)
 
 
+def nearest_exptime(calib_dir, exptime):
+    nearest_expt = -1
+    nearest_fname = ""
+    firstrun = True
+    for file in calib_dir:
+        with fits.open(file) as hdu:
+            hdr = hdu[0].header
+        if "CALSTAT" in hdr.keys():
+            continue
+        try:
+            filt = hdr["FILTER"]
+        except KeyError:
+            filt = ""
+        try:
+            fexptime = round(hdr["EXPTIME"], 3)
+        except KeyError:
+            fexptime = round(hdr["EXPOSURE"], 3)
+        try:
+            imgtype = hdr["IMAGETYP"]
+        except KeyError:
+            imgtype = ""
+        # makesure the string is in underscore format
+        nearest = abs(exptime - fexptime)
+        if file.rfind('/master_dark') != -1 or imgtype == "Dark Frame":
+            file_name = file[file.rfind('/')+1::]
+            if firstrun:
+                nearest_expt = nearest
+                nearest_fname = file_name
+            elif nearest_expt > nearest:
+                nearest_expt = nearest_expt
+                nearest_fname = file_name
+    print(f"{nearest_expt} - {nearest_fname}")
+    return nearest_fname
+
+
 @click.command(
     epilog="""Check out the documentation at
                 https://pyscope.readthedocs.io/ for more
@@ -107,41 +142,6 @@ logger = logging.getLogger(__name__)
     "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
 )
 @click.version_option()
-def nearest_exptime(calib_dir, exptime):
-    nearest_expt = -1
-    nearest_fname = ""
-    firstrun = True
-    for file in calib_dir:
-        with fits.open(file) as hdu:
-            hdr = hdu[0].header
-        if "CALSTAT" in hdr.keys():
-            continue
-        try:
-            filt = hdr["FILTER"]
-        except KeyError:
-            filt = ""
-        try:
-            fexptime = round(hdr["EXPTIME"], 3)
-        except KeyError:
-            fexptime = round(hdr["EXPOSURE"], 3)
-        try:
-            imgtype = hdr["IMAGETYP"]
-        except KeyError:
-            imgtype = ""
-        # makesure the string is in underscore format
-        nearest = abs(exptime - fexptime)
-        if file.rfind('/master_dark') != -1 or imgtype == "Dark Frame":
-            file_name = file[file.rfind('/')+1::]
-            if firstrun:
-                nearest_expt = nearest
-                nearest_fname = file_name
-            elif nearest_expt > nearest:
-                nearest_expt = nearest_expt
-                nearest_fname = file_name
-    print(f"{nearest_expt} - {nearest_fname}")
-    return nearest_fname
-
-
 def calib_images_cli(
     camera_type,
     image_dir,
