@@ -287,25 +287,20 @@ def schedtel_cli(
     )
 
     # Schedule
-    if date is None:
-        logger.info("Using current date at observatory location")
-        tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_long, lat=obs_lat)
-        date = datetime.datetime.now(pytz.timezone(tz))
+    tz = timezonefinder.TimezoneFinder().timezone_at(lng=lon.deg, lat=lat.deg)
+    tz = zoneinfo.ZoneInfo(tz)
+    logger.debug(f"tz = {tz}")
 
-    t0 = (
-        astrotime.Time(
-            datetime.datetime(date.year, date.month, date.day, 12, 0, 0),
-            format="datetime",
-            scale="utc",
-        )
-        - (
-            (
-                astrotime.Time(date, format="datetime", scale="utc")
-                - astrotime.Time.now()
-            ).day
-            % 1
-        )
-        * u.day
+    if date is None:
+        logger.debug("Using current date at observatory location")
+        date = datetime.datetime.now()
+    else:
+        date = datetime.datetime.strptime(date, "%Y-%m-%d")
+    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+
+    t0 = astrotime.Time(
+        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        format="datetime",
     )
     t1 = t0 + 1 * u.day
     logger.info("Schedule time range: %s to %s" % (t0.iso, t1.iso))

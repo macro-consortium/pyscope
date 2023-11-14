@@ -104,31 +104,24 @@ def exoplanet_transits_cli(
     if transit_depth_percent is not None:
         transit_depth = np.log10(1 + transit_depth_percent / 100) / 0.4
 
-    if date is None:
-        logger.info("Using current date at observatory location")
-        tz = timezonefinder.TimezoneFinder().timezone_at(
-            lng=observatory.observatory_location.lon.deg,
-            lat=observatory.observatory_location.lat.deg,
-        )
-        date = datetime.datetime.now(pytz.timezone(tz))
+    tz = timezonefinder.TimezoneFinder().timezone_at(lng=lon.deg, lat=lat.deg)
+    tz = zoneinfo.ZoneInfo(tz)
+    logger.debug(f"tz = {tz}")
 
-    t0 = (
-        astrotime.Time(
-            datetime.datetime(date.year, date.month, date.day, 12, 0, 0),
-            format="datetime",
-            scale="utc",
-        )
-        - (
-            (
-                astrotime.Time(date, format="datetime", scale="utc")
-                - astrotime.Time.now()
-            ).day
-            % 1
-        )
-        * u.day
+    if date is None:
+        logger.debug("Using current date at observatory location")
+        date = datetime.datetime.now()
+    else:
+        date = datetime.datetime.strptime(date, "%Y-%m-%d")
+    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+
+    t0 = astrotime.Time(
+        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        format="datetime",
     )
+    logger.debug(f"t0 = {t0}")
     t1 = t0 + 1 * u.day
-    logger.info("Searching UT range: %s to %s" % (t0.iso, t1.iso))
+    logger.debug(f"t1 = {t1}")
 
     min_ra = observatory.lst(t=t0).to(u.deg).value
     max_ra = observatory.lst(t=t1).to(u.deg).value
