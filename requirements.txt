@@ -5,7 +5,7 @@ astroquery == 0.4.6
 astroscrappy == 1.1.0
 click == 8.1.7
 cmcrameri == 1.7.0
-markdown == 3.5
+markdown == 3.5.1
 matplotlib == 3.8.1
 numpy == 1.26.1
 paramiko == 3.3.1
