@@ -21,19 +21,25 @@ from matplotlib import ticker
 
 from .. import utils
 from ..observatory import Observatory
-from . import read_sch
+from . import sch, validate_ob
 
 logger = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    epilog="""Check out the documentation at
+               https://pyscope.readthedocs.io/en/latest/
+               for more information."""
+)
 @click.option(
     "-c",
     "--catalog",
-    type=click.Path(resolve_path=True),
-    default="schedules/schedule.cat",
-    show_default=True,
-    help="A path to a .cat file containing a list of .sch files, a single .sch file, or a list of ObservingBlocks to be scheduled.",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    help="""The catalog of .sch files to be scheduled. The catalog can be a
+    single .sch file or a .cat file containing a list of .sch files. If no
+    catalog is provided, then the function searches for a schedule.cat file
+    in the $OBSERVATORY_HOME/schedules/ directory, then searches
+    in the current working directory.""",
 )
 @click.option(
     "-i",
@@ -42,32 +48,39 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     default=False,
     show_default=True,
-    help="Ignore the order of the .sch files in the catalog, acting as if there is only one .sch file. By default, the .sch files are scheduled one at a time.",
+    help="""Ignore the order of the .sch files in the catalog,
+    acting as if there is only one .sch file. By default, the
+    .sch files are scheduled one at a time.""",
 )
 @click.option(
     "-d",
     "--date",
-    type=click.DateTime(formats=["%m-%d-%Y"]),
+    type=click.DateTime(formats=["%Y-%m-%d"]),
     default=None,
     show_default=False,
-    help="The local date at the observatory of the night to be scheduled. By default, the current date at the observatory location is used.",
+    help="""The local date at the observatory of the night to be scheduled.
+    By default, the current date at the observatory location is used.""",
 )
 @click.option(
     "-o",
     "--observatory",
-    type=click.Path(resolve_path=True),
-    default="./config/observatory.cfg",
-    show_default=True,
-    help=("The configuration file of the observatory that will execute this schedule"),
+    "observatory",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    help="""The observatory configuration file. If no observatory configuration
+    file is provided, then the function searches for an observatory.cfg file
+    in the $OBSERVATORY_HOME/config/ directory, then searches in the current working
+    directory.""",
 )
 @click.option(
     "-m",
     "--max-altitude",
     "max_altitude",
-    type=click.FloatRange(max=90),
+    type=click.FloatRange(min=-90, max=90, clamp=True),
     default=-12,
     show_default=True,
-    help="The maximum altitude of the Sun for the night [degrees]. Civil twilight is -6, nautical twilight is -12, and astronomical twilight is -18.",
+    help="""The maximum altitude of the Sun for the night [degrees].
+    Civil twilight is -6, nautical twilight is -12, and astronomical
+    twilight is -18.""",
 )
 @click.option(
     "-e",
@@ -75,20 +88,23 @@ logger = logging.getLogger(__name__)
     type=click.FloatRange(min=0, max=90, clamp=True),
     default=30,
     show_default=True,
-    help='The minimum elevation of all targets [degrees]. This is a "boolean" constraint; that is, there is no understanding of where it is closer to ideal to observe the target. To implement a preference for higher elevation targets, the airmass constraint should be used.',
+    help="""The minimum elevation of all targets [degrees]. This is a
+    'boolean' constraint; that is, there is no understanding of where
+    it is closer to ideal to observe the target. To implement a preference
+    for higher elevation targets, the airmass constraint should be used.""",
 )
 @click.option(
     "-a",
     "--airmass",
-    type=click.FloatRange(min=1),
+    type=click.FloatRange(min=1, clamp=True),
     default=3,
     show_default=True,
-    help="The maximum airmass of all targets. If not specified, the airmass is not constrained.",
+    help="""The maximum airmass of all targets.""",
 )
 @click.option(
     "-c",
     "--moon-separation",
-    type=click.FloatRange(min=0),
+    type=click.FloatRange(min=0, clamp=True),
     default=30,
     show_default=True,
     help="The minimum angular separation between the Moon and all targets [degrees].",
@@ -97,53 +113,66 @@ logger = logging.getLogger(__name__)
     "-s",
     "--scheduler",
     nargs=2,
-    type=(click.Path(exists=True, resolve_path=True), str),
+    type=(
+        click.Path(exists=True, resolve_path=True, dir_okay=False, executable=True),
+        str,
+    ),
     default=("", ""),
     show_default=False,
-    help=(
-        "The filepath to and name of an astroplan.Scheduler custom sub-class. By default, the astroplan.PriorityScheduler is used."
-    ),
+    help="""The filepath to and name of an astroplan.Scheduler
+    custom sub-class. By default, the astroplan.PriorityScheduler is used.""",
 )
 @click.option(
     "-g",
     "--gap-time",
     "gap_time",
-    type=click.FloatRange(min=0),
+    type=click.FloatRange(min=0, clamp=True),
     default=60,
     show_default=True,
-    help="The maximumum length of time a transition between ObservingBlocks could take [seconds].",
+    help="""The maximum length of time a transition between
+    ObservingBlocks could take [seconds].""",
 )
 @click.option(
     "-r",
     "--resolution",
-    type=click.FloatRange(min=0),
+    type=click.FloatRange(min=1, clamp=True),
     default=5,
     show_default=True,
-    help="The time resolution of the schedule [seconds].",
+    help="""The time resolution of the schedule [seconds].""",
 )
 @click.option(
     "-f",
     "--filename",
-    type=click.Path(),
+    type=click.Path(resolve_path=True, dir_okay=False, writable=True),
     default=None,
     show_default=False,
-    help="The output file name. The file name is formatted with the UTC date of the first observation in the schedule. By default, it is placed in the current working directory, but if a path is specified, the file will be placed there. WARNING: If the file already exists, it will be overwritten.",
+    help="""The output file name. The file name is formatted with the
+    UTC date of the first observation in the schedule. By default,
+    it is placed in the current working directory, but if a path is specified,
+    the file will be placed there. WARNING: If the file already exists,
+    it will be overwritten.""",
 )
 @click.option(
     "-t",
-    "--telrun",
+    "--telrun-execute",
     is_flag=True,
     default=False,
     show_default=True,
-    help="Places the output file in ./schedules/ or in the directory specified by the $TELRUN_EXECUTE environment variable. Causes -f/--filename to be ignored. WARNING: If the file already exists, it will be overwritten.",
+    help="""Places the output file in specified by the $TELRUN_EXECUTE environment
+    variable. If not defined, then the $OBSERVATORY_HOME/schedules/ directory is used.
+    If neither are defined, then ./schedules/ is used. WARNING: If the file already exists,
+    it will be overwritten.""",
 )
 @click.option(
     "-p",
     "--plot",
-    type=click.IntRange(1, 3),
+    type=click.IntRange(1, 3, clamp=True),
     default=None,
     show_default=False,
-    help="Plots the schedule. 1: plots the schedule as a Gantt chart. 2: plots the schedule by target with airmass. 3: plots the schedule on a sky chart.",
+    help="""Plots the schedule. The argument specifies the type of plot:
+    1: Gantt chart.
+    2: target with airmass.
+    3: sky chart.""",
 )
 @click.option(
     "-q", "--quiet", is_flag=True, default=False, show_default=True, help="Quiet output"
@@ -153,22 +182,22 @@ logger = logging.getLogger(__name__)
 )
 @click.version_option()
 def schedtel_cli(
-    catalog,
-    ignore_order,
-    date,
-    observatory,
-    max_altitude,
-    elevation,
-    airmass,
-    moon_separation,
-    scheduler,
-    gap_time,
-    resolution,
-    filename,
-    telrun,
-    plot,
-    quiet,
-    verbose,
+    catalog=None,
+    ignore_order=False,
+    date=None,
+    observatory=None,
+    max_altitude=-12,
+    elevation=30,
+    airmass=3,
+    moon_separation=30,
+    scheduler=("", ""),
+    gap_time=60,
+    resolution=5,
+    filename=None,
+    telrun=False,
+    plot=None,
+    quiet=False,
+    verbose=0,
 ):
     # Set up logging
     if quiet:
@@ -201,6 +230,18 @@ def schedtel_cli(
 
     blocks = []
 
+    if catalog is None:
+        try:
+            catalog = os.environ.get("OBSERVATORY_HOME") + "/schedules/schedule.cat"
+            logger.info(
+                "No catalog provided, using schedule.cat from $OBSERVATORY_HOME environment variable"
+            )
+        except:
+            catalog = os.getcwd() + "/schedule.cat"
+            logger.info(
+                "No catalog provided, using schedule.cat from current working directory"
+            )
+
     if os.path.isfile(catalog):
         logger.debug(f"catalog is a file")
         if catalog.endswith(".cat"):
@@ -208,38 +249,76 @@ def schedtel_cli(
                 sch_files = f.read().splitlines()
             for f in sch_files:
                 if not os.path.isfile(f):
-                    logger.error(f"File {f} in catalog {catalog} does not exist.")
-                    return
-                blocks.append(read_sch(f))
+                    logger.error(
+                        f"File {f} in catalog {catalog} does not exist, skipping."
+                    )
+                    continue
+                try:
+                    blocks.append(sch.read(f))
+                except Exception as e:
+                    logger.error(
+                        f"File {f} in catalog {catalog} is not a valid .sch file, skipping: {e}"
+                    )
+                    continue
         elif catalog.endswith(".sch"):
-            blocks.append(read_sch(catalog))
+            try:
+                blocks.append(sch.read(catalog))
+            except Exception as e:
+                logger.error(f"File {catalog} is not a valid .sch file: {e}")
+                return
 
-    elif type(catalog) in (list, tuple, iter):
+    elif type(catalog) in (list, tuple):
         logger.debug(f"catalog is a list")
         for block in catalog:
-            if type(block) in (list, tuple, iter):
+            if type(block) in (list, tuple):
                 for b in block:
                     if type(b) is not astroplan.ObservingBlock:
                         logger.error(
-                            f"Object {b} in catalog {catalog} is not an astroplan.ObservingBlock."
+                            f"Object {b} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
                         )
-                        return
+                        continue
                 blocks.append(block)
             elif type(block) is astroplan.ObservingBlock:
                 blocks.append([block])
             else:
                 logger.error(
-                    f"Object {block} in catalog {catalog} is not an astroplan.ObservingBlock."
+                    f"Object {block} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
                 )
-                return
+                continue
+    else:
+        logger.error(f"Catalog {catalog} is not a valid file or list.")
+        return
+
+    for block in blocks:
+        for b in block:
+            try:
+                b = validate_ob(b)
+            except Exception as e:
+                logger.error(
+                    f"Object {b} in catalog {catalog} is not a valid ObservingBlock, removing from schedule: {e}"
+                )
+                block.remove(b)
 
     if ignore_order:
+        logger.info("Ignoring order of .sch files in catalog")
         blocks = [
             [blocks[i][j] for i in range(len(blocks)) for j in range(len(blocks[i]))]
         ]
 
     # Define the observatory
-    logger.info("Parsing the observatory")
+    if observatory is None:
+        try:
+            observatory = os.environ.get("OBSERVATORY_HOME") + "/config/observatory.cfg"
+            logger.info(
+                "No observatory provided, using observatory.cfg from $OBSERVATORY_HOME environment variable"
+            )
+        except:
+            observatory = os.getcwd() + "/observatory.cfg"
+            logger.info(
+                "No observatory provided, using observatory.cfg from current working directory"
+            )
+
+    logger.info("Parsing the observatory config")
     if type(observatory) is not astroplan.Observer:
         if type(observatory) is str:
             obs_cfg = configparser.ConfigParser()
@@ -268,9 +347,17 @@ def schedtel_cli(
             instrument_name = observatory.instrument_name
             observatory = astroplan.Observer(location=observatory.observatory_location)
         else:
-            raise TypeError(
+            logger.error(
                 "Observatory must be, a string, Observatory object, or astroplan.Observer object."
             )
+            return
+    else:
+        obs_long = observatory.location.lon.deg
+        obs_lat = observatory.location.lat.deg
+        obs_height = observatory.location.height.m
+        slew_rate = observatory.slew_rate * u.deg / u.second
+        instrument_reconfiguration_times = observatory.instrument_reconfiguration_times
+        instrument_name = observatory.instrument_name
 
     # Constraints
     logger.info("Defining global constraints")
@@ -354,41 +441,63 @@ def schedtel_cli(
             or row["configuration"]["pm_dec"].value != 0
         ):
             logger.info("Updating ephemeris for %s at scheduled time" % row["target"])
-            ephemerides = mpc.MPC.get_ephemeris(
-                target=row["target"],
-                location=observatory.location,
-                start=row["start time (UTC)"],
-                number=1,
-                proper_motion="sky",
-            )
-            row["ra"] = ephemerides["RA"][0]
-            row["dec"] = ephemerides["DEC"][0]
-            row["configuration"]["pm_ra_cosdec"] = (
-                ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
-            )
-            row["configuration"]["pm_dec"] = ephemerides["dDec"][0] * u.arcsec / u.hour
-
-    # Re-assign filenames
-    name_dict = {}
-    for i in range(len(schedule_table)):
-        name = schedule_table[i]["configuration"]["code"]
-
-        if name in name_dict:
-            name_dict[name] += 1
-        else:
-            name_dict[name] = 0
-
-        name += (
-            ("%3.3g" % date.strftime("%j")) + "_" + ("%4.4g" % name_dict[name]) + ".fts"
-        )
-        schedule_table[i]["configuration"]["filename"] = name
+            try:
+                ephemerides = mpc.MPC.get_ephemeris(
+                    target=row["name"],
+                    location=observatory.location,
+                    start=row["start time (UTC)"],
+                    number=1,
+                    proper_motion="sky",
+                )
+                row["ra"] = ephemerides["RA"][0]
+                row["dec"] = ephemerides["Dec"][0]
+                row["configuration"]["pm_ra_cosdec"] = (
+                    ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
+                )
+                row["configuration"]["pm_dec"] = (
+                    ephemerides["dDec"][0] * u.arcsec / u.hour
+                )
+            except Exception as e1:
+                try:
+                    logger.warning(
+                        f"Failed to find proper motions for {row['name']} on line {line_number}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
+                    )
+                    pos_l = coord.get_body(
+                        row["name"],
+                        row["start time (UTC)"] - 10 * u.minute,
+                        location=observatory.location,
+                    )
+                    pos_m = coord.get_body(
+                        row["name"], row["start time (UTC)"], location=location
+                    )
+                    pos_h = coord.get_body(
+                        row["name"],
+                        row["start time (UTC)"] + 10 * u.minute,
+                        location=observatory.location,
+                    )
+                    row["ra"] = pos_m.ra.to_string("hourangle", sep="hms", precision=3)
+                    row["dec"] = pos_m.dec.to_string("deg", sep="dms", precision=2)
+                    row["configuration"]["pm_ra_cosdec"] = (
+                        (
+                            pos_h.ra * np.cos(pos_h.dec.rad)
+                            - pos_l.ra * np.cos(pos_l.dec.rad)
+                        )
+                        / (pos_h.obstime - pos_l.obstime)
+                    ).to(u.arcsec / u.hour)
+                    row["configuration"]["pm_dec"] = (
+                        (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
+                    ).to(u.arcsec / u.hour)
+                except Exception as e2:
+                    logger.warning(
+                        f"Failed to find proper motions for {row['name']} on line {line_number}, keeping old ephemerides: {e2}"
+                    )
 
     # Write the telrun.ecsv file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
         first_time = astrotime.Time(
             schedule_table[0]["start time (UTC)"], format="iso", scale="utc"
-        ).strftime("%m-%d-%Y")
+        ).isot
         filename = "telrun_" + first_time + ".ecsv"
 
     if telrun:
@@ -439,14 +548,23 @@ def schedtel_cli(
             return schedule_table, ax
         case _:
             logger.info("No plot requested")
-            pass
 
     return schedule_table
 
 
-@click.command()
-@click.argument("schedule_table", type=click.Path(exists=True))
-@click.argument("observatory", type=click.Path(exists=True))
+@click.command(
+    epilog="""Check out the documentation at
+               https://pyscope.readthedocs.io/en/latest/
+               for more information."""
+)
+@click.argument(
+    "schedule_table",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+)
+@click.argument(
+    "observatory",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+)
 @click.version_option()
 def plot_schedule_gantt_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
@@ -614,9 +732,19 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     return ax
 
 
-@click.command()
-@click.argument("schedule_table", type=click.Path(exists=True))
-@click.argument("observatory", type=click.Path(exists=True))
+@click.command(
+    epilog="""Check out the documentation at
+               https://pyscope.readthedocs.io/en/latest/
+               for more information."""
+)
+@click.argument(
+    "schedule_table",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+)
+@click.argument(
+    "observatory",
+    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+)
 @click.version_option()
 def plot_schedule_sky_cli():
     objects = []
