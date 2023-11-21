@@ -1,0 +1,859 @@
+import logging
+import shlex
+
+import astroplan
+from astropy import coordinates as coord
+from astropy import time as astrotime
+from astropy import units as u
+from astroquery import mpc
+
+from pyscope import __version__
+
+logger = logging.getLogger(__name__)
+
+
+def read_sch(
+    filename,
+    location=None,
+    t0=None,
+    default_title="Pyscope Observation",
+    default_observers="default",
+    default_code="aaa",
+    default_nonsidereal=False,
+    default_priority=1,
+    default_repositioning=False,
+    default_shutter_state=True,
+    default_readout=0,
+    default_binning=(1, 1),
+    default_frame_position=(0, 0),
+    default_frame_size=(0, 0),
+    default_nexp=1,
+    default_do_not_interrupt=False,
+):
+    possible_keys = {
+        "ti": "title",
+        "obs": "observer",
+        "cod": "code",
+        "so": "source",
+        "ta": "source",
+        "obj": "source",
+        "na": "source",
+        "ra": "ra",
+        "ri": "ra",
+        "de": "dec",
+        "no": "nonsidereal",
+        "pm_r": "pm_ra_cosdec",
+        "pm_d": "pm_dec",
+        "file": "filename",
+        "prio": "priority",
+        "repo": "repositioning",
+        "sh": "shutter_state",
+        "read": "readout",
+        "b": "binning",
+        "frame_p": "frame_position",
+        "frame_s": "frame_size",
+        "u": "utstart",
+        "st": "utstart",
+        "ca": "cadence",
+        "sc": "schederr",
+        "n_": "nexp",
+        "ne": "nexp",
+        "repe": "nexp",
+        "do": "do_not_interrupt",
+        "filt": "filter",
+        "exp": "exposures",
+        "com": "comment",
+    }
+
+    with open(filename, "r") as f:
+        raw_lines = f.readlines()
+
+    # Remove equal signs, quotes, blank lines, etc
+    lines = []
+    for line in raw_lines:
+        logger.debug(f"Parsing line: {line}")
+        line = line.replace("=", " ")
+        line = line.replace(": ", " ")
+        line = line.replace(";", ",")
+        line = line.replace(", ", ",")
+        line = line.replace("(", "'")
+        line = line.replace(")", "'")
+        line = line.replace("[", "'")
+        line = line.replace("]", "'")
+        line = line.replace("{", "'")
+        line = line.replace("}", "'")
+        line = line.replace("<", "'")
+        line = line.replace(">", "'")
+        line = line.replace('"', "'")
+        line = line.replace("`", "'")
+        line = line.replace("‘", "'")
+        line = line.replace("’", "'")
+
+    lines = [line.split("#")[0] for line in lines]  # Remove comments
+    lines = [line.split("!")[0] for line in lines]  # Remove comments
+    lines = [line.split("\%")[0] for line in lines]  # Remove comments
+    lines = [line.replace("\n", "") for line in lines]  # Remove line breaks
+    lines = [
+        " ".join(shlex.split(line)) for line in lines
+    ]  # Remove multiple, trailing, leading whitespace
+    lines = [line for line in lines if line != ""]  # Remove empty lines
+    lines = [line.lower() for line in lines]  # Lower case
+
+    for line in lines:
+        l = shlex.split(line)  # parse nonsidereal as flag
+        for i in range(len(l)):
+            if l[i].startswith("no"):
+                if (
+                    l[i + 1].startswith("t")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("1")
+                    or l[i + 1].startswith("y")
+                ):
+                    line.replace(l[i], "nonsidereal true")
+                elif (
+                    l[i + 1].startswith("f")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("0")
+                    or l[i + 1].startswith("n")
+                ):
+                    line.replace(l[i], "nonsidereal false")
+                else:
+                    line.replace(l[i], "nonsidereal true")
+            elif l[i].startswith("do"):  # parse do_not_interrupt as flag
+                if (
+                    l[i + 1].startswith("t")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("1")
+                    or l[i + 1].startswith("y")
+                ):
+                    line.replace(l[i], "do_not_interrupt true")
+                elif (
+                    l[i + 1].startswith("f")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("0")
+                    or l[i + 1].startswith("n")
+                ):
+                    line.replace(l[i], "do_not_interrupt false")
+                else:
+                    line.replace(l[i], "do_not_interrupt true")
+            elif l[i].startswith("repo"):  # parse repositioning as flag
+                if (
+                    l[i + 1].startswith("t")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("1")
+                    or l[i + 1].startswith("y")
+                ):
+                    line.replace(l[i], "repositioning true")
+                elif (
+                    l[i + 1].startswith("f")
+                    and not l[i + 1][1:].startswith("i")
+                    or l[i + 1].startswith("0")
+                    or l[i + 1].startswith("n")
+                ):
+                    line.replace(l[i], "repositioning false")
+                elif (
+                    isnumeric(l[i + 1].split("x")[0])
+                    and isnumeric(l[i + 1].split("x")[1])
+                ) or (
+                    isnumeric(l[i + 1].split(",")[0])
+                    and isnumeric(l[i + 1].split(",")[1])
+                ):
+                    continue
+                else:
+                    line.replace(l[i], "repositioning true")
+
+    # Turn each line into a dictionary, parse keywords
+    lines = [
+        dict(
+            (key, value)
+            for key, value in zip(shlex.split(line)[::2], shlex.split(line)[1::2])
+        )
+        for line in lines
+    ]
+    for line in lines:
+        for key in line.keys():
+            key_matches = []
+            value_matches = []
+            for possible_key in possible_keys.keys():
+                if key.startswith(possible_key):
+                    key_matches.append(possible_key)
+                    value_matches.append(possible_keys[possible_key])
+            if len(matches) > 1:
+                logger.error(
+                    f"Keyword {key} matches multiple possible keywords: {value_matches}, removing line {line_number}: {line}"
+                )
+                lines.remove(line)
+            elif key.startswith(possible_key):
+                line[possible_keys[possible_key]] = line.pop(key)
+            else:
+                logger.error(
+                    f"Keyword {key} does not match any possible keywords: {possible_keys.values()}, removing line {line_number}: {line}"
+                )
+                lines.remove(line)
+
+    # Look for title, observers, code keywords
+    title_matches = []
+    for line in lines:
+        if "title" in line.keys():
+            title_matches.append(line["title"])
+            if len(line.keys()) > 1:
+                logger.warning(
+                    f"Multiple keywords found on title line {line_number}, ignoring all but title: {line}"
+                )
+            lines.remove(line)
+    if len(title_matches) > 1:
+        logger.warning(f"Multiple titles found: {title_matches}, using first")
+        title = title_matches[0]
+    elif len(title_matches) == 1:
+        title = title_matches[0]
+    else:
+        logger.warning("No title found, using parsing function default")
+        title = default_title
+
+    observers = []
+    for line in lines:
+        if "observer" in line.keys():
+            observers.append(line["observer"])
+            if len(line.keys()) > 1:
+                logger.warning(
+                    f"Multiple keywords found on observer line {line_number}, ignoring all but observer: {line}"
+                )
+            lines.remove(line)
+    if len(observers) == 0:
+        logger.warning("No observers found, using parsing function default")
+        observers = default_observers
+
+    code_matches = []
+    for line in lines:
+        if "code" in line.keys():
+            code_matches.append(line["code"])
+            if len(line.keys()) > 1:
+                logger.warning(
+                    f"Multiple keywords found on code line {line_number}, ignoring all but code: {line}"
+                )
+            lines.remove(line)
+    if len(code_matches) > 1:
+        logger.warning(f"Multiple codes found: {code_matches}, using first")
+        code = code_matches[0]
+    elif len(code_matches) == 1:
+        code = code_matches[0]
+    else:
+        logger.warning("No code found, using parsing function default")
+        code = default_code
+
+    prior_filters = None
+    prior_exposures = None
+
+    # Parse each line and place into ObservingBlock
+    blocks = []
+
+    for line_number, line in enumerate(lines):
+        # Parse source
+        source_name = ""
+        if "source" in line.keys():
+            source_name = line["source"]
+
+        # Parse ra and dec
+        ra = None
+        dec = None
+        if "ra" in line.keys() and "dec" in line.keys():
+            ra = line["ra"]
+            dec = line["dec"]
+
+        # Parse nonsidereal
+        nonsidereal = default_nonsidereal
+        if "nonsidereal" in line.keys():
+            if line["nonsidereal"] == "true":
+                nonsidereal = True
+            elif line["nonsidereal"] == "false":
+                nonsidereal = False
+            else:
+                logger.warning(
+                    f"nonsidereal flag must be true or false on line {line_number}, using parsing function default ({default_nonsidereal}): {line}"
+                )
+
+        # Parse pm_ra_cosdec and pm_dec
+        pm_ra_cosdec = 0 * u.arcsec / u.hour
+        pm_dec = 0 * u.arcsec / u.hour
+        if "pm_ra_cosdec" in line.keys() and "pm_dec" in line.keys() and nonsidereal:
+            pm_ra_cosdec = line["pm_ra_cosdec"]
+            pm_dec = line["pm_dec"]
+        elif (
+            "pm_ra_cosdec" in line.keys()
+            and "pm_dec" in line.keys()
+            and not nonsidereal
+        ):
+            logger.warning("Proper motions found on non-nonsidereal line, ignoring")
+        elif (
+            "pm_ra_cosdec" not in line.keys()
+            and "pm_dec" not in line.keys()
+            and nonsidereal
+            and source_name is not None
+        ):
+            logger.info(
+                f"No proper motions found on line {line_number}, will attempt MPC lookup: {source_name}"
+            )
+            try:
+                ephemerides = mpc.MPC.get_ephemeris(
+                    target=source_name,
+                    location=location,
+                    start=t0 + 0.5 * u.day,
+                    number=1,
+                    proper_motion="sky",
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to find proper motions for {source_name} on line {line_number}, skipping: {e}"
+                )
+                continue
+            ra = ephemerides["RA"][0]
+            dec = ephemerides["DEC"][0]
+            pm_ra_cosdec = ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
+            pm_dec = ephemerides["dDec"][0] * u.arcsec / u.hour
+        elif (
+            "pm_ra_cosdec" not in line.keys()
+            and "pm_dec" not in line.keys()
+            and nonsidereal
+            and source_name is None
+        ):
+            logger.warning(
+                f"No proper motions found on line {line_number} and no source name found for MPC lookup, ignoring nonsidereal: {line}"
+            )
+        elif (
+            "pm_ra_cosdec" not in line.keys()
+            and "pm_dec" in line.keys()
+            and nonsidereal
+        ):
+            logger.warning(
+                f"Missing proper motion pm_ra_cosdec on line {line_number}, assuming 0: {line}"
+            )
+        elif (
+            "pm_ra_cosdec" in line.keys()
+            and "pm_dec" not in line.keys()
+            and nonsidereal
+        ):
+            logger.warning(
+                f"Missing proper motion pm_dec on line {line_number}, assuming 0: {line}"
+            )
+        else:
+            logger.error(
+                f"Improper combination of proper motion keywords on line {line_number}, skipping: {line}"
+            )
+            continue
+
+        # Parse source if not already parsed by pm lookup
+        if source_name is None and ra is None and dec is None:
+            logger.warning(
+                f"No source or coordinates found on line {line_number}, skipping: {line}"
+            )
+            continue
+        elif None not in (ra, dec):
+            obj = coord.SkyCoord(ra, dec, pm_ra_cosdec=pm_ra_cosdec, pm_dec=pm_dec)
+            if source_name is None:
+                source_name = obj.to_string("hmsdms")
+        elif source_name is not None:
+            try:
+                obj = coord.SkyCoord.from_name(source_name)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to parse source name on line {line_number}, skipping: {e}"
+                )
+                continue
+        else:
+            logger.warning(
+                f"Failed to parse source on line {line_number}, skipping: {line}"
+            )
+            continue
+
+        # Parse filename
+        fname = ""
+        if "filename" in line.keys():
+            fname = line["filename"]
+
+        # Parse priority
+        priority = default_priority
+        if "priority" in line.keys():
+            priority = int(line["priority"])
+
+        # Parse repositioning
+        repositioning = default_repositioning
+        if "repositioning" in line.keys():
+            if line["repositioning"] == "true":
+                repositioning = True
+            elif line["repositioning"] == "false":
+                repositioning = False
+            elif (
+                line["repositioning"].split("x")[0].isnumeric()
+                and line["repositioning"].split("x")[1].isnumeric()
+            ):
+                repositioning = (
+                    int(line["repositioning"].split("x")[0]),
+                    int(line["repositioning"].split("x")[1]),
+                )
+            elif (
+                line["repositioning"].split(",")[0].isnumeric()
+                and line["repositioning"].split(",")[1].isnumeric()
+            ):
+                repositioning = (
+                    int(line["repositioning"].split(",")[0]),
+                    int(line["repositioning"].split(",")[1]),
+                )
+            else:
+                logger.warning(
+                    f"repositioning flag must be true, false, or integers split with an x on line {line_number}, setting to parsing function default ({default_repositioning}): {line}"
+                )
+
+        # Parse shutter state
+        shutter_state = default_shutter_state
+        if "shutter_state" in line.keys():
+            if (
+                line["shutter_state"].startswith("o")
+                or line["shutter_state"].startswith("t")
+                or line["shutter_state"].startswith("1")
+                or line["shutter_state"].startswith("y")
+            ):
+                shutter_state = True
+            elif (
+                line["shutter_state"].startswith("c")
+                or line["shutter_state"].startswith("f")
+                or line["shutter_state"].startswith("0")
+                or line["shutter_state"].startswith("n")
+            ):
+                shutter_state = False
+            else:
+                logger.warning(
+                    f"shutter_state flag must be open or closed on line {line_number}, setting to parsing function default ({default_shutter_state}): {line}"
+                )
+
+        # Parse readout
+        readout = default_readout
+        if "readout" in line.keys():
+            readout = int(line["readout"])
+
+        # Parse binning
+        binning = default_binning
+        if "binning" in line.keys():
+            if (
+                line["binning"].split("x")[0].isnumeric()
+                and line["binning"].split("x")[1].isnumeric()
+            ):
+                binning = (
+                    int(line["binning"].split("x")[0]),
+                    int(line["binning"].split("x")[1]),
+                )
+            if (
+                line["binning"].split(",")[0].isnumeric()
+                and line["binning"].split(",")[1].isnumeric()
+            ):
+                binning = (
+                    int(line["binning"].split(",")[0]),
+                    int(line["binning"].split(",")[1]),
+                )
+            else:
+                logger.warning(
+                    f"binning must be integers split with an x on line {line_number}, setting to parsing function default ({default_binning}): {line}"
+                )
+
+        # Parse frame position
+        frame_position = default_frame_position
+        if "frame_position" in line.keys():
+            if (
+                line["frame_position"].split("x")[0].isnumeric()
+                and line["frame_position"].split("x")[1].isnumeric()
+            ):
+                frame_position = (
+                    int(line["frame_position"].split("x")[0]),
+                    int(line["frame_position"].split("x")[1]),
+                )
+            elif (
+                line["frame_position"].split(",")[0].isnumeric()
+                and line["frame_position"].split(",")[1].isnumeric()
+            ):
+                frame_position = (
+                    int(line["frame_position"].split(",")[0]),
+                    int(line["frame_position"].split(",")[1]),
+                )
+            else:
+                logger.warning(
+                    f"frame_position must be integers split with a comma on line {line_number}, setting to parsing function default ({default_frame_position}): {line}"
+                )
+
+        # Parse frame size
+        frame_size = default_frame_size
+        if "frame_size" in line.keys():
+            if (
+                line["frame_size"].split("x")[0].isnumeric()
+                and line["frame_size"].split("x")[1].isnumeric()
+            ):
+                frame_size = (
+                    int(line["frame_size"].split("x")[0]),
+                    int(line["frame_size"].split("x")[1]),
+                )
+            elif (
+                line["frame_size"].split(",")[0].isnumeric()
+                and line["frame_size"].split(",")[1].isnumeric()
+            ):
+                frame_size = (
+                    int(line["frame_size"].split(",")[0]),
+                    int(line["frame_size"].split(",")[1]),
+                )
+            else:
+                logger.warning(
+                    f"frame_size must be integers split with a comma or x on line {line_number}, setting to parsing function default ({default_frame_size}): {line}"
+                )
+
+        # Get utstart, cadence, schederr
+        utstart = None
+        if "utstart" in line.keys():
+            utstart = astrotime.Time(line["utstart"], format="isot", scale="utc")
+
+        cadence = None
+        if "cadence" in line.keys():
+            cadence = astrotime.TimeDelta(
+                datetime.time(*[int(c) for c in line["cadence"].split(":")]),
+                format="datetime",
+            )
+
+            if utstart is None:
+                logger.error(
+                    f"Must specify utstart if cadence is specified on line {line_number}, skipping: {line}"
+                )
+                continue
+
+        schederr = None
+        if "schederr" in line.keys():
+            schederr = astrotime.TimeDelta(
+                datetime.time(*[int(s) for s in line["schederr"].split(":")]),
+                format="datetime",
+            )
+
+        if utstart is None and schederr is not None:
+            logger.error(
+                f"Must specify utstart if schederr is specified on line {line_number}, skipping: {line}"
+            )
+            continue
+        elif utstart is not None and schederr is None:
+            logger.info(
+                f"Assuming schederr is 60 seconds on line {line_number}: {line}"
+            )
+            schederr = 60 * u.second
+
+        # Get exposure behavior keywords
+        nexp = default_nexp
+        if "nexp" in line.keys():
+            nexp = int(line["nexp"])
+
+        do_not_interrupt = default_do_not_interrupt
+        if "do_not_interrupt" in line.keys():
+            if (
+                line["do_not_interrupt"].startswith("t")
+                or line["do_not_interrupt"].startswith("1")
+                or line["do_not_interrupt"].startswith("y")
+            ):
+                do_not_interrupt = True
+            elif (
+                line["do_not_interrupt"].startswith("f")
+                or line["do_not_interrupt"].startswith("0")
+                or line["do_not_interrupt"].startswith("n")
+            ):
+                do_not_interrupt = False
+            else:
+                logger.warning(
+                    f"do_not_interrupt flag must be true or false on line {line_number}, setting to parsing function default ({default_do_not_interrupt}): {line}"
+                )
+
+        # Get comment
+        comment = ""
+        if "comment" in line.keys():
+            comment = line["comment"]
+
+        # Get filters
+        filters = telrun.observing_block_config["filter"]
+        if "filter" in line.keys():
+            filters = line["filter"].split(",")
+            prior_filters = filters
+        elif prior_filters is not None:
+            filters = prior_filters
+        else:
+            filters = telrun.observing_block_config["filters"]
+            prior_filters = None
+
+        # Get exposures
+        exposures = telrun.observing_block_config["exposures"]
+        if "exposures" in line.keys():
+            exposures = [float(e) for e in line["exposures"].split(",")]
+            prior_exposures = exposures
+        elif prior_exposures is not None:
+            exposures = prior_exposures
+        else:
+            exposures = telrun.observing_block_config["exposures"]
+            prior_exposures = None
+
+        # Expand exposures or filters to match length of the other if either length is one
+        if len(exposures) == 1 and len(filters) > 1:
+            exposures = exposures * len(filters)
+        elif len(filters) == 1 and len(exposures) > 1:
+            filters = filters * len(exposures)
+
+        # Sanity Check 1: matching number of filters and exposures
+        if len(filters) != len(exposures) and len(filters) != 0:
+            logger.error(
+                f"Number of filters ({len(filters)}) does not match number of exposures ({len(exposures)}) on line {line_number}, skipping: {line}"
+            )
+            continue
+
+        # Sanity Check 2: do_not_interrupt and cadence don't both appear:
+        if do_not_interrupt is not None and cadence is not None:
+            logger.error(
+                f"do_not_interrupt and cadence cannot both be specified on line {line_number}, skipping: {line}"
+            )
+            continue
+
+        # Sanity Check 3: if cadence is specified, verify it exceeds exposure time
+        # times number of exposures times number of filters
+        if cadence is not None:
+            if cadence < np.sum(exposures) * nexp * len(filters):
+                logger.warning(
+                    f"Cadence ({cadence}) is less than total exposure time ({np.sum(exposures) * nexp * len(filters)}) on line {line_number}, setting cadence to total exposure time: {line}"
+                )
+                cadence = np.sum(exposures) * nexp * len(filters)
+
+        for i in range(len(filters)):
+            filt = filters[i]
+            exp = exposures[i]
+            constraints = None
+
+            if do_not_interrupt:
+                loop_max = 1
+                temp_dur = exp * nexp * u.second
+                temp_nexp = nexp
+            else:
+                loop_max = nexp
+                temp_dur = exp * u.second
+                temp_nexp = 1
+
+            if utstart is not None:
+                if cadence is not None:
+                    constraint_cadence = cadence
+                else:
+                    constraint_cadence = temp_dur
+
+                constraints = [
+                    [
+                        astroplan.constraints.TimeConstraint(
+                            utstart + (i + j * len(i)) * constraint_cadence - schederr,
+                            utstart + (i + j * len(i)) * constraint_cadence + schederr,
+                        )
+                    ]
+                    for j in range(loop_max)
+                ]
+
+            for j in range(loop_max):
+                if loop_max > 1:
+                    final_fname = f"{fname}_{j}"
+                else:
+                    final_fname = f"{fname}"
+                blocks.append(
+                    astroplan.ObservingBlock(
+                        target=obj,
+                        duration=temp_dur,
+                        priority=priority,
+                        name=source_name,
+                        configuration={
+                            "observer": observer,
+                            "code": code,
+                            "title": title,
+                            "filename": final_fname,
+                            "filter": filt,
+                            "exposure": exp,
+                            "nexp": temp_nexp,
+                            "do_not_interrupt": do_not_interrupt,
+                            "repositioning": repositioning,
+                            "shutter_state": shutter_state,
+                            "readout": readout,
+                            "binning": binning,
+                            "frame_position": frame_position,
+                            "frame_size": frame_size,
+                            "pm_ra_cosdec": pm_ra_cosdec,
+                            "pm_dec": pm_dec,
+                            "comment": comment,
+                            "status": "N",
+                            "message": "unscheduled",
+                        },
+                        constraints=constraints[j],
+                    )
+                )
+                logger.debug(
+                    f"""Created ObservingBlock: {blocks[-1].target},
+                                {blocks[-1].duration}, {blocks[-1].priority},
+                                {blocks[-1].name}, {blocks[-1].constraints},
+                                {blocks[-1].configuration}"""
+                )
+
+    return blocks
+
+
+def write_sch(observing_blocks, filename=None):
+    if type(observing_blocks) is not list:
+        observing_blocks = [observing_blocks]
+
+    codes = []
+    for block in observing_blocks:
+        if type(block) is not astroplan.scheduling.ObservingBlock:
+            logger.exception("observing_blocks must be a list of ObservingBlocks")
+            return
+        codes.append(block.configuration["code"])
+
+    unique_codes = list(set(codes))
+
+    time_now = astrotime.Time.now().strftime("%Y-%m-%d_%H:%M:%S")
+
+    for unique_code in unique_codes:
+        blocks = [
+            block
+            for block in observing_blocks
+            if block.configuration["code"] == unique_code
+        ]
+
+        if [blocks.configuration["title"] for block in blocks].count(
+            blocks[0].configuration["title"]
+        ) != len(blocks):
+            logger.warning(
+                f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({blocks[0].configuration['title']})"
+            )
+            blocks = [
+                block.configuration.update("title", blocks[0].configuration["title"])
+                for block in blocks
+            ]
+
+        if [blocks.configuration["observer"] for block in blocks].count(
+            blocks[0].configuration["observer"]
+        ) != len(blocks):
+            logger.warning(
+                f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({blocks[0].configuration['observer']})"
+            )
+            blocks = [
+                block.configuration.update(
+                    "observer", blocks[0].configuration["observer"]
+                )
+                for block in blocks
+            ]
+
+        if filename is None:
+            filename = f"{unique_code}_{time_now}.sch"
+        else:
+            filename = filename.replace(".sch", f"_{unique_code}_{time_now}.sch")
+
+        with open(filename, "w") as f:
+            f.write(f"# {len(blocks)} Blocks\n")
+            f.write(f"# Written {time_now}\n")
+            f.write(f"# By pyscope version {__version__}\n")
+            f.write("\n")
+
+            f.write(f"title {blocks[0].configuration['title']}\n")
+            if type(blocks[0].configuration["observer"]) is not list:
+                observers = [blocks[0].configuration["observer"]]
+            for observer in observers:
+                f.write(f"observer {observer}\n")
+            f.write(f"code {unique_code}\n")
+            f.write("\n")
+
+            for block in blocks:
+                write_string = ""
+                try:
+                    write_string += f"source '{block.name}' "
+                except:
+                    pass
+                write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=3)} "
+                write_string += (
+                    f"dec {block.target.dec.to_string('deg', sep='dms', precision=2)} "
+                )
+                try:
+                    write_string += f"priority {block.priority} "
+                except:
+                    pass
+                try:
+                    write_string += f"filename '{block.configuration['filename']}' "
+                except:
+                    pass
+                try:
+                    if (
+                        block.configuration["pm_ra_cosdec"].value != 0
+                        or block.configuration["pm_dec"].value != 0
+                    ):
+                        write_string += f"nonsidereal true "
+                        write_string += f"pm_ra_cosdec {block.configuration['pm_ra_cosdec'].to(u.arcsec/u.hour).value} "
+                        write_string += f"pm_dec {block.configuration['pm_dec'].to(u.arcsec/u.hour).value} "
+                    else:
+                        write_string += f"nonsidereal false "
+                except:
+                    pass
+                try:
+                    if block.configuration["shutter_state"]:
+                        write_string += f"shutter_state open "
+                    else:
+                        write_string += f"shutter_state closed "
+                except:
+                    pass
+                write_string += f"exposure {block.configuration['exposure']} "
+                write_string += f"nexp {block.configuration['nexp']} "
+                try:
+                    if block.configuration["do_not_interrupt"]:
+                        write_string += f"do_not_interrupt true "
+                    else:
+                        write_string += f"do_not_interrupt false "
+                except:
+                    pass
+                try:
+                    write_string += f"readout {block.configuration['readout']} "
+                except:
+                    pass
+                try:
+                    write_string += f"binning {block.configuration['binning'][0]}x{block.configuration['binning'][1]} "
+                except:
+                    pass
+                write_string += f"filter {block.configuration['filter']} "
+                try:
+                    if block.configuration["repositioning"] is True:
+                        write_string += f"repositioning true "
+                    elif type(block.configuration["repositioning"]) is tuple:
+                        write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]} "
+                except:
+                    pass
+                try:
+                    write_string += f"frame_position {block.configuration['frame_position'][0]}x{block.configuration['frame_position'][1]} "
+                except:
+                    pass
+                try:
+                    write_string += f"frame_size {block.configuration['frame_size'][0]}x{block.configuration['frame_size'][1]} "
+                except:
+                    pass
+                try:
+                    write_string += f"utstart {block.start_time.isot} "
+                except:
+                    try:
+                        if type(block.constraints) is not list:
+                            constraints = [block.constraints]
+                        for (
+                            constraint
+                        ) in constraints:  # TODO: Add in support for all constraints
+                            possible_min_times = []
+                            possible_max_times = []
+                            if type(constraint) is astroplan.TimeConstraint:
+                                possible_min_times.append(constraint.min)
+                                possible_max_times.append(constraint.max)
+                        min_time = max(possible_min_times)
+                        max_time = min(possible_max_times)
+                        mid_time = (min_time + max_time) / 2
+                        error_time = (max_time - min_time) / 2
+                        write_string += f"utstart {mid_time.isot} "
+                        write_string += f"schederr {error_time.hour}:{error_time.minute}:{error_time.second} "
+                    except:
+                        pass
+                try:
+                    write_string += f"comment '{block.configuration['comment']}' (written by pyscope v{__version__})' "
+                except:
+                    write_string += f"comment 'written by pyscope v{__version__}' "
+
+                f.write(write_string + "\n")
+            f.write("\n")

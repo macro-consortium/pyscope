@@ -21,6 +21,7 @@ from matplotlib import ticker
 
 from .. import utils
 from ..observatory import Observatory
+from . import read_sch
 
 logger = logging.getLogger(__name__)
 
@@ -209,9 +210,9 @@ def schedtel_cli(
                 if not os.path.isfile(f):
                     logger.error(f"File {f} in catalog {catalog} does not exist.")
                     return
-                blocks.append(parse_sch_file(f))
+                blocks.append(read_sch(f))
         elif catalog.endswith(".sch"):
-            blocks.append(parse_sch_file(catalog))
+            blocks.append(read_sch(catalog))
 
     elif type(catalog) in (list, tuple, iter):
         logger.debug(f"catalog is a list")
@@ -370,7 +371,7 @@ def schedtel_cli(
     # Re-assign filenames
     name_dict = {}
     for i in range(len(schedule_table)):
-        name = schedule_table[i]["configuration"]["obscode"]
+        name = schedule_table[i]["configuration"]["code"]
 
         if name in name_dict:
             name_dict[name] += 1
@@ -398,11 +399,23 @@ def schedtel_cli(
                 % path
             )
         except:
-            path = os.getcwd() + "/schedules/"
-            logger.info("-t/--telrun flag set, writing schedule to %s" % path)
+            try:
+                path = os.environ.get("OBSERVATORY_HOME") + "/schedules/"
+                logger.info(
+                    "-t/--telrun flag set, writing schedule to %s from $OBSERVATORY_HOME environment variable"
+                    % path
+                )
+            except:
+                path = os.getcwd() + "/schedules/"
+                logger.info(
+                    "-t/--telrun flag set, writing schedule to %s from current working directory"
+                    % path
+                )
         if not os.path.isdir(path):
-            logger.exception(f"Path {path} does not exist.")
-            return
+            path = os.getcwd() + "/"
+            logger.warning(
+                f"Path {path} does not exist, writing to current working directory instead: {path}"
+            )
     else:
         path = os.getcwd() + "/"
         logger.info("-t/--telrun flag not set, writing schedule to %s" % path)
@@ -413,7 +426,7 @@ def schedtel_cli(
     match plot:
         case 1:  # Gantt chart
             logger.info("Plotting schedule as a Gantt chart")
-            ax = plot_schedule_gantt(schedule, observatory, name=instrument_name)
+            ax = plot_schedule_gantt(schedule, observatory)
             return schedule_table, ax
         case 2:  # Plot by target w/ altitude
             logger.info("Plotting schedule by target with airmass")
@@ -422,87 +435,7 @@ def schedtel_cli(
             return schedule_table, ax
         case 3:  # Sky chart
             logger.info("Plotting schedule on a sky chart")
-            objects = []
-            times = []
-            for i in range(len(schedule_table)):
-                if schedule_table[i]["ra"] not in [obj.ra.dms for obj in objects]:
-                    objects.append(
-                        coord.SkyCoord(
-                            ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"]
-                        )
-                    )
-                    times.append(
-                        [
-                            (
-                                astrotime.Time(
-                                    schedule_table[i]["start time (UTC)"],
-                                    format="iso",
-                                    scale="utc",
-                                )
-                                + astrotime.Time(
-                                    schedule_table[i]["end time (UTC)"],
-                                    format="iso",
-                                    scale="utc",
-                                )
-                            )
-                            / 2
-                        ]
-                    )
-                elif schedule_table[i]["dec"] != [obj.ra.dms for obj in objects].index(
-                    schedule_table[i]["ra"]
-                ):
-                    objects.append(
-                        coord.SkyCoord(
-                            ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"]
-                        )
-                    )
-                    times.append(
-                        [
-                            (
-                                astrotime.Time(
-                                    schedule_table[i]["start time (UTC)"],
-                                    format="iso",
-                                    scale="utc",
-                                )
-                                + astrotime.Time(
-                                    schedule_table[i]["end time (UTC)"],
-                                    format="iso",
-                                    scale="utc",
-                                )
-                            )
-                            / 2
-                        ]
-                    )
-                else:
-                    times[
-                        [obj.dec.dms for obj in objects].index(schedule_table[i]["dec"])
-                    ].append(
-                        (
-                            astrotime.Time(
-                                schedule_table[i]["start time (UTC)"],
-                                format="iso",
-                                scale="utc",
-                            )
-                            + astrotime.Time(
-                                schedule_table[i]["end time (UTC)"],
-                                format="iso",
-                                scale="utc",
-                            )
-                        )
-                        / 2
-                    )
-
-            for i in range(len(objects)):
-                ax = astroplan.plot_sky(
-                    astroplan.FixedTarget(objects[i]),
-                    observatory,
-                    times[i],
-                    style_kwargs={
-                        "color": ccm.batlow(i / (len(objects) - 1)),
-                        "label": objects[i].to_string("hmsdms"),
-                    },
-                )
-            plt.legend()
+            ax = plot_schedule_sky(schedule, observatory)
             return schedule_table, ax
         case _:
             logger.info("No plot requested")
@@ -514,10 +447,8 @@ def schedtel_cli(
 @click.command()
 @click.argument("schedule_table", type=click.Path(exists=True))
 @click.argument("observatory", type=click.Path(exists=True))
-@click.option("-n", "--name", type=str, default="", help="Name of observatory.")
-@click.version_option(version="0.1.0")
-@click.help_option("-h", "--help")
-def plot_schedule_gantt_cli(schedule_table, observatory, name):
+@click.version_option()
+def plot_schedule_gantt_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
@@ -530,11 +461,9 @@ def plot_schedule_gantt_cli(schedule_table, observatory, name):
                 lat=obs_cfg.getfloat("location", "latitude") * u.deg,
                 height=obs_cfg.getfloat("location", "elevation") * u.m,
             )
-            name = obs_cfg.get("site", "instrument_name")
             observatory = astroplan.Observer(location=location)
         elif type(observatory) is Observatory:
             location = observatory.observatory_location
-            name = observatory.instrument_name
             observatory = astroplan.Observer(location=observatory.observatory_location)
         else:
             raise TypeError(
@@ -542,11 +471,8 @@ def plot_schedule_gantt_cli(schedule_table, observatory, name):
             )
     else:
         location = observatory.location
-        name = observatory.name
 
-    obscodes = np.unique(
-        [block["configuration"]["obscode"] for block in schedule_table]
-    )
+    obscodes = np.unique([block["configuration"]["code"] for block in schedule_table])
 
     date = astrotime.Time(
         schedule_table[0]["start time (UTC)"], format="iso", scale="utc"
@@ -573,7 +499,7 @@ def plot_schedule_gantt_cli(schedule_table, observatory, name):
         plot_blocks = [
             block
             for block in schedule_table
-            if block["configuration"]["obscode"] == obscodes[i]
+            if block["configuration"]["code"] == obscodes[i]
         ]
 
         for block in plot_blocks:
@@ -688,313 +614,91 @@ def plot_schedule_gantt_cli(schedule_table, observatory, name):
     return ax
 
 
-def parse_sch_file(filename, location=None, t0=None):
-    with open(filename, "r") as f:
-        raw_lines = f.readlines()
-
-    # Remove equal signs, quotes, and blank lines
-    lines = []
-    for line in raw_lines:
-        logger.debug(f"Parsing line: {line}")
-        line = line.replace("=", " ")
-        line = line.replace("`", "'")
-        line = line.replace('"', "'")
-        line = line.replace("‘", "'")
-        line = line.replace("’", "'")
-
-    lines = [line.split("#")[0] for line in lines]  # Remove comments
-    lines = [line.split("!")[0] for line in lines]  # Remove comments
-    lines = [line.replace("\n", "") for line in lines]  # Remove line breaks
-    " ".join(
-        mystring.split()
-    )  # Remove multiple spaces, trailing and leading whitespace
-    lines = [line for line in lines if line != ""]  # Remove empty lines
-    lines = [line.lower() for line in lines]  # Lower case
-
-    # Look for title, observer keywords
-    title = ""
-    for line in lines:
-        title = _get_keyvalue(line, "tit", start_line=True)
-        if title is not None:
-            lines.remove(line)
-            break
-
-    observer = ""
-    for line in lines:
-        val += _get_keyvalue(line, "obs", start_line=True)
-        if val is not None:
-            lines.remove(line)
-            observer += val + ","
-
-    code = filename[:3]
-
-    prior_filters = None
-    prior_exposures = None
-
-    # Parse each line and place into ObservingBlock
-    blocks = []
-
-    for line in lines:
-        # Required keywords
-        target_name = _get_keyvalue(line, ("tar", "sou", "obj", "nam"))
-        ra = _get_keyvalue(line, "ra")
-        dec = _get_keyvalue(line, "dec")
-        nonsidereal = _get_flag(line, "non")
-
-        if None not in (ra, dec):
-            obj = coord.SkyCoord(ra, dec, unit=(u.hourangle, u.deg))
-            if target_name is None:
-                target_name = obj.to_string("hmsdms")
-            obj = astroplan.FixedTarget(name=nm, coord=obj)
-            pm_ra_cosdec = telrun.observing_block_config["pm_ra_cosdec"]
-            pm_dec = telrun.observing_block_config["pm_dec"]
-        elif target_name != None and not nonsidereal:
-            obj = coord.SkyCoord.from_name(target_name)
-            obj = astroplan.FixedTarget(name=target, coord=obj)
-            pm_ra_cosdec = telrun.observing_block_config["pm_ra_cosdec"]
-            pm_dec = telrun.observing_block_config["pm_dec"]
-        elif target_name != None and nonsidereal:
-            ephemerides = mpc.MPC.get_ephemeris(
-                target=target_name,
-                location=location,
-                start=t0 + 0.5 * u.day,
-                number=1,
-                proper_motion="sky",
+@click.command()
+@click.argument("schedule_table", type=click.Path(exists=True))
+@click.argument("observatory", type=click.Path(exists=True))
+@click.version_option()
+def plot_schedule_sky_cli():
+    objects = []
+    times = []
+    for i in range(len(schedule_table)):
+        if schedule_table[i]["ra"] not in [obj.ra.dms for obj in objects]:
+            objects.append(
+                coord.SkyCoord(ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"])
             )
-            ra = ephemerides["RA"][0]
-            dec = ephemerides["DEC"][0]
-            pm_ra_cosdec = ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
-            pm_dec = ephemerides["dDec"][0] * u.arcsec / u.hour
-            obj = coord.SkyCoord(ra, dec, pm_ra_cosdec=pm_ra_cosdec, pm_dec=pm_dec)
-            obj = astroplan.FixedTarget(name=target_name, coord=obj)
-        else:
-            pass  # TODO: allow for sources with no coordinates, i.e. scheduling darks/flats
-
-        # Get non-iterating, non-inheriting keywords
-        name = _get_keyvalue(line, "file")
-        if name is None:
-            name = telrun.observing_block_config["filename"]
-
-        priority = _get_keyvalue(line, "pri")
-        priority = int(priority) if priority is not None else 1
-
-        repositioning = _get_keyvalue(line, "repo")
-        if repositioning is not None:
-            repositioning = (
-                int(repositioning.split(",")[0]),
-                int(repositioning.split(",")[1]),
-            )
-        else:
-            repositioning = telrun.observing_block_config["repositioning"]
-
-        shutter_state = _get_keyvalue(line, "shu", boolean=True)
-        if shutter_state is None:
-            shutter_state = telrun.observing_block_config["shutter_state"]
-
-        readout = _get_keyvalue(line, "rea")
-        if readout is not None:
-            readout = int(readout)
-        else:
-            readout = telrun.observing_block_config["readout"]
-
-        binning = _get_keyvalue(line, "bin")
-        if binning is not None:
-            binning = (int(binning.split("x")[0]), int(binning.split("x")[1]))
-        else:
-            binning = telrun.observing_block_config["binning"]
-
-        frame_position = _get_keyvalue(line, "frame_p")
-        if frame_position is not None:
-            frame_position = (
-                int(frame_position.split(",")[0]),
-                int(frame_position.split(",")[1]),
-            )
-        else:
-            frame_position = telrun.observing_block_config["frame_position"]
-
-        frame_size = _get_keyvalue(line, "frame_s")
-        if frame_size is not None:
-            frame_size = (int(frame_size.split(",")[0]), int(frame_size.split(",")[1]))
-        else:
-            frame_size = telrun.observing_block_config["frame_size"]
-
-        comment = _get_keyvalue(line, "com")
-        if comment is None:
-            comment = telrun.observing_block_config["comment"]
-
-        # Get timing keywords
-        utstart = _get_keyvalue(line, "uts", "sta")
-        if utstart is not None:
-            utstart = astrotime.Time(utstart, format="isot", scale="utc")
-
-        cadence = _get_keyvalue(line, "cad")
-        if cadence is not None:
-            cadence = astrotime.TimeDelta(
-                datetime.time(*[int(c) for c in cadence.split(":")]), format="datetime"
-            )
-
-            if utstart is None:
-                raise ValueError("Must specify utstart if cadence is specified")
-
-        schederr = _get_keyvalue(line, "sch")
-        if schederr is not None:
-            schederr = astrotime.TimeDelta(
-                datetime.time(*[int(s) for s in schederr.split(":")]), format="datetime"
-            )
-
-        if utstart is None and schederr is not None:
-            raise ValueError("Must specify utstart if schederr is specified")
-        elif utstart is not None and schederr is None:
-            schederr = 60 * u.second
-
-        # Get exposure behavior keywords
-        n_exp = _get_keyvalue(line, ("n_e", "nex", "repe"))
-        if n_exp is not None:
-            n_exp = int(n_exp)
-        else:
-            n_exp = telrun.observing_block_config["n_exp"]
-
-        do_not_interrupt = _get_flag(line, ("don", "do_", "do-"))
-        if do_not_interrupt is None:
-            do_not_interrupt = telrun.observing_block_config["do_not_interrupt"]
-
-        # Get iterating, inheriting keywords
-        filters = _get_keyvalue(line, "filt")
-        if filters is not None:
-            filters = filters.split(",")
-            prior_filters = filters
-        elif prior_filters is not None:
-            filters = prior_filters
-        else:
-            filters = telrun.observing_block_config["filters"]
-            prior_filters = None
-
-        exposures = _get_keyvalue(line, "exp")
-        if exposures is not None:
-            exposures = [float(e) for e in exposures.split(",")]
-            prior_exposures = exposures
-        elif prior_exposures is not None:
-            exposures = prior_exposures
-        else:
-            exposures = telrun.observing_block_config["exposures"]
-            prior_exposures = None
-
-        # Sanity Check 1: matching number of filters and exposures
-        if len(filters) != len(exposures) and len(filters) != 0:
-            raise ValueError("Number of filters must match number of exposures")
-
-        # Sanity Check 2: do_not_interrupt and cadence don't both appear:
-        if do_not_interrupt is not None and cadence is not None:
-            raise ValueError(
-                "Cannot specify do_not_interrupt and cadence simultaneously"
-            )
-
-        # Sanity Check 3: if cadence is specified, verify it exceeds exposure time
-        # times number of exposures times number of filters
-        if cadence is not None:
-            if cadence < np.sum(exposures) * n_exp * len(filters):
-                raise ValueError("Cadence must be greater than total exposure time")
-
-        for i in range(len(filters)):
-            filt = filters[i]
-            exp = exposures[i]
-            constraints = None
-
-            if do_not_interrupt:
-                loop_max = 1
-                temp_dur = exp * n_exp * u.second
-                temp_n_exp = n_exp
-            else:
-                loop_max = n_exp
-                temp_dur = exp * u.second
-                temp_n_exp = 1
-
-            if utstart is not None:
-                if cadence is not None:
-                    constraint_cadence = cadence
-                else:
-                    constraint_cadence = temp_dur
-
-                constraints = [
-                    [
-                        astroplan.constraints.TimeConstraint(
-                            utstart + (i + j * len(i)) * constraint_cadence - schederr,
-                            utstart + (i + j * len(i)) * constraint_cadence + schederr,
+            times.append(
+                [
+                    (
+                        astrotime.Time(
+                            schedule_table[i]["start time (UTC)"],
+                            format="iso",
+                            scale="utc",
                         )
-                    ]
-                    for j in range(loop_max)
+                        + astrotime.Time(
+                            schedule_table[i]["end time (UTC)"],
+                            format="iso",
+                            scale="utc",
+                        )
+                    )
+                    / 2
                 ]
-
-            for j in range(loop_max):
-                blocks.append(
-                    astroplan.ObservingBlock(
-                        target=obj,
-                        duration=temp_dur,
-                        priority=priority,
-                        name=target_name,
-                        configuration={
-                            "observer": observer,
-                            "code": code,
-                            "title": title,
-                            "filename": name,
-                            "filter": filt,
-                            "exposure": exp,
-                            "n_exp": temp_n_exp,
-                            "do_not_interrupt": do_not_interrupt,
-                            "repositioning": repositioning,
-                            "shutter_state": shutter_state,
-                            "readout": readout,
-                            "binning": binning,
-                            "frame_position": frame_position,
-                            "frame_size": frame_size,
-                            "pm_ra_cosdec": pm_ra_cosdec,
-                            "pm_dec": pm_dec,
-                            "comment": comment,
-                            "status": "N",
-                            "message": "unprocessed",
-                        },
-                        constraints=constraints[j],
+            )
+        elif schedule_table[i]["dec"] != [obj.ra.dms for obj in objects].index(
+            schedule_table[i]["ra"]
+        ):
+            objects.append(
+                coord.SkyCoord(ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"])
+            )
+            times.append(
+                [
+                    (
+                        astrotime.Time(
+                            schedule_table[i]["start time (UTC)"],
+                            format="iso",
+                            scale="utc",
+                        )
+                        + astrotime.Time(
+                            schedule_table[i]["end time (UTC)"],
+                            format="iso",
+                            scale="utc",
+                        )
+                    )
+                    / 2
+                ]
+            )
+        else:
+            times[
+                [obj.dec.dms for obj in objects].index(schedule_table[i]["dec"])
+            ].append(
+                (
+                    astrotime.Time(
+                        schedule_table[i]["start time (UTC)"],
+                        format="iso",
+                        scale="utc",
+                    )
+                    + astrotime.Time(
+                        schedule_table[i]["end time (UTC)"],
+                        format="iso",
+                        scale="utc",
                     )
                 )
-                logger.debug(
-                    f"""Created ObservingBlock: {blocks[-1].target},
-                                {blocks[-1].duration}, {blocks[-1].priority},
-                                {blocks[-1].name}, {blocks[-1].constraints},
-                                {blocks[-1].configuration}"""
-                )
+                / 2
+            )
 
-    return blocks
-
-
-def _get_keyvalue(line, keyword, start_line=False, boolean=False):
-    if start_line:
-        if line.lower().startswith(keyword.lower()):
-            if not boolean:
-                return shlex.split(line)[1]
-            else:
-                if shlex.split(line)[1].lower().startswith(("t", "y", "1")):
-                    return True
-                elif shlex.split(line)[1].lower().startswith(("f", "n", "0")):
-                    return False
-                else:
-                    return None
-        else:
-            return None
-
-    for i in range(len(line)):
-        if line[i:].lower().startswith(keyword.lower()):
-            return shlex.split(line[i:])[1]
-        else:
-            return None
-
-
-def _get_flag(line, keyword):
-    for i in range(len(line)):
-        if line[i:].lower().startswith(keyword.lower()):
-            return True
-
-    return False
+    for i in range(len(objects)):
+        ax = astroplan.plot_sky(
+            astroplan.FixedTarget(objects[i]),
+            observatory,
+            times[i],
+            style_kwargs={
+                "color": ccm.batlow(i / (len(objects) - 1)),
+                "label": objects[i].to_string("hmsdms"),
+            },
+        )
+    plt.legend()
+    return ax
 
 
 schedtel = schedtel_cli.callback
 plot_schedule_gantt = plot_schedule_gantt_cli.callback
+plot_schedule_sky = plot_schedule_sky_cli.callback
