@@ -11,6 +11,7 @@ from ..analysis import calc_zmag
 from ..observatory import AstrometryNetWCS
 from .ccd_calib import ccd_calib
 
+
 logger = logging.getLogger(__name__)
 
 
