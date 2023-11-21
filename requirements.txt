@@ -6,14 +6,14 @@ astroscrappy == 1.1.0
 click == 8.1.7
 cmcrameri == 1.7.0
 markdown == 3.5.1
-matplotlib == 3.8.1
+matplotlib == 3.8.2
 numpy == 1.26.2
 paramiko == 3.3.1
 photutils == 1.9.0
 prettytable == 3.9.0
 pywin32 == 306;platform_system=='Windows'
 scikit-image == 0.22.0
-scipy == 1.11.3
+scipy == 1.11.4
 smplotlib == 0.0.9
 timezonefinder == 6.2.0
 tksheet == 6.2.9
