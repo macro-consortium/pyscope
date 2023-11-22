@@ -1156,12 +1156,13 @@ class Observatory:
         do_fwhm=False,
         overwrite=False,
         custom_header=None,
+        history=None,
         **kwargs,
     ):
         """Saves the current image"""
 
         logger.debug(
-            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {kwargs}) called"
+            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {history}, {kwargs}) called"
         )
 
         if not self.camera.ImageReady:
@@ -1216,6 +1217,12 @@ class Observatory:
 
         if custom_header is not None:
             hdr.update(custom_header)
+
+        if history is not None:
+            if type(history) is str:
+                history = [history]
+            for hist in history:
+                hdr["HISTORY"] = hist
 
         hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)

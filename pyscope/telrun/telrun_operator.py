@@ -839,6 +839,17 @@ class TelrunOperator:
             )
             return
 
+        # Logging setup for writing to FITS headers
+        # From: https://stackoverflow.com/questions/31999627/storing-logger-messages-in-a-string
+        str_output = StringIO()
+        str_handler = logging.StreamHandler(str_output)
+        str_handler.setLevel(logging.INFO)
+        str_formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        str_handler.setFormatter(str_formatter)
+        logger.addHandler(str_handler)
+
         try:
             val_block = validate_ob(block)
         except Exception as e:
@@ -1728,10 +1739,12 @@ class TelrunOperator:
                     logger.info(
                         "Current filter in wcs filters, attempting WCS solve..."
                     )
+                    hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
                         self.images_path + block["configuration"]["filename"] + ".tmp",
                         frametyp=block["configuration"]["shutter_state"],
                         custom_header=custom_header,
+                        history=hist,
                     )
                     self._wcs_threads.append(
                         threading.Thread(
@@ -1750,17 +1763,21 @@ class TelrunOperator:
                     logger.info(
                         "Current filter not in wcs filters, skipping WCS solve..."
                     )
+                    hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
                         self.images_path + block["configuration"]["filename"],
                         frametyp=block["configuration"]["shutter_state"],
                         custom_header=custom_header,
+                        history=hist,
                     )
             else:
                 logger.info("No filter wheel, attempting WCS solve...")
+                hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
                     self.images_path + block["configuration"]["filename"] + ".tmp",
                     frametyp=block["configuration"]["shutter_state"],
                     custom_header=custom_header,
+                    history=hist,
                 )
                 self._wcs_threads.append(
                     threading.Thread(
