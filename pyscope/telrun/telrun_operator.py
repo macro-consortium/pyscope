@@ -6,6 +6,7 @@ import shutil
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
+from io import StringIO
 from tkinter import font
 
 import astroplan
@@ -1177,22 +1178,59 @@ class TelrunOperator:
             or block["configuration"]["pm_dec"].value != 0
         ):
             logger.info("Non-zero proper motion specified, updating ephemeris...")
-            ephemerides = mpc.MPC.get_ephemeris(
-                target=block["target"],
-                location=self.observatory.observatory_location,
-                start=block["start time (UTC)"],
-                number=1,
-                proper_motion="sky",
-            )
-            block["ra"] = ephemerides["RA"][0]
-            block["dec"] = ephemerides["DEC"][0]
-            block["configuration"]["pm_ra_cosdec"] = (
-                ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
-            )
-            block["configuration"]["pm_dec"] = (
-                ephemerides["dDec"][0] * u.arcsec / u.hour
-            )
-            logger.info("Ephemeris updates")
+            try:
+                ephemerides = mpc.MPC.get_ephemeris(
+                    target=block["name"],
+                    location=self.observatory.observatory_location,
+                    start=block["start time (UTC)"],
+                    number=1,
+                    proper_motion="sky",
+                )
+                block["ra"] = ephemerides["RA"][0]
+                block["dec"] = ephemerides["Dec"][0]
+                block["configuration"]["pm_ra_cosdec"] = (
+                    ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
+                )
+                block["configuration"]["pm_dec"] = (
+                    ephemerides["dDec"][0] * u.arcsec / u.hour
+                )
+            except Exception as e1:
+                try:
+                    logger.warning(
+                        f"Failed to find proper motions for {row['name']} on line {line_number}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
+                    )
+                    pos_l = coord.get_body(
+                        block["name"],
+                        block["start time (UTC)"] - 10 * u.minute,
+                        location=self.observatory.observatory_location,
+                    )
+                    pos_m = coord.get_body(
+                        block["name"], block["start time (UTC)"], location=location
+                    )
+                    pos_h = coord.get_body(
+                        block["name"],
+                        block["start time (UTC)"] + 10 * u.minute,
+                        location=self.observatory.observatory_location,
+                    )
+                    block["ra"] = pos_m.ra.to_string(
+                        "hourangle", sep="hms", precision=3
+                    )
+                    block["dec"] = pos_m.dec.to_string("deg", sep="dms", precision=2)
+                    block["configuration"]["pm_ra_cosdec"] = (
+                        (
+                            pos_h.ra * np.cos(pos_h.dec.rad)
+                            - pos_l.ra * np.cos(pos_l.dec.rad)
+                        )
+                        / (pos_h.obstime - pos_l.obstime)
+                    ).to(u.arcsec / u.hour)
+                    block["configuration"]["pm_dec"] = (
+                        (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
+                    ).to(u.arcsec / u.hour)
+                except Exception as e2:
+                    logger.warning(
+                        f"Failed to find proper motions for {block['name']}, keeping old ephemerides: {e2}"
+                    )
+            logger.info("Ephemeris updated")
 
         target = coord.SkyCoord(
             ra=block["ra"].hourangle, dec=block["dec"].deg, unit=(u.hourangle, u.deg)
