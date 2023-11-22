@@ -11,17 +11,14 @@ from pyscope.telrun import sch
 
 
 def test_sch_read():
-    logger.setLevel("INFO")
-    logger.addHandler(logging.StreamHandler())
     read_sched = sch.read(
         "tests/reference/test_sch.sch",
         location=coord.EarthLocation.of_site("VLA"),
         t0=time.Time.now(),
     )
 
-    for ob in read_sched:
-        print(ob.configuration["pm_ra_cosdec"], ob.configuration["pm_dec"])
+    assert len(read_sched) == 13
 
 
-if __name__ == "__main__":
-    test_sch_read()
+def test_sch_write(tmp_path):
+    pass

@@ -38,6 +38,8 @@ def read(
         "obs": "observer",
         "cod": "code",
         "bl": "block",
+        "dates": "datestart",
+        "datee": "dateend",
         "so": "source",
         "ta": "source",
         "obj": "source",
@@ -114,7 +116,7 @@ def read(
     lines = [
         re.sub(r'\b(?<!")(\w+)(?!")\b', lambda match: match.group(1).lower(), line)
         for line in lines
-    ]  # Make all keywords lowercase excerpt those in quotes
+    ]  # Make entire line lowercase except substrings in quotes
 
     # Turn each line into a dictionary, parse keywords
     lines = [
@@ -149,7 +151,7 @@ def read(
             new_line.update({value_matches[0]: line[key]})
         lines[line_number] = new_line
 
-    # Look for title, observers, code keywords
+    # Look for title, observers, code, datestart, and dateend keywords
     title_matches = []
     line_matches = []
     for line_number, line in enumerate(lines):
@@ -217,6 +219,88 @@ def read(
     else:
         logger.warning("No code found, using parsing function default")
         code = default_code
+
+    datestart_matches = []
+    line_matches = []
+    for line_number, line in enumerate(lines):
+        if "datestart" in line.keys():
+            datestart_matches.append(line["datestart"])
+            line_matches.append(line_number)
+            if len(line.keys()) > 1:
+                logger.warning(
+                    f"Multiple keywords found on datestart line {line_number}, ignoring all but datestart: {line}"
+                )
+    lines = [
+        line
+        for line_number, line in enumerate(lines)
+        if line_number not in line_matches
+    ]
+    if len(datestart_matches) > 1:
+        logger.warning(f"Multiple datestarts found: {datestart_matches}, using first")
+        datestart = astrotime.Time(
+            datetime.datetime.strptime(datestart_matches[0], "%Y-%m-%d"),
+            format="datetime",
+        )
+    elif len(datestart_matches) == 1:
+        datestart = astrotime.Time(
+            datetime.datetime.strptime(datestart_matches[0], "%Y-%m-%d"),
+            format="datetime",
+        )
+    else:
+        logger.info("No datestart found")
+        datestart = None
+
+    dateend_matches = []
+    line_matches = []
+    for line_number, line in enumerate(lines):
+        if "dateend" in line.keys():
+            dateend_matches.append(line["dateend"])
+            line_matches.append(line_number)
+            if len(line.keys()) > 1:
+                logger.warning(
+                    f"Multiple keywords found on dateend line {line_number}, ignoring all but dateend: {line}"
+                )
+    lines = [
+        line
+        for line_number, line in enumerate(lines)
+        if line_number not in line_matches
+    ]
+    if len(dateend_matches) > 1:
+        logger.warning(f"Multiple dateends found: {dateend_matches}, using first")
+        dateend = astrotime.Time(
+            datetime.datetime.strptime(dateend_matches[0], "%Y-%m-%d"),
+            format="datetime",
+        )
+    elif len(dateend_matches) == 1:
+        dateend = astrotime.Time(
+            datetime.datetime.strptime(dateend_matches[0], "%Y-%m-%d"),
+            format="datetime",
+        )
+    else:
+        logger.info("No dateend found")
+        dateend = None
+
+    if datestart is not None:
+        if dateend is not None:
+            if datestart > dateend:
+                logger.error(f"datestart must be before dateend, ignoring")
+                datestart = None
+                dateend = None
+        else:
+            if datestart > astrotime.Time.now():
+                logger.exception(
+                    f"datestart must be before now, renaming file to .sch.old and ignoring"
+                )
+                os.rename(filename, filename.replace(".sch", ".sch.old"))
+                return
+    else:
+        if dateend is not None:
+            if dateend < astrotime.Time.now():
+                logger.exception(
+                    f"dateend must be after now, renaming file to .sch.old and ignoring"
+                )
+                os.rename(filename, filename.replace(".sch", ".sch.old"))
+                return
 
     # Look for block keywords and collapse into single line
     new_lines = []
@@ -846,21 +930,21 @@ def write(observing_blocks, filename=None):
             f.write("\n")
 
             for block in blocks:
-                write_string = ""
+                write_string = "block start\n"
                 try:
-                    write_string += f"source '{block.name}' "
+                    write_string += f"source '{block.name}'\n"
                 except:
                     pass
-                write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=3)} "
+                write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=4)}\n"
                 write_string += (
-                    f"dec {block.target.dec.to_string('deg', sep='dms', precision=2)} "
+                    f"dec {block.target.dec.to_string('deg', sep='dms', precision=3)}\n"
                 )
                 try:
-                    write_string += f"priority {block.priority} "
+                    write_string += f"priority {block.priority}\n"
                 except:
                     pass
                 try:
-                    write_string += f"filename '{block.configuration['filename']}' "
+                    write_string += f"filename '{block.configuration['filename']}'\n"
                 except:
                     pass
                 try:
@@ -868,55 +952,55 @@ def write(observing_blocks, filename=None):
                         block.configuration["pm_ra_cosdec"].value != 0
                         or block.configuration["pm_dec"].value != 0
                     ):
-                        write_string += f"nonsidereal true "
-                        write_string += f"pm_ra_cosdec {block.configuration['pm_ra_cosdec'].to(u.arcsec/u.hour).value} "
-                        write_string += f"pm_dec {block.configuration['pm_dec'].to(u.arcsec/u.hour).value} "
+                        write_string += f"nonsidereal true\n"
+                        write_string += f"pm_ra_cosdec {block.configuration['pm_ra_cosdec'].to(u.arcsec/u.hour).value}\n"
+                        write_string += f"pm_dec {block.configuration['pm_dec'].to(u.arcsec/u.hour).value}\n"
                     else:
-                        write_string += f"nonsidereal false "
+                        write_string += f"nonsidereal false\n"
                 except:
                     pass
                 try:
                     if block.configuration["shutter_state"]:
-                        write_string += f"shutter_state open "
+                        write_string += f"shutter_state open\n"
                     else:
-                        write_string += f"shutter_state closed "
+                        write_string += f"shutter_state closed\n"
                 except:
                     pass
-                write_string += f"exposure {block.configuration['exposure']} "
-                write_string += f"nexp {block.configuration['nexp']} "
+                write_string += f"exposure {block.configuration['exposure']}\n"
+                write_string += f"nexp {block.configuration['nexp']}\n"
                 try:
                     if block.configuration["do_not_interrupt"]:
-                        write_string += f"do_not_interrupt true "
+                        write_string += f"do_not_interrupt true\n"
                     else:
-                        write_string += f"do_not_interrupt false "
+                        write_string += f"do_not_interrupt false\n"
                 except:
                     pass
                 try:
-                    write_string += f"readout {block.configuration['readout']} "
+                    write_string += f"readout {block.configuration['readout']}\n"
                 except:
                     pass
                 try:
-                    write_string += f"binning {block.configuration['binning'][0]}x{block.configuration['binning'][1]} "
+                    write_string += f"binning {block.configuration['binning'][0]}x{block.configuration['binning'][1]}\n"
                 except:
                     pass
-                write_string += f"filter {block.configuration['filter']} "
+                write_string += f"filter {block.configuration['filter']}\n"
                 try:
                     if block.configuration["repositioning"] is True:
                         write_string += f"repositioning true "
                     elif type(block.configuration["repositioning"]) is tuple:
-                        write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]} "
+                        write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"frame_position {block.configuration['frame_position'][0]}x{block.configuration['frame_position'][1]} "
+                    write_string += f"frame_position {block.configuration['frame_position'][0]}x{block.configuration['frame_position'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"frame_size {block.configuration['frame_size'][0]}x{block.configuration['frame_size'][1]} "
+                    write_string += f"frame_size {block.configuration['frame_size'][0]}x{block.configuration['frame_size'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"utstart {block.start_time.isot} "
+                    write_string += f"utstart {block.start_time.isot}\n"
                 except:
                     try:
                         if type(block.constraints) is not list:
@@ -933,14 +1017,14 @@ def write(observing_blocks, filename=None):
                         max_time = min(possible_max_times)
                         mid_time = (min_time + max_time) / 2
                         error_time = (max_time - min_time) / 2
-                        write_string += f"utstart {mid_time.isot} "
-                        write_string += f"schederr {error_time.hour}:{error_time.minute}:{error_time.second} "
+                        write_string += f"utstart {mid_time.isot}\n"
+                        write_string += f"schederr {error_time.hour}:{error_time.minute}:{error_time.second}\n"
                     except:
                         pass
                 try:
-                    write_string += f"comment '{block.configuration['comment']}' (written by pyscope v{__version__})' "
+                    write_string += f"comment '{block.configuration['comment']}' (written by pyscope v{__version__})'\n"
                 except:
-                    write_string += f"comment 'written by pyscope v{__version__}' "
+                    write_string += f"comment 'written by pyscope v{__version__}'\n"
 
-                f.write(write_string + "\n")
+                f.write(write_string + "block end\n\n")
             f.write("\n")
