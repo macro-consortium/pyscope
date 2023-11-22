@@ -14,6 +14,7 @@ import pytz
 import smplotlib
 import timezonefinder
 from astropy import coordinates as coord
+from astropy import table
 from astropy import time as astrotime
 from astropy import units as u
 from astroquery import mpc
@@ -141,6 +142,20 @@ logger = logging.getLogger(__name__)
     help="""The time resolution of the schedule [seconds].""",
 )
 @click.option(
+    "-n",
+    "--name-format",
+    "name_format",
+    type=str,
+    default="{code}_{sch}_{ra}_{dec}_{start_time_utc}",
+    show_default=True,
+    help="""The format of the scheduled image name. The format
+    is a string that can include any column from the schedule table,
+    the configuration dictionary, or the following special strings:
+    {index} - The index of the ObservingBlock in the schedule.
+    {schedtime} - The time schedtel was executed.
+    """,
+)
+@click.option(
     "-f",
     "--filename",
     type=click.Path(resolve_path=True, dir_okay=False, writable=True),
@@ -193,6 +208,7 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
+    name_format="{code}_{sch}_{ra}_{dec}_{start_time_utc}",
     filename=None,
     telrun=False,
     plot=None,
@@ -432,10 +448,13 @@ def schedtel_cli(
         schedule_handler(blocks[i], schedule)
 
     # Generate schedule table
-    schedule_table = schedule.to_table(show_transitions=False, show_unused=False)
+    schedule_table = table.QTable(
+        schedule.to_table(show_transitions=False, show_unused=False)
+    )
+    sched_time = astrotime.Time.now()
 
-    # Update ephem for non-sidereal targets
-    for row in schedule_table:
+    # Update ephem for non-sidereal targets, update object types, set filenames
+    for row_number, row in enumerate(schedule_table):
         if (
             row["configuration"]["pm_ra_cosdec"].value != 0
             or row["configuration"]["pm_dec"].value != 0
@@ -492,12 +511,53 @@ def schedtel_cli(
                         f"Failed to find proper motions for {row['name']} on line {line_number}, keeping old ephemerides: {e2}"
                     )
 
+        row["start time (UTC)"] = astrotime.Time(
+            row["start time (UTC)"], format="iso", scale="utc"
+        )
+        row["end time (UTC)"] = astrotime.Time(
+            row["end time (UTC)"], format="iso", scale="utc"
+        )
+        row["duration (minutes)"] = row["end time (UTC)"] - row["start time (UTC)"]
+        target = coord.SkyCoord(ra=row["ra"], dec=row["dec"])
+        row["ra"] = target.ra
+        row["dec"] = target.dec
+
+        if row["configuration"]["filename"] == "":
+            row["configuration"]["filename"] = name_format.format(
+                index=row_number,
+                schedtime=sched_time.isot,
+                target=row["target"],
+                start_time_utc=row["start time (UTC)"].isot,
+                end_time_utc=row["end time (UTC)"].isot,
+                duration=row["duration (minutes)"].value,
+                ra=row["ra"].to_string("hourangle", sep="hms", precision=0, pad=True),
+                dec=row["dec"].to_string(
+                    "deg", sep="dms", precision=0, pad=True, alwayssign=True
+                ),
+                observer=row["configuration"]["observer"],
+                code=row["configuration"]["code"],
+                title=row["configuration"]["title"],
+                exposure=row["configuration"]["exposure"],
+                nexp=row["configuration"]["nexp"],
+                do_not_interrupt=row["configuration"]["do_not_interrupt"],
+                repositioning=row["configuration"]["repositioning"],
+                shutter_state=row["configuration"]["shutter_state"],
+                readout=row["configuration"]["readout"],
+                binning=row["configuration"]["binning"],
+                frame_position=row["configuration"]["frame_position"],
+                frame_size=row["configuration"]["frame_size"],
+                pm_ra_cosdec=row["configuration"]["pm_ra_cosdec"],
+                pm_dec=row["configuration"]["pm_dec"],
+                comment=row["configuration"]["comment"],
+                sch=row["configuration"]["sch"],
+                status=row["configuration"]["status"],
+                message=row["configuration"]["message"],
+            )
+
     # Write the telrun.ecsv file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = astrotime.Time(
-            schedule_table[0]["start time (UTC)"], format="iso", scale="utc"
-        ).isot
+        first_time = schedule_table[0]["start time (UTC)"].isot
         filename = "telrun_" + first_time + ".ecsv"
 
     if telrun:

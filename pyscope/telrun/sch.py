@@ -288,16 +288,13 @@ def read(
                 dateend = None
         else:
             if datestart > astrotime.Time.now():
-                logger.exception(
-                    f"datestart must be before now, renaming file to .sch.old and ignoring"
-                )
-                os.rename(filename, filename.replace(".sch", ".sch.old"))
+                logger.exception(f"datestart must be before now, exiting")
                 return
     else:
         if dateend is not None:
             if dateend < astrotime.Time.now():
                 logger.exception(
-                    f"dateend must be after now, renaming file to .sch.old and ignoring"
+                    f"dateend must be after now, renaming file to .sch.old and exiting"
                 )
                 os.rename(filename, filename.replace(".sch", ".sch.old"))
                 return
@@ -848,6 +845,7 @@ def read(
                             "pm_ra_cosdec": pm_ra_cosdec,
                             "pm_dec": pm_dec,
                             "comment": comment,
+                            "sch": filename.split("/")[-1],
                             "status": "N",
                             "message": "unscheduled",
                         },
