@@ -60,6 +60,14 @@ class SimulatorServer:
                 stdout=subprocess.DEVNULL,
                 shell=True,
             )
+        elif platform.system() == "Linux":
+            self.process = subprocess.Popen(
+                ("sudo " + dirname + "/ascom.alpaca.simulators"),
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
         else:
             self.process = subprocess.Popen(
                 (dirname + "/ascom.alpaca.simulators"),
