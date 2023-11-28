@@ -3,15 +3,13 @@ import datetime
 import json
 import logging
 import os
-import shlex
+import zoneinfo
 
 import astroplan
 import click
 import cmcrameri as ccm
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import pytz
-import smplotlib
 import timezonefinder
 from astropy import coordinates as coord
 from astropy import table
@@ -22,7 +20,7 @@ from matplotlib import ticker
 
 from .. import utils
 from ..observatory import Observatory
-from . import sch, validate_ob
+from . import sch, schedule_table
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +41,38 @@ logger = logging.getLogger(__name__)
     in the current working directory.""",
 )
 @click.option(
+    "-q",
+    "--queue",
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True, writable=True
+    ),
+    help="""A queue table of requested observations (.ecsv). If a catalog is provided
+    and -t is set, then the catalog is parsed and the queue is updated with those entries.
+    If no catalog is provided, the queue is scheduled. WARNING: If a catalog is provided,
+    then existing scheduled entries in the queue will be overwritten. If no catalog is provided,
+    then all entries in the queue (including previously scheduled entries) will be re-scheduled.""",
+)
+@click.option(
+    "-ao",
+    "--add-only",
+    "add_only",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="""If a catalog and a queue are provided, then only add the catalog
+    entries to the queue without scheduling them. By default, the catalog is
+    parsed, scheduled, and the queue is updated with the scheduled entries.""",
+)
+# TODO: Add option to update an existing schedule table
+# @click.option(
+#     "-es",
+#     "--existing-schedule",
+#     "existing_schedule",
+#     type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True,
+#         writable=True),
+#     help="""An existing schedule table (.ecsv) to be updated."""
+# )
+@click.option(
     "-i",
     "--ignore-order",
     "ignore_order",
@@ -61,6 +91,14 @@ logger = logging.getLogger(__name__)
     show_default=False,
     help="""The local date at the observatory of the night to be scheduled.
     By default, the current date at the observatory location is used.""",
+)
+@click.option(
+    "-l",
+    "--length",
+    type=click.IntRange(min=1, clamp=True),
+    default=1,
+    show_default=True,
+    help="""The length of the schedule [days].""",
 )
 @click.option(
     "-o",
@@ -103,8 +141,9 @@ logger = logging.getLogger(__name__)
     help="""The maximum airmass of all targets.""",
 )
 @click.option(
-    "-c",
+    "-ms",
     "--moon-separation",
+    "moon_separation",
     type=click.FloatRange(min=0, clamp=True),
     default=30,
     show_default=True,
@@ -124,7 +163,7 @@ logger = logging.getLogger(__name__)
     custom sub-class. By default, the astroplan.PriorityScheduler is used.""",
 )
 @click.option(
-    "-g",
+    "-gt",
     "--gap-time",
     "gap_time",
     type=click.FloatRange(min=0, clamp=True),
@@ -142,17 +181,15 @@ logger = logging.getLogger(__name__)
     help="""The time resolution of the schedule [seconds].""",
 )
 @click.option(
-    "-n",
+    "-nf",
     "--name-format",
     "name_format",
     type=str,
-    default="{code}_{sch}_{ra}_{dec}_{start_time_utc}",
+    default="{code}_{sch}_{ra}_{dec}_{start_time}",
     show_default=True,
     help="""The format of the scheduled image name. The format
-    is a string that can include any column from the schedule table,
-    the configuration dictionary, or the following special strings:
-    {index} - The index of the ObservingBlock in the schedule.
-    {schedtime} - The time schedtel was executed.
+    is a string that can include any column from the schedule table or
+    the configuration dictionary.
     """,
 )
 @click.option(
@@ -170,6 +207,7 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-t",
     "--telrun-execute",
+    "telrun_execute",
     is_flag=True,
     default=False,
     show_default=True,
@@ -190,6 +228,15 @@ logger = logging.getLogger(__name__)
     3: sky chart.""",
 )
 @click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="""Automatically answer yes to any questions. This will write the schedule
+    to file even if there are unscheduled or invalid blocks.""",
+)
+@click.option(
     "-q", "--quiet", is_flag=True, default=False, show_default=True, help="Quiet output"
 )
 @click.option(
@@ -198,8 +245,12 @@ logger = logging.getLogger(__name__)
 @click.version_option()
 def schedtel_cli(
     catalog=None,
+    queue=None,
+    add_only=False,
+    #     existing_schedule=None, # TODO
     ignore_order=False,
     date=None,
+    length=1,
     observatory=None,
     max_altitude=-12,
     elevation=30,
@@ -208,10 +259,11 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
-    name_format="{code}_{sch}_{ra}_{dec}_{start_time_utc}",
+    name_format="{code}_{sch}_{ra}_{dec}_{start_time}",
     filename=None,
     telrun=False,
     plot=None,
+    yes=True,
     quiet=False,
     verbose=0,
 ):
@@ -244,9 +296,79 @@ def schedtel_cli(
     logger.debug(f"quiet: {quiet}")
     logger.debug(f"verbose: {verbose}")
 
-    blocks = []
+    # Set the schedule time
+    sched_time = astrotime.Time.now()
 
-    if catalog is None:
+    # Define the observatory
+    if observatory is None:
+        try:
+            observatory = os.environ.get("OBSERVATORY_HOME") + "/config/observatory.cfg"
+            logger.info(
+                "No observatory provided, using observatory.cfg from $OBSERVATORY_HOME environment variable"
+            )
+        except:
+            observatory = os.getcwd() + "/observatory.cfg"
+            logger.info(
+                "No observatory provided, using observatory.cfg from current working directory"
+            )
+
+    logger.info("Parsing the observatory config")
+    if type(observatory) is str:
+        obs_cfg = configparser.ConfigParser()
+        obs_cfg.read(observatory)
+        slew_rate = obs_cfg.getfloat("scheduling", "slew_rate") * u.deg / u.second
+        instrument_reconfig_times = json.loads(
+            obs_cfg.get("scheduling", "instrument_reconfig_times")
+        )
+        observatory = astroplan.Observer(
+            location=coord.EarthLocation(
+                lon=obs_cfg.get("site", "longitude"),
+                lat=obs_cfg.get("site", "latitude"),
+            )
+        )
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
+    elif type(observatory) is Observatory:
+        obs_lon = observatory.observatory_location.lon
+        obs_lat = observatory.observatory_location.lat
+        slew_rate = observatory.slew_rate * u.deg / u.second
+        instrument_reconfig_times = observatory.instrument_reconfig_times
+    elif type(observatory) is astroplan.Observer:
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
+        slew_rate = observatory.slew_rate * u.deg / u.second
+        instrument_reconfig_times = observatory.instrument_reconfig_times
+    else:
+        logger.error(
+            "Observatory must be, a string, Observatory object, or astroplan.Observer object."
+        )
+        return
+
+    # Schedule
+    tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
+    tz = zoneinfo.ZoneInfo(tz)
+    logger.debug(f"tz = {tz}")
+
+    if date is None:
+        logger.debug("Using current date at observatory location")
+        date = datetime.datetime.now()
+    else:
+        date = datetime.datetime.strptime(date, "%Y-%m-%d")
+    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+
+    t0 = astrotime.Time(
+        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        format="datetime",
+    )
+    t1 = t0 + length * u.day
+    logger.info("Schedule time range: %s to %s" % (t0.iso, t1.iso))
+
+    # TODO: Add option to update an existing schedule table
+    schedule = astroplan.Schedule(t0, t1)
+
+    block_groups = []
+
+    if catalog is None and queue is None:
         try:
             catalog = os.environ.get("OBSERVATORY_HOME") + "/schedules/schedule.cat"
             logger.info(
@@ -263,6 +385,7 @@ def schedtel_cli(
         if catalog.endswith(".cat"):
             with open(catalog, "r") as f:
                 sch_files = f.read().splitlines()
+            sch_files = ["/".join(catalog.split("/")[:-1]) + "/" + f for f in sch_files]
             for f in sch_files:
                 if not os.path.isfile(f):
                     logger.error(
@@ -270,7 +393,16 @@ def schedtel_cli(
                     )
                     continue
                 try:
-                    blocks.append(sch.read(f))
+                    block_groups.append(
+                        sch.read(
+                            f,
+                            location=coord.EarthLocation(
+                                lon=obs_lon,
+                                lat=obs_lat,
+                            ),
+                            t0=t0,
+                        )
+                    )
                 except Exception as e:
                     logger.error(
                         f"File {f} in catalog {catalog} is not a valid .sch file, skipping: {e}"
@@ -278,108 +410,109 @@ def schedtel_cli(
                     continue
         elif catalog.endswith(".sch"):
             try:
-                blocks.append(sch.read(catalog))
+                block_groups.append(sch.read(catalog))
             except Exception as e:
                 logger.error(f"File {catalog} is not a valid .sch file: {e}")
-                return
 
-    elif type(catalog) in (list, tuple):
+    elif type(catalog) is list:
         logger.debug(f"catalog is a list")
         for block in catalog:
-            if type(block) in (list, tuple):
+            if type(block) is list:
                 for b in block:
                     if type(b) is not astroplan.ObservingBlock:
                         logger.error(
                             f"Object {b} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
                         )
                         continue
-                blocks.append(block)
+                block_groups.append(block)
             elif type(block) is astroplan.ObservingBlock:
-                blocks.append([block])
+                block_groups.append([block])
             else:
                 logger.error(
                     f"Object {block} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
                 )
                 continue
     else:
-        logger.error(f"Catalog {catalog} is not a valid file or list.")
-        return
+        logger.error(
+            f"Catalog {catalog} is not a valid .cat file or list of astroplan.ObservingBlocks."
+        )
 
-    for block in blocks:
-        for b in block:
-            try:
-                b = validate_ob(b)
-            except Exception as e:
-                logger.error(
-                    f"Object {b} in catalog {catalog} is not a valid ObservingBlock, removing from schedule: {e}"
-                )
-                block.remove(b)
+    if add_only and not ignore_order:
+        logger.error(
+            "Option -ao/--add-only requires option -i/--ignore-order, setting to True"
+        )
+        ignore_order = True
 
     if ignore_order:
         logger.info("Ignoring order of .sch files in catalog")
-        blocks = [
-            [blocks[i][j] for i in range(len(blocks)) for j in range(len(blocks[i]))]
+        block_groups = [
+            [
+                block_groups[i][j]
+                for i in range(len(block_groups))
+                for j in range(len(block_groups[i]))
+            ]
         ]
 
-    # Define the observatory
-    if observatory is None:
-        try:
-            observatory = os.environ.get("OBSERVATORY_HOME") + "/config/observatory.cfg"
-            logger.info(
-                "No observatory provided, using observatory.cfg from $OBSERVATORY_HOME environment variable"
-            )
-        except:
-            observatory = os.getcwd() + "/observatory.cfg"
-            logger.info(
-                "No observatory provided, using observatory.cfg from current working directory"
-            )
+    # Add IDs to ObservingBlocks without them
+    logger.info("Adding IDs to ObservingBlocks")
+    for i in range(len(block_groups)):
+        for j in range(len(block_groups[i])):
+            if block_groups[i][j].configuration.get("ID") in (None, ""):
+                block_groups[i][j].configuration["ID"] = astrotime.Time.now().mjd
 
-    logger.info("Parsing the observatory config")
-    if type(observatory) is not astroplan.Observer:
-        if type(observatory) is str:
-            obs_cfg = configparser.ConfigParser()
-            obs_cfg.read(observatory)
-            obs_long = obs_cfg.getfloat("site", "longitude")
-            obs_lat = obs_cfg.getfloat("site", "latitude")
-            obs_height = obs_cfg.getfloat("site", "elevation")
-            slew_rate = obs_cfg.getfloat("scheduling", "slew_rate") * u.deg / u.second
-            instrument_reconfiguration_times = json.loads(
-                obs_cfg.get("scheduling", "instrument_reconfiguration_times")
-            )
-            instrument_name = obs_cfg.get("site", "instrument_name")
-            observatory = astroplan.Observer(
-                location=coord.EarthLocation(
-                    lon=obs_long * u.deg, lat=obs_lat * u.deg, height=obs_height * u.m
-                )
-            )
-        elif type(observatory) is Observatory:
-            obs_long = observatory.observatory_location.lon.deg
-            obs_lat = observatory.observatory_location.lat.deg
-            obs_height = observatory.observatory_location.height.m
-            slew_rate = observatory.slew_rate * u.deg / u.second
-            instrument_reconfiguration_times = (
-                observatory.instrument_reconfiguration_times
-            )
-            instrument_name = observatory.instrument_name
-            observatory = astroplan.Observer(location=observatory.observatory_location)
-        else:
-            logger.error(
-                "Observatory must be, a string, Observatory object, or astroplan.Observer object."
-            )
+    previously_queued_blocks = None
+    if queue is not None and len(block_groups) > 0:
+        if add_only:
+            logger.info("Adding catalog to queue without scheduling")
+
+            # Only add the catalog to the queue without scheduling
+
             return
+        else:
+            logger.info("Reading queue")
+            # Load all blocks from the queue
+            queue_blocks = schedtab.table_to_blocks(queue)
+
+            # Mark scheduled as X expired
+            for block in queue_blocks:
+                if block.configuration["status"] != "U":
+                    block.configuration["status"] = "X"
+                    block.configuration["message"] = "Expired"
+            previously_queued_blocks = queue_blocks
+
+    elif queue is not None and len(block_groups) == 0:
+        # Load all blocks from the queue
+        queue_blocks = schedtab.table_to_blocks(queue)
+        # Scheduled and unscheduled blocks get scheduled
+        for block in queue_blocks:
+            if block.configuration["status"] in ("S", "U"):
+                block.configuration["status"] = "S"
+                block.configuration["message"] = "Scheduled"
+            else:
+                block.configuration["status"] = "X"
+                block.configuration["message"] = "Expired"
+        block_groups = [queue_blocks]
+
+    elif queue is None and len(block_groups) > 0:
+        # Schedule the blocks in the catalog, but don't write to the queue
+        logger.info("No queue provided")
+    elif add_only:
+        logger.error("Missing catalog or queue for option -ao/--add-only, exiting")
+        return
     else:
-        obs_long = observatory.location.lon.deg
-        obs_lat = observatory.location.lat.deg
-        obs_height = observatory.location.height.m
-        slew_rate = observatory.slew_rate * u.deg / u.second
-        instrument_reconfiguration_times = observatory.instrument_reconfiguration_times
-        instrument_name = observatory.instrument_name
+        logger.error("No catalog or queue provided")
+        return
+
+    # Add sched_time to all blocks
+    for i in range(len(block_groups)):
+        for j in range(len(block_groups[i])):
+            block_groups[i][j].configuration["sched_time"] = sched_time.isot
 
     # Constraints
     logger.info("Defining global constraints")
     global_constraints = [
-        astroplan.AltitudeConstraint(min=elevation * u.deg),
         astroplan.AtNightConstraint(max_solar_altitude=max_altitude * u.deg),
+        astroplan.AltitudeConstraint(min=elevation * u.deg),
         astroplan.AirmassConstraint(max=airmass, boolean_constraint=False),
         astroplan.MoonSeparationConstraint(min=moon_separation * u.deg),
     ]
@@ -387,39 +520,18 @@ def schedtel_cli(
     # Transitioner
     logger.info("Defining transitioner")
     transitioner = astroplan.Transitioner(
-        slew_rate, instrument_reconfiguration_times=instrument_reconfiguration_times
+        slew_rate, instrument_reconfig_times=instrument_reconfig_times
     )
-
-    # Schedule
-    tz = timezonefinder.TimezoneFinder().timezone_at(lng=lon.deg, lat=lat.deg)
-    tz = zoneinfo.ZoneInfo(tz)
-    logger.debug(f"tz = {tz}")
-
-    if date is None:
-        logger.debug("Using current date at observatory location")
-        date = datetime.datetime.now()
-    else:
-        date = datetime.datetime.strptime(date, "%Y-%m-%d")
-    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
-
-    t0 = astrotime.Time(
-        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
-        format="datetime",
-    )
-    t1 = t0 + 1 * u.day
-    logger.info("Schedule time range: %s to %s" % (t0.iso, t1.iso))
-
-    schedule = astroplan.Schedule(t0, t1)
 
     # Scheduler
-    if scheduler[0] == "":
+    if scheduler == ("", ""):
         logger.info("Using default scheduler: astroplan.PriorityScheduler")
         schedule_handler = astroplan.PriorityScheduler(
             constraints=global_constraints,
             observer=observatory,
             transitioner=transitioner,
             gap_time=gap_time * u.second,
-            time_resolution=time_resolution * u.second,
+            time_resolution=resolution * u.second,
         )
     else:
         logger.info(f"Using custom scheduler: {scheduler[0]}")
@@ -439,128 +551,226 @@ def schedtel_cli(
             observer=observatory,
             transitioner=transitioner,
             gap_time=gap_time * u.second,
-            time_resolution=time_resolution * u.second,
+            time_resolution=resolution * u.second,
         )
 
     logger.info("Scheduling ObservingBlocks")
-    for i in range(len(blocks)):
-        logger.debug("Block group %i of i" % (i + 1, len(blocks)))
-        schedule_handler(blocks[i], schedule)
+    for i in range(len(block_groups)):
+        logger.debug("Block group %i of %i" % (i + 1, len(block_groups)))
+        schedule_handler(block_groups[i], schedule)
 
-    # Generate schedule table
-    schedule_table = table.QTable(
-        schedule.to_table(show_transitions=False, show_unused=False)
-    )
-    sched_time = astrotime.Time.now()
+    # Flatten block_groups for comparison with scheduled ObservingBlocks
+    all_blocks = [block for block_group in block_groups for block in block_group]
+
+    # Get scheduled ObservingBlocks
+    scheduled_blocks = [
+        slot.block
+        for slot in schedule.slots
+        if isinstance(slot.block, astroplan.ObservingBlock)
+    ]
+    transition_blocks = [
+        slot.block
+        for slot in schedule.slots
+        if isinstance(slot.block, astroplan.TransitionBlock)
+    ]
+    unscheduled_slots = [slot for slot in schedule.slots if not slot.occupied]
 
     # Update ephem for non-sidereal targets, update object types, set filenames
-    for row_number, row in enumerate(schedule_table):
+    for block_number, block in enumerate(scheduled_blocks):
         if (
-            row["configuration"]["pm_ra_cosdec"].value != 0
-            or row["configuration"]["pm_dec"].value != 0
+            block.configuration["pm_ra_cosdec"].value != 0
+            or block.configuration["pm_dec"].value != 0
         ):
-            logger.info("Updating ephemeris for %s at scheduled time" % row["target"])
+            logger.info("Updating ephemeris for %s at scheduled time" % block.name)
             try:
                 ephemerides = mpc.MPC.get_ephemeris(
-                    target=row["name"],
+                    target=block.name,
                     location=observatory.location,
-                    start=row["start time (UTC)"],
+                    start=block.start_time,
                     number=1,
                     proper_motion="sky",
                 )
-                row["ra"] = ephemerides["RA"][0]
-                row["dec"] = ephemerides["Dec"][0]
-                row["configuration"]["pm_ra_cosdec"] = (
+                new_ra = ephemerides["RA"][0]
+                new_dec = ephemerides["Dec"][0]
+                block.target = astroplan.FixedTarget(
+                    coord.SkyCoord(ra=new_ra, dec=new_dec)
+                )
+                block.configuration["pm_ra_cosdec"] = (
                     ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
                 )
-                row["configuration"]["pm_dec"] = (
+                block.configuration["pm_dec"] = (
                     ephemerides["dDec"][0] * u.arcsec / u.hour
                 )
             except Exception as e1:
                 try:
                     logger.warning(
-                        f"Failed to find proper motions for {row['name']} on line {line_number}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
+                        f"Failed to find proper motions for {block.name}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
                     )
                     pos_l = coord.get_body(
-                        row["name"],
-                        row["start time (UTC)"] - 10 * u.minute,
+                        block.name,
+                        block.start_time - 10 * u.minute,
                         location=observatory.location,
                     )
                     pos_m = coord.get_body(
-                        row["name"], row["start time (UTC)"], location=location
+                        block.name,
+                        (block.start_time + block.end_time) / 2,
+                        location=location,
                     )
                     pos_h = coord.get_body(
-                        row["name"],
-                        row["start time (UTC)"] + 10 * u.minute,
+                        block.name,
+                        block.end_time + 10 * u.minute,
                         location=observatory.location,
                     )
-                    row["ra"] = pos_m.ra.to_string("hourangle", sep="hms", precision=3)
-                    row["dec"] = pos_m.dec.to_string("deg", sep="dms", precision=2)
-                    row["configuration"]["pm_ra_cosdec"] = (
+                    new_ra = pos_m.ra
+                    new_dec = pos_m.dec
+                    block.target = astroplan.FixedTarget(
+                        coord.SkyCoord(ra=new_ra, dec=new_dec)
+                    )
+                    block.configuration["pm_ra_cosdec"] = (
                         (
                             pos_h.ra * np.cos(pos_h.dec.rad)
                             - pos_l.ra * np.cos(pos_l.dec.rad)
                         )
                         / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
-                    row["configuration"]["pm_dec"] = (
+                    block.configuration["pm_dec"] = (
                         (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
-                        f"Failed to find proper motions for {row['name']} on line {line_number}, keeping old ephemerides: {e2}"
+                        f"Failed to find proper motions for {block.name}, keeping old ephemerides: {e2}"
                     )
 
-        row["start time (UTC)"] = astrotime.Time(
-            row["start time (UTC)"], format="iso", scale="utc"
-        )
-        row["end time (UTC)"] = astrotime.Time(
-            row["end time (UTC)"], format="iso", scale="utc"
-        )
-        row["duration (minutes)"] = row["end time (UTC)"] - row["start time (UTC)"]
-        target = coord.SkyCoord(ra=row["ra"], dec=row["dec"])
-        row["ra"] = target.ra
-        row["dec"] = target.dec
-
-        if row["configuration"]["filename"] == "":
-            row["configuration"]["filename"] = name_format.format(
-                index=row_number,
-                schedtime=sched_time.isot,
-                target=row["target"],
-                start_time_utc=row["start time (UTC)"].isot,
-                end_time_utc=row["end time (UTC)"].isot,
-                duration=row["duration (minutes)"].value,
-                ra=row["ra"].to_string("hourangle", sep="hms", precision=0, pad=True),
-                dec=row["dec"].to_string(
-                    "deg", sep="dms", precision=0, pad=True, alwayssign=True
-                ),
-                observer=row["configuration"]["observer"],
-                code=row["configuration"]["code"],
-                title=row["configuration"]["title"],
-                exposure=row["configuration"]["exposure"],
-                nexp=row["configuration"]["nexp"],
-                do_not_interrupt=row["configuration"]["do_not_interrupt"],
-                repositioning=row["configuration"]["repositioning"],
-                shutter_state=row["configuration"]["shutter_state"],
-                readout=row["configuration"]["readout"],
-                binning=row["configuration"]["binning"],
-                frame_position=row["configuration"]["frame_position"],
-                frame_size=row["configuration"]["frame_size"],
-                pm_ra_cosdec=row["configuration"]["pm_ra_cosdec"],
-                pm_dec=row["configuration"]["pm_dec"],
-                comment=row["configuration"]["comment"],
-                sch=row["configuration"]["sch"],
-                status=row["configuration"]["status"],
-                message=row["configuration"]["message"],
+        if block.configuration["filename"] == "":
+            block.configuration["filename"] = name_format.format(
+                index=block_number,
+                target=block.target.to_string("hmsdms").replace(" ", "_"),
+                start_time=block.start_time.isot.replace(":", ""),
+                end_time=block.end_time.isot.replace(":", ""),
+                duration=block.duration.sec,
+                ra=block.target.ra.to_string(sep="hms").replace(" ", "_"),
+                dec=block.target.dec.to_string(sep="dms").replace(" ", "_"),
+                observer=block.configuration["observer"],
+                code=block.configuration["code"],
+                title=block.configuration["title"],
+                type=block.configuration["type"],
+                backend=block.configuration["backend"],
+                exposure=block.configuration["exposure"],
+                nexp=block.configuration["nexp"],
+                do_not_interrupt=block.configuration["do_not_interrupt"],
+                repositioning=block.configuration["repositioning"],
+                shutter_state=block.configuration["shutter_state"],
+                readout=block.configuration["readout"],
+                binning=block.configuration["binning"],
+                frame_position=block.configuration["frame_position"],
+                frame_size=block.configuration["frame_size"],
+                pm_ra_cosdec=block.configuration["pm_ra_cosdec"],
+                pm_dec=block.configuration["pm_dec"],
+                comment=block.configuration["comment"],
+                sch=block.configuration["sch"],
+                ID=block.configuration["ID"],
+                status=block.configuration["status"],
+                message=block.configuration["message"],
+                sched_time=block.configuration["sched_time"],
             )
 
-    # Write the telrun.ecsv file
+    # Report unscheduled or invalid blocks, and report sch files that were
+    # complete, partially scheduled, or not scheduled at all
+
+    # First find unscheduled blocks
+    # TODO: report reason for unscheduled blocks, use is_observable
+    unscheduled_blocks = [
+        block
+        for block in all_blocks
+        if block.configuration["ID"]
+        not in [b.configuration["ID"] for b in scheduled_blocks]
+    ]
+
+    if type(observatory) is Observatory:
+        validated_blocks = schedule_tools.validate(
+            scheduled_blocks, observatory=observatory
+        )
+    else:
+        validated_blocks = schedule_tools.validate(scheduled_blocks)
+
+    # Then find invalid blocks
+    invalid_blocks = [
+        block for block in validated_blocks if block.configuration["status"] == "I"
+    ]
+
+    if len(unscheduled_blocks) > 0 or len(invalid_blocks) > 0:
+        logger.warning("There are unscheduled or invalid blocks")
+        logger.warning("Unscheduled blocks:")
+        for block in unscheduled_blocks:
+            logger.warning(
+                f"""
+            ID = {block.configuration["ID"]}
+            Title = {block.configuration["title"]}
+            Target = {block.target.to_string("hmsdms")}
+            sch = {block.configuration["sch"]}
+            Status = {block.configuration["status"]}
+
+                """
+            )
+        logger.warning("\nInvalid blocks:")
+        for block in invalid_blocks:
+            logger.warning(
+                f"""
+            ID = {block.configuration["ID"]}
+            Title = {block.configuration["title"]}
+            Target = {block.target.to_string("hmsdms")}
+            sch = {block.configuration["sch"]}
+            Status = {block.configuration["status"]}
+            Message = {block.configuration["message"]}
+
+                """
+            )
+        if not yes:
+            if click.confirm("Continue?"):
+                pass
+            else:
+                return
+
+    # Scheduled, unscheduled, invalid, transition blocks and unscheduled slots
+
+    # Blocks to be placed in an execution schedule
+    exec_blocks = (
+        scheduled_blocks + transition_blocks + unscheduled_slots + invalid_blocks
+    )
+    if queue is None:
+        logger.info("No queue provided, including unscheduled in execution schedule")
+        logger.info("Note that these blocks will not actually be executed")
+        exec_blocks += unscheduled_blocks
+    elif queue is not None:
+        exec_blocks.sort(key=lambda x: x.configuration["ID"])
+        exec_table = schedule_tools.blocks_to_table(exec_blocks)
+
+        # Blocks to be placed back in the queue
+        queue_blocks = scheduled_blocks + unscheduled_blocks
+
+        # If queue and catalog are not none, this carries unscheduled blocks
+        # and all other blocks marked as expired "X"
+        if previously_queued_blocks is not None:
+            queue_blocks += previously_queued_blocks
+
+        queue_blocks.sort(key=lambda x: x.configuration["ID"])
+        queue_table = schedule_tools.blocks_to_table(queue_blocks)
+
+    exec_blocks.sort(key=lambda x: x.configuration["ID"])
+    exec_table = schedule_tools.blocks_to_table(exec_blocks)
+
+    # TODO: Report observing statistics (time used, transition, unscheduled, etc.)
+    # reports.pre_exec_report(schedule_table)
+
+    # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = schedule_table[0]["start time (UTC)"].isot
+        first_time = schedule_table[0]["start_time"].strftime("%Y%m%d_%H%M%S")
         filename = "telrun_" + first_time + ".ecsv"
 
+    write_queue = False
     if telrun:
+        write_queue = True
         try:
             path = os.environ.get("TELRUN_EXECUTE")
             logger.info(
@@ -586,30 +796,43 @@ def schedtel_cli(
                 f"Path {path} does not exist, writing to current working directory instead: {path}"
             )
     else:
+        write_queue = False
         path = os.getcwd() + "/"
         logger.info("-t/--telrun flag not set, writing schedule to %s" % path)
-    schedule_table.write(path + filename, format="ascii.ecsv", overwrite=True)
+        logger.info("If queue was provided, it will not be written to file")
+    exec_table.write(path + filename, format="ascii.ecsv", overwrite=True)
+
+    # If a queue was passed, update the queue if --telrun is set
+    # and the file was written to the expected location
+    if queue is not None:
+        if write_queue:
+            logger.info("Writing queue to file")
+            queue_table.write(queue, format="ascii.ecsv", overwrite=True)
+        else:
+            logger.info("Not writing queue to file")
+    else:
+        logger.info("No queue provided")
 
     # Plot the schedule
     ax = None
     match plot:
         case 1:  # Gantt chart
             logger.info("Plotting schedule as a Gantt chart")
-            ax = plot_schedule_gantt(schedule, observatory)
-            return schedule_table, ax
+            fig, ax = plot_schedule_gantt(schedule, observatory)
+            return exec_table, fig, ax
         case 2:  # Plot by target w/ altitude
             logger.info("Plotting schedule by target with airmass")
             ax = astroplan.plots.plot_schedule_airmass(schedule)
             plt.legend()
-            return schedule_table, ax
+            return exec_table, fig, ax
         case 3:  # Sky chart
             logger.info("Plotting schedule on a sky chart")
             ax = plot_schedule_sky(schedule, observatory)
-            return schedule_table, ax
+            return exec_table, fig, ax
         case _:
             logger.info("No plot requested")
 
-    return schedule_table
+    return exec_table
 
 
 @click.command(
@@ -789,7 +1012,7 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     )
     ax.grid()
 
-    return ax
+    return fig, ax
 
 
 @click.command(
@@ -884,7 +1107,7 @@ def plot_schedule_sky_cli():
             },
         )
     plt.legend()
-    return ax
+    return fig, ax
 
 
 schedtel = schedtel_cli.callback

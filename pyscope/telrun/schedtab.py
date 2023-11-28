@@ -2,6 +2,7 @@ import configparser
 import logging
 import os
 
+import astroplan
 from astropy import coordinates as coord
 from astropy import time as astrotime
 from astropy import units as u
@@ -9,7 +10,15 @@ from astropy import units as u
 logger = logging.getLogger(__name__)
 
 
-def validate_ob(block, observatory=None):
+def blocks_to_table(observing_blocks=None):
+    pass
+
+
+def table_to_blocks(table):
+    pass
+
+
+def validate(schedule_table, observatory=None):
     logger.info("Validating observation block")
 
     if observatory is None:
@@ -17,19 +26,25 @@ def validate_ob(block, observatory=None):
             "No observatory was specified, so validation will only check for basic formatting errors."
         )
 
+    if type(observing_block) is astroplan.ObservingBlock:
+        block = {}
+        block["target"] = coord.SkyCoord(observing_block.target)
+        block["duration (minutes)"] = observing_block.duration.to(u.minute)
+        block["ra"] = observing_block.target.ra
+        block["dec"] = observing_block.target.dec
+        block["start time (UTC)"] = observing_block.start_time
+        block["end time (UTC)"] = observing_block.end_time
+        block["configuration"] = observing_block.configuration
+    else:
+        block = observing_block
+        block["target"] = str(block["target"])
+        block["ra"] = coord.Angle(block["ra"], unit=u.hour)
+        block["dec"] = coord.Angle(block["dec"], unit=u.deg)
+        block["start time (UTC)"] = astrotime.Time(block["start time (UTC)"])
+        block["end time (UTC)"] = astrotime.Time(block["end time (UTC)"])
+
     # Check main entries
-    block["target"] = str(block["target"])
-    block["start time (UTC)"] = astrotime.Time(
-        block["start time (UTC)"], format="iso", scale="utc"
-    )
-    block["end time (UTC)"] = astrotime.Time(
-        block["end time (UTC)"], format="iso", scale="utc"
-    )
-    block["duration (minutes)"] = astrotime.TimeDelta(
-        float(block["duration (minutes)"]) * u.minute
-    )
-    block["ra"] = coord.Angle(block["ra"], unit=u.hour)
-    block["dec"] = coord.Angle(block["dec"], unit=u.deg)
+    block["duration (minutes)"] = astrotime.TimeDelta(block["duration (minutes)"])
 
     # Check standard text entry fields
     block["configuration"]["observer"] = str(block["configuration"]["observer"])
@@ -48,30 +63,28 @@ def validate_ob(block, observatory=None):
         raise ValueError("Filter must be a single character")
 
     # Check exposure settings
-    block["configuration"]["exposure_time"] = float(
-        block["configuration"]["exposure_time"]
-    )
-    block["configuration"]["n_exp"] = int(block["configuration"]["n_exp"])
+    block["configuration"]["exposure"] = float(block["configuration"]["exposure"])
+    block["configuration"]["nexp"] = int(block["configuration"]["nexp"])
     block["configuration"]["do_not_interrupt"] = bool(
         block["configuration"]["do_not_interrupt"]
     )
-    if do_not_interrupt:
+    if block["configuration"]["do_not_interrupt"]:
         if (
             60 * block["duration (minutes)"]
-            < block["configuration"]["exposure"] * block["configuration"]["n_exp"]
+            < block["configuration"]["exposure"] * block["configuration"]["nexp"]
         ):
             logger.error("Insufficient time to complete exposures allocated.")
             raise ValueError("Insufficient time to complete exposures allocated.")
         else:
             if (
                 block["configuration"]["exposure"] != 60 * block["duration (minutes)"]
-                or block["configuration"]["n_exp"] != 1
+                or block["configuration"]["nexp"] != 1
             ):
                 logger.error(
-                    "n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False."
+                    "nexp must be 1 and exposure must be equal to duration if do_not_interrupt is False."
                 )
                 raise ValueError(
-                    "n_exp must be 1 and exposure must be equal to duration if do_not_interrupt is False."
+                    "nexp must be 1 and exposure must be equal to duration if do_not_interrupt is False."
                 )
 
     # Check repositioning
@@ -126,24 +139,28 @@ def validate_ob(block, observatory=None):
         logger.info("Performing observatory-specific validation")
 
         # Check if source is observable
-        altaz_obj = observatory.get_object_altaz(
-            ra=block["ra"],
-            dec=block["dec"],
-            t=block["start time (UTC)"],
-        )
-        if altaz_obj.alt < observatory.min_altitude:
-            logger.error("Target is not observable at start time")
-            raise ValueError("Target is not observable at start time")
+        if (
+            block["start time (UTC)"] is not None
+            and block["end time (UTC)"] is not None
+        ):
+            altaz_obj = observatory.get_object_altaz(
+                ra=block["ra"],
+                dec=block["dec"],
+                t=block["start time (UTC)"],
+            )
+            if altaz_obj.alt < observatory.min_altitude:
+                logger.error("Target is not observable at start time")
+                raise ValueError("Target is not observable at start time")
 
-        # Check if source is observable at end time
-        altaz_obj = observatory.get_object_altaz(
-            ra=block["ra"],
-            dec=block["dec"],
-            t=block["end time (UTC)"],
-        )
-        if altaz_obj.alt < observatory.min_altitude:
-            logger.error("Target is not observable at end time")
-            raise ValueError("Target is not observable at end time")
+            # Check if source is observable at end time
+            altaz_obj = observatory.get_object_altaz(
+                ra=block["ra"],
+                dec=block["dec"],
+                t=block["end time (UTC)"],
+            )
+            if altaz_obj.alt < observatory.min_altitude:
+                logger.error("Target is not observable at end time")
+                raise ValueError("Target is not observable at end time")
 
         # Check filter
         if block["configuration"]["filter"] not in observatory.filters:
@@ -154,12 +171,10 @@ def validate_ob(block, observatory=None):
         try:
             current_cam_state = observatory.camera.Connected
             observatory.camera.Connected = True
-            if block["configuration"]["exposure_time"] > observatory.camera.ExposureMax:
+            if block["configuration"]["exposure"] > observatory.camera.ExposureMax:
                 logger.error("Exposure time exceeds maximum")
                 raise ValueError("Exposure time exceeds maximum")
-            elif (
-                block["configuration"]["exposure_time"] < observatory.camera.ExposureMin
-            ):
+            elif block["configuration"]["exposure"] < observatory.camera.ExposureMin:
                 logger.error("Exposure time is below minimum")
                 raise ValueError("Exposure time is below minimum")
             observatory.camera.Connected = current_cam_state
@@ -230,5 +245,8 @@ def validate_ob(block, observatory=None):
             observatory.camera.Connected = current_cam_state
         except:
             logger.warning("Binning check failed because the driver is not available")
+
+    if type(observing_block) is astroplan.ObservingBlock:
+        return observing_block
 
     return block

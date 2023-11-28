@@ -34,10 +34,12 @@ def read(
     default_do_not_interrupt=False,
 ):
     possible_keys = {
-        "ti": "title",
+        "tit": "title",
         "obs": "observer",
         "cod": "code",
         "bl": "block",
+        "ty": "type",
+        "ba": "backend",
         "dates": "datestart",
         "datee": "dateend",
         "so": "source",
@@ -70,6 +72,10 @@ def read(
         "do": "do_not_interrupt",
         "filt": "filter",
         "exp": "exposures",
+        "du": "exposures",
+        "dw": "exposures",
+        "tim": "exposures",
+        "l": "exposures",
         "com": "comment",
     }
 
@@ -376,6 +382,9 @@ def read(
         if "ra" in line.keys() and "dec" in line.keys():
             ra = line["ra"]
             dec = line["dec"]
+            if len(ra.split(":")) == 3:
+                split_ra = ra.split(":")
+                ra = f"{split_ra[0]}h{split_ra[1]}m{split_ra[2]}s"
 
         # Parse nonsidereal
         nonsidereal = default_nonsidereal
@@ -401,8 +410,8 @@ def read(
         pm_ra_cosdec = 0 * u.arcsec / u.hour
         pm_dec = 0 * u.arcsec / u.hour
         if "pm_ra_cosdec" in line.keys() and "pm_dec" in line.keys() and nonsidereal:
-            pm_ra_cosdec = line["pm_ra_cosdec"]
-            pm_dec = line["pm_dec"]
+            pm_ra_cosdec = float(line["pm_ra_cosdec"]) * u.arcsec / u.hour
+            pm_dec = float(line["pm_dec"]) * u.arcsec / u.hour
         elif (
             "pm_ra_cosdec" in line.keys()
             and "pm_dec" in line.keys()
@@ -663,6 +672,8 @@ def read(
         # Get utstart, cadence, schederr
         utstart = None
         if "utstart" in line.keys():
+            if "t" not in line["utstart"]:
+                line["utstart"] = f"{t0.isot.split('T')[0]}T{line['utstart']}"
             utstart = astrotime.Time(
                 line["utstart"].upper(), format="isot", scale="utc"
             )
@@ -832,10 +843,11 @@ def read(
                             "code": code,
                             "title": title,
                             "filename": final_fname,
+                            "type": "light",
+                            "backend": 0,
                             "filter": filt,
                             "exposure": exp,
                             "nexp": temp_nexp,
-                            "do_not_interrupt": do_not_interrupt,
                             "repositioning": repositioning,
                             "shutter_state": shutter_state,
                             "readout": readout,
@@ -846,8 +858,10 @@ def read(
                             "pm_dec": pm_dec,
                             "comment": comment,
                             "sch": filename.split("/")[-1],
-                            "status": "N",
-                            "message": "unscheduled",
+                            "ID": astrotime.Time.now().mjd,
+                            "status": "U",
+                            "message": "Unscheduled",
+                            "sched_time": None,
                         },
                         constraints=constraints[j],
                     )
@@ -884,7 +898,7 @@ def write(observing_blocks, filename=None):
             if block.configuration["code"] == unique_code
         ]
 
-        if [blocks.configuration["title"] for block in blocks].count(
+        if [block.configuration["title"] for block in blocks].count(
             blocks[0].configuration["title"]
         ) != len(blocks):
             logger.warning(
@@ -895,7 +909,7 @@ def write(observing_blocks, filename=None):
                 for block in blocks
             ]
 
-        if [blocks.configuration["observer"] for block in blocks].count(
+        if [block.configuration["observer"] for block in blocks].count(
             blocks[0].configuration["observer"]
         ) != len(blocks):
             logger.warning(
@@ -910,8 +924,10 @@ def write(observing_blocks, filename=None):
 
         if filename is None:
             filename = f"{unique_code}_{time_now}.sch"
-        else:
+        elif len(unique_codes) > 1:
             filename = filename.replace(".sch", f"_{unique_code}_{time_now}.sch")
+        else:
+            filename = filename
 
         with open(filename, "w") as f:
             f.write(f"# {len(blocks)} Blocks\n")
@@ -919,18 +935,21 @@ def write(observing_blocks, filename=None):
             f.write(f"# By pyscope version {__version__}\n")
             f.write("\n")
 
-            f.write(f"title {blocks[0].configuration['title']}\n")
+            f.write('title "{0}"\n'.format(blocks[0].configuration["title"]))
             if type(blocks[0].configuration["observer"]) is not list:
                 observers = [blocks[0].configuration["observer"]]
+            else:
+                observers = blocks[0].configuration["observer"]
             for observer in observers:
-                f.write(f"observer {observer}\n")
+                f.write(f'observer "{observer}"\n')
             f.write(f"code {unique_code}\n")
             f.write("\n")
 
             for block in blocks:
                 write_string = "block start\n"
                 try:
-                    write_string += f"source '{block.name}'\n"
+                    if block.name != "":
+                        write_string += f'source "{block.name}"\n'
                 except:
                     pass
                 write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=4)}\n"
@@ -942,7 +961,10 @@ def write(observing_blocks, filename=None):
                 except:
                     pass
                 try:
-                    write_string += f"filename '{block.configuration['filename']}'\n"
+                    if block.configuration["filename"] != "":
+                        write_string += 'filename "{0}"\n'.format(
+                            block.configuration["filename"]
+                        )
                 except:
                     pass
                 try:
@@ -984,7 +1006,7 @@ def write(observing_blocks, filename=None):
                 write_string += f"filter {block.configuration['filter']}\n"
                 try:
                     if block.configuration["repositioning"] is True:
-                        write_string += f"repositioning true "
+                        write_string += f"repositioning true\n"
                     elif type(block.configuration["repositioning"]) is tuple:
                         write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]}\n"
                 except:
@@ -1001,28 +1023,54 @@ def write(observing_blocks, filename=None):
                     write_string += f"utstart {block.start_time.isot}\n"
                 except:
                     try:
-                        if type(block.constraints) is not list:
-                            constraints = [block.constraints]
-                        for (
-                            constraint
-                        ) in constraints:  # TODO: Add in support for all constraints
-                            possible_min_times = []
-                            possible_max_times = []
-                            if type(constraint) is astroplan.TimeConstraint:
-                                possible_min_times.append(constraint.min)
-                                possible_max_times.append(constraint.max)
-                        min_time = max(possible_min_times)
-                        max_time = min(possible_max_times)
-                        mid_time = (min_time + max_time) / 2
-                        error_time = (max_time - min_time) / 2
-                        write_string += f"utstart {mid_time.isot}\n"
-                        write_string += f"schederr {error_time.hour}:{error_time.minute}:{error_time.second}\n"
+                        if block.constraints is not None:
+                            if type(block.constraints) is not list:
+                                block.constraints = [block.constraints]
+                            for (
+                                constraint
+                            ) in (
+                                block.constraints
+                            ):  # TODO: Add in support for all constraints
+                                possible_min_times = []
+                                possible_max_times = []
+                                if type(constraint) is astroplan.TimeConstraint:
+                                    possible_min_times.append(constraint.min)
+                                    possible_max_times.append(constraint.max)
+                            min_time_idx = np.argmax(
+                                [time.jd for time in possible_min_times]
+                            )
+                            max_time_idx = np.argmin(
+                                [time.jd for time in possible_max_times]
+                            )
+                            min_time = possible_min_times[min_time_idx]
+                            max_time = possible_max_times[max_time_idx]
+                            mid_time = astrotime.Time(
+                                (min_time.jd + max_time.jd) / 2, format="jd"
+                            )
+                            error_time = round(
+                                astrotime.TimeDelta(
+                                    (max_time.jd - min_time.jd) / 2, format="jd"
+                                ).sec,
+                                3,
+                            )
+                            err_hours = int(error_time / 3600)
+                            err_minutes = int((error_time - err_hours * 3600) / 60)
+                            err_seconds = (
+                                error_time - err_hours * 3600 - err_minutes * 60
+                            )
+                            write_string += f"utstart {mid_time.isot}\n"
+                            write_string += f"schederr {err_hours:02.0f}:{err_minutes:02.0f}:{err_seconds:02.3f}\n"
                     except:
                         pass
                 try:
-                    write_string += f"comment '{block.configuration['comment']}' (written by pyscope v{__version__})'\n"
+                    if block.configuration["comment"] != "":
+                        write_string += 'comment "{comment} -- written by pyscope v{version}"\n'.format(
+                            comment=block.configuration["comment"], version=__version__
+                        )
+                    else:
+                        write_string += f'comment "written by pyscope v{__version__}"\n'
                 except:
-                    write_string += f"comment 'written by pyscope v{__version__}'\n"
+                    write_string += f'comment "written by pyscope v{__version__}"\n'
 
                 f.write(write_string + "block end\n\n")
             f.write("\n")
