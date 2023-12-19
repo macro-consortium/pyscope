@@ -401,4 +401,10 @@ def summary_report_cli(
         )
 
 
+@click.command()
+def schedule_report_cli():
+    pass
+
+
 summary_report = summary_report_cli.callback
+schedule_report = schedule_report_cli.callback
