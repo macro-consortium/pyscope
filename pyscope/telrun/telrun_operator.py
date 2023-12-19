@@ -18,7 +18,7 @@ from astropy import units as u
 from astroquery import mpc
 
 from ..observatory import Observatory
-from . import TelrunException, validate_ob
+from . import TelrunException, schedtab
 
 logger = logging.getLogger(__name__)
 

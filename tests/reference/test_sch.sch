@@ -3,7 +3,7 @@ observer: {wgolay@cfa.harvard.edu}
 obs (wgolay@uiowa.edu) # can have multiple observers
 code               wgolay # whitespace ignored, only one code is allowed
 datestart 2017-08-17 # only one datestart is allowed, valid range
-dateend 2030-12-31 # only one dateend is allowed, valid range
+dateend 2024-12-31 # only one dateend is allowed, valid range
 
 # this is a comment
 ! this is a comment too

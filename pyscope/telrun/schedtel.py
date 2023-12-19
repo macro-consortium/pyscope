@@ -20,7 +20,7 @@ from matplotlib import ticker
 
 from .. import utils
 from ..observatory import Observatory
-from . import sch, schedule_table
+from . import sch, schedtab
 
 logger = logging.getLogger(__name__)
 
@@ -361,7 +361,7 @@ def schedtel_cli(
         format="datetime",
     )
     t1 = t0 + length * u.day
-    logger.info("Schedule time range: %s to %s" % (t0.iso, t1.iso))
+    logger.info("Schedule time range: %s to %s (UTC)" % (t0.iso, t1.iso))
 
     # TODO: Add option to update an existing schedule table
     schedule = astroplan.Schedule(t0, t1)
@@ -457,8 +457,10 @@ def schedtel_cli(
     logger.info("Adding IDs to ObservingBlocks")
     for i in range(len(block_groups)):
         for j in range(len(block_groups[i])):
-            if block_groups[i][j].configuration.get("ID") in (None, ""):
-                block_groups[i][j].configuration["ID"] = astrotime.Time.now().mjd
+            try:
+                block_groups[i][j].configuration["ID"]
+            except:
+                block_groups[i][j].configuration["ID"] = astrotime.Time.now()
 
     previously_queued_blocks = None
     if queue is not None and len(block_groups) > 0:
@@ -506,7 +508,7 @@ def schedtel_cli(
     # Add sched_time to all blocks
     for i in range(len(block_groups)):
         for j in range(len(block_groups[i])):
-            block_groups[i][j].configuration["sched_time"] = sched_time.isot
+            block_groups[i][j].configuration["sched_time"] = sched_time
 
     # Constraints
     logger.info("Defining global constraints")
@@ -577,6 +579,9 @@ def schedtel_cli(
 
     # Update ephem for non-sidereal targets, update object types, set filenames
     for block_number, block in enumerate(scheduled_blocks):
+        block.configuration["status"] = "S"
+        block.configuration["message"] = "Scheduled"
+
         if (
             block.configuration["pm_ra_cosdec"].value != 0
             or block.configuration["pm_dec"].value != 0
@@ -604,7 +609,7 @@ def schedtel_cli(
             except Exception as e1:
                 try:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
+                        f"Failed to find proper motions for {block.name}, trying to find proper motions using astropy.coordinates.get_body"
                     )
                     pos_l = coord.get_body(
                         block.name,
@@ -638,16 +643,16 @@ def schedtel_cli(
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, keeping old ephemerides: {e2}"
+                        f"Failed to find proper motions for {block.name}, keeping old ephemerides"
                     )
 
         if block.configuration["filename"] == "":
             block.configuration["filename"] = name_format.format(
                 index=block_number,
                 target=block.target.to_string("hmsdms").replace(" ", "_"),
-                start_time=block.start_time.isot.replace(":", ""),
-                end_time=block.end_time.isot.replace(":", ""),
-                duration=block.duration.sec,
+                start_time=block.start_time.isot.replace(":", "").split(".")[0],
+                end_time=block.end_time.isot.replace(":", "").split(".")[0],
+                duration="%i" % block.duration.to(u.second).value,
                 ra=block.target.ra.to_string(sep="hms").replace(" ", "_"),
                 dec=block.target.dec.to_string(sep="dms").replace(" ", "_"),
                 observer=block.configuration["observer"],
@@ -657,7 +662,6 @@ def schedtel_cli(
                 backend=block.configuration["backend"],
                 exposure=block.configuration["exposure"],
                 nexp=block.configuration["nexp"],
-                do_not_interrupt=block.configuration["do_not_interrupt"],
                 repositioning=block.configuration["repositioning"],
                 shutter_state=block.configuration["shutter_state"],
                 readout=block.configuration["readout"],
@@ -687,11 +691,9 @@ def schedtel_cli(
     ]
 
     if type(observatory) is Observatory:
-        validated_blocks = schedule_tools.validate(
-            scheduled_blocks, observatory=observatory
-        )
+        validated_blocks = schedtab.validate(scheduled_blocks, observatory=observatory)
     else:
-        validated_blocks = schedule_tools.validate(scheduled_blocks)
+        validated_blocks = schedtab.validate(scheduled_blocks)
 
     # Then find invalid blocks
     invalid_blocks = [
@@ -734,16 +736,14 @@ def schedtel_cli(
     # Scheduled, unscheduled, invalid, transition blocks and unscheduled slots
 
     # Blocks to be placed in an execution schedule
-    exec_blocks = (
-        scheduled_blocks + transition_blocks + unscheduled_slots + invalid_blocks
-    )
+    exec_blocks = scheduled_blocks + transition_blocks + invalid_blocks
     if queue is None:
         logger.info("No queue provided, including unscheduled in execution schedule")
         logger.info("Note that these blocks will not actually be executed")
         exec_blocks += unscheduled_blocks
     elif queue is not None:
         exec_blocks.sort(key=lambda x: x.configuration["ID"])
-        exec_table = schedule_tools.blocks_to_table(exec_blocks)
+        exec_table = schedtab.blocks_to_table(exec_blocks)
 
         # Blocks to be placed back in the queue
         queue_blocks = scheduled_blocks + unscheduled_blocks
@@ -754,18 +754,19 @@ def schedtel_cli(
             queue_blocks += previously_queued_blocks
 
         queue_blocks.sort(key=lambda x: x.configuration["ID"])
-        queue_table = schedule_tools.blocks_to_table(queue_blocks)
+        queue_table = schedtab.blocks_to_table(queue_blocks)
 
     exec_blocks.sort(key=lambda x: x.configuration["ID"])
-    exec_table = schedule_tools.blocks_to_table(exec_blocks)
+    exec_blocks = exec_blocks + unscheduled_slots
+    exec_table = schedtab.blocks_to_table(exec_blocks)
 
     # TODO: Report observing statistics (time used, transition, unscheduled, etc.)
-    # reports.pre_exec_report(schedule_table)
+    # reports.pre_exec_report(exec_table)
 
     # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = schedule_table[0]["start_time"].strftime("%Y%m%d_%H%M%S")
+        first_time = exec_table[0]["start_time"].strftime("%Y%m%d_%H%M%S")
         filename = "telrun_" + first_time + ".ecsv"
 
     write_queue = False
@@ -800,14 +801,15 @@ def schedtel_cli(
         path = os.getcwd() + "/"
         logger.info("-t/--telrun flag not set, writing schedule to %s" % path)
         logger.info("If queue was provided, it will not be written to file")
-    exec_table.write(path + filename, format="ascii.ecsv", overwrite=True)
+
+    exec_table.write(path + filename, overwrite=True)
 
     # If a queue was passed, update the queue if --telrun is set
     # and the file was written to the expected location
     if queue is not None:
         if write_queue:
             logger.info("Writing queue to file")
-            queue_table.write(queue, format="ascii.ecsv", overwrite=True)
+            queue_table.write(queue, overwrite=True)
         else:
             logger.info("Not writing queue to file")
     else:

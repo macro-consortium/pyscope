@@ -24,7 +24,7 @@ def read(
     default_code="aaa",
     default_nonsidereal=False,
     default_priority=1,
-    default_repositioning=False,
+    default_repositioning=(0, 0),
     default_shutter_state=True,
     default_readout=0,
     default_binning=(1, 1),
@@ -244,13 +244,13 @@ def read(
     if len(datestart_matches) > 1:
         logger.warning(f"Multiple datestarts found: {datestart_matches}, using first")
         datestart = astrotime.Time(
-            datetime.datetime.strptime(datestart_matches[0], "%Y-%m-%d"),
-            format="datetime",
+            datestart_matches[0],
+            format="isot",
         )
     elif len(datestart_matches) == 1:
         datestart = astrotime.Time(
-            datetime.datetime.strptime(datestart_matches[0], "%Y-%m-%d"),
-            format="datetime",
+            datestart_matches[0],
+            format="isot",
         )
     else:
         logger.info("No datestart found")
@@ -274,13 +274,13 @@ def read(
     if len(dateend_matches) > 1:
         logger.warning(f"Multiple dateends found: {dateend_matches}, using first")
         dateend = astrotime.Time(
-            datetime.datetime.strptime(dateend_matches[0], "%Y-%m-%d"),
-            format="datetime",
+            dateend_matches[0],
+            format="isot",
         )
     elif len(dateend_matches) == 1:
         dateend = astrotime.Time(
-            datetime.datetime.strptime(dateend_matches[0], "%Y-%m-%d"),
-            format="datetime",
+            dateend_matches[0],
+            format="isot",
         )
     else:
         logger.info("No dateend found")
@@ -288,17 +288,17 @@ def read(
 
     if datestart is not None:
         if dateend is not None:
-            if datestart > dateend:
+            if datestart.jd > dateend.jd:
                 logger.error(f"datestart must be before dateend, ignoring")
                 datestart = None
                 dateend = None
         else:
-            if datestart > astrotime.Time.now():
+            if datestart.jd > astrotime.Time.now().jd:
                 logger.exception(f"datestart must be before now, exiting")
                 return
     else:
         if dateend is not None:
-            if dateend < astrotime.Time.now():
+            if dateend.jd < astrotime.Time.now().jd:
                 logger.exception(
                     f"dateend must be after now, renaming file to .sch.old and exiting"
                 )
@@ -431,8 +431,9 @@ def read(
                 ephemerides = mpc.MPC.get_ephemeris(
                     target=source_name,
                     location=location,
-                    start=t0,
+                    start=t0.isot,
                     number=1,
+                    step=1 * u.second,
                     proper_motion="sky",
                 )
                 ra = ephemerides["RA"][0]
@@ -528,7 +529,6 @@ def read(
         fname = ""
         if "filename" in line.keys():
             fname = line["filename"]
-
         # Parse priority
         priority = default_priority
         if "priority" in line.keys():
@@ -542,13 +542,13 @@ def read(
                 or line["repositioning"].startswith("1")
                 or line["repositioning"].startswith("y")
             ):
-                repositioning = True
+                repositioning = (-1, -1)
             elif (
                 line["repositioning"].startswith("f")
                 or line["repositioning"].startswith("0")
                 or line["repositioning"].startswith("n")
             ):
-                repositioning = False
+                repositioning = (0, 0)
             elif (
                 line["repositioning"].split("x")[0].isnumeric()
                 and line["repositioning"].split("x")[1].isnumeric()
@@ -672,11 +672,16 @@ def read(
         # Get utstart, cadence, schederr
         utstart = None
         if "utstart" in line.keys():
+            check_day = False
             if "t" not in line["utstart"]:
                 line["utstart"] = f"{t0.isot.split('T')[0]}T{line['utstart']}"
+                check_day = True
             utstart = astrotime.Time(
                 line["utstart"].upper(), format="isot", scale="utc"
             )
+            if check_day:
+                if utstart.jd < t0.jd:
+                    utstart += 1 * u.day
 
         cadence = None
         if "cadence" in line.keys():
@@ -814,12 +819,16 @@ def read(
                 constraints = [
                     [
                         astroplan.constraints.TimeConstraint(
-                            utstart
-                            + (i + j * len(filters)) * constraint_cadence
-                            - schederr,
-                            utstart
-                            + (i + j * len(filters)) * constraint_cadence
-                            + schederr,
+                            min=(
+                                utstart
+                                + (i + j * len(filters)) * constraint_cadence
+                                - schederr
+                            ),
+                            max=(
+                                utstart
+                                + (i + j * len(filters)) * constraint_cadence
+                                + schederr
+                            ),
                         )
                     ]
                     for j in range(loop_max)
@@ -857,8 +866,8 @@ def read(
                             "pm_ra_cosdec": pm_ra_cosdec,
                             "pm_dec": pm_dec,
                             "comment": comment,
-                            "sch": filename.split("/")[-1],
-                            "ID": astrotime.Time.now().mjd,
+                            "sch": filename.split("/")[-1].split(".")[0],
+                            "ID": astrotime.Time.now(),
                             "status": "U",
                             "message": "Unscheduled",
                             "sched_time": None,
