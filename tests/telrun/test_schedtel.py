@@ -1,6 +1,6 @@
 import pytest
 
-from pyscope.telrun import schedtel
+from pyscope.telrun import plot_schedule_gantt, plot_schedule_sky, schedtel
 
 
 def test_schedtel(tmp_path):
@@ -12,14 +12,9 @@ def test_schedtel(tmp_path):
         observatory=observatory,
         filename=str(tmp_path) + "test_schedtel.ecsv",
     )
-    sch = str(tmp_path) + "test_schedtel.ecsv"
 
-    fig, ax = plot_schedule_gantt(sch, obs)
-    fig.savefig(str(tmp_path) + "test_schedtel_gantt.png")
+    fig, ax = plot_schedule_gantt(schedule, observatory)
+    fig.savefig(str(tmp_path) + "test_schedtel_gantt.png", dpi=300, bbox_inches="tight")
 
-    fig, ax = plot_schedule_sky(sch, obs)
-    fig.savefig(str(tmp_path) + "test_schedtel_sky.png")
-
-
-if __name__ == "__main__":
-    test_schedtel("./")
+    fig, ax = plot_schedule_sky(schedule, observatory)
+    fig.savefig(str(tmp_path) + "test_schedtel_sky.png", dpi=300, bbox_inches="tight")

@@ -767,9 +767,7 @@ def schedtel_cli(
     # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = np.min(exec_table["start time"]).strftime(
-            "%YYYY-%mm-%dd_%HH-%MM-%SS"
-        )
+        first_time = np.min(exec_table["start_time"]).strftime("%Y-%m-%d_%H-%M-%S")
         filename = "telrun_" + first_time + ".ecsv"
 
     write_queue = False
