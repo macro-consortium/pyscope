@@ -7,16 +7,18 @@ import zoneinfo
 
 import astroplan
 import click
-import cmcrameri as ccm
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import timezonefinder
 import tqdm
+from astroplan import plots as astroplan_plots
 from astropy import coordinates as coord
 from astropy import table
 from astropy import time as astrotime
 from astropy import units as u
 from astroquery import mpc
+from cmcrameri import cm as ccm
 from matplotlib import ticker
 
 from .. import utils
@@ -824,17 +826,17 @@ def schedtel_cli(
     # reports.pre_exec_report(exec_table)
 
     # Plot the schedule
-    ax = None
     match plot:
         case 1:  # Gantt chart
             logger.info("Plotting schedule as a Gantt chart")
             fig, ax = plot_schedule_gantt(schedule, observatory)
             return exec_table, fig, ax
         case 2:  # Plot by target w/ altitude
-            logger.info("Plotting schedule by target with airmass")
-            ax = astroplan.plots.plot_schedule_airmass(schedule)
-            plt.legend()
-            return exec_table, fig, ax
+            pass
+            # logger.info("Plotting schedule by target with airmass")
+            # ax = astroplan.plots.plot_schedule_airmass(schedule)
+            # plt.legend()
+            # return exec_table, fig, ax
         case 3:  # Sky chart
             logger.info("Plotting schedule on a sky chart")
             ax = plot_schedule_sky(schedule, observatory)
@@ -863,74 +865,63 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
-    if type(observatory) is not astroplan.Observer:
-        if type(observatory) is str:
-            obs_cfg = configparser.ConfigParser()
-            obs_cfg.read(observatory)
-            location = coord.EarthLocation(
-                lon=obs_cfg.getfloat("location", "longitude") * u.deg,
-                lat=obs_cfg.getfloat("location", "latitude") * u.deg,
-                height=obs_cfg.getfloat("location", "elevation") * u.m,
+    if type(observatory) is str:
+        obs_cfg = configparser.ConfigParser()
+        obs_cfg.read(observatory)
+        observatory = astroplan.Observer(
+            location=coord.EarthLocation(
+                lon=obs_cfg.get("site", "longitude"),
+                lat=obs_cfg.get("site", "latitude"),
             )
-            observatory = astroplan.Observer(location=location)
-        elif type(observatory) is Observatory:
-            location = observatory.observatory_location
-            observatory = astroplan.Observer(location=observatory.observatory_location)
-        else:
-            raise TypeError(
-                "Observatory must be, a string, Observatory object, or astroplan.Observer object."
-            )
+        )
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
+    elif type(observatory) is Observatory:
+        obs_lon = observatory.observatory_location.lon
+        obs_lat = observatory.observatory_location.lat
+    elif type(observatory) is astroplan.Observer:
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
     else:
-        location = observatory.location
-
-    obscodes = np.unique([block["configuration"]["code"] for block in schedule_table])
-
-    date = astrotime.Time(
-        schedule_table[0]["start time (UTC)"], format="iso", scale="utc"
-    ).datetime
-    t0 = (
-        astrotime.Time(
-            datetime.datetime(date.year, date.month, date.day, 12, 0, 0),
-            format="datetime",
-            scale="utc",
+        logger.error(
+            "Observatory must be, a string, Observatory object, or astroplan.Observer object."
         )
-        - (
-            (
-                astrotime.Time(date, format="datetime", scale="utc")
-                - astrotime.Time.now()
-            ).day
-            % 1
-        )
-        * u.day
+        return
+    location = coord.EarthLocation(lon=obs_lon, lat=obs_lat)
+
+    tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
+    tz = zoneinfo.ZoneInfo(tz)
+    date = np.min(schedule_table["start_time"]).datetime
+    t0 = astrotime.Time(
+        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
     )
+    t1 = t0 + 1 * u.day
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, len(obscodes) / 2))
+    obscodes = list(np.unique(schedule_table["code"]))
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, len(obscodes) * 0.75))
+    mdates.set_epoch(t0.strftime("%Y-%m-%dT%H:%M:%S"))
 
     for i in range(len(obscodes)):
         plot_blocks = [
-            block
-            for block in schedule_table
-            if block["configuration"]["code"] == obscodes[i]
+            block for block in schedule_table if block["code"] == obscodes[i]
         ]
 
         for block in plot_blocks:
-            start_time = astrotime.Time(
-                block["start time (UTC)"], format="iso", scale="utc"
-            )
-            end_time = astrotime.Time(
-                block["end time (UTC)"], format="iso", scale="utc"
-            )
-            length_minutes = int((start_time - end_time).sec / 60 + 1)
+            start_time = block["start_time"]
+            end_time = block["end_time"]
+            length_minutes = int(np.ceil((end_time - start_time).sec / 60))
             times = (
                 start_time
                 + np.linspace(0, length_minutes, length_minutes, endpoint=True)
                 * u.minute
             )
-
-            obj = coord.SkyCoord(ra=block["ra"], dec=block["dec"]).transform_to(
-                coord.AltAz(obstime=times, location=location)
-            )
-            airmass = utils.airmass(obj.alt * u.deg)
+            airmass = []
+            for t in times:
+                obj = coord.SkyCoord(
+                    block["target"], obstime=t, location=location
+                ).transform_to("altaz")
+                airmass.append(utils.airmass(obj.alt.rad))
 
             ax.scatter(
                 times.datetime,
@@ -991,36 +982,48 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 
     ax.set_xlabel(
         "Time beginning %s [UTC]"
-        % (twilight_times[1] - 0.5 * u.hour).strftime("%m-%d-%Y")
+        % (twilight_times[1] - 0.5 * u.hour).strftime("%Y-%m-%d")
     )
     ax.set_xlim(
         [
             (twilight_times[1] - 0.5 * u.hour).datetime,
-            (twilight_times[-2].datetime + 0.5 * u.hour).datetime,
+            (twilight_times[-2] + 0.5 * u.hour).datetime,
         ]
     )
+    ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-    ax.xaxis.set_minor_formatter(ticks.NullFormatter())
-    ax.xaxis.set_minor_locator(mdates.MinuteLocator(interval=15))
-    ax.xtick_params(rotation=45)
+    ax.xaxis.set_minor_locator(mdates.HourLocator(interval=1))
+    ax.xaxis.set_minor_formatter(ticker.NullFormatter())
+    ax.xaxis.set_tick_params(rotation=45)
+
+    ax1 = ax.twiny()
+    ax1.set_xlim(ax.get_xlim())
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=2, tz=tz))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M", tz=tz))
+    ax1.xaxis.set_minor_locator(mdates.HourLocator(interval=1, tz=tz))
+    ax1.xaxis.set_minor_formatter(ticker.NullFormatter())
+    ax1.xaxis.set_tick_params(rotation=45)
+    ax1.set_xlabel("Observatory Local Time (%s)" % tz)
 
     ax.set_ylabel("Observer Code")
-    ax.set_ylim([len(obscodes) + 1.5, 0.5])
+    ax.set_ylim([len(obscodes) - 0.5, 0.5])
+    ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(obscodes))))
     ax.yaxis.set_major_formatter(ticker.FixedFormatter(obscodes))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_minor_formatter(ticks.NullFormatter())
     ax.yaxis.set_minor_locator(ticker.NullLocator())
+    ax.yaxis.set_minor_formatter(ticker.NullFormatter())
 
-    cbar = plt.colorbar(scatter, ax=ax)
-    cbar.set_yticks([1, 1.5, 2, 2.5, 3])
+    cbar = fig.colorbar(scatter, ax=ax)
+    cbar.set_ticks([1, 1.5, 2, 2.5, 3])
     cbar.set_label("Airmass", rotation=270, labelpad=20)
 
-    ax.set_title(
-        "Observing Schedule for %s on %s"
-        % (name, twilight_times[1] - 0.5 * u.hour).strftime("%m-%d-%Y")
-    )
-    ax.grid()
+    """ax.set_title(
+        "Observing Schedule: %s"
+        % t0.strftime("%Y-%m-%d"), fontsize=14
+    )"""
+    ax.grid(linestyle=":", color="black")
+
+    fig.set_facecolor("white")
+    fig.set_dpi(300)
 
     return fig, ax
 
@@ -1039,84 +1042,55 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
 )
 @click.version_option()
-def plot_schedule_sky_cli():
-    objects = []
-    times = []
-    for i in range(len(schedule_table)):
-        if schedule_table[i]["ra"] not in [obj.ra.dms for obj in objects]:
-            objects.append(
-                coord.SkyCoord(ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"])
-            )
-            times.append(
-                [
-                    (
-                        astrotime.Time(
-                            schedule_table[i]["start time (UTC)"],
-                            format="iso",
-                            scale="utc",
-                        )
-                        + astrotime.Time(
-                            schedule_table[i]["end time (UTC)"],
-                            format="iso",
-                            scale="utc",
-                        )
-                    )
-                    / 2
-                ]
-            )
-        elif schedule_table[i]["dec"] != [obj.ra.dms for obj in objects].index(
-            schedule_table[i]["ra"]
-        ):
-            objects.append(
-                coord.SkyCoord(ra=schedule_table[i]["ra"], dec=schedule_table[i]["dec"])
-            )
-            times.append(
-                [
-                    (
-                        astrotime.Time(
-                            schedule_table[i]["start time (UTC)"],
-                            format="iso",
-                            scale="utc",
-                        )
-                        + astrotime.Time(
-                            schedule_table[i]["end time (UTC)"],
-                            format="iso",
-                            scale="utc",
-                        )
-                    )
-                    / 2
-                ]
-            )
-        else:
-            times[
-                [obj.dec.dms for obj in objects].index(schedule_table[i]["dec"])
-            ].append(
-                (
-                    astrotime.Time(
-                        schedule_table[i]["start time (UTC)"],
-                        format="iso",
-                        scale="utc",
-                    )
-                    + astrotime.Time(
-                        schedule_table[i]["end time (UTC)"],
-                        format="iso",
-                        scale="utc",
-                    )
-                )
-                / 2
-            )
+def plot_schedule_sky_cli(schedule_table, observatory):
+    if type(schedule_table) is not table.Table:
+        schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
-    for i in range(len(objects)):
-        ax = astroplan.plot_sky(
-            astroplan.FixedTarget(objects[i]),
+    if type(observatory) is str:
+        obs_cfg = configparser.ConfigParser()
+        obs_cfg.read(observatory)
+        observatory = astroplan.Observer(
+            location=coord.EarthLocation(
+                lon=obs_cfg.get("site", "longitude"),
+                lat=obs_cfg.get("site", "latitude"),
+            )
+        )
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
+    elif type(observatory) is Observatory:
+        obs_lon = observatory.observatory_location.lon
+        obs_lat = observatory.observatory_location.lat
+    elif type(observatory) is astroplan.Observer:
+        obs_lon = observatory.location.lon
+        obs_lat = observatory.location.lat
+    else:
+        logger.error(
+            "Observatory must be, a string, Observatory object, or astroplan.Observer object."
+        )
+        return
+
+    fig, ax = plt.subplots(1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"})
+    for i, row in enumerate(schedule_table):
+        if row["name"] == "TransitionBlock" or row["name"] == "EmptyBlock":
+            continue
+        ax = astroplan_plots.plot_sky(
+            astroplan.FixedTarget(row["target"]),
             observatory,
-            times[i],
+            row["start_time"],
+            ax=ax,
             style_kwargs={
-                "color": ccm.batlow(i / (len(objects) - 1)),
-                "label": objects[i].to_string("hmsdms"),
+                "label": row["target"].to_string("hmsdms"),
             },
         )
-    plt.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    unique = [
+        (h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]
+    ]
+    ax.legend(*zip(*unique), loc=(1.1, 0))
+
+    fig.set_facecolor("white")
+    fig.set_dpi(300)
+
     return fig, ax
 
 
