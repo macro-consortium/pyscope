@@ -31,21 +31,31 @@ def blocks_to_table(observing_blocks):
 
     unscheduled_blocks_mask = np.array(
         [
-            type(block) is astroplan.ObservingBlock and block.start_time is None
+            hasattr(block, "target") and block.start_time is None
             for block in observing_blocks
         ]
     )
 
     open_slots_mask = np.array(
-        [type(block) is astroplan.Slot for block in observing_blocks]
+        [not hasattr(block, "target") for block in observing_blocks]
+    )
+
+    t["ID"] = np.ma.array(
+        [
+            block.configuration["ID"]
+            if hasattr(block, "target")
+            else astrotime.Time(0, format="mjd")
+            for block in observing_blocks
+        ],
+        mask=open_slots_mask,
     )
 
     # Populate simple columns
     t["name"] = [
         block.name
-        if type(block) is astroplan.ObservingBlock
+        if hasattr(block, "target")
         else "TransitionBlock"
-        if type(block) is astroplan.TransitionBlock
+        if type(block) is not astroplan.Slot
         else "EmptyBlock"
         for block in observing_blocks
     ]
@@ -53,37 +63,37 @@ def blocks_to_table(observing_blocks):
     t["start_time"] = astrotime.Time(
         np.ma.array(
             [
-                block.start.jd
+                block.start.mjd
                 if type(block) is astroplan.Slot
                 else 0
                 if block.start_time is None
-                else block.start_time.jd
+                else block.start_time.mjd
                 for block in observing_blocks
             ],
             mask=unscheduled_blocks_mask,
         ),
-        format="jd",
+        format="mjd",
     )
 
     t["end_time"] = astrotime.Time(
         np.ma.array(
             [
-                block.end.jd
+                block.end.mjd
                 if type(block) is astroplan.Slot
                 else 0
                 if block.end_time is None
-                else block.end_time.jd
+                else block.end_time.mjd
                 for block in observing_blocks
             ],
             mask=unscheduled_blocks_mask,
         ),
-        format="jd",
+        format="mjd",
     )
 
     t["target"] = coord.SkyCoord(
         [
             block.target.to_string("hmsdms")
-            if type(block) is astroplan.ObservingBlock
+            if hasattr(block, "target")
             else "0h0m0.0s -90d0m0.0s"
             for block in observing_blocks
         ]
@@ -91,16 +101,14 @@ def blocks_to_table(observing_blocks):
 
     t["priority"] = np.ma.array(
         [
-            block.priority if type(block) is astroplan.ObservingBlock else 0
+            block.priority if hasattr(block, "target") else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["observer"]
-        if type(block) is astroplan.ObservingBlock
-        else [""]
+        block.configuration["observer"] if hasattr(block, "target") else [""]
         for block in observing_blocks
     ]
     t["observer"] = np.ma.array(
@@ -109,9 +117,7 @@ def blocks_to_table(observing_blocks):
 
     t["code"] = np.ma.array(
         [
-            block.configuration["code"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["code"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -119,9 +125,7 @@ def blocks_to_table(observing_blocks):
 
     t["title"] = np.ma.array(
         [
-            block.configuration["title"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["title"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -129,9 +133,7 @@ def blocks_to_table(observing_blocks):
 
     t["filename"] = np.ma.array(
         [
-            block.configuration["filename"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["filename"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -139,9 +141,7 @@ def blocks_to_table(observing_blocks):
 
     t["type"] = np.ma.array(
         [
-            block.configuration["type"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["type"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -149,9 +149,7 @@ def blocks_to_table(observing_blocks):
 
     t["backend"] = np.ma.array(
         [
-            block.configuration["backend"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["backend"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -159,9 +157,7 @@ def blocks_to_table(observing_blocks):
 
     t["filter"] = np.ma.array(
         [
-            block.configuration["filter"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["filter"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -169,9 +165,7 @@ def blocks_to_table(observing_blocks):
 
     t["exposure"] = np.ma.array(
         [
-            block.configuration["exposure"]
-            if type(block) is astroplan.ObservingBlock
-            else 0
+            block.configuration["exposure"] if hasattr(block, "target") else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -179,18 +173,14 @@ def blocks_to_table(observing_blocks):
 
     t["nexp"] = np.ma.array(
         [
-            block.configuration["nexp"]
-            if type(block) is astroplan.ObservingBlock
-            else 0
+            block.configuration["nexp"] if hasattr(block, "target") else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["repositioning"]
-        if type(block) is astroplan.ObservingBlock
-        else (0, 0)
+        block.configuration["repositioning"] if hasattr(block, "target") else (0, 0)
         for block in observing_blocks
     ]
     t["repositioning"] = np.ma.array(
@@ -199,9 +189,7 @@ def blocks_to_table(observing_blocks):
 
     t["shutter_state"] = np.ma.array(
         [
-            block.configuration["shutter_state"]
-            if type(block) is astroplan.ObservingBlock
-            else False
+            block.configuration["shutter_state"] if hasattr(block, "target") else False
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -209,18 +197,14 @@ def blocks_to_table(observing_blocks):
 
     t["readout"] = np.ma.array(
         [
-            block.configuration["readout"]
-            if type(block) is astroplan.ObservingBlock
-            else 0
+            block.configuration["readout"] if hasattr(block, "target") else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["binning"]
-        if type(block) is astroplan.ObservingBlock
-        else (1, 1)
+        block.configuration["binning"] if hasattr(block, "target") else (1, 1)
         for block in observing_blocks
     ]
     t["binning"] = np.ma.array(
@@ -228,9 +212,7 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_position"]
-        if type(block) is astroplan.ObservingBlock
-        else (0, 0)
+        block.configuration["frame_position"] if hasattr(block, "target") else (0, 0)
         for block in observing_blocks
     ]
     t["frame_position"] = np.ma.array(
@@ -238,9 +220,7 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_size"]
-        if type(block) is astroplan.ObservingBlock
-        else (0, 0)
+        block.configuration["frame_size"] if hasattr(block, "target") else (0, 0)
         for block in observing_blocks
     ]
     t["frame_size"] = np.ma.array(
@@ -250,7 +230,7 @@ def blocks_to_table(observing_blocks):
     t["pm_ra_cosdec"] = np.ma.array(
         [
             block.configuration["pm_ra_cosdec"].to(u.arcsec / u.hour).value
-            if type(block) is astroplan.ObservingBlock
+            if hasattr(block, "target")
             else 0
             for block in observing_blocks
         ],
@@ -260,7 +240,7 @@ def blocks_to_table(observing_blocks):
     t["pm_dec"] = np.ma.array(
         [
             block.configuration["pm_dec"].to(u.arcsec / u.hour).value
-            if type(block) is astroplan.ObservingBlock
+            if hasattr(block, "target")
             else 0
             for block in observing_blocks
         ],
@@ -269,9 +249,7 @@ def blocks_to_table(observing_blocks):
 
     t["comment"] = np.ma.array(
         [
-            block.configuration["comment"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["comment"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -279,19 +257,7 @@ def blocks_to_table(observing_blocks):
 
     t["sch"] = np.ma.array(
         [
-            block.configuration["sch"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
-            for block in observing_blocks
-        ],
-        mask=open_slots_mask,
-    )
-
-    t["ID"] = np.ma.array(
-        [
-            block.configuration["ID"]
-            if type(block) is astroplan.ObservingBlock
-            else astrotime.Time(0, format="jd")
+            block.configuration["sch"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -299,9 +265,7 @@ def blocks_to_table(observing_blocks):
 
     t["status"] = np.ma.array(
         [
-            block.configuration["status"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["status"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -309,9 +273,7 @@ def blocks_to_table(observing_blocks):
 
     t["message"] = np.ma.array(
         [
-            block.configuration["message"]
-            if type(block) is astroplan.ObservingBlock
-            else ""
+            block.configuration["message"] if hasattr(block, "target") else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -320,7 +282,7 @@ def blocks_to_table(observing_blocks):
     t["sched_time"] = np.ma.array(
         [
             block.configuration["sched_time"]
-            if type(block) is astroplan.ObservingBlock
+            if hasattr(block, "target")
             else astrotime.Time(0, format="jd")
             for block in observing_blocks
         ],
@@ -333,9 +295,7 @@ def blocks_to_table(observing_blocks):
             len(observing_blocks),
             np.max(
                 [
-                    len(block.constraints)
-                    if type(block) is astroplan.ObservingBlock
-                    else 0
+                    len(block.constraints) if hasattr(block, "target") else 0
                     for block in observing_blocks
                 ]
             ),
@@ -346,15 +306,13 @@ def blocks_to_table(observing_blocks):
         constraint_list = np.full(
             np.max(
                 [
-                    len(block.constraints)
-                    if type(block) is astroplan.ObservingBlock
-                    else 0
+                    len(block.constraints) if hasattr(block, "target") else 0
                     for block in observing_blocks
                 ]
             ),
             dict(),
         )
-        if type(block) is astroplan.ObservingBlock:
+        if hasattr(block, "target"):
             for constraint_num, constraint in enumerate(block.constraints):
                 if type(constraint) is astroplan.TimeConstraint:
                     constraint_dict = {
@@ -418,6 +376,8 @@ def blocks_to_table(observing_blocks):
     t["constraints"] = np.ma.array(
         constraints, mask=_mask_expander(constraints, open_slots_mask)
     )
+
+    t.add_index("ID", unique=True)
 
     return t
 

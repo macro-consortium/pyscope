@@ -11,6 +11,7 @@ import cmcrameri as ccm
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import timezonefinder
+import tqdm
 from astropy import coordinates as coord
 from astropy import table
 from astropy import time as astrotime
@@ -263,7 +264,7 @@ def schedtel_cli(
     filename=None,
     telrun=False,
     plot=None,
-    yes=True,
+    yes=False,
     quiet=False,
     verbose=0,
 ):
@@ -298,6 +299,7 @@ def schedtel_cli(
 
     # Set the schedule time
     sched_time = astrotime.Time.now()
+    sched_time.format = "mjd"
 
     # Define the observatory
     if observatory is None:
@@ -461,6 +463,7 @@ def schedtel_cli(
                 block_groups[i][j].configuration["ID"]
             except:
                 block_groups[i][j].configuration["ID"] = astrotime.Time.now()
+                block_groups[i][j].configuration["ID"].format = "mjd"
 
     previously_queued_blocks = None
     if queue is not None and len(block_groups) > 0:
@@ -521,6 +524,8 @@ def schedtel_cli(
 
     # Transitioner
     logger.info("Defining transitioner")
+    if instrument_reconfig_times == {}:
+        instrument_reconfig_times = None
     transitioner = astroplan.Transitioner(
         slew_rate, instrument_reconfig_times=instrument_reconfig_times
     )
@@ -557,7 +562,7 @@ def schedtel_cli(
         )
 
     logger.info("Scheduling ObservingBlocks")
-    for i in range(len(block_groups)):
+    for i in tqdm.tqdm(range(len(block_groups))):
         logger.debug("Block group %i of %i" % (i + 1, len(block_groups)))
         schedule_handler(block_groups[i], schedule)
 
@@ -566,16 +571,15 @@ def schedtel_cli(
 
     # Get scheduled ObservingBlocks
     scheduled_blocks = [
-        slot.block
-        for slot in schedule.slots
-        if isinstance(slot.block, astroplan.ObservingBlock)
+        slot.block for slot in schedule.slots if hasattr(slot.block, "target")
     ]
     transition_blocks = [
         slot.block
         for slot in schedule.slots
-        if isinstance(slot.block, astroplan.TransitionBlock)
+        if slot.block is not None and not hasattr(slot.block, "target")
     ]
-    unscheduled_slots = [slot for slot in schedule.slots if not slot.occupied]
+
+    unscheduled_slots = [slot for slot in schedule.slots if slot.block is None]
 
     # Update ephem for non-sidereal targets, update object types, set filenames
     for block_number, block in enumerate(scheduled_blocks):
@@ -585,8 +589,8 @@ def schedtel_cli(
         if (
             block.configuration["pm_ra_cosdec"].value != 0
             or block.configuration["pm_dec"].value != 0
-        ):
-            logger.info("Updating ephemeris for %s at scheduled time" % block.name)
+        ) and block.name != "":
+            logger.info("Updating ephemeris for '%s' at scheduled time" % block.name)
             try:
                 ephemerides = mpc.MPC.get_ephemeris(
                     target=block.name,
@@ -714,7 +718,7 @@ def schedtel_cli(
 
                 """
             )
-        logger.warning("\nInvalid blocks:")
+        logger.warning("Invalid blocks:")
         for block in invalid_blocks:
             logger.warning(
                 f"""
@@ -738,11 +742,11 @@ def schedtel_cli(
     # Blocks to be placed in an execution schedule
     exec_blocks = scheduled_blocks + transition_blocks + invalid_blocks
     if queue is None:
-        logger.info("No queue provided, including unscheduled in execution schedule")
-        logger.info("Note that these blocks will not actually be executed")
+        logger.info(
+            "No queue provided, including unscheduled blocks in execution schedule. Note that these blocks will not actually be executed."
+        )
         exec_blocks += unscheduled_blocks
     elif queue is not None:
-        exec_blocks.sort(key=lambda x: x.configuration["ID"])
         exec_table = schedtab.blocks_to_table(exec_blocks)
 
         # Blocks to be placed back in the queue
@@ -753,20 +757,17 @@ def schedtel_cli(
         if previously_queued_blocks is not None:
             queue_blocks += previously_queued_blocks
 
-        queue_blocks.sort(key=lambda x: x.configuration["ID"])
         queue_table = schedtab.blocks_to_table(queue_blocks)
 
-    exec_blocks.sort(key=lambda x: x.configuration["ID"])
     exec_blocks = exec_blocks + unscheduled_slots
     exec_table = schedtab.blocks_to_table(exec_blocks)
-
-    # TODO: Report observing statistics (time used, transition, unscheduled, etc.)
-    # reports.pre_exec_report(exec_table)
 
     # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = exec_table[0]["start_time"].strftime("%Y%m%d_%H%M%S")
+        first_time = np.min(exec_table["start time"]).strftime(
+            "%YYYY-%mm-%dd_%HH-%MM-%SS"
+        )
         filename = "telrun_" + first_time + ".ecsv"
 
     write_queue = False
@@ -799,21 +800,28 @@ def schedtel_cli(
     else:
         write_queue = False
         path = os.getcwd() + "/"
-        logger.info("-t/--telrun flag not set, writing schedule to %s" % path)
+        logger.info("-t/--telrun flag not set")
         logger.info("If queue was provided, it will not be written to file")
 
-    exec_table.write(path + filename, overwrite=True)
+    if not telrun:
+        write_fname = filename
+    else:
+        write_fname = path + filename
+    exec_table.write(write_fname, overwrite=True, format="ascii.ecsv")
 
     # If a queue was passed, update the queue if --telrun is set
     # and the file was written to the expected location
     if queue is not None:
         if write_queue:
             logger.info("Writing queue to file")
-            queue_table.write(queue, overwrite=True)
+            queue_table.write(queue, overwrite=True, format="ascii.ecsv")
         else:
             logger.info("Not writing queue to file")
     else:
         logger.info("No queue provided")
+
+    # TODO: Report observing statistics (time used, transition, unscheduled, etc.)
+    # reports.pre_exec_report(exec_table)
 
     # Plot the schedule
     ax = None
