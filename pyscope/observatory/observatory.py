@@ -794,6 +794,7 @@ class Observatory:
 
         self.telescope.Connected = True
         if self.telescope.Connected:
+            print("Telescope connected")
             logger.info("Telescope connected")
         else:
             logger.warning("Telescope failed to connect")
@@ -1224,7 +1225,16 @@ class Observatory:
             for hist in history:
                 hdr["HISTORY"] = hist
 
-        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
+        # By default, the ImageArray is 32 bit int, at least on my system
+        # of a ZWO 290MM Mini - we need to convert it to 16 bit unsigned int
+        img_array = np.array(self.camera.ImageArray).astype(np.uint16)
+        print(img_array.shape)
+        print(img_array.dtype)
+        # Transpose the image array to match the FITS standard
+        # as well as the axis order defined above
+        img_array = np.transpose(img_array)
+
+        hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
         if do_fwhm:
@@ -2375,13 +2385,15 @@ class Observatory:
             "filter_focus_offsets", self.filter_focus_offsets
         )
 
-        self.rotator_reverse = dictionary.get("rotator_reverse", self.rotator_reverse)
-        self.rotator_min_angle = dictionary.get(
-            "rotator_min_angle", self.rotator_min_angle
-        )
-        self.rotator_max_angle = dictionary.get(
-            "rotator_max_angle", self.rotator_max_angle
-        )
+        # Not sure if this if statement is a good idea here...
+        if dictionary.get("rotator_driver", self.rotator_driver) is not None:
+            self.rotator_reverse = dictionary.get("rotator_reverse", self.rotator_reverse)
+            self.rotator_min_angle = dictionary.get(
+                "rotator_min_angle", self.rotator_min_angle
+            )
+            self.rotator_max_angle = dictionary.get(
+                "rotator_max_angle", self.rotator_max_angle
+            )
 
         self.min_altitude = dictionary.get("min_altitude", self.min_altitude)
         self.settle_time = dictionary.get("settle_time", self.settle_time)
@@ -3684,7 +3696,9 @@ class Observatory:
         self._latitude = (
             coord.Latitude(value) if value is not None or value != "" else None
         )
-        self.telescope.SiteLatitude = self._latitude.deg
+        # If connected, set the telescope site latitude
+        if self.telescope.Connected:
+            self.telescope.SiteLatitude = self._latitude.deg
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3704,7 +3718,8 @@ class Observatory:
             if value is not None or value != ""
             else None
         )
-        self.telescope.SiteLongitude = self._longitude.deg
+        if self.telescope.Connected:
+            self.telescope.SiteLongitude = self._longitude.deg
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -3855,7 +3870,7 @@ class Observatory:
     def cover_calibrator_alt(self, value):
         logger.debug(f"Observatory.cover_calibrator_alt = {value} called")
         self._cover_calibrator_alt = (
-            min(max(float(value), 0), 90) if value is not None or value != "" else None
+            min(max(float(value), 0), 90) if value is not None and value != "" else None
         )
         self._config["cover_calibrator"]["cover_calibrator_alt"] = (
             str(self._cover_calibrator_alt)
@@ -3872,7 +3887,7 @@ class Observatory:
     def cover_calibrator_az(self, value):
         logger.debug(f"Observatory.cover_calibrator_az = {value} called")
         self._cover_calibrator_az = (
-            min(max(float(value), 0), 360) if value is not None or value != "" else None
+            min(max(float(value), 0), 360) if value is not None and value != "" else None
         )
         self._config["cover_calibrator"]["cover_calibrator_az"] = (
             str(self._cover_calibrator_az)
