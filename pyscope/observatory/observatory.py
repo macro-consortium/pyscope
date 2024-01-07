@@ -794,7 +794,6 @@ class Observatory:
 
         self.telescope.Connected = True
         if self.telescope.Connected:
-            print("Telescope connected")
             logger.info("Telescope connected")
         else:
             logger.warning("Telescope failed to connect")
@@ -1228,8 +1227,6 @@ class Observatory:
         # By default, the ImageArray is 32 bit int, at least on my system
         # of a ZWO 290MM Mini - we need to convert it to 16 bit unsigned int
         img_array = np.array(self.camera.ImageArray).astype(np.uint16)
-        print(img_array.shape)
-        print(img_array.dtype)
         # Transpose the image array to match the FITS standard
         # as well as the axis order defined above
         img_array = np.transpose(img_array)
