@@ -1,5 +1,6 @@
 import atexit
 import configparser
+import glob
 import logging
 import os
 import shutil
@@ -31,8 +32,8 @@ class TelrunOperator:
         self._execution_thread = None
         self._execution_event = threading.Event()
         self._status_event = threading.Event()
+        self._schedule_fname = None
         self._schedule = None
-        self._schedule_last_modified = 0
         self._best_focus_result = None
         self._wcs_threads = []
 
@@ -75,7 +76,6 @@ class TelrunOperator:
         self._default_readout = 0
         self._check_block_status = True
         self._update_block_status = True
-        self._write_to_schedule_log = True
         self._write_to_status_log = True
         self._autofocus_interval = 3600
         self._initial_autofocus = True
@@ -163,9 +163,6 @@ class TelrunOperator:
             )
             self._update_block_status = self._config.getboolean(
                 "default", "update_block_status", fallback=self._update_block_status
-            )
-            self._write_to_schedule_log = self._config.getboolean(
-                "default", "write_to_schedule_log", fallback=self._write_to_schedule_log
             )
             self._write_to_status_log = self._config.getboolean(
                 "default", "write_to_status_log", fallback=self._write_to_status_log
@@ -319,9 +316,6 @@ class TelrunOperator:
         )
         self.update_block_status = kwargs.get(
             "update_block_status", self._update_block_status
-        )
-        self.write_to_schedule_log = kwargs.get(
-            "write_to_schedule_log", self._write_to_schedule_log
         )
         self.write_to_status_log = kwargs.get(
             "write_to_status_log", self._write_to_status_log
@@ -481,123 +475,106 @@ class TelrunOperator:
             logger.info("Started.")
 
         logger.info("Starting main operation loop...")
+        init_load = True
         while True:
             # Check for new schedule
-            filename = (
-                self.schedules_path
-                + "telrun_"
-                + self.observatory.observatory_time().strftime("%m-%d-%Y")
-                + ".ecsv"
+            logger.debug("Checking for new schedule...")
+            potential_schedules = glob.glob(
+                self.schedules_path + "telrun_????-??-??_??-??-??.ecsv"
             )
-            if os.path.exists(filename):
-                if (
-                    os.path.getmtime(self.schedules_path + "telrun.ecsv")
-                    > self._schedule_last_modified
-                ):
-                    logger.info("New schedule detected, reloading...")
-                    self._schedule_last_modified = os.path.getmtime(filename)
-
-                    if self._execution_thread is not None:
-                        logger.info("Terminating current schedule execution thread...")
-                        self._execution_event.set()
-                        self._execution_thread.join()
-
-                    logger.info("Clearing execution event...")
-                    self._execution_event.clear()
-
-                    logger.info("Reading new schedule...")
-                    schedule = table.Table.read(filename, format="ascii.ecsv")
-
-                    logger.info("Starting new schedule execution thread...")
-                    self._execution_thread = threading.Thread(
-                        target=self._execute_schedule,
-                        args=(schedule, filename),
-                        daemon=True,
-                        name="Telrun Schedule Execution Thread",
-                    )
-                    self._execution_thread.start()
-                    logger.info("Started.")
-
-                else:
-                    logger.debug("Waiting for new schedule...")
-                    time.sleep(1)
-            else:
-                logger.debug("Waiting for new schedule...")
+            if len(potential_schedules) < 1:
+                logger.debug(
+                    "No schedules in schedule directory. Waiting for new schedule..."
+                )
                 time.sleep(1)
+                continue
+            potential_times = astrotime.Time(
+                [
+                    f.split("/")[-1].split("_")[1].split(".")[0]
+                    for f in potential_schedules
+                ],
+                format="iso",
+            )
+            potential_times = potential_times[potential_times < astrotime.Time.now()]
+            potential_times.sort()
+            if len(potential_times) < 1:
+                logger.debug(
+                    "No schedules with start times before current time. Waiting for new schedule..."
+                )
+                time.sleep(1)
+                continue
+            fname = (
+                "telrun_" + potential_times[-1].strftime("%Y-%m-%d_%H-%M-%S") + ".ecsv"
+            )
+            logger.debug("Newest schedule: %s" % fname)
 
-    def execute_schedule(self, schedule, *args):
+            # Load schedule if it exists and check for any status with "Q"
+            if not os.path.exists(self.schedules_path + fname):
+                logger.exception("Schedule file error, waiting for new schedule...")
+                time.sleep(1)
+                continue
+            schedule = table.Table.read(
+                self.schedules_path + fname, format="ascii.ecsv"
+            )
+            if len(schedule) < 1:
+                logger.exception("Schedule file empty, waiting for new schedule...")
+                time.sleep(1)
+                continue
+            if self.schedules_path + fname == self._schedule_fname:
+                logger.debug("Schedule already loaded, waiting for new schedule...")
+                time.sleep(1)
+                continue
+            else:
+                init_load = False
+            logger.info("New schedule detected!")
+
+            if self._execution_thread is not None:
+                logger.info("Terminating current schedule execution thread...")
+                self._execution_event.set()
+                self._execution_thread.join()
+
+            logger.info("Clearing execution event...")
+            self._execution_event.clear()
+
+            logger.info("Starting new schedule execution thread...")
+            self._execution_thread = threading.Thread(
+                target=self.execute_schedule,
+                args=(self.schedules_path + fname),
+                daemon=True,
+                name="Telrun Schedule Execution Thread",
+            )
+            self._execution_thread.start()
+            logger.info("Started.")
+
+    def execute_schedule(self, schedule):
+        logger.info("Executing schedule: %s" % schedule)
+        sched_fname = None
         if schedule is str:
+            sched_fname = schedule
             schedule = table.Table.read(schedule, format="ascii.ecsv")
-        elif type(schedule) is not table.QTable:
+        elif type(schedule) is not table.Table:
             logger.exception(
-                "schedule must be a path to an ECSV file or an astropy QTable"
+                "schedule must be a path to an ECSV file or an astropy Table"
             )
             return
 
         # Schedule validation
         logger.info("Validating schedule...")
-        if "target" not in schedule.colnames:
-            logger.exception("schedule must have a target column")
-            return
-        if "start time (UTC)" not in schedule.colnames:
-            logger.exception("schedule must have a start time (UTC) column")
-            return
-        if "end time (UTC)" not in schedule.colnames:
-            logger.exception("schedule must have an end time (UTC) column")
-            return
-        if "duration (minutes)" not in schedule.colnames:
-            logger.exception("schedule must have a duration (minutes) column")
-            return
-        if "ra" not in schedule.colnames:
-            logger.exception("schedule must have an ra column")
-            return
-        if "dec" not in schedule.colnames:
-            logger.exception("schedule must have a dec column")
-            return
-        if "configuration" not in schedule.colnames:
-            logger.exception("schedule must have a configuration column")
+        try:
+            schedtab.validate(schedule, self.observatory)
+        except Exception as e:
+            logger.exception("Schedule failed validation, skipping...")
+            logger.exception(e)
             return
 
-        logger.info("Validating observing blocks...")
-        for i in range(len(schedule)):
-            logger.debug("Validating block %i of %i" % (i + 1, len(schedule)))
-            try:
-                block = validate_ob(schedule[i])
-            except Exception as e:
-                logger.exception(
-                    "Block %i of %i is invalid, removing from schedule"
-                    % (i + 1, len(schedule))
-                )
-                logger.exception(e)
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = str(e)
-            schedule[i] = block
-
+        if sched_fname is None:
+            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%d_%H-%M-%S")
+            sched_fname = self.schedules_path + "telrun_" + first_time + ".ecsv"
+        self._schedule_fname = sched_fname
         self._schedule = schedule
 
-        if args[0] is not None:
-            filename = args[0]
-        else:
-            filename = (
-                self.schedules_path
-                + "telrun_"
-                + self.observatory.observatory_time().strftime("%m-%d-%Y")
-                + ".ecsv"
-            )
-
-        if self.write_to_schedule_log:
-            logger.info("Writing to schedule log.")
-            if os.path.exists(
-                self.logs_path + filename.split(".ecsv")[0].split("/")[-1] + "-log.ecsv"
-            ):
-                schedule_log = table.Table.read(
-                    self.logs_path
-                    + filename.split(".")[0].split("/")[-1]
-                    + "-log.ecsv",
-                    format="ascii.ecsv",
-                )
-            else:
-                schedule_log = astroplan.Schedule(0, 0).to_table()
+        # Save back to file for any invalid blocks
+        self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
 
         # Initial home?
         if self._initial_home and self.observatory.telescope.CanFindHome:
@@ -714,6 +691,7 @@ class TelrunOperator:
         if self.initial_autofocus and self.do_periodic_autofocus:
             self._last_autofocus_time = time.time() - self.autofocus_interval - 1
 
+        # Process blocks
         for block_index, block in enumerate(self._schedule):
             if not self._execution_event.is_set():
                 logger.info(
@@ -722,54 +700,70 @@ class TelrunOperator:
                 logger.info(block)
 
                 if block_index != 0:
-                    self._previous_block = self._schedule[block_index - 1]
+                    self._previous_block_index = block_index - 1
+                    self._previous_block = self._schedule[self._previous_block_index]
                 else:
+                    self._previous_block_index = None
                     self._previous_block = None
 
                 if block_index != len(self._schedule) - 1:
-                    self._next_block = self._schedule[block_index + 1]
+                    self._next_block_index = block_index + 1
+                    self._next_block = self._schedule[self._next_block_index]
                 else:
+                    self._next_block_index = None
                     self._next_block = None
 
+                self._current_block_index = block_index
                 status, message, block = self.execute_block(block)
 
-                if status == "F":
+                if status != "C":
                     self._skipped_block_count += 1
 
+                # Update block status
                 self._schedule[block_index] = block
-
-                self._schedule.write(filename, format="ascii.ecsv", overwrite=True)
-                self._schedule_last_modified = os.path.getmtime(filename)
-
-                if self.write_to_schedule_log:
-                    schedule_log.add_row(block)
-                    schedule_log.write(
-                        self.logs_path
-                        + filename.split(".ecsv")[0].split("/")[-1]
-                        + "-log.ecsv",
-                        format="ascii.ecsv",
-                    )
+                self._schedule.write(
+                    self._schedule_fname, format="ascii.ecsv", overwrite=True
+                )
 
             else:
                 logger.info(
-                    "Execution event has been set (likely by a new schedule detected), stopping block loop"
+                    "Execution event has been set, exiting this schedule execution session..."
                 )
-                self._skipped_block_count = 0
-                self._previous_block = None
-                self._next_block = None
-                return
+                # TODO: Handle leaving for an interruption b/c of alert and returning to the same schedule
+                break
 
-        logger.info("Block loop complete")
+        """
+        # Generate summary report if schedule completed
+        logger.info("Generating summary report")
+        summary_report(self.telpath+'/schedules/telrun.sls', self.telpath+'/logs/'+
+            self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')"""
+
+        # ! TODO: Schedule ending cleanup, park/home, close dome, etc.
+        logger.info("Schedule execution complete")
+        logger.info("Stopping tracking...")
+        self.observatory.telescope.DeclinationRate = 0
+        self.observatory.telescope.RightAscensionRate = 0
+        self.observatory.telescope.Tracking = False
+        self._telescope_status = "Idle"
+        logger.info("Stopped.")
+        logger.info("Parking telescope...")
+        self.observatory.telescope.Park
+        self._telescope_status = "Parked"
+        logger.info("Parked.")
+        logger.info(
+            "Taking bias to close shutter for cameras with electronic shutters..."
+        )
+        self._camera_status = "Taking shutter-closing bias"
+        self.observatory.camera.StartExposure(0, False)
+        self._camera_status = "Idle"
+        logger.info("Done.")
+
         self._skipped_block_count = 0
         self._previous_block = None
         self._next_block = None
-        return
-
-        logger.info("Generating summary report")
-        """summary_report(self.telpath+'/schedules/telrun.sls', self.telpath+'/logs/'+
-            self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')"""
-
+        self._schedule_fname = None
         self._schedule = None
+        return
 
     def execute_block(self, *args, **kwargs):
         # Check for block
@@ -784,58 +778,23 @@ class TelrunOperator:
         elif len(args) == 0:
             block = kwargs.get("block", None)
 
-        # Turn ObservingBlock into Row
-        if type(block) is astroplan.ObservingBlock:
-            block = table.Row(
-                [
-                    block.target.name,
-                    None,
-                    None,
-                    block.duration.minute,
-                    block.target.ra.dms,
-                    block.target.dec.dms,
-                    block.configuration,
-                ],
-                names=(
-                    "target",
-                    "start time (UTC)",
-                    "end time (UTC)",
-                    "duration (minutes)",
-                    "ra",
-                    "dec",
-                    "configuration",
-                ),
-            )
+        # Turn into table/row if necessary
+        if type(block) is list:
+            block = blocks_to_table(block)
+        elif type(block) is astroplan.ObservingBlock:
+            block = blocks_to_table([block])[0]
         elif type(block) is None:
             try:
-                block = table.Row(
-                    [
-                        kwargs.get("target", None),
-                        None,
-                        None,
-                        kwargs.get("duration", None),
-                        kwargs["ra"],
-                        kwargs["dec"],
-                        kwargs["configuration"],
-                    ],
-                    names=(
-                        "target",
-                        "start time (UTC)",
-                        "end time (UTC)",
-                        "duration (minutes)",
-                        "ra",
-                        "dec",
-                        "configuration",
-                    ),
-                )
+                # TODO: Add kwargs to create block
+                raise NotImplementedError
             except:
                 logger.exception(
                     "Passed block is None and no kwargs were given, skipping this block"
                 )
                 return
-        elif type(block) is not table.Row:
+        else:
             logger.exception(
-                "Block must be an astroplan ObservingBlock or astropy Row object."
+                "Passed block is not a list, ObservingBlock, or None, skipping this block"
             )
             return
 
@@ -845,16 +804,20 @@ class TelrunOperator:
         str_handler = logging.StreamHandler(str_output)
         str_handler.setLevel(logging.INFO)
         str_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            f"%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - {self._schedule_fname.split('/')[-1]} - {block['id']} - %(message)s"
         )
         str_handler.setFormatter(str_formatter)
         logger.addHandler(str_handler)
 
         try:
-            val_block = validate_ob(block)
+            val_block = schedtab.validate(block, self.observatory)[0]
         except Exception as e:
             logger.exception("Block failed validation, skipping...")
             logger.exception(e)
+            if self.update_block_status:
+                block["status"] = "F"
+                block["message"] = str(e)
+            logger.removeHandler(str_handler)
             return ("F", f"Block failed validation: {e}", block)
 
             logger.info("Block passed validation, continuing...")
@@ -863,24 +826,63 @@ class TelrunOperator:
         self._current_block = block
 
         # Check 1: Block status?
+        prev_status = "S"
         if self.check_block_status:
-            if block["configuration"]["status"] != "N":
-                logger.info("Block status is not N, skipping...")
-                self._current_block = None
-                if self.update_block_status:
-                    block["configuration"]["status"] = "F"
-                    block["configuration"][
-                        "message"
-                    ] = "Block already attempted to be processed"
-                return ("F", "Block already attempted to be processed", block)
+            if block["status"] != "S":
+                try:
+                    prev_status = int(block["status"])
+                except:
+                    logger.info(
+                        "Block status is not S or an attempt number, skipping..."
+                    )
+                    self._current_block = None
+                    block["message"] = (
+                        "Block status was %s and check_block_status is True, skipping without updating status"
+                        % block["status"]
+                    )
+                    logger.removeHandler(str_handler)
+                    return (
+                        "F",
+                        "Block status was %s and check_block_status is True, skipping without updating status"
+                        % block["status"],
+                        block,
+                    )
 
-        # Check 2: Wait for block start time?
-        if block["start time (UTC)"] is None:
+        # Check 2: Is the previous target different?
+        slew = True
+        if self.previous_block is not None:
+            if (
+                self.previous_block["target"].ra.deg == block["target"].ra.deg
+                and self.previous_block["target"].dec.deg == block["target"].dec.deg
+                and self.previous_block["status"] == "C"
+                and self.autofocus_use_current_pointing
+            ):
+                logger.info(
+                    "Previous target is same ra and dec, skipping initial slew..."
+                )
+                slew = False
+            else:
+                logger.info(
+                    "Previous target is different ra and dec, slewing is requested..."
+                )
+
+                logger.info("Stopping tracking...")
+                self.observatory.telescope.DeclinationRate = 0
+                self.observatory.telescope.RightAscensionRate = 0
+                self.observatory.telescope.Tracking = False
+                self._telescope_status = "Idle"
+
+                if self.observatory.rotator is not None:
+                    logger.info("Turning off derotation...")
+                    self.observatory.stop_derotation_thread()
+
+        # Check 3: Wait for block start time?
+        if block["start_time"] is None:
             logger.info("No block start time, starting now...")
-            block["start time (UTC)"] = astrotime.Time.now()
+            block["start_time"] = astrotime.Time.now()
 
         seconds_until_start_time = (
-            block["start time (UTC)"] - self.observatory.observatory_time()
+            block["start_time"] - self.observatory.observatory_time()
         ).sec
         if (
             not self.wait_for_block_start_time
@@ -897,10 +899,15 @@ class TelrunOperator:
                 % self.max_block_late_time
             )
             self._current_block = None
+            if type(prev_status) is int:
+                new_status = prev_status + 1
+            else:
+                new_status = "1"
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = "Exceeded max_block_late_time"
-            return ("F", "Exceeded max_block_late_time", block)
+                block["status"] = new_status
+                block["message"] = "Exceeded max_block_late_time, non-fatal skip"
+            logger.removeHandler(str_handler)
+            return (new_status, "Exceeded max_block_late_time, non-fatal skip", block)
         elif (
             self.wait_for_block_start_time
             and seconds_until_start_time > self.max_block_late_time
@@ -910,10 +917,15 @@ class TelrunOperator:
                 % self.max_block_late_time
             )
             self._current_block = None
+            if type(prev_status) is int:
+                new_status = prev_status + 1
+            else:
+                new_status = "1"
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = "Exceeded max_block_late_time"
-            return ("F", "Exceeded max_block_late_time", block)
+                block["status"] = new_status
+                block["message"] = "Exceeded max_block_late_time"
+            logger.removeHandler(str_handler)
+            return (new_status, "Exceeded max_block_late_time", block)
         else:
             logger.info(
                 "Waiting %.1f seconds (%.2f hours) for block start time..."
@@ -926,7 +938,7 @@ class TelrunOperator:
         ):
             time.sleep(0.1)
             seconds_until_start_time = (
-                block["start time (UTC)"] - self.observatory.observatory_time()
+                block["start_time"] - self.observatory.observatory_time()
             ).sec
         else:
             if seconds_until_start_time > 0:
@@ -934,22 +946,25 @@ class TelrunOperator:
                     "Block start time in %.1f seconds" % seconds_until_start_time
                 )
 
-        # Check 3: Dome status?
+        # Check 4: Dome status?
         match self.dome_type:
             case "dome":
                 if (
                     self.observatory.dome is not None
-                    and self.observatory.dome.CanSetShutter
+                    and not self.observatory.dome.CanSetShutter
                 ):
                     if self.observatory.dome.ShutterStatus != 0:
                         logger.info("Dome shutter is not open, skipping...")
                         self._current_block = None
+                        if type(prev_status) is int:
+                            new_status = prev_status + 1
+                        else:
+                            new_status = "1"
                         if self.update_block_status:
-                            block["configuration"]["status"] = "F"
-                            block["configuration"][
-                                "message"
-                            ] = "Dome shutter is not open"
-                        return ("F", "Dome shutter is not open", block)
+                            block["status"] = new_status
+                            block["message"] = "Dome shutter is not open"
+                        logger.removeHandler(str_handler)
+                        return (new_status, "Dome shutter is not open", block)
 
             case "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor":
                 if self.observatory.safety_monitor is not None:
@@ -961,12 +976,19 @@ class TelrunOperator:
                     if not status:
                         logger.info("Safety monitor indicates unsafe, skipping...")
                         self._current_block = None
+                        if type(prev_status) is int:
+                            new_status = prev_status + 1
+                        else:
+                            new_status = "1"
                         if self.update_block_status:
-                            block["configuration"]["status"] = "F"
-                            block["configuration"][
-                                "message"
-                            ] = "Safety monitor indicates unsafe"
-                        return ("F", "Dome safety monitor indicates unsafe", block)
+                            block["status"] = new_status
+                            block["message"] = "Safety monitor indicates unsafe"
+                        logger.removeHandler(str_handler)
+                        return (
+                            new_status,
+                            "Dome safety monitor indicates unsafe",
+                            block,
+                        )
 
             case "both":
                 if self.observatory.safety_monitor is not None:
@@ -978,12 +1000,19 @@ class TelrunOperator:
                     if not status:
                         logger.info("Safety monitor indicates unsafe, skipping...")
                         self._current_block = None
+                        if type(prev_status) is int:
+                            new_status = prev_status + 1
+                        else:
+                            new_status = "1"
                         if self.update_block_status:
-                            block["configuration"]["status"] = "F"
-                            block["configuration"][
-                                "message"
-                            ] = "Safety monitor indicates unsafe"
-                        return ("F", "Dome safety monitor indicates unsafe", block)
+                            block["status"] = new_status
+                            block["message"] = "Safety monitor indicates unsafe"
+                        logger.removeHandler(str_handler)
+                        return (
+                            new_status,
+                            "Dome safety monitor indicates unsafe",
+                            block,
+                        )
 
                 if (
                     self.observatory.dome is not None
@@ -992,14 +1021,17 @@ class TelrunOperator:
                     if self.observatory.dome.ShutterStatus != 0:
                         logger.info("Dome shutter is not open, skipping...")
                         self._current_block = None
+                        if type(prev_status) is int:
+                            new_status = prev_status + 1
+                        else:
+                            new_status = "1"
                         if self.update_block_status:
-                            block["configuration"]["status"] = "F"
-                            block["configuration"][
-                                "message"
-                            ] = "Dome shutter is not open"
-                        return ("F", "Dome shutter is not open", block)
+                            block["status"] = new_status
+                            block["message"] = "Dome shutter is not open"
+                        logger.removeHandler(str_handler)
+                        return (new_status, "Dome shutter is not open", block)
 
-        # Check 4: Check safety monitors?
+        # Check 5: Check safety monitors?
         if self.check_safety_monitors:
             logger.info("Checking safety monitor statuses")
 
@@ -1013,14 +1045,17 @@ class TelrunOperator:
             if not status:
                 logger.info("Safety monitor indicates unsafe, skipping...")
                 self._current_block = None
+                if type(prev_status) is int:
+                    new_status = prev_status + 1
+                else:
+                    new_status = "1"
                 if self.update_block_status:
-                    block["configuration"]["status"] = "F"
-                    block["configuration"][
-                        "message"
-                    ] = "Safety monitor indicates unsafe"
-                return ("F", "Safety monitor indicates unsafe", block)
+                    block["status"] = new_status
+                    block["message"] = "Safety monitor indicates unsafe"
+                logger.removeHandler(str_handler)
+                return (new_status, "Safety monitor indicates unsafe", block)
 
-        # Check 5: Wait for sun?
+        # Check 6: Wait for sun?
         sun_alt_degs = self.observatory.sun_altaz()[0]
         if self.wait_for_sun and sun_alt_degs > self.max_solar_elev:
             logger.info(
@@ -1028,18 +1063,23 @@ class TelrunOperator:
                 % (sun_alt_degs, self.max_solar_elev)
             )
             self._current_block = None
+            if type(prev_status) is int:
+                new_status = prev_status + 1
+            else:
+                new_status = "1"
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = "Sun altitude above limit"
-            return ("F", "Sun altitude above limit", block)
+                block["status"] = new_status
+                block["message"] = "Sun altitude above limit"
+            logger.removeHandler(str_handler)
+            return (new_status, "Sun altitude above limit", block)
 
-        # Check 6: Is autofocus needed?
+        # Check 7: Is autofocus needed?
         self._best_focus_result = None
         if (
             self.observatory.focuser is not None
             and self.do_periodic_autofocus
             and time.time() - self.last_autofocus_time > self.autofocus_interval
-            and not block["configuration"]["do_not_interrupt"]
+            and not block["do_not_interrupt"]
         ):
             logger.info(
                 "Autofocus interval of %.2f hours exceeded, performing autofocus..."
@@ -1131,7 +1171,7 @@ class TelrunOperator:
                     % self._best_focus_result
                 )
 
-        # Check 7: Camera temperature
+        # Check 8: Camera temperature
         while (
             self.observatory.camera.CCDTemperature
             > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
@@ -1157,103 +1197,75 @@ class TelrunOperator:
         )
         self._camera_status = "Idle"
 
-        # Is the previous target different?
-        slew = True
-        if self.previous_block is not None:
-            if (
-                self.previous_block["ra"].hourangle == block["ra"].hourangle
-                and self.previous_block["dec"].deg == block["dec"].deg
-                and self.previous_block["configuration"]["status"] == "S"
-                and best_focus_result is not None
-                and not block["configuration"]["do_not_interrupt"]
-            ):
-                logger.info(
-                    "Previous target is same ra and dec, skipping initial slew..."
-                )
-                slew = False
-            else:
-                logger.info("Previous target is different ra and dec, slewing...")
-
-                logger.info("Turning off tracking...")
-                self.observatory.telescope.Tracking = False
-                self.observatory.telescope.DeclinationRate = 0
-                self.observatory.telescope.RightAscensionRate = 0
-
-                if self.observatory.rotator is not None:
-                    logger.info("Turning off derotation...")
-                    self.observatory.stop_derotation_thread()
-
         # Update ephem for non-sidereal targets
-        if (
-            block["configuration"]["pm_ra_cosdec"].value != 0
-            or block["configuration"]["pm_dec"].value != 0
-        ):
-            logger.info("Non-zero proper motion specified, updating ephemeris...")
+        if (block["pm_ra_cosdec"].value != 0 or block["pm_dec"].value != 0) and block[
+            "name"
+        ] != "":
+            logger.info("Updating ephemeris for '%s' at scheduled time" % block["name"])
             try:
                 ephemerides = mpc.MPC.get_ephemeris(
                     target=block["name"],
                     location=self.observatory.observatory_location,
-                    start=block["start time (UTC)"],
+                    start=self.observatory.observatory_time(),
                     number=1,
                     proper_motion="sky",
                 )
-                block["ra"] = ephemerides["RA"][0]
-                block["dec"] = ephemerides["Dec"][0]
-                block["configuration"]["pm_ra_cosdec"] = (
+                new_ra = ephemerides["RA"][0]
+                new_dec = ephemerides["Dec"][0]
+                block["target"] = coord.SkyCoord(ra=new_ra, dec=new_dec)
+                block["pm_ra_cosdec"] = (
                     ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
                 )
-                block["configuration"]["pm_dec"] = (
-                    ephemerides["dDec"][0] * u.arcsec / u.hour
-                )
+                block["pm_dec"] = ephemerides["dDec"][0] * u.arcsec / u.hour
             except Exception as e1:
                 try:
                     logger.warning(
-                        f"Failed to find proper motions for {row['name']} on line {line_number}, trying to find proper motions using astropy.coordinates.get_body: {e1}"
+                        f"Failed to find proper motions for {block['name']}, trying to find proper motions using astropy.coordinates.get_body"
                     )
                     pos_l = coord.get_body(
                         block["name"],
-                        block["start time (UTC)"] - 10 * u.minute,
+                        self.observatory.observatory_time - 10 * u.minute,
                         location=self.observatory.observatory_location,
                     )
                     pos_m = coord.get_body(
-                        block["name"], block["start time (UTC)"], location=location
+                        block["name"],
+                        (self.observatory.observatory_time),
+                        location=self.observatory.observatory_location,
                     )
                     pos_h = coord.get_body(
                         block["name"],
-                        block["start time (UTC)"] + 10 * u.minute,
+                        self.observatory.observatory_time + 10 * u.minute,
                         location=self.observatory.observatory_location,
                     )
-                    block["ra"] = pos_m.ra.to_string(
-                        "hourangle", sep="hms", precision=3
-                    )
-                    block["dec"] = pos_m.dec.to_string("deg", sep="dms", precision=2)
-                    block["configuration"]["pm_ra_cosdec"] = (
+                    new_ra = pos_m.ra
+                    new_dec = pos_m.dec
+                    block["target"] = coord.SkyCoord(ra=new_ra, dec=new_dec)
+                    block["pm_ra_cosdec"] = (
                         (
                             pos_h.ra * np.cos(pos_h.dec.rad)
                             - pos_l.ra * np.cos(pos_l.dec.rad)
                         )
                         / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
-                    block["configuration"]["pm_dec"] = (
+                    block["pm_dec"] = (
                         (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
-                        f"Failed to find proper motions for {block['name']}, keeping old ephemerides: {e2}"
+                        f"Failed to find proper motions for {block['name']}, keeping old ephemerides"
                     )
-            logger.info("Ephemeris updated")
 
-        target = coord.SkyCoord(
-            ra=block["ra"].hourangle, dec=block["dec"].deg, unit=(u.hourangle, u.deg)
-        )
+        # Start tracking
+        logger.info("Starting tracking...")
+        self._telescope_status = "Tracking"
+        self.observatory.telescope.Tracking = True
 
         # Perform centering if requested
         centered = None
         if None not in (
-            block["configuration"]["respositioning"][0],
-            block["configuration"]["respositioning"][1],
-            block["ra"],
-            block["dec"],
+            block["respositioning"][0],
+            block["respositioning"][1],
+            block["target"],
         ):
             logger.info("Telescope pointing repositioning requested...")
 
@@ -1353,9 +1365,9 @@ class TelrunOperator:
                 "Recentering" if self.observatory.rotator is not None else ""
             )
             centered = self.observatory.recenter(
-                obj=target,
-                target_x_pixel=block["configuration"]["respositioning"][0],
-                target_y_pixel=block["configuration"]["respositioning"][1],
+                obj=block["target"],
+                target_x_pixel=block["respositioning"][0],
+                target_y_pixel=block["respositioning"][1],
                 initial_offset_dec=self.recenter_initial_offset_dec,
                 check_and_refine=self.recenter_check_and_refine,
                 max_attempts=self.recenter_max_attempts + add_attempt,
@@ -1379,7 +1391,7 @@ class TelrunOperator:
             else:
                 logger.info("Recentering succeeded, continuing...")
         # If not requested, just slew to the source
-        elif slew and target is not None:
+        elif slew and block["target"] is not None:
             logger.info("Slewing to source...")
 
             t = threading.Thread(
@@ -1395,7 +1407,7 @@ class TelrunOperator:
                 "Slewing" if self.observatory.rotator is not None else ""
             )
             self.observatory.slew_to_coordinates(
-                obj=target,
+                obj=block["target"],
                 control_dome=(self.dome is not None),
                 control_rotator=(self.rotator is not None),
                 wait_for_slew=False,
@@ -1421,9 +1433,7 @@ class TelrunOperator:
                 if self.observatory.focuser is not None
                 else ""
             )
-            self.observatory.set_filter_offset_focuser(
-                filter_name=block["configuration"]["filter"]
-            )
+            self.observatory.set_filter_offset_focuser(filter_name=block["filter"])
             self._status_event.set()
             t.join()
             self._status_event.clear()
@@ -1434,174 +1444,161 @@ class TelrunOperator:
 
         # Set binning
         if (
-            block["configuration"]["binning"][0] >= 1
-            and block["configuration"]["binning"][0] <= self.observatory.camera.MaxBinX
+            block["binning"][0] >= 1
+            and block["binning"][0] <= self.observatory.camera.MaxBinX
         ):
-            logger.info("Setting binx to %i" % block["configuration"]["binning"][0])
-            self.observatory.camera.BinX = block["configuration"]["binning"][0]
+            logger.info("Setting binx to %i" % block["binning"][0])
+            self.observatory.camera.BinX = block["binning"][0]
         else:
             logger.warning(
                 "Requested binx of %i is not supported, skipping..."
-                % block["configuration"]["binning"][0]
+                % block["binning"][0]
             )
             self._current_block = None
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = (
-                    "Requested binx of %i is not supported"
-                    % block["configuration"]["binning"][0]
+                block["status"] = "F"
+                block["message"] = (
+                    "Requested binx of %i is not supported" % block["binning"][0]
                 )
+            logger.removeHandler(str_handler)
             return (
                 "F",
-                "Requested binx of %i is not supported"
-                % block["configuration"]["binning"][0],
+                "Requested binx of %i is not supported" % block["binning"][0],
                 block,
             )
 
         if (
-            block["configuration"]["binning"][1] >= 1
-            and block["configuration"]["binning"][1] <= self.observatory.camera.MaxBinY
+            block["binning"][1] >= 1
+            and block["binning"][1] <= self.observatory.camera.MaxBinY
             and (
                 self.observatory.camera.CanAsymmetricBin
-                or block["configuration"]["binning"][1]
-                == block["configuration"]["binning"][0]
+                or block["binning"][1] == block["binning"][0]
             )
         ):
-            logger.info("Setting biny to %i" % block["configuration"]["binning"][1])
-            self.observatory.camera.BinY = block["configuration"]["binning"][1]
+            logger.info("Setting biny to %i" % block["binning"][1])
+            self.observatory.camera.BinY = block["binning"][1]
         else:
             logger.warning(
                 "Requested biny of %i is not supported, skipping..."
-                % block["configuration"]["binning"][1]
+                % block["binning"][1]
             )
             self._current_block = None
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"]["message"] = (
-                    "Requested biny of %i is not supported"
-                    % block["configuration"]["binning"][1]
+                block["status"] = "F"
+                block["message"] = (
+                    "Requested biny of %i is not supported" % block["binning"][1]
                 )
+            logger.removeHandler(str_handler)
             return (
                 "F",
-                "Requested biny of %i is not supported"
-                % block["configuration"]["binning"][1],
+                "Requested biny of %i is not supported" % block["binning"][1],
                 block,
             )
 
         # Set subframe
-        if block["configuration"]["frame_size"][0] == 0:
-            block["configuration"]["frame_size"][0] = int(
+        if block["frame_size"][0] == 0:
+            block["frame_size"][0] = int(
                 self.observatory.camera.CameraXSize / self.observatory.camera.BinX
             )
-        if block["configuration"]["frame_size"][1] == 0:
-            block["configuration"]["frame_size"][1] = int(
+        if block["frame_size"][1] == 0:
+            block["frame_size"][1] = int(
                 self.observatory.camera.CameraYSize / self.observatory.camera.BinY
             )
 
-        if block["configuration"]["frame_position"][0] + block["configuration"][
-            "frame_size"
-        ][0] < int(self.observatory.camera.CameraXSize / self.observatory.camera.BinX):
+        if block["frame_position"][0] + block["frame_size"][0] < int(
+            self.observatory.camera.CameraXSize / self.observatory.camera.BinX
+        ):
             logger.info(
                 "Setting startx and numx to %i, %i"
                 % (
-                    block["configuration"]["frame_position"][0],
-                    block["configuration"]["frame_size"][0],
+                    block["frame_position"][0],
+                    block["frame_size"][0],
                 )
             )
-            self.observatory.camera.StartX = block["configuration"]["frame_position"][0]
-            self.observatory.camera.NumX = block["configuration"]["frame_size"][0]
+            self.observatory.camera.StartX = block["frame_position"][0]
+            self.observatory.camera.NumX = block["frame_size"][0]
         else:
             logger.warning(
                 "Requested startx and numx of %i, %i is not supported, skipping..."
                 % (
-                    block["configuration"]["frame_position"][0],
-                    block["configuration"]["frame_size"][0],
-                )
-            )
-            return (
-                "F",
-                "Requested startx and numx of %i, %i is not supported"
-                % (
-                    block["configuration"]["frame_position"][0],
-                    block["configuration"]["frame_size"][0],
-                ),
-            )
-
-        if block["configuration"]["frame_position"][1] + block["configuration"][
-            "frame_size"
-        ][1] < int(self.observatory.camera.CameraYSize / self.observatory.camera.BinY):
-            logger.info(
-                "Setting starty and numy to %i, %i"
-                % (
-                    block["configuration"]["frame_position"][1],
-                    block["configuration"]["frame_size"][1],
-                )
-            )
-            self.observatory.camera.StartY = block["configuration"]["frame_position"][1]
-            self.observatory.camera.NumY = block["configuration"]["frame_size"][1]
-        else:
-            logger.warning(
-                "Requested starty and numy of %i, %i is not supported, skipping..."
-                % (
-                    block["configuration"]["frame_position"][1],
-                    block["configuration"]["frame_size"][1],
+                    block["frame_position"][0],
+                    block["frame_size"][0],
                 )
             )
             self._current_block = None
             if self.update_block_status:
-                block["configuration"]["status"] = "F"
-                block["configuration"][
+                block["status"] = "F"
+                block[
+                    "message"
+                ] = "Requested startx and numx of %i, %i is not supported" % (
+                    block["frame_position"][0],
+                    block["frame_size"][0],
+                )
+            logger.removeHandler(str_handler)
+            return (
+                "F",
+                "Requested startx and numx of %i, %i is not supported"
+                % (
+                    block["frame_position"][0],
+                    block["frame_size"][0],
+                ),
+            )
+
+        if block["frame_position"][1] + block["frame_size"][1] < int(
+            self.observatory.camera.CameraYSize / self.observatory.camera.BinY
+        ):
+            logger.info(
+                "Setting starty and numy to %i, %i"
+                % (
+                    block["frame_position"][1],
+                    block["frame_size"][1],
+                )
+            )
+            self.observatory.camera.StartY = block["frame_position"][1]
+            self.observatory.camera.NumY = block["frame_size"][1]
+        else:
+            logger.warning(
+                "Requested starty and numy of %i, %i is not supported, skipping..."
+                % (
+                    block["frame_position"][1],
+                    block["frame_size"][1],
+                )
+            )
+            self._current_block = None
+            if self.update_block_status:
+                block["status"] = "F"
+                block[
                     "message"
                 ] = "Requested starty and numy of %i, %i is not supported" % (
-                    block["configuration"]["frame_position"][1],
-                    block["configuration"]["frame_size"][1],
+                    block["frame_position"][1],
+                    block["frame_size"][1],
                 )
+            logger.removeHandler(str_handler)
             return (
                 "F",
                 "Requested starty and numy of %i, %i is not supported"
                 % (
-                    block["configuration"]["frame_position"][1],
-                    block["configuration"]["frame_size"][1],
+                    block["frame_position"][1],
+                    block["frame_size"][1],
                 ),
                 block,
             )
 
         # Set readout mode
         try:
-            logger.info(
-                "Setting readout mode to %i" % block["configuration"]["readout"]
-            )
-            self.observatory.camera.ReadoutMode = block["configuration"]["readout"]
+            logger.info("Setting readout mode to %i" % block["readout"])
+            self.observatory.camera.ReadoutMode = block["readout"]
         except:
             logger.warning(
                 "Requested readout mode of %i is not supported, setting to default of %i"
-                % (block["configuration"]["readout"], self.default_readout)
+                % (block["readout"], self.default_readout)
             )
             self.observatory.camera.ReadoutMode = self.default_readout
 
-        # Wait for any motion to complete
-        logger.info("Waiting for telescope motion to complete...")
-        while self.observatory.telescope.Slewing:
-            time.sleep(0.1)
-
-        # Settle time
-        logger.info(
-            "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
-        )
-        self._telescope_status = "Settling"
-        time.sleep(self.observatory.settle_time)
-
-        # Start tracking
-        logger.info("Starting tracking...")
-        self._telescope_status = "Tracking"
-        self.observatory.telescope.Tracking = True
-
         # Check for pm exceeding two pixels in one hour
-        if block["configuration"]["pm_ra_cosdec"].to_value(
+        if block["pm_ra_cosdec"].to_value(
             u.arcsec / u.second
-        ) > 2 * self.observatory.pixel_scale[0] / (60 * 60) or block["configuration"][
-            "pm_dec"
-        ].to_value(
+        ) > 2 * self.observatory.pixel_scale[0] / (60 * 60) or block["pm_dec"].to_value(
             u.arcsec / u.second
         ) > 2 * self.observatory.pixel_scale[
             1
@@ -1611,14 +1608,14 @@ class TelrunOperator:
             logger.info("Switching to non-sidereal tracking...")
             self._telescope_status = "Non-sidereal tracking"
             self.observatory.mount.RightAscensionRate = (
-                block["configuration"]["pm_ra_cosdec"].to_value(u.arcsec / u.second)
+                block["pm_ra_cosdec"].to_value(u.arcsec / u.second)
                 * 0.997269567
                 / 15.041
                 * (1 / np.cos(block["dec"].rad))
             )
-            self.observatory.mount.DeclinationRate = block["configuration"][
-                "pm_dec"
-            ].to_value(u.arcsec / u.second)
+            self.observatory.mount.DeclinationRate = block["pm_dec"].to_value(
+                u.arcsec / u.second
+            )
             logger.info(
                 "RA rate: %.2f sec-angle/sec"
                 % self.observatory.mount.RightAscensionRate
@@ -1636,6 +1633,19 @@ class TelrunOperator:
             self._rotator_status = "Derotating"
             self.observatory.start_derotation_thread()
 
+        # Wait for any motion to complete
+        logger.info("Waiting for telescope motion to complete...")
+        while self.observatory.telescope.Slewing:
+            time.sleep(0.1)
+
+        # Settle time
+        logger.info(
+            "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
+        )
+        self._telescope_status = "Settling"
+        time.sleep(self.observatory.settle_time)
+        self._telescope_status = "Tracking"
+
         # Wait for focuser, dome motion to complete
         condition = True
         logger.info("Waiting for focuser or dome motion to complete...")
@@ -1650,9 +1660,24 @@ class TelrunOperator:
                 condition = condition or self.observatory.dome.Slewing
             time.sleep(0.1)
 
+        # Get previous, current, next block info and add to custom header
+        custom_header = self.block_info(block)
+        prev_info = {}
+        if self._previous_block is not None:
+            prev_info = self.block_info(self._previous_block)
+            for key in prev_info:
+                prev_info["P" + key] = prev_info.pop(key)
+        next_info = {}
+        if self._next_block is not None:
+            next_info = self.block_info(self._next_block)
+            for key in next_info:
+                next_info["N" + key] = next_info.pop(key)
+        custom_header.update(prev_info)
+        custom_header.update(next_info)
+
         # If still time before block start, wait
         seconds_until_start_time = (
-            block["start time (UTC)"] - self.observatory.observatory_time()
+            block["start_time"] - self.observatory.observatory_time()
         ).sec
         if seconds_until_start_time > 0 and self.wait_for_block_start_time:
             logging.info(
@@ -1660,74 +1685,32 @@ class TelrunOperator:
             )
             time.sleep(seconds_until_start_time - 0.1)
 
-        # Define custom header
-        custom_header = {
-            "OBSERVER": (block["configuration"]["observer"], "Name of observer"),
-            "OBSCODE": (block["configuration"]["code"], "Observing code"),
-            "TARGET": (block["target"], "Name of target if provided"),
-            "SCHEDTIT": (block["configuration"]["title"], "Title if provided"),
-            "SCHEDCOM": (block["configuration"]["comment"], "Comment if provided"),
-            "SCHEDRA": (block["ra"].to_string("hms"), "Requested RA"),
-            "SCHEDDEC": (block["dec"].to_string("dms"), "Requested Dec"),
-            "SCHEDPRA": (
-                block["configuration"]["pm_ra_cosdec"].to_value(u.arsec / u.hour),
-                "Requested proper motion in RAcosDec [arcsec/hr]",
-            ),
-            "SCHEDPDEC": (
-                block["configuration"]["pm_dec"].to_value(u.arcsec / u.hour),
-                "Requested proper motion in Dec [arcsec/hr]",
-            ),
-            "SCHEDSRT": (block["start time (UTC)"].fits, "Requested start time"),
-            "SCHEDINT": (
-                block["configuration"]["do_not_interrupt"],
-                "Whether the block can be interrupted by autofocus or other blocks",
-            ),
-            "CENTERED": (
-                centered,
-                "Whether the target underwent the centering routine",
-            ),
-            "SCHEDPSX": (
-                block["configuration"]["respositioning"][0],
-                "Requested x pixel for recentering",
-            ),
-            "SCHEDPSY": (
-                block["configuration"]["respositioning"][1],
-                "Requested y pixel for recentering",
-            ),
-            "LASTAUTO": (
-                self.last_autofocus_time,
-                "When the last autofocus was performed",
-            ),
-        }
+        # Add telrun status to custom header
+        custom_header.update(self.telrun_info())
 
         # Start exposures
-        for i in range(block["configuration"]["nexp"]):
-            logger.info(
-                "Beginning exposure %i of %i" % (i + 1, block["configuration"]["nexp"])
-            )
-            logger.info(
-                "Starting %4.4g second exposure..." % block["configuration"]["exposure"]
-            )
+        for i in range(block["nexp"]):
+            logger.info("Beginning exposure %i of %i" % (i + 1, block["nexp"]))
+            logger.info("Starting %4.4g second exposure..." % block["exposure"])
             self._camera_status = "Exposing"
             t0 = time.time()
             self.observatory.camera.Expose(
-                block["configuration"]["exposure"],
-                block["configuration"]["shutter_state"],
+                block["exposure"],
+                block["shutter_state"],
             )
             logger.info("Waiting for image...")
             while (
                 not self.observatory.camera.ImageReady
-                and time.time()
-                < t0 + block["configuration"]["exposure"] + self.hardware_timeout
+                and time.time() < t0 + block["exposure"] + self.hardware_timeout
             ):
                 time.sleep(0.1)
             self._camera_status = "Idle"
 
             # Append integer to filename if multiple exposures
-            if block["configuration"]["nexp"] > 1:
-                block["configuration"]["filename"] = (
-                    block["configuration"]["filename"] + "_%i" % i
-                )
+            if block["nexp"] > 1:
+                fname = block["filename"] + "_%i" % i
+            else:
+                fname = block["filename"]
 
             # WCS thread cleanup
             logger.info("Cleaning up WCS threads...")
@@ -1741,19 +1724,15 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self.images_path + block["configuration"]["filename"] + ".tmp",
-                        frametyp=block["configuration"]["shutter_state"],
+                        self.images_path + fname + ".tmp",
+                        frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
                     )
                     self._wcs_threads.append(
                         threading.Thread(
                             target=self._async_wcs_solver,
-                            args=(
-                                self.images_path
-                                + block["configuration"]["filename"]
-                                + ".tmp",
-                            ),
+                            args=(self.images_path + fname + ".tmp",),
                             daemon=True,
                             name="wcs_threads",
                         )
@@ -1765,8 +1744,8 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self.images_path + block["configuration"]["filename"],
-                        frametyp=block["configuration"]["shutter_state"],
+                        self.images_path + fname,
+                        frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
                     )
@@ -1774,19 +1753,15 @@ class TelrunOperator:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    self.images_path + block["configuration"]["filename"] + ".tmp",
-                    frametyp=block["configuration"]["shutter_state"],
+                    self.images_path + fname + ".tmp",
+                    frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
                 )
                 self._wcs_threads.append(
                     threading.Thread(
                         target=self._async_wcs_solver,
-                        args=(
-                            self.images_path
-                            + block["configuration"]["filename"]
-                            + ".tmp",
-                        ),
+                        args=(self.images_path + fname + ".tmp",),
                         daemon=True,
                         name="wcs_threads",
                     )
@@ -1794,18 +1769,184 @@ class TelrunOperator:
                 self._wcs_threads[-1].start()
 
         # If multiple exposures, update filename as a list
-        if block["configuration"]["nexp"] > 1:
-            block["configuration"]["filename"] = [
-                block["configuration"]["filename"] + "_%i" % i
-                for i in range(block["configuration"]["nexp"])
+        if block["nexp"] > 1:
+            block["filename"] = [
+                block["filename"] + "_%i" % i for i in range(block["nexp"])
             ]
 
         # Set block status to done
         self._current_block = None
         if self.update_block_status:
-            block["configuration"]["status"] = "S"
-            block["configuration"]["message"] = "Success"
-        return ("S", "Success", block)
+            block["status"] = "C"
+            block["message"] = "Completed"
+        logger.removeHandler(str_handler)
+        return ("C", "Completed", block)
+
+    def block_info(self, block):
+        """Return a dictionary of information about the block."""
+
+        # Define custom header
+        info = {
+            "BLKID": (block["id"], "Block ID"),
+            "BLKNAME": (block["name"], "Block name"),
+            "BLKSTRT": (block["start_time"].fits, "Block scheduled start time"),
+            "BLKEND": (block["end_time"].fits, "Block scheduled end time"),
+            "BLKRA": (block["target"].ra.to_string("hms"), "Block target RA"),
+            "BLKDEC": (block["target"].dec.to_string("dms"), "Block target Dec"),
+            "BLKPRI": (block["priority"], "Block priority"),
+        }
+        for idx, obs in enumerate(block["observer"]):
+            info["OBSERV%i" % idx] = (obs, "Observer %i" % idx)
+        info = info + {
+            "BLKCODE": (block["code"], "Observing code"),
+            "BLKTITL": (block["title"], "Title if provided"),
+            "BLKFN": (block["filename"], "Expected filename"),
+            "BLKTYPE": (block["type"], "Block type"),
+            "BLKBACK": (block["backend"], "Block backend"),
+            "BLKFILT": (block["filter"], "Block filter"),
+            "BLKEXP": (block["exposure"], "Block exposure time"),
+            "BLKNEXP": (block["nexp"], "Block number of exposures"),
+            "BLKREPX": (block["respositioning"][0], "Block repositioning x pixel"),
+            "BLKREPY": (block["respositioning"][1], "Block repositioning y pixel"),
+            "BLKSHUT": (block["shutter_state"], "Block shutter state"),
+            "BLKREAD": (block["readout"], "Block readout mode"),
+            "BLKBINX": (block["binning"][0], "Block binx"),
+            "BLKBINY": (block["binning"][1], "Block biny"),
+            "BLKSTX": (block["frame_position"][0], "Block startx"),
+            "BLKSTY": (block["frame_position"][1], "Block starty"),
+            "BLKNUMX": (block["frame_size"][0], "Block numx"),
+            "BLKNUMY": (block["frame_size"][1], "Block numy"),
+            "BLKPMR": (
+                block["pm_ra_cosdec"].to_value(u.arcsec / u.hour),
+                "Block proper motion in RAcosDec [arcsec/hr]",
+            ),
+            "BLKPMD": (
+                block["pm_dec"].to_value(u.arcsec / u.hour),
+                "Block proper motion in Dec [arcsec/hr]",
+            ),
+            "BLKCOM": (block["comment"], "Block comment"),
+            "BLKSCH": (block["sch"], "Block sch file"),
+            "SCHID": (block["sch"], "Block sch file"),
+            "BLKSTAT": (block["status"], "Block status"),
+            "BLKMSG": (block["message"], "Block message"),
+            "BLKST": (block["sched_time"].fits, "Time when block was scheduled"),
+        }
+        for idx, const in enumerate(block["constraints"]):
+            for key_idx, key in enumerate(const.keys()):
+                info["BLKK%i_%i" % (idx, key_idx)] = (
+                    key,
+                    "Constraint %i" % idx,
+                )
+                info["BLKV%i_%i" % (idx, key_idx)] = (
+                    const[key],
+                    "Constraint %i" % idx,
+                )
+
+        return info
+
+    def telrun_info(self):
+        """Returns a dictionary of information about the current status of TelrunOperator."""
+
+        info = {
+            "OPMODE": ("Robotic", "Operation mode")
+            if self._execution_thread is not None
+            else ("Manual", "Operation mode"),
+            "LASTAUTO": (
+                self.observatory.last_autofocus_time.fits,
+                "Last autofocus time",
+            ),
+            "NEXTAUTO": (
+                (
+                    self.observatory.last_aufocus_time
+                    + self.autofocus_period
+                    - self.observatory.observatory_time()
+                ).second,
+                "Seconds till next autofocus",
+            ),
+            "PREVBLKT": (
+                (
+                    self.previous_block["start_time"]
+                    - self.observatory.observatory_time()
+                ).second,
+                "Seconds till previous block",
+            ),
+            "CURRBLKT": (
+                (
+                    self.current_block["start_time"]
+                    - self.observatory.observatory_time()
+                ).second,
+                "Seconds till current block",
+            ),
+            "NEXTBLKT": (
+                (
+                    self.next_block["start_time"] - self.observatory.observatory_time()
+                ).second,
+                "Seconds till next block",
+            ),
+            "CURRIDX": (self.current_block_index, "Current block index"),
+            "SKIPPED": (self.skipped_block_count, "Number of skipped blocks"),
+            "TOTALBLK": (
+                len(self._schedule) if self._schedule is not None else 1,
+                "Total number of blocks",
+            ),
+            "SCHEDFIL": (self._schedule_fname, "Schedule file"),
+            "AUTOSTAT": (self.autofocus_status, "Autofocus status"),
+            "CAMSTAT": (self.camera_status, "Camera status"),
+            "COVSTAT": (self.cover_calibrator_status, "Cover calibrator status"),
+            "DOMSTAT": (self.dome_status, "Dome status"),
+            "FILSTAT": (self.filter_wheel_status, "Filter wheel status"),
+            "FOCSTAT": (self.focuser_status, "Focuser status"),
+            "OBSSTAT": (
+                self.observing_conditions_status,
+                "Observing conditions status",
+            ),
+            "ROTSTAT": (self.rotator_status, "Rotator status"),
+            "SAFESTAT": (self.safety_monitor_status, "Safety monitor status"),
+            "SWITSTAT": (self.switch_status, "Switch status"),
+            "TELSTAT": (self.telescope_status, "Telescope status"),
+            "WCSSTAT": (self.wcs_status, "WCS status"),
+            "DOMETYPE": (self.dome_type, "Dome type"),
+            "INITHOME": (self.initial_home, "Initial home"),
+            "WAIT4SUN": (self.wait_for_sun, "Wait for sun"),
+            "MAXSUNEL": (self.max_solar_elev, "Max solar elevation"),
+            "CHKSAFE": (self.check_safety_monitors, "Check safety monitors"),
+            "WAITCOOL": (self._wait_for_cooldown, "Wait for cooldown"),
+            "DEFREAD": (self.default_readout, "Default readout"),
+            "CHKBLKS": (self.check_block_status, "Check block status"),
+            "UPDBLKS": (self.update_block_status, "Update block status"),
+            "WAITBLK": (self.wait_for_block_start_time, "Wait for block start time"),
+            "MAXLATE": (self.max_block_late_time, "Max block late time"),
+            "PRESLEW": (self.preslew_time, "Preslew time"),
+            "AUTOINT": (self.autofocus_interval, "Autofocus interval"),
+            "AUTOEXPO": (self.autofocus_exposure, "Autofocus exposure"),
+            "AUTOMID": (self.autofocus_midpoint, "Autofocus midpoint"),
+            "AUTONSTP": (self.autofocus_nsteps, "Autofocus number of steps"),
+            "AUTOSTPS": (self.autofocus_step_size, "Autofocus step size"),
+            "AUTOPNT": (
+                self.autofocus_use_current_pointing,
+                "Autofocus use current pointing",
+            ),
+            "AUTOTIME": (self.autofocus_timeout, "Autofocus timeout"),
+            "RECFILT": (self.recenter_filters, "Recenter filters"),
+            "RECOFF": (self.recenter_initial_offset_dec, "Recenter initial offset dec"),
+            "RECCHK": (self.recenter_check_and_refine, "Recenter check and refine"),
+            "RECMAX": (self.recenter_max_attempts, "Recenter max attempts"),
+            "RECTOL": (self.recenter_tolerance, "Recenter tolerance"),
+            "RECEXP": (self.recenter_exposure, "Recenter exposure"),
+            "RECSAVE": (self.recenter_save_images, "Recenter save images"),
+            "RECPATH": (self.recenter_save_path, "Recenter save path"),
+            "RECSYNC": (self.recenter_sync_mount, "Recenter sync mount"),
+            "RECTIME": (self.recenter_timeout, "Recenter timeout"),
+            "WCSFILT": (self.wcs_filters, "WCS filters"),
+            "WCSTIME": (self.wcs_timeout, "WCS timeout"),
+            "SUNELEV": (self.observatory.sun_altaz()[0].deg, "Sun elevation"),
+            "MOONELEV": (self.observatory.moon_altaz()[0].deg, "Moon elevation"),
+            "MOONILL": (self.observatory.moon_illumination(), "Moon illumination"),
+            "LST": (self.observatory.lst().fits, "Local sidereal time"),
+            "UT": (self.observatory.observatory_time().fits, "Universal time"),
+        }
+
+        return info
 
     def _async_wcs_solver(self, image_path):
         logger.info("Attempting a plate solution...")
@@ -1940,10 +2081,6 @@ class TelrunOperator:
         return self._wcs_status
 
     @property
-    def telpath(self):
-        return self._telpath
-
-    @property
     def observatory(self):
         return self._observatory
 
@@ -2024,17 +2161,6 @@ class TelrunOperator:
     def update_block_status(self, value):
         self._update_block_status = bool(value)
         self._config["default"]["update_block_status"] = str(self._update_block_status)
-
-    @property
-    def write_to_schedule_log(self):
-        return self._write_to_schedule_log
-
-    @write_to_schedule_log.setter
-    def write_to_schedule_log(self, value):
-        self._write_to_schedule_log = bool(value)
-        self._config["default"]["write_to_schedule_log"] = str(
-            self._write_to_schedule_log
-        )
 
     @property
     def write_to_status_log(self):
@@ -2383,40 +2509,36 @@ class _TelrunGUI(ttk.Frame):
                 [
                     [
                         self._telrun.schedule[i]["target"],
-                        self._telrun.schedule[i]["start time (UTC)"].iso,
+                        self._telrun.schedule[i]["start_time"].iso,
                         self._telrun.schedule[i]["end time (UTC)"].iso,
                         self._telrun.schedule[i]["duration (minutes)"] * 60,
                         self._telrun.schedule[i]["ra"].hms,
                         self._telrun.schedule[i]["dec"].dms,
-                        self._telrun.schedule[i]["configuration"]["observer"],
-                        self._telrun.schedule[i]["configuration"]["code"],
-                        self._telrun.schedule[i]["configuration"]["title"],
-                        self._telrun.schedule[i]["configuration"]["filename"],
-                        self._telrun.schedule[i]["configuration"]["filter"],
-                        self._telrun.schedule[i]["configuration"]["exposure"],
-                        self._telrun.schedule[i]["configuration"]["nexp"],
-                        self._telrun.schedule[i]["configuration"]["do_not_interrupt"],
-                        self._telrun.schedule[i]["configuration"]["repositioning"][0]
+                        self._telrun.schedule[i]["observer"],
+                        self._telrun.schedule[i]["code"],
+                        self._telrun.schedule[i]["title"],
+                        self._telrun.schedule[i]["filename"],
+                        self._telrun.schedule[i]["filter"],
+                        self._telrun.schedule[i]["exposure"],
+                        self._telrun.schedule[i]["nexp"],
+                        self._telrun.schedule[i]["do_not_interrupt"],
+                        self._telrun.schedule[i]["repositioning"][0]
                         + ","
-                        + self._telrun.schedule[i]["configuration"]["repositioning"][1],
-                        self._telrun.schedule[i]["configuration"]["shutter_state"],
-                        self._telrun.schedule[i]["configuration"]["readout"],
-                        self._telrun.schedule[i]["configuration"]["binning"][0]
+                        + self._telrun.schedule[i]["repositioning"][1],
+                        self._telrun.schedule[i]["shutter_state"],
+                        self._telrun.schedule[i]["readout"],
+                        self._telrun.schedule[i]["binning"][0]
                         + "x"
-                        + self._telrun.schedule[i]["configuration"]["binning"][1],
-                        self._telrun.schedule[i]["configuration"]["frame_position"][0]
+                        + self._telrun.schedule[i]["binning"][1],
+                        self._telrun.schedule[i]["frame_position"][0]
                         + ","
-                        + self._telrun.schedule[i]["configuration"]["frame_position"][
-                            1
-                        ],
-                        self._telrun.schedule[i]["configuration"]["frame_size"][0]
+                        + self._telrun.schedule[i]["frame_position"][1],
+                        self._telrun.schedule[i]["frame_size"][0]
                         + "x"
-                        + self._telrun.schedule[i]["configuration"]["frame_size"][1],
-                        self._telrun.schedule[i]["configuration"][
-                            "pm_ra_cosdec"
-                        ].to_string(),
-                        self._telrun.schedule[i]["configuration"]["pm_dec"].to_string(),
-                        self._telrun.schedule[i]["configuration"]["comment"],
+                        + self._telrun.schedule[i]["frame_size"][1],
+                        self._telrun.schedule[i]["pm_ra_cosdec"].to_string(),
+                        self._telrun.schedule[i]["pm_dec"].to_string(),
+                        self._telrun.schedule[i]["comment"],
                         self._telrun.schedule[i]["status"],
                         self._telrun.schedule[i]["message"],
                     ]
@@ -2525,7 +2647,6 @@ class _SystemStatusWidget(ttk.Frame):
         self.default_readout = rows3.add_row("Default Readout:")
         self.check_block_status = rows3.add_row("Check Block Status:")
         self.update_block_status = rows3.add_row("Update Block Status:")
-        self.write_to_schedule_log = rows3.add_row("Write To Schedule Log:")
         self.write_to_status_log = rows3.add_row("Write To Status Log:")
 
         rows4 = _Rows(self, 8)
@@ -2583,7 +2704,7 @@ class _SystemStatusWidget(ttk.Frame):
         )
         self.time_until_block_start.set(
             (
-                self._parent._telrun.current_block["start time (UTC)"]
+                self._parent._telrun.current_block["start_time"]
                 - self._parent._telrun.observatory.observatory_time()
             ).second
             if self._parent._telrun.current_block is not None
@@ -2642,7 +2763,6 @@ class _SystemStatusWidget(ttk.Frame):
         self.default_readout.set(str(self._parent._telrun.default_readout))
         self.check_block_status.set(str(self._parent._telrun.check_block_status))
         self.update_block_status.set(str(self._parent._telrun.update_block_status))
-        self.write_to_schedule_log.set(str(self._parent._telrun.write_to_schedule_log))
         self.write_to_status_log.set(str(self._parent._telrun.write_to_status_log))
 
         self.autofocus_interval.set(str(self._parent._telrun.autofocus_interval))
@@ -2744,8 +2864,8 @@ class _BlockWidget(ttk.Frame):
             self.target.set(block["target"])
             self.start_time.set(block["start_time"].iso)
             self.duration.set(block["duration"].second)
-            self.ra.set(block["ra"].to_string("hms"))
-            self.dec.set(block["dec"].to_string("dms"))
+            self.ra.set(block["target"].ra.to_string("hms"))
+            self.dec.set(block["target"].dec.to_string("dms"))
             self.observer.set(block["observer"])
             self.code.set(block["code"])
             self.title.set(block["title"])

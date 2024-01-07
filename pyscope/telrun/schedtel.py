@@ -28,6 +28,19 @@ from . import sch, schedtab
 logger = logging.getLogger(__name__)
 
 
+"""
+Codes:
+
+U = unscheduled
+X = expired
+I = invalid
+S = scheduled
+1,2,3... = failed on this attempt number but can be rescheduled
+F = failed, cannot be rescheduled
+C = completed
+"""
+
+
 @click.command(
     epilog="""Check out the documentation at
                https://pyscope.readthedocs.io/en/latest/

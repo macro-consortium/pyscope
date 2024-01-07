@@ -14,7 +14,7 @@ def test_schedtel(tmp_path):
     )
 
     fig, ax = plot_schedule_gantt(schedule, observatory)
-    fig.savefig(str(tmp_path) + "test_schedtel_gantt.png", dpi=300, bbox_inches="tight")
+    fig.savefig(str(tmp_path) + "test_schedtel_gantt.png", bbox_inches="tight")
 
     fig, ax = plot_schedule_sky(schedule, observatory)
-    fig.savefig(str(tmp_path) + "test_schedtel_sky.png", dpi=300, bbox_inches="tight")
+    fig.savefig(str(tmp_path) + "test_schedtel_sky.png", bbox_inches="tight")

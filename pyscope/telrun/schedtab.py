@@ -487,8 +487,11 @@ def validate(schedule_table, observatory=None):
         convert_to_blocks = True
 
     assert (
-        type(schedule_table) is table.Table
-    ), "schedule_table must be an astropy table"
+        type(schedule_table) is table.Table or type(schedule_table) is table.Row
+    ), "schedule_table must be an astropy table or row"
+
+    if type(schedule_table) is table.Row:
+        schedule_table = table.Table(schedule_table)
 
     # Check for required columns
     required_columns = [
@@ -612,7 +615,6 @@ def validate(schedule_table, observatory=None):
 
     if observatory is not None:
         logger.info("Performing observatory-specific validation")
-
         for row in schedule_table:
             logger.info(f"Validating row {row.index}")
 
