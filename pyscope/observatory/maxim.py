@@ -1,6 +1,8 @@
 import logging
 import platform
 import time
+from win32com.client import Dispatch
+from datetime import datetime as dt
 
 from .autofocus import Autofocus
 from .camera import Camera
@@ -124,7 +126,7 @@ class _MaximCamera(Camera):
     def StartExposure(self, Duration, Light):
         logger.debug(f"StartExposure called with Duration={Duration}, Light={Light}")
         self._last_exposure_duration = Duration
-        self._last_exposure_start_time = time.time()
+        self._last_exposure_start_time = str(dt.utcnow())
         self._com_object.Expose(Duration, Light)
 
     def StopExposure(self):
