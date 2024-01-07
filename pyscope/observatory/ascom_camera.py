@@ -15,6 +15,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
             device_number=device_number,
             protocol=protocol,
         )
+        self._LastInputExposureDuration = None
 
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
@@ -26,6 +27,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     def StartExposure(self, Duration, Light):
         logger.debug(f"ASCOMCamera.StartExposure({Duration}, {Light}) called")
+        self.LastInputExposureDuration = Duration
         self._device.StartExposure(Duration, Light)
 
     def StopExposure(self):
@@ -234,6 +236,16 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def LastExposureStartTime(self):
         logger.debug(f"ASCOMCamera.LastExposureStartTime property called")
         return self._device.LastExposureStartTime
+    
+    @property
+    def LastInputExposureDuration(self):
+        logger.debug(f"ASCOMCamera.LastInputExposureDuration property called")
+        return self._LastInputExposureDuration
+    
+    @LastInputExposureDuration.setter
+    def LastInputExposureDuration(self, value):
+        logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
+        self._LastInputExposureDuration = value
 
     @property
     def MaxADU(self):

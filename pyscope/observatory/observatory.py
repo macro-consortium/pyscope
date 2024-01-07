@@ -2417,6 +2417,17 @@ class Observatory:
             self.camera.Connected = True
         except:
             return {"CONNECT": (False, "Camera connection")}
+        
+        # If ASCOM camera, EXPTIME and EXPOSURE should be obtained
+        # from camera.LastExposureDuration
+        if self._camera_driver == "ASCOMCamera":
+            try:
+                last_exposure_duration = self.camera.LastExposureDuration
+            except:
+                last_exposure_duration = self.camera.LastInputExposureDuration
+        else:
+            last_exposure_duration = None
+        
         info = {
             "CAMCON": (True, "Camera connection"),
             "CAMREADY": (self.camera.ImageReady, "Image ready"),
@@ -2431,8 +2442,8 @@ class Observatory:
             "JD": (None, "Julian date"),
             "MJD": (None, "Modified Julian date"),
             "MJD-OBS": (None, "Modified Julian date"),
-            "EXPTIME": (None, "Exposure time [seconds]"),
-            "EXPOSURE": (None, "Exposure time [seconds]"),
+            "EXPTIME": (last_exposure_duration, "Exposure time [seconds]"),
+            "EXPOSURE": (last_exposure_duration, "Exposure time [seconds]"),
             "SUBEXP": (None, "Subexposure time [seconds]"),
             "XBINNING": (self.camera.BinX, "Image binning factor in width"),
             "YBINNING": (self.camera.BinY, "Image binning factor in height"),
