@@ -2416,18 +2416,7 @@ class Observatory:
         try:
             self.camera.Connected = True
         except:
-            return {"CONNECT": (False, "Camera connection")}
-        
-        # If ASCOM camera, EXPTIME and EXPOSURE should be obtained
-        # from camera.LastExposureDuration
-        if self._camera_driver == "ASCOMCamera":
-            try:
-                last_exposure_duration = self.camera.LastExposureDuration
-            except:
-                last_exposure_duration = self.camera.LastInputExposureDuration
-        else:
-            last_exposure_duration = None
-        
+            return {"CONNECT": (False, "Camera connection")}        
         info = {
             "CAMCON": (True, "Camera connection"),
             "CAMREADY": (self.camera.ImageReady, "Image ready"),
@@ -2442,8 +2431,9 @@ class Observatory:
             "JD": (None, "Julian date"),
             "MJD": (None, "Modified Julian date"),
             "MJD-OBS": (None, "Modified Julian date"),
-            "EXPTIME": (last_exposure_duration, "Exposure time [seconds]"),
-            "EXPOSURE": (last_exposure_duration, "Exposure time [seconds]"),
+            "CAMTIME": (None, "Exposure time from camera (T) or user (F)"),
+            "EXPTIME": (None, "Exposure time [seconds]"),
+            "EXPOSURE": (None, "Exposure time [seconds]"),
             "SUBEXP": (None, "Subexposure time [seconds]"),
             "XBINNING": (self.camera.BinX, "Image binning factor in width"),
             "YBINNING": (self.camera.BinY, "Image binning factor in height"),
@@ -2538,8 +2528,24 @@ class Observatory:
         except:
             pass
         try:
-            info["EXPTIME"] = (self.camera.ExposureTime, info["EXPTIME"][1])
-            info["EXPOSURE"] = (self.camera.ExposureTime, info["EXPOSURE"][1])
+            # If ASCOM camera, EXPTIME and EXPOSURE should be obtained
+            # from camera.LastExposureDuration (if that property exists or is not 0.0).
+            if self._camera_driver == "ASCOMCamera":
+                try:
+                    last_exposure_duration = self.camera.LastExposureDuration
+                    cam_time = True
+                    if last_exposure_duration == 0:
+                        last_exposure_duration = self.camera.LastInputExposureDuration
+                        cam_time = False
+                except:
+                    last_exposure_duration = self.camera.LastInputExposureDuration
+                    cam_time = False
+            else:
+                last_exposure_duration = None
+                cam_time = False
+            info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
+            info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
+            info["CAMTIME"] = (cam_time, info["CAMTIME"][1])
         except:
             pass
         try:
