@@ -2384,7 +2384,9 @@ class Observatory:
 
         # Not sure if this if statement is a good idea here...
         if dictionary.get("rotator_driver", self.rotator_driver) is not None:
-            self.rotator_reverse = dictionary.get("rotator_reverse", self.rotator_reverse)
+            self.rotator_reverse = dictionary.get(
+                "rotator_reverse", self.rotator_reverse
+            )
             self.rotator_min_angle = dictionary.get(
                 "rotator_min_angle", self.rotator_min_angle
             )
@@ -2416,7 +2418,7 @@ class Observatory:
         try:
             self.camera.Connected = True
         except:
-            return {"CONNECT": (False, "Camera connection")}        
+            return {"CONNECT": (False, "Camera connection")}
         info = {
             "CAMCON": (True, "Camera connection"),
             "CAMREADY": (self.camera.ImageReady, "Image ready"),
@@ -3901,7 +3903,9 @@ class Observatory:
     def cover_calibrator_az(self, value):
         logger.debug(f"Observatory.cover_calibrator_az = {value} called")
         self._cover_calibrator_az = (
-            min(max(float(value), 0), 360) if value is not None and value != "" else None
+            min(max(float(value), 0), 360)
+            if value is not None and value != ""
+            else None
         )
         self._config["cover_calibrator"]["cover_calibrator_az"] = (
             str(self._cover_calibrator_az)

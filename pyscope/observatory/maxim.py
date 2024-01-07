@@ -1,8 +1,9 @@
 import logging
 import platform
 import time
-from win32com.client import Dispatch
 from datetime import datetime as dt
+
+from win32com.client import Dispatch
 
 from .autofocus import Autofocus
 from .camera import Camera

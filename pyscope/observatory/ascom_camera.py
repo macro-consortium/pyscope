@@ -239,13 +239,17 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def LastExposureStartTime(self):
         logger.debug(f"ASCOMCamera.LastExposureStartTime property called")
         last_time = self._device.LastExposureStartTime
-        return last_time if last_time != '' and last_time != None else self._last_exposure_start_time
-    
+        return (
+            last_time
+            if last_time != "" and last_time != None
+            else self._last_exposure_start_time
+        )
+
     @property
     def LastInputExposureDuration(self):
         logger.debug(f"ASCOMCamera.LastInputExposureDuration property called")
         return self._last_exposure_duration
-    
+
     @LastInputExposureDuration.setter
     def LastInputExposureDuration(self, value):
         logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
