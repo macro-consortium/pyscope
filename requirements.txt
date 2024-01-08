@@ -7,7 +7,7 @@ click == 8.1.7
 cmcrameri == 1.7.0
 markdown == 3.5.1
 matplotlib == 3.8.2
-numpy == 1.26.2
+numpy == 1.26.3
 paramiko == 3.4.0
 photutils == 1.10.0
 prettytable == 3.9.0
