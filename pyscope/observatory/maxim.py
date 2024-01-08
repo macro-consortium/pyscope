@@ -3,8 +3,6 @@ import platform
 import time
 from datetime import datetime as dt
 
-from win32com.client import Dispatch
-
 from .autofocus import Autofocus
 from .camera import Camera
 from .device import Device
