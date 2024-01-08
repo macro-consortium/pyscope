@@ -1168,15 +1168,11 @@ class Observatory:
         if not self.camera.ImageReady:
             logger.exception("Image is not ready, cannot be saved")
             return False
-        
+
         # Read out the image array
         img_array = self.camera.ImageArray
 
-        if (
-            img_array is None
-            or len(img_array) == 0
-            or len(img_array) == 0
-        ):
+        if img_array is None or len(img_array) == 0 or len(img_array) == 0:
             logger.exception("Image array is empty, cannot be saved")
             return False
 
