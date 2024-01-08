@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime as dt
+import numpy as np
 
 from .ascom_device import ASCOMDevice
 from .camera import Camera
@@ -18,10 +19,41 @@ class ASCOMCamera(ASCOMDevice, Camera):
         )
         self._last_exposure_duration = None
         self._last_exposure_start_time = None
+        self._image_data_type = None
 
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._device.AbortExposure()
+
+    def SetImageDataType(self):
+        """Determine the data type of the image array based on the MaxADU property.
+
+        This method is called automatically when the ImageArray property is called
+        if it has not already been set (initializes to `None`).
+        It will choose from the following data types based on the MaxADU property:
+
+        - numpy.uint8 : (if MaxADU <= 255)
+        - numpy.uint16 : (default if MaxADU is not defined, or if MaxADU <= 65535)
+        - numpy.uint32 : (if MaxADU > 65535)
+
+        See Also
+        --------
+        numpy.uint8
+        numpy.uint16
+        numpy.uint32
+        MaxADU : ASCOM Camera interface property `ASCOM Documentation <https://ascom-standards.org/Help/Developer/html/P_ASCOM_DriverAccess_Camera_MaxADU.htm>`_
+        """
+        logger.debug(f"ASCOMCamera.SetImageDataType() called")
+        try:
+            max_adu = self.MaxADU
+            if max_adu <= 255:
+                self._image_data_type = np.uint8
+            elif max_adu <= 65535:
+                self._image_data_type = np.uint16
+            else:
+                self._image_data_type = np.uint32
+        except:
+            self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
         logger.debug(f"ASCOMCamera.PulseGuide({Direction}, {Duration}) called")
@@ -218,6 +250,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def ImageArray(self):
         logger.debug(f"ASCOMCamera.ImageArray property called")
+        img_array = self._device.ImageArray
+        # Convert to numpy array and check if it is the correct data type
+        if self._image_data_type is None:
+            self.SetImageDataType()
+        img_array = np.array(img_array, dtype=self._image_data_type)
         return self._device.ImageArray
 
     @property
