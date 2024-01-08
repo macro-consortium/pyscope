@@ -22,6 +22,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
         self._last_exposure_start_time = None
         self._image_data_type = None
         self._DoTranspose = True
+        self._camera_time = True
 
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
@@ -123,6 +124,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def CameraYSize(self):
         logger.debug(f"ASCOMCamera.CameraYSize property called")
         return self._device.CameraYSize
+
+    @property
+    def CameraTime(self):
+        logger.debug(f"ASCOMCamera.CameraTime property called")
+        return self._camera_time
 
     @property
     def CanAbortExposure(self):
@@ -274,7 +280,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def LastExposureDuration(self):
         logger.debug(f"ASCOMCamera.LastExposureDuration property called")
-        return self._device.LastExposureDuration
+        last_exposure_duration = self._device.LastExposureDuration
+        if last_exposure_duration is None or last_exposure_duration == 0:
+            last_exposure_duration = self.LastInputExposureDuration
+            self._camera_time = False
+        return last_exposure_duration
 
     @property
     def LastExposureStartTime(self):

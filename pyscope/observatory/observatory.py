@@ -2522,24 +2522,13 @@ class Observatory:
         except:
             pass
         try:
-            # If ASCOM camera, EXPTIME and EXPOSURE should be obtained
-            # from camera.LastExposureDuration (if that property exists or is not 0.0).
-            if self._camera_driver == "ASCOMCamera":
-                try:
-                    last_exposure_duration = self.camera.LastExposureDuration
-                    cam_time = True
-                    if last_exposure_duration == 0:
-                        last_exposure_duration = self.camera.LastInputExposureDuration
-                        cam_time = False
-                except:
-                    last_exposure_duration = self.camera.LastInputExposureDuration
-                    cam_time = False
-            else:
-                last_exposure_duration = None
-                cam_time = False
+            last_exposure_duration = self.camera.LastExposureDuration
             info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
             info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
-            info["CAMTIME"] = (cam_time, info["CAMTIME"][1])
+        except:
+            pass
+        try:
+            info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
         except:
             pass
         try:
