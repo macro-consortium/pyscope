@@ -1168,11 +1168,14 @@ class Observatory:
         if not self.camera.ImageReady:
             logger.exception("Image is not ready, cannot be saved")
             return False
+        
+        # Read out the image array
+        img_array = self.camera.ImageArray
 
         if (
-            self.camera.ImageArray is None
-            or len(self.camera.ImageArray) == 0
-            or len(self.camera.ImageArray[0]) == 0
+            img_array is None
+            or len(img_array) == 0
+            or len(img_array) == 0
         ):
             logger.exception("Image array is empty, cannot be saved")
             return False
@@ -1182,9 +1185,9 @@ class Observatory:
         hdr["SIMPLE"] = True
         hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
         hdr["NAXIS"] = (2, "number of axes")
-        hdr["NAXIS1"] = (len(self.camera.ImageArray), "fastest changing axis")
+        hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
         hdr["NAXIS2"] = (
-            len(self.camera.ImageArray[0]),
+            len(img_array[0]),
             "next to fastest changing axis",
         )
         hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
@@ -1223,13 +1226,6 @@ class Observatory:
                 history = [history]
             for hist in history:
                 hdr["HISTORY"] = hist
-
-        # By default, the ImageArray is 32 bit int, at least on my system
-        # of a ZWO 290MM Mini - we need to convert it to 16 bit unsigned int
-        img_array = np.array(self.camera.ImageArray).astype(np.uint16)
-        # Transpose the image array to match the FITS standard
-        # as well as the axis order defined above
-        img_array = np.transpose(img_array)
 
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)

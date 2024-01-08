@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime as dt
+
 import numpy as np
 
 from .ascom_device import ASCOMDevice
@@ -20,6 +21,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
         self._last_exposure_duration = None
         self._last_exposure_start_time = None
         self._image_data_type = None
+        self._DoTranspose = True
 
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
@@ -255,7 +257,9 @@ class ASCOMCamera(ASCOMDevice, Camera):
         if self._image_data_type is None:
             self.SetImageDataType()
         img_array = np.array(img_array, dtype=self._image_data_type)
-        return self._device.ImageArray
+        if self._DoTranspose:
+            img_array = np.transpose(img_array)
+        return img_array
 
     @property
     def ImageReady(self):
@@ -276,6 +280,9 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def LastExposureStartTime(self):
         logger.debug(f"ASCOMCamera.LastExposureStartTime property called")
         last_time = self._device.LastExposureStartTime
+        """ This code is needed to handle the case of the ASCOM ZWO driver
+        which returns an empty string instead of None if the camera does not
+        support the property """
         return (
             last_time
             if last_time != "" and last_time != None
