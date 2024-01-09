@@ -1,6 +1,7 @@
 import atexit
 import configparser
 import glob
+import json
 import logging
 import os
 import shutil
@@ -32,21 +33,21 @@ class TelrunOperator:
         self._execution_thread = None
         self._execution_event = threading.Event()
         self._status_event = threading.Event()
-        self._schedule_fname = None
-        self._schedule = None
-        self._best_focus_result = None
+        self._status_log_thread = None
+        self._status_log_update_event = threading.Event()
         self._wcs_threads = []
 
         # Read-only attributes with no constructor arguments
+        self._schedule_fname = None
+        self._schedule = None
+        self._best_focus_result = None
         self._do_periodic_autofocus = True
         self._last_autofocus_time = 0
         self._skipped_block_count = 0
-        self._current_block = None
         self._current_block_index = None
+        self._current_block = None
         self._previous_block = None
-        self._previous_block_index = None
         self._next_block = None
-        self._next_block_index = None
         self._autofocus_status = ""
         self._camera_status = ""
         self._cover_calibrator_status = ""
@@ -62,9 +63,9 @@ class TelrunOperator:
 
         # Read-only attributes with constructor arguments
         self._config_path = os.path.abspath(config_path)
-        self._schedules_path = "./schedules/"
-        self._images_path = "./images/"
-        self._log_path = "./logs/"
+        self._schedules_path = self._config_path + "../schedules/"
+        self._images_path = self._config_path + "../images/"
+        self._log_path = self._config_path + "../logs/"
         self._dome_type = None  # None, 'dome' or 'safety-monitor' or 'both'
 
         # Public attributes with constructor arguments
@@ -77,6 +78,7 @@ class TelrunOperator:
         self._check_block_status = True
         self._update_block_status = True
         self._write_to_status_log = True
+        self._status_log_update_interval = 5  # seconds
         self._autofocus_interval = 3600
         self._initial_autofocus = True
         self._autofocus_filters = None
@@ -166,6 +168,11 @@ class TelrunOperator:
             )
             self._write_to_status_log = self._config.getboolean(
                 "default", "write_to_status_log", fallback=self._write_to_status_log
+            )
+            self._status_log_update_interval = self._config.getfloat(
+                "default",
+                "status_log_update_interval",
+                fallback=self._status_log_update_interval,
             )
             self._autofocus_interval = self._config.getfloat(
                 "default", "autofocus_interval", fallback=self._autofocus_interval
@@ -320,6 +327,9 @@ class TelrunOperator:
         self.write_to_status_log = kwargs.get(
             "write_to_status_log", self._write_to_status_log
         )
+        self.status_log_update_interval = kwargs.get(
+            "status_log_update_interval", self._status_log_update_interval
+        )
         self.autofocus_interval = kwargs.get(
             "autofocus_interval", self._autofocus_interval
         )
@@ -426,11 +436,9 @@ class TelrunOperator:
             root.tk.call("set_theme", "dark")
             # icon_photo = tk.PhotoImage(file='images/UILogo.png')
             # root.iconphoto(False, icon_photo)
-            self._gui = _TelrunGUI(root, self, self.write_to_status_log)
+            self._gui = _TelrunGUI(root, self)
             self._gui.mainloop()
             logger.info("GUI started")
-        elif self.write_to_status_log:
-            raise TelrunException("Cannot write to status log without GUI")
 
         # Connect to observatory hardware
         logger.info("Attempting to connect to observatory hardware")
@@ -508,7 +516,7 @@ class TelrunOperator:
             )
             logger.debug("Newest schedule: %s" % fname)
 
-            # Load schedule if it exists and check for any status with "Q"
+            # Compare to current schedule filename
             if not os.path.exists(self.schedules_path + fname):
                 logger.exception("Schedule file error, waiting for new schedule...")
                 time.sleep(1)
@@ -563,7 +571,7 @@ class TelrunOperator:
         try:
             schedtab.validate(schedule, self.observatory)
         except Exception as e:
-            logger.exception("Schedule failed validation, skipping...")
+            logger.exception("Schedule failed validation, exiting...")
             logger.exception(e)
             return
 
@@ -732,37 +740,25 @@ class TelrunOperator:
                 # TODO: Handle leaving for an interruption b/c of alert and returning to the same schedule
                 break
 
+        logger.info("Schedule execution complete.")
+
         """
         # Generate summary report if schedule completed
         logger.info("Generating summary report")
         summary_report(self.telpath+'/schedules/telrun.sls', self.telpath+'/logs/'+
             self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')"""
 
-        # ! TODO: Schedule ending cleanup, park/home, close dome, etc.
-        logger.info("Schedule execution complete")
-        logger.info("Stopping tracking...")
-        self.observatory.telescope.DeclinationRate = 0
-        self.observatory.telescope.RightAscensionRate = 0
-        self.observatory.telescope.Tracking = False
-        self._telescope_status = "Idle"
-        logger.info("Stopped.")
-        logger.info("Parking telescope...")
-        self.observatory.telescope.Park
-        self._telescope_status = "Parked"
-        logger.info("Parked.")
-        logger.info(
-            "Taking bias to close shutter for cameras with electronic shutters..."
-        )
-        self._camera_status = "Taking shutter-closing bias"
-        self.observatory.camera.StartExposure(0, False)
-        self._camera_status = "Idle"
-        logger.info("Done.")
-
+        logger.info("Resetting status variables...")
         self._skipped_block_count = 0
         self._previous_block = None
         self._next_block = None
         self._schedule_fname = None
         self._schedule = None
+
+        logger.info("Shutting observatory down...")
+        self.observatory.shutdown()
+        logger.info("Done.")
+
         return
 
     def execute_block(self, *args, **kwargs):
@@ -1782,7 +1778,39 @@ class TelrunOperator:
         logger.removeHandler(str_handler)
         return ("C", "Completed", block)
 
-    def block_info(self, block):
+    def update_status_log(self):
+        if not self.update_status_log:
+            logger.warning("Status log update is disabled, exiting...")
+            return
+
+        current_block_info = {}
+        if self.current_block is not None:
+            current_block_info = self.block_info(self.current_block)
+        previous_block_info = {}
+        if self.previous_block is not None:
+            previous_block_info = self.block_info(self.previous_block)
+            for key in previous_block_info:
+                previous_block_info["P" + key] = previous_block_info.pop(key)
+        next_block_info = {}
+        if self._next_block is not None:
+            next_block_info = self.block_info(self.next_block)
+            for key in next_block_info:
+                next_block_info["N" + key] = next_block_info.pop(key)
+
+        status_log = self.telrun_info
+        status_log.update(previous_block_info)
+        status_log.update(current_block_info)
+        status_log.update(next_block_info)
+
+        json.dump(
+            status_log,
+            open(self.log_path + "status.json", "w"),
+        )
+
+        return status_log
+
+    @staticmethod
+    def block_info(block):
         """Return a dictionary of information about the block."""
 
         # Define custom header
@@ -1844,6 +1872,7 @@ class TelrunOperator:
 
         return info
 
+    @property
     def telrun_info(self):
         """Returns a dictionary of information about the current status of TelrunOperator."""
 
@@ -1889,7 +1918,7 @@ class TelrunOperator:
                 len(self._schedule) if self._schedule is not None else 1,
                 "Total number of blocks",
             ),
-            "SCHEDFIL": (self._schedule_fname, "Schedule file"),
+            "SCHEDFN": (self._schedule_fname, "Schedule filename"),
             "AUTOSTAT": (self.autofocus_status, "Autofocus status"),
             "CAMSTAT": (self.camera_status, "Camera status"),
             "COVSTAT": (self.cover_calibrator_status, "Cover calibrator status"),
@@ -2005,8 +2034,45 @@ class TelrunOperator:
             logger.warning("Process timed out after %.1f seconds" % timeout)
             # TODO: Add auto-recovery capability for the affected hardware
 
+    def start_status_log_thread(self, interval=None):
+        self._status_log_update_event.clear()
+        self._write_to_status_log = True
+        if interval is not None:
+            self.status_log_update_interval = interval
+        interval = self.status_log_update_interval
+        self._status_log_thread = threading.Thread(
+            target=self._update_status_log_thread,
+            args=(interval),
+            daemon=True,
+            name="status_log_thread",
+        )
+        self._status_log_thread.start()
+
+    def stop_status_log_thread(self):
+        self._status_log_update_event.set()
+        self._write_to_status_log = False
+        self._status_log_thread.join()
+        self._status_log_thread = None
+
+    def _update_status_log_thread(self, interval):
+        while not self._status_log_update_event.is_set():
+            l = self.update_status_log()
+            time.sleep(interval)
+
     def _terminate(self):
         self.observatory.shutdown()
+
+    @property
+    def schedule_fname(self):
+        return self._schedule_fname
+
+    @property
+    def schedule(self):
+        return self._schedule
+
+    @property
+    def best_focus_result(self):
+        return self._best_focus_result
 
     @property
     def do_periodic_autofocus(self):
@@ -2019,6 +2085,10 @@ class TelrunOperator:
     @property
     def skipped_block_count(self):
         return self._skipped_block_count
+
+    @property
+    def current_block_index(self):
+        return self._current_block_index
 
     @property
     def current_block(self):
@@ -2085,6 +2155,22 @@ class TelrunOperator:
         return self._observatory
 
     @property
+    def config_path(self):
+        return self._config_path
+
+    @property
+    def schedules_path(self):
+        return self._schedules_path
+
+    @property
+    def images_path(self):
+        return self._images_path
+
+    @property
+    def log_path(self):
+        return self._log_path
+
+    @property
     def dome_type(self):
         return self._dome_type
 
@@ -2127,10 +2213,10 @@ class TelrunOperator:
         )
 
     @property
-    def _wait_for_cooldown(self):
+    def wait_for_cooldown(self):
         return self._wait_for_cooldown
 
-    @_wait_for_cooldown.setter
+    @wait_for_cooldown.setter
     def _wait_for_cooldown(self, value):
         self._wait_for_cooldown = bool(value)
         self._config["default"]["wait_for_cooldown"] = str(self._wait_for_cooldown)
@@ -2170,6 +2256,19 @@ class TelrunOperator:
     def write_to_status_log(self, value):
         self._write_to_status_log = bool(value)
         self._config["default"]["write_to_status_log"] = str(self._write_to_status_log)
+        if self._write_to_status_log:
+            self.start_status_log_thread()
+
+    @property
+    def status_log_update_interval(self):
+        return self._status_log_update_interval
+
+    @status_log_update_interval.setter
+    def status_log_update_interval(self, value):
+        self._status_log_update_interval = float(value)
+        self._config["default"]["status_log_update_interval"] = str(
+            self._status_log_update_interval
+        )
 
     @property
     def autofocus_interval(self):
@@ -2545,40 +2644,6 @@ class _TelrunGUI(ttk.Frame):
                     for i in range(len(self._telrun.schedule))
                 ]
             )
-
-        if self._telrun.write_to_status_log:
-            with open(os.path.join(self._telrun.log_path, "telrun_status.log"), "w"):
-                f.write("# System Status")
-                for row in self.system_status_widget.rows:
-                    for i in range(len(row.labels)):
-                        f.write(row.labels[i] + " " + row.string_vars[i].get() + "\n")
-
-                f.write("\n# Previous Block")
-                for i in range(len(previous_block_widget.rows.labels)):
-                    f.write(
-                        previous_block_widget.rows.labels[i]
-                        + " "
-                        + previous_block_widget.rows.string_vars[i].get()
-                        + "\n"
-                    )
-
-                f.write("\n# Current Block")
-                for i in range(len(current_block_widget.rows.labels)):
-                    f.write(
-                        current_block_widget.rows.labels[i]
-                        + " "
-                        + current_block_widget.rows.string_vars[i].get()
-                        + "\n"
-                    )
-
-                f.write("\n# Next Block")
-                for i in range(len(next_block_widget.rows.labels)):
-                    f.write(
-                        next_block_widget.rows.labels[i]
-                        + " "
-                        + next_block_widget.rows.string_vars[i].get()
-                        + "\n"
-                    )
 
         self.after(1000, self._update)
 
