@@ -1171,11 +1171,10 @@ class Observatory:
             logger.exception("Image is not ready, cannot be saved")
             return False
 
-        if (
-            self.camera.ImageArray is None
-            or len(self.camera.ImageArray) == 0
-            or len(self.camera.ImageArray[0]) == 0
-        ):
+        # Read out the image array
+        img_array = self.camera.ImageArray
+
+        if img_array is None or len(img_array) == 0 or len(img_array) == 0:
             logger.exception("Image array is empty, cannot be saved")
             return False
 
@@ -1184,9 +1183,9 @@ class Observatory:
         hdr["SIMPLE"] = True
         hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
         hdr["NAXIS"] = (2, "number of axes")
-        hdr["NAXIS1"] = (len(self.camera.ImageArray), "fastest changing axis")
+        hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
         hdr["NAXIS2"] = (
-            len(self.camera.ImageArray[0]),
+            len(img_array[0]),
             "next to fastest changing axis",
         )
         hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
@@ -1226,7 +1225,7 @@ class Observatory:
             for hist in history:
                 hdr["HISTORY"] = hist
 
-        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
+        hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
         if do_fwhm:
@@ -2377,13 +2376,17 @@ class Observatory:
             "filter_focus_offsets", self.filter_focus_offsets
         )
 
-        self.rotator_reverse = dictionary.get("rotator_reverse", self.rotator_reverse)
-        self.rotator_min_angle = dictionary.get(
-            "rotator_min_angle", self.rotator_min_angle
-        )
-        self.rotator_max_angle = dictionary.get(
-            "rotator_max_angle", self.rotator_max_angle
-        )
+        # Not sure if this if statement is a good idea here...
+        if dictionary.get("rotator_driver", self.rotator_driver) is not None:
+            self.rotator_reverse = dictionary.get(
+                "rotator_reverse", self.rotator_reverse
+            )
+            self.rotator_min_angle = dictionary.get(
+                "rotator_min_angle", self.rotator_min_angle
+            )
+            self.rotator_max_angle = dictionary.get(
+                "rotator_max_angle", self.rotator_max_angle
+            )
 
         self.min_altitude = dictionary.get("min_altitude", self.min_altitude)
         self.settle_time = dictionary.get("settle_time", self.settle_time)
@@ -2424,6 +2427,7 @@ class Observatory:
             "JD": (None, "Julian date"),
             "MJD": (None, "Modified Julian date"),
             "MJD-OBS": (None, "Modified Julian date"),
+            "CAMTIME": (None, "Exposure time from camera (T) or user (F)"),
             "EXPTIME": (None, "Exposure time [seconds]"),
             "EXPOSURE": (None, "Exposure time [seconds]"),
             "SUBEXP": (None, "Subexposure time [seconds]"),
@@ -2520,8 +2524,13 @@ class Observatory:
         except:
             pass
         try:
-            info["EXPTIME"] = (self.camera.ExposureTime, info["EXPTIME"][1])
-            info["EXPOSURE"] = (self.camera.ExposureTime, info["EXPOSURE"][1])
+            last_exposure_duration = self.camera.LastExposureDuration
+            info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
+            info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
+        except:
+            pass
+        try:
+            info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
         except:
             pass
         try:
@@ -3686,7 +3695,9 @@ class Observatory:
         self._latitude = (
             coord.Latitude(value) if value is not None or value != "" else None
         )
-        self.telescope.SiteLatitude = self._latitude.deg
+        # If connected, set the telescope site latitude
+        if self.telescope.Connected:
+            self.telescope.SiteLatitude = self._latitude.deg
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3706,7 +3717,8 @@ class Observatory:
             if value is not None or value != ""
             else None
         )
-        self.telescope.SiteLongitude = self._longitude.deg
+        if self.telescope.Connected:
+            self.telescope.SiteLongitude = self._longitude.deg
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -3857,7 +3869,7 @@ class Observatory:
     def cover_calibrator_alt(self, value):
         logger.debug(f"Observatory.cover_calibrator_alt = {value} called")
         self._cover_calibrator_alt = (
-            min(max(float(value), 0), 90) if value is not None or value != "" else None
+            min(max(float(value), 0), 90) if value is not None and value != "" else None
         )
         self._config["cover_calibrator"]["cover_calibrator_alt"] = (
             str(self._cover_calibrator_alt)
@@ -3874,7 +3886,9 @@ class Observatory:
     def cover_calibrator_az(self, value):
         logger.debug(f"Observatory.cover_calibrator_az = {value} called")
         self._cover_calibrator_az = (
-            min(max(float(value), 0), 360) if value is not None or value != "" else None
+            min(max(float(value), 0), 360)
+            if value is not None and value != ""
+            else None
         )
         self._config["cover_calibrator"]["cover_calibrator_az"] = (
             str(self._cover_calibrator_az)
