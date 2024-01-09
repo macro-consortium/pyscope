@@ -977,6 +977,8 @@ class Observatory:
 
         logger.info("Attempting to turn off telescope tracking...")
         try:
+            self.observatory.telescope.DeclinationRate = 0
+            self.observatory.telescope.RightAscensionRate = 0
             self.telescope.Tracking = False
             logger.info("Telescope tracking turned off")
         except:
