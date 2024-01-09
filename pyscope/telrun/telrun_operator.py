@@ -65,7 +65,8 @@ class TelrunOperator:
         self._config_path = os.path.abspath(config_path)
         self._schedules_path = self._config_path + "../schedules/"
         self._images_path = self._config_path + "../images/"
-        self._log_path = self._config_path + "../logs/"
+        self._logs_path = self._config_path + "../logs/"
+        self._queue_fname = None
         self._dome_type = None  # None, 'dome' or 'safety-monitor' or 'both'
 
         # Public attributes with constructor arguments
@@ -140,6 +141,9 @@ class TelrunOperator:
             )
             self._logs_path = self._config.get(
                 "default", "logs_path", fallback=self._logs_path
+            )
+            self._queue_fname = self._config.get(
+                "default", "queue_fname", fallback=self._queue_fname
             )
             self._dome_type = self._config.get(
                 "default", "dome_type", fallback=self._dome_type
@@ -292,6 +296,9 @@ class TelrunOperator:
             kwargs.get("images_path", self._images_path)
         )
         self._logs_path = os.path.abspath(kwargs.get("logs_path", self._logs_path))
+        self._queue_fname = os.path.abspath(
+            kwargs.get("queue_fname", self._queue_fname)
+        )
 
         # Parse dome_type
         self._dome_type = kwargs.get("dome_type", self._dome_type)
@@ -728,10 +735,27 @@ class TelrunOperator:
                     self._skipped_block_count += 1
 
                 # Update block status
-                self._schedule[block_index] = block
-                self._schedule.write(
-                    self._schedule_fname, format="ascii.ecsv", overwrite=True
-                )
+                if self.update_block_status:
+                    self._schedule[block_index] = block
+                    self._schedule.write(
+                        self._schedule_fname, format="ascii.ecsv", overwrite=True
+                    )
+
+                    # Update queue if it exists
+                    if self.queue_fname is not None:
+                        queue = table.Table.read(self.queue_fname, format="ascii.ecsv")
+                        queue_idx = np.where(queue["id"] == block["id"])[0]
+                        if len(queue_idx) > 0:
+                            queue[queue_idx] = block
+                        else:
+                            logger.info(
+                                "Block %s not found in queue, appending to end..."
+                                % block["id"]
+                            )
+                            queue = table.vstack([queue, block])
+                        queue.write(
+                            self.queue_fname, format="ascii.ecsv", overwrite=True
+                        )
 
             else:
                 logger.info(
@@ -2167,8 +2191,12 @@ class TelrunOperator:
         return self._images_path
 
     @property
-    def log_path(self):
-        return self._log_path
+    def logs_path(self):
+        return self._logs_path
+
+    @property
+    def queue_fname(self):
+        return self._queue_fname
 
     @property
     def dome_type(self):
