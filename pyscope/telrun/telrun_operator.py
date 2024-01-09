@@ -473,6 +473,9 @@ class TelrunOperator:
         if self.observatory.wcs is not None:
             self._wcs_status = "Idle"
 
+        if self.write_to_status_log:
+            self.start_status_log_thread()
+
         if save_at_end:
             self.save_config("telrun.cfg")
 
@@ -590,6 +593,9 @@ class TelrunOperator:
 
         # Save back to file for any invalid blocks
         self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
+
+        # Sort schedule by start time
+        self._schedule.sort("start_time")
 
         # Initial home?
         if self._initial_home and self.observatory.telescope.CanFindHome:
@@ -824,7 +830,7 @@ class TelrunOperator:
         str_handler = logging.StreamHandler(str_output)
         str_handler.setLevel(logging.INFO)
         str_formatter = logging.Formatter(
-            f"%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - {self._schedule_fname.split('/')[-1]} - {block['id']} - %(message)s"
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
         )
         str_handler.setFormatter(str_formatter)
         logger.addHandler(str_handler)
@@ -845,7 +851,7 @@ class TelrunOperator:
 
         self._current_block = block
 
-        # Check 1: Block status?
+        # Check 1: Block name and status
         prev_status = "S"
         if self.check_block_status:
             if block["status"] != "S":
@@ -867,6 +873,11 @@ class TelrunOperator:
                         % block["status"],
                         block,
                     )
+        if block["name"] == "TransitionBlock" or block["name"] == "EmptyBlock":
+            logger.info("Block is a TransitionBlock or EmptyBlock, skipping...")
+            self._current_block = None
+            logger.removeHandler(str_handler)
+            return ("", "", block)
 
         # Check 2: Is the previous target different?
         slew = True
@@ -1904,6 +1915,11 @@ class TelrunOperator:
             "OPMODE": ("Robotic", "Operation mode")
             if self._execution_thread is not None
             else ("Manual", "Operation mode"),
+            "SUNELEV": (self.observatory.sun_altaz()[0].deg, "Sun elevation"),
+            "MOONELEV": (self.observatory.moon_altaz()[0].deg, "Moon elevation"),
+            "MOONILL": (self.observatory.moon_illumination(), "Moon illumination"),
+            "LST": (self.observatory.lst().fits, "Local sidereal time"),
+            "UT": (self.observatory.observatory_time().fits, "Universal time"),
             "LASTAUTO": (
                 self.observatory.last_autofocus_time.fits,
                 "Last autofocus time",
@@ -1992,11 +2008,6 @@ class TelrunOperator:
             "RECTIME": (self.recenter_timeout, "Recenter timeout"),
             "WCSFILT": (self.wcs_filters, "WCS filters"),
             "WCSTIME": (self.wcs_timeout, "WCS timeout"),
-            "SUNELEV": (self.observatory.sun_altaz()[0].deg, "Sun elevation"),
-            "MOONELEV": (self.observatory.moon_altaz()[0].deg, "Moon elevation"),
-            "MOONILL": (self.observatory.moon_illumination(), "Moon illumination"),
-            "LST": (self.observatory.lst().fits, "Local sidereal time"),
-            "UT": (self.observatory.observatory_time().fits, "Universal time"),
         }
 
         return info
@@ -2573,22 +2584,24 @@ class _TelrunGUI(ttk.Frame):
             width=80,
             height=20,
             headers=[
-                "Target",
-                "Start Time",
-                "End Time",
-                "Duration",
+                "ID",
+                "Name",
+                "Start",
+                "End",
                 "RA",
                 "Dec",
+                "Priority",
                 "Observer",
-                "Observer Code",
+                "Code",
                 "Title",
                 "Filename",
+                "Type",
+                "Backend",
                 "Filter",
                 "Exposure",
-                "Num Exposures",
-                "Do Not Interrupt",
+                "Nexp",
                 "Repositioning",
-                "Shutter State",
+                "Shutter",
                 "Readout",
                 "Binning",
                 "Frame Position",
@@ -2596,8 +2609,11 @@ class _TelrunGUI(ttk.Frame):
                 "PM RAcosDec",
                 "PM Dec",
                 "Comment",
+                "sch",
                 "Status",
-                "Status Message",
+                "Message",
+                "Sched Time",
+                "Constraints",
             ],
         )
         self.schedule.grid(column=0, row=4, columnspan=3, sticky="new")
@@ -2618,7 +2634,7 @@ class _TelrunGUI(ttk.Frame):
 
         log_handler = _TextHandler(self.log_text)
         log_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
         )
         log_handler.setFormatter(log_formatter)
         logger.addHandler(log_handler)
@@ -2635,39 +2651,52 @@ class _TelrunGUI(ttk.Frame):
             self.sheet.set_sheet_data(
                 [
                     [
-                        self._telrun.schedule[i]["target"],
-                        self._telrun.schedule[i]["start_time"].iso,
-                        self._telrun.schedule[i]["end time (UTC)"].iso,
-                        self._telrun.schedule[i]["duration (minutes)"] * 60,
-                        self._telrun.schedule[i]["ra"].hms,
-                        self._telrun.schedule[i]["dec"].dms,
-                        self._telrun.schedule[i]["observer"],
-                        self._telrun.schedule[i]["code"],
-                        self._telrun.schedule[i]["title"],
-                        self._telrun.schedule[i]["filename"],
-                        self._telrun.schedule[i]["filter"],
-                        self._telrun.schedule[i]["exposure"],
-                        self._telrun.schedule[i]["nexp"],
-                        self._telrun.schedule[i]["do_not_interrupt"],
-                        self._telrun.schedule[i]["repositioning"][0]
+                        self._telrun.schedule["ID"][i],
+                        self._telrun.schedule["name"][i],
+                        self._telrun.schedule["start_time"][i].iso,
+                        self._telrun.schedule["end_time"][i].iso,
+                        self._telrun.schedule["target"][i].ra.to_string("hms"),
+                        self._telrun.schedule["target"][i].dec.to_string("dms"),
+                        self._telrun.schedule["priority"][i],
+                        str(self._telrun.schedule["observer"][i]),
+                        self._telrun.schedule["code"][i],
+                        self._telrun.schedule["title"][i],
+                        self._telrun.schedule["filename"][i],
+                        self._telrun.schedule["type"][i],
+                        self._telrun.schedule["backend"][i],
+                        self._telrun.schedule["filter"][i],
+                        self._telrun.schedule["exposure"][i],
+                        self._telrun.schedule["nexp"][i],
+                        str(self._telrun.schedule["respositioning"][i][0])
                         + ","
-                        + self._telrun.schedule[i]["repositioning"][1],
-                        self._telrun.schedule[i]["shutter_state"],
-                        self._telrun.schedule[i]["readout"],
-                        self._telrun.schedule[i]["binning"][0]
+                        + str(self._telrun.schedule["respositioning"][i][1]),
+                        self._telrun.schedule["shutter_state"][i],
+                        self._telrun.schedule["readout"][i],
+                        str(self._telrun.schedule["binning"][i][0])
                         + "x"
-                        + self._telrun.schedule[i]["binning"][1],
-                        self._telrun.schedule[i]["frame_position"][0]
+                        + str(self._telrun.schedule["binning"][i][1]),
+                        str(self._telrun.schedule["frame_position"][i][0])
                         + ","
-                        + self._telrun.schedule[i]["frame_position"][1],
-                        self._telrun.schedule[i]["frame_size"][0]
+                        + str(self._telrun.schedule["frame_position"][i][1]),
+                        str(self._telrun.schedule["frame_size"][i][0])
                         + "x"
-                        + self._telrun.schedule[i]["frame_size"][1],
-                        self._telrun.schedule[i]["pm_ra_cosdec"].to_string(),
-                        self._telrun.schedule[i]["pm_dec"].to_string(),
-                        self._telrun.schedule[i]["comment"],
-                        self._telrun.schedule[i]["status"],
-                        self._telrun.schedule[i]["message"],
+                        + str(self._telrun.schedule["frame_size"][i][1]),
+                        str(
+                            self._telrun.schedule["pm_ra_cosdec"][i].to_value(
+                                u.arcsec / u.hour
+                            )
+                        ),
+                        str(
+                            self._telrun.schedule["pm_dec"][i].to_value(
+                                u.arcsec / u.hour
+                            )
+                        ),
+                        self._telrun.schedule["comment"][i],
+                        self._telrun.schedule["sch"][i],
+                        self._telrun.schedule["status"][i],
+                        self._telrun.schedule["message"][i],
+                        self._telrun.schedule["sched_time"][i].iso,
+                        str(self._telrun.schedule["constraints"][i]),
                     ]
                     for i in range(len(self._telrun.schedule))
                 ]
@@ -2686,209 +2715,62 @@ class _SystemStatusWidget(ttk.Frame):
 
     def build_gui(self):
         rows0 = _Rows(self, 0)
-        self.operator_mode = rows0.add_row("Operator Mode:")
-        self.sun_elevation = rows0.add_row("Sun Elevation:")
-        self.moon_elevation = rows0.add_row("Moon Elevation:")
-        self.moon_illumination = rows0.add_row("Moon Illumination:")
+        self.operator_mode = rows0.add_row("Op Mode:")
+        self.sun_elevation = rows0.add_row("Sun El:")
+        self.moon_elevation = rows0.add_row("Moon El:")
+        self.moon_illumination = rows0.add_row("Moon Ill:")
         self.lst = rows0.add_row("LST:")
         self.ut = rows0.add_row("UT:")
-        self.last_autofocus_time = rows0.add_row("Last Autofocus Time:")
-        self.time_until_next_autofocus = rows0.add_row("Time Until Next Autofocus:")
-        self.time_until_block_start = rows0.add_row("Time Until Block Start:")
-        self.skipped_block_count = rows0.add_row("Skipped Block Count:")
-        self.total_block_count = rows0.add_row("Total Block Count:")
-        self.schedule_last_modified = rows0.add_row("Schedule Last Modified:")
+        self.last_autofocus_time = rows0.add_row("Last AF:")
+        self.time_until_next_autofocus = rows0.add_row("Next AF:")
+        self.current_block_index = rows0.add_row("Block Idx:")
+        self.skipped_block_count = rows0.add_row("Skipped:")
+        self.total_block_count = rows0.add_row("Total:")
+        self.sched_fname = rows0.add_row("Sched File:")
 
         rows1 = _Rows(self, 2)
-        self.autofocus_status = rows1.add_row("Autofocus Status:")
-        self.camera_status = rows1.add_row("Camera Status:")
-        self.cover_calibrator_status = rows1.add_row("Cover Calibrator Status:")
-        self.dome_status = rows1.add_row("Dome Status:")
-        self.filter_wheel_status = rows1.add_row("Filter Wheel Status:")
-        self.focuser_status = rows1.add_row("Focuser Status:")
-        self.observing_conditions_status = rows1.add_row("Observing Conditions Status:")
-        self.rotator_status = rows1.add_row("Rotator Status:")
-        self.safety_monitor_status = rows1.add_row("Safety Monitor Status:")
-        self.switch_status = rows1.add_row("Switch Status:")
-        self.telescope_status = rows1.add_row("Telescope Status:")
-        self.wcs_status = rows1.add_row("WCS Status:")
+        self.autofocus_status = rows1.add_row("AF:")
+        self.camera_status = rows1.add_row("Cam:")
+        self.cover_calibrator_status = rows1.add_row("CC:")
+        self.dome_status = rows1.add_row("Dome:")
+        self.filter_wheel_status = rows1.add_row("FW:")
+        self.focuser_status = rows1.add_row("Foc:")
+        self.observing_conditions_status = rows1.add_row("OC:")
+        self.rotator_status = rows1.add_row("Rot:")
+        self.safety_monitor_status = rows1.add_row("SM:")
+        self.switch_status = rows1.add_row("Sw:")
+        self.telescope_status = rows1.add_row("Tel:")
+        self.wcs_status = rows1.add_row("WCS:")
 
-        rows2 = _Rows(self, 4)
-        self.cloud_cover = rows2.add_row("Cloud Cover:")
-        self.dew_point = rows2.add_row("Dew Point:")
-        self.humidity = rows2.add_row("Humidity:")
-        self.pressure = rows2.add_row("Pressure:")
-        self.rainrate = rows2.add_row("Rain Rate:")
-        self.sky_brightness = rows2.add_row("Sky Brightness:")
-        self.sky_quality = rows2.add_row("Sky Quality:")
-        # self.sky_temperature = rows2.add_row('Sky Temperature:')
-        self.star_fwhm = rows2.add_row("Star FWHM:")
-        self.temperature = rows2.add_row("Temperature:")
-        self.wind_direction = rows2.add_row("Wind Direction:")
-        self.wind_gust = rows2.add_row("Wind Gust:")
-        self.wind_speed = rows2.add_row("Wind Speed:")
-
-        rows3 = _Rows(self, 6)
-        self.telpath = rows3.add_row("Telhome:")
-        self.site_name = rows3.add_row("Site Name:")
-        self.dome_type = rows3.add_row("Dome Type:")
-        self.initial_home = rows3.add_row("Initial Home:")
-        self.wait_for_sun = rows3.add_row("Wait For Sun:")
-        self.max_solar_elev = rows3.add_row("Max Solar Elevation:")
-        self.check_safety_monitors = rows3.add_row("Check Safety Monitors:")
-        self.wait_for_cooldown = rows3.add_row("Wait For Cooldown:")
-        self.default_readout = rows3.add_row("Default Readout:")
-        self.check_block_status = rows3.add_row("Check Block Status:")
-        self.update_block_status = rows3.add_row("Update Block Status:")
-        self.write_to_status_log = rows3.add_row("Write To Status Log:")
-
-        rows4 = _Rows(self, 8)
-        self.autofocus_interval = rows4.add_row("Autofocus Interval:")
-        self.autofocus_exposure = rows4.add_row("Autofocus Exposure:")
-        self.autofocus_midpoint = rows4.add_row("Autofocus Midpoint:")
-        self.autofocus_nsteps = rows4.add_row("Autofocus NSteps:")
-        self.autofocus_step_size = rows4.add_row("Autofocus Step Size:")
-        self.autofocus_use_current_pointing = rows4.add_row(
-            "Autofocus Use Current Pointing:"
-        )
-        self.autofocus_timeout = rows4.add_row("Autofocus Timeout:")
-        self.wait_for_block_start_time = rows4.add_row("Wait For Block Start Time:")
-        self.max_block_late_time = rows4.add_row("Max Block Late Time:")
-        self.preslew_time = rows4.add_row("Preslew Time:")
-
-        rows5 = _Rows(self, 10)
-        self.recenter_filters = rows5.add_row("Recenter Filters:")
-        self.recenter_initial_offset_dec = rows5.add_row("Recenter Initial Offset Dec:")
-        self.recenter_check_and_refine = rows5.add_row("Recenter Check And Refine:")
-        self.recenter_max_attempts = rows5.add_row("Recenter Max Attempts:")
-        self.recenter_tolerance = rows5.add_row("Recenter Tolerance:")
-        self.recenter_exposure = rows5.add_row("Recenter Exposure:")
-        self.recenter_save_images = rows5.add_row("Recenter Save Images:")
-        self.recenter_save_path = rows5.add_row("Recenter Save Path:")
-        self.recenter_sync_mount = rows5.add_row("Recenter Sync Mount:")
-        self.hardware_timeout = rows5.add_row("Hardware Timeout:")
-        self.wcs_filters = rows5.add_row("WCS Filters:")
-        self.wcs_timeout = rows5.add_row("WCS Timeout:")
-
-        self.rows = [rows0, rows1, rows2, rows3, rows4, rows5]
+        self.rows = [rows0, rows1]
 
     def update(self):
-        if self._parent._telrun._execution_thread is not None:
-            operator_mode = "Fully robotic"
-        else:
-            operator_mode = "Interactive"
-        self.operator_mode.set(operator_mode)
-        self.sun_elevation.set(str(self._parent._telrun.observatory.sun_altaz()[0]))
-        self.moon_elevation.set(str(self._parent._telrun.observatory.moon_altaz()[0]))
-        self.moon_illumination.set(
-            str(self._parent._telrun.observatory.moon_illumination())
-        )
-        self.lst.set(self._parent._telrun.observatory.lst().iso)
-        self.ut.set(self._parent._telrun.observatory.observatory_time.iso)
-        self.last_autofocus_time.set(
-            astrotime.Time(self._parent._telrun.last_autofocus_time, format="unix").iso
-        )
-        self.time_until_next_autofocus.set(
-            str(
-                self._parent._telrun.last_autofocus_time
-                + self._parent._telrun.autofocus_interval
-                - time.time()
-            )
-        )
-        self.time_until_block_start.set(
-            (
-                self._parent._telrun.current_block["start_time"]
-                - self._parent._telrun.observatory.observatory_time()
-            ).second
-            if self._parent._telrun.current_block is not None
-            else ""
-        )
-        self.skipped_block_count.set(str(self._parent._telrun.skipped_block_count))
-        self.total_block_count.set(str(len(self._parent._telrun._schedule)))
-        self.schedule_last_modified.set(
-            str(
-                astrotime.Time(
-                    self._parent._telrun.schedule_last_modified, format="unix"
-                ).iso
-            )
-        )
+        info_dict = self._parent._telrun.telrun_info
+        self.operator_mode.set(info_dict["OPMODE"][0])
+        self.sun_elevation.set(info_dict["SUNELEV"][0])
+        self.moon_elevation.set(info_dict["MOONELEV"][0])
+        self.moon_illumination.set(info_dict["MOONILL"][0])
+        self.lst.set(info_dict["LST"][0])
+        self.ut.set(info_dict["UT"][0])
+        self.last_autofocus_time.set(info_dict["LASTAUTO"][0])
+        self.time_until_next_autofocus.set(info_dict["NEXTAUTO"][0])
+        self.current_block_index.set(info_dict["CURRIDX"][0])
+        self.skipped_block_count.set(info_dict["SKIPPED"][0])
+        self.total_block_count.set(info_dict["TOTALBLK"][0])
+        self.sched_fname.set(info_dict["SCHEDFN"][0])
 
-        self.autofocus_status.set(self._parent._telrun.autofocus_status)
-        self.camera_status.set(self._parent._telrun.camera_status)
-        self.cover_calibrator_status.set(self._parent._telrun.cover_calibrator_status)
-        self.dome_status.set(self._parent._telrun.dome_status)
-        self.filter_wheel_status.set(self._parent._telrun.filter_wheel_status)
-        self.focuser_status.set(self._parent._telrun.focuser_status)
-        self.observing_conditions_status.set(
-            self._parent._telrun.observing_conditions_status
-        )
-        self.rotator_status.set(self._parent._telrun.rotator_status)
-        self.safety_monitor_status.set(self._parent._telrun.safety_monitor_status)
-        self.switch_status.set(self._parent._telrun.switch_status)
-        self.telescope_status.set(self._parent._telrun.telescope_status)
-        self.wcs_status.set(self._parent._telrun.wcs_status)
-
-        self.cloud_cover.set(str(self._parent._telrun.observing_conditions.CloudCover))
-        self.dew_point.set(str(self._parent._telrun.observing_conditions.DewPoint))
-        self.humidity.set(str(self._parent._telrun.observing_conditions.Humidity))
-        self.pressure.set(str(self._parent._telrun.observing_conditions.Pressure))
-        self.rain_rate.set(str(self._parent._telrun.observing_conditions.RainRate))
-        self.sky_brightness.set(
-            str(self._parent._telrun.observing_conditions.SkyBrightness)
-        )
-        self.sky_quality.set(str(self._parent._telrun.observing_conditions.SkyQuality))
-        self.star_fwhm.set(str(self._parent._telrun.observing_conditions.StarFWHM))
-        self.temperature.set(str(self._parent._telrun.observing_conditions.Temperature))
-        self.wind_direction.set(
-            str(self._parent._telrun.observing_conditions.WindDirection)
-        )
-        self.wind_gust.set(str(self._parent._telrun.observing_conditions.WindGust))
-        self.wind_speed.set(str(self._parent._telrun.observing_conditions.WindSpeed))
-
-        self.telpath.set(self._parent._telrun.telpath)
-        self.site_name.set(self._parent._telrun.observatory.site_name)
-        self.dome_type.set(self._parent._telrun.dome_type)
-        self.initial_home.set(str(self._parent._telrun.initial_home))
-        self.wait_for_sun.set(str(self._parent._telrun.wait_for_sun))
-        self.max_solar_elev.set(str(self._parent._telrun.max_solar_elev))
-        self.check_safety_monitors.set(str(self._parent._telrun.check_safety_monitors))
-        self.wait_for_cooldown.set(str(self._parent._telrun.wait_for_cooldown))
-        self.default_readout.set(str(self._parent._telrun.default_readout))
-        self.check_block_status.set(str(self._parent._telrun.check_block_status))
-        self.update_block_status.set(str(self._parent._telrun.update_block_status))
-        self.write_to_status_log.set(str(self._parent._telrun.write_to_status_log))
-
-        self.autofocus_interval.set(str(self._parent._telrun.autofocus_interval))
-        self.autofocus_exposure.set(str(self._parent._telrun.autofocus_exposure))
-        self.autofocus_midpoint.set(str(self._parent._telrun.autofocus_midpoint))
-        self.autofocus_nsteps.set(str(self._parent._telrun.autofocus_nsteps))
-        self.autofocus_step_size.set(str(self._parent._telrun.autofocus_step_size))
-        self.autofocus_use_current_pointing.set(
-            str(self._parent._telrun.autofocus_use_current_pointing)
-        )
-        self.autofocus_timeout.set(str(self._parent._telrun.autofocus_timeout))
-        self.wait_for_block_start_time.set(
-            str(self._parent._telrun.wait_for_block_start_time)
-        )
-        self.max_block_late_time.set(str(self._parent._telrun.max_block_late_time))
-        self.preslew_time.set(str(self._parent._telrun.preslew_time))
-
-        self.recenter_filters.set(str(self._parent._telrun.recenter_filters))
-        self.recenter_initial_offset_dec.set(
-            str(self._parent._telrun.recenter_initial_offset_dec)
-        )
-        self.recenter_check_and_refine.set(
-            str(self._parent._telrun.recenter_check_and_refine)
-        )
-        self.recenter_max_attempts.set(str(self._parent._telrun.recenter_max_attempts))
-        self.recenter_tolerance.set(str(self._parent._telrun.recenter_tolerance))
-        self.recenter_exposure.set(str(self._parent._telrun.recenter_exposure))
-        self.recenter_save_images.set(str(self._parent._telrun.recenter_save_images))
-        self.recenter_save_path.set(str(self._parent._telrun.recenter_save_path))
-        self.recenter_sync_mount.set(str(self._parent._telrun.recenter_sync_mount))
-        self.hardware_timeout.set(str(self._parent._telrun.hardware_timeout))
-        self.wcs_filters.set(str(self._parent._telrun.wcs_filters))
-        self.wcs_timeout.set(str(self._parent._telrun.wcs_timeout))
+        self.autofocus_status.set(info_dict["AUTOSTAT"][0])
+        self.camera_status.set(info_dict["CAMSTAT"][0])
+        self.cover_calibrator_status.set(info_dict["COVSTAT"][0])
+        self.dome_status.set(info_dict["DOMSTAT"][0])
+        self.filter_wheel_status.set(info_dict["FILSTAT"][0])
+        self.focuser_status.set(info_dict["FOCSTAT"][0])
+        self.observing_conditions_status.set(info_dict["OBSSTAT"][0])
+        self.rotator_status.set(info_dict["ROTSTAT"][0])
+        self.safety_monitor_status.set(info_dict["SAFESTAT"][0])
+        self.switch_status.set(info_dict["SWITSTAT"][0])
+        self.telescope_status.set(info_dict["TELSTAT"][0])
+        self.wcs_status.set(info_dict["WCSSTAT"][0])
 
 
 class _BlockWidget(ttk.Frame):
@@ -2902,47 +2784,56 @@ class _BlockWidget(ttk.Frame):
     def build_gui(self):
         self.rows = _Rows(self, 0)
 
-        self.target = rows.add_row("Target:")
-        self.start_time = rows.add_row("Start Time:")
-        self.duration = rows.add_row("Duration:")
-        self.ra = rows.add_row("RA:")
-        self.dec = rows.add_row("Dec:")
-        self.observer = rows.add_row("Observer:")
-        self.code = rows.add_row("Observer Code:")
-        self.title = rows.add_row("Title:")
-        self.filename = rows.add_row("Filename:")
-        self.filter = rows.add_row("Filter:")
-        self.exposure = rows.add_row("Exposure:")
-        self.nexp = rows.add_row("N Exp:")
-        self.do_not_interrupt = rows.add_row("Do Not Interrupt:")
-        self.respositioning = rows.add_row("Respositioning:")
-        self.shutter_state = rows.add_row("Shutter State:")
-        self.readout = rows.add_row("Readout:")
-        self.binning = rows.add_row("Binning:")
-        self.frame_position = rows.add_row("Frame Position:")
-        self.frame_size = rows.add_row("Frame Size:")
-        self.pm_ra_cosdec = rows.add_row("PM RA cosDec:")
-        self.pm_dec = rows.add_row("PM Dec:")
-        self.comment = rows.add_row("Comment:")
-        self.status = rows.add_row("Status:")
-        self.message = rows.add_row("Status Message:")
+        self.id = self.rows.add_row("ID:")
+        self.name = self.rows.add_row("Name:")
+        self.start_time = self.rows.add_row("Start:")
+        self.end_time = self.rows.add_row("End:")
+        self.ra = self.rows.add_row("RA:")
+        self.dec = self.rows.add_row("Dec:")
+        self.priority = self.rows.add_row("Priority:")
+        self.observer = self.rows.add_row("Observer:")
+        self.code = self.rows.add_row("Code:")
+        self.title = self.rows.add_row("Title:")
+        self.filename = self.rows.add_row("Filename:")
+        self.type = self.rows.add_row("Type:")
+        self.backend = self.rows.add_row("Backend:")
+        self.filter = self.rows.add_row("Filter:")
+        self.exposure = self.rows.add_row("Exposure:")
+        self.nexp = self.rows.add_row("Nexp:")
+        self.repositioning = self.rows.add_row("Repositioning:")
+        self.shutter_state = self.rows.add_row("Shutter:")
+        self.readout = self.rows.add_row("Readout:")
+        self.binning = self.rows.add_row("Binning:")
+        self.frame_position = self.rows.add_row("Frame Pos:")
+        self.frame_size = self.rows.add_row("Frame Size:")
+        self.pm_ra_cosdec = self.rows.add_row("PM RAcosDec:")
+        self.pm_dec = self.rows.add_row("PM Dec:")
+        self.comment = self.rows.add_row("Comment:")
+        self.sch = self.rows.add_row("sch:")
+        self.status = self.rows.add_row("Status:")
+        self.message = self.rows.add_row("Message:")
+        self.sched_time = self.rows.add_row("Sched Time:")
+        self.constraints = self.rows.add_row("Constraints:")
 
     def update(self, block):
         if block is None:
-            self.target.set("")
+            self.id.set("")
+            self.name.set("")
             self.start_time.set("")
-            self.duration.set("")
+            self.end_time.set("")
             self.ra.set("")
             self.dec.set("")
+            self.priority.set("")
             self.observer.set("")
             self.code.set("")
             self.title.set("")
             self.filename.set("")
+            self.type.set("")
+            self.backend.set("")
             self.filter.set("")
             self.exposure.set("")
             self.nexp.set("")
-            self.do_not_interrupt.set("")
-            self.respositioning.set("")
+            self.repositioning.set("")
             self.shutter_state.set("")
             self.readout.set("")
             self.binning.set("")
@@ -2951,26 +2842,32 @@ class _BlockWidget(ttk.Frame):
             self.pm_ra_cosdec.set("")
             self.pm_dec.set("")
             self.comment.set("")
+            self.sch.set("")
             self.status.set("")
             self.message.set("")
+            self.sched_time.set("")
+            self.constraints.set("")
         else:
-            self.target.set(block["target"])
+            self.id.set(str(block["ID"]))
+            self.name.set(block["name"])
             self.start_time.set(block["start_time"].iso)
-            self.duration.set(block["duration"].second)
+            self.end_time.set(block["end_time"].iso)
             self.ra.set(block["target"].ra.to_string("hms"))
             self.dec.set(block["target"].dec.to_string("dms"))
-            self.observer.set(block["observer"])
+            self.priority.set(str(block["priority"]))
+            self.observer.set(str(block["observer"]))
             self.code.set(block["code"])
             self.title.set(block["title"])
             self.filename.set(block["filename"])
+            self.type.set(block["type"])
+            self.backend.set(block["backend"])
             self.filter.set(block["filter"])
             self.exposure.set(str(block["exposure"]))
             self.nexp.set(str(block["nexp"]))
-            self.do_not_interrupt.set(str(block["do_not_interrupt"]))
-            self.respositioning.set(
-                str(block["respositioning"][0]) + "x" + str(block["respositioning"][1])
+            self.repositioning.set(
+                str(block["respositioning"][0]) + "," + str(block["respositioning"][1])
             )
-            self.shutter_state.set(str(block["shutter_state"]))
+            self.shutter_state.set(block["shutter_state"])
             self.readout.set(str(block["readout"]))
             self.binning.set(str(block["binning"][0]) + "x" + str(block["binning"][1]))
             self.frame_position.set(
@@ -2979,11 +2876,17 @@ class _BlockWidget(ttk.Frame):
             self.frame_size.set(
                 str(block["frame_size"][0]) + "x" + str(block["frame_size"][1])
             )
-            self.pm_ra_cosdec.set(str(block["pm_ra_cosdec"]))
-            self.pm_dec.set(str(block["pm_dec"]))
+            self.pm_ra_cosdec.set(
+                str(block["pm_ra_cosdec"].to_value(u.arcsec / u.hour))
+            )
+            self.pm_dec.set(str(block["pm_dec"].to_value(u.arcsec / u.hour)))
             self.comment.set(block["comment"])
+            self.sch.set(block["sch"])
             self.status.set(block["status"])
             self.message.set(block["message"])
+            self.sched_time.set(block["sched_time"].iso)
+            self.constraints.set(str(block["constraints"]))
+        self.update_idletasks()
 
 
 class _Rows:
