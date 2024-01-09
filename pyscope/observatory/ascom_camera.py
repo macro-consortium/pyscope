@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime as dt
 
 import numpy as np
+from astropy.time import Time
 
 from .ascom_device import ASCOMDevice
 from .camera import Camera
@@ -65,7 +65,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def StartExposure(self, Duration, Light):
         logger.debug(f"ASCOMCamera.StartExposure({Duration}, {Light}) called")
         self._last_exposure_duration = Duration
-        self._last_exposure_start_time = str(dt.utcnow())
+        self._last_exposure_start_time = str(Time.now())
         self._device.StartExposure(Duration, Light)
 
     def StopExposure(self):
