@@ -140,3 +140,4 @@ dmypy.json
 *OmniSim*
 !coverage.xml
 docs/source/api/auto_api/
+pgHardware
