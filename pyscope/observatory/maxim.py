@@ -21,6 +21,7 @@ class Maxim(Device):
             raise Exception("This class is only available on Windows.")
         else:
             from win32com.client import Dispatch
+
             print("Running Windows")
             self._app = Dispatch("MaxIm.Application")
             self._app.LockApp = True

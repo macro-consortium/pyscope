@@ -1,14 +1,14 @@
 import configparser
+import datetime
 import importlib
 import json
 import logging
+import os
 import shutil
 import sys
 import tempfile
 import threading
 import time
-import os
-import datetime
 from ast import literal_eval
 
 import numpy as np
