@@ -7,12 +7,15 @@ import sys
 import tempfile
 import threading
 import time
+import os
+import datetime
 from ast import literal_eval
 
 import numpy as np
 from astropy import coordinates as coord
 from astropy import time as astrotime
 from astropy import units as u
+from astropy import wcs as astropywcs
 from astropy.io import fits
 from astroquery.mpc import MPC
 
@@ -1020,7 +1023,7 @@ class Observatory:
         if t is None:
             t = self.observatory_time
         else:
-            t = Time(t)
+            t = astrotime.Time(t)
 
         sun = coord.get_sun(t).transform_to(
             coord.AltAz(obstime=t, location=self.observatory_location)
@@ -1036,7 +1039,7 @@ class Observatory:
         if t is None:
             t = self.observatory_time
         else:
-            t = Time(t)
+            t = astrotime.Time(t)
 
         moon = coord.get_body("moon", t).transform_to(
             coord.AltAz(obstime=t, location=self.observatory_location)
@@ -1915,7 +1918,7 @@ class Observatory:
             logger.info("Settling for %.2f seconds" % self.settle_time)
             time.sleep(self.settle_time)
 
-            if not check_and_refine and attempt_number > 0:
+            if not check_and_refine and attempt > 0:
                 logger.info(
                     "Check and recenter is off, single-shot recentering complete"
                 )
@@ -1937,7 +1940,7 @@ class Observatory:
             logger.info("Searching for a WCS solution...")
             if type(self._wcs) is WCS:
                 self._wcs.Solve(
-                    filename,
+                    temp_image,
                     ra_key="TELRAIC",
                     dec_key="TELDECIC",
                     ra_dec_units=("hour", "deg"),
@@ -1952,7 +1955,7 @@ class Observatory:
             else:
                 for i, wcs in enumerate(self._wcs):
                     solution_found = wcs.Solve(
-                        filename,
+                        temp_image,
                         ra_key="TELRAIC",
                         dec_key="TELDECIC",
                         ra_dec_units=("hour", "deg"),
@@ -1980,7 +1983,7 @@ class Observatory:
             )
             try:
                 hdulist = fits.open(temp_image)
-                w = astropy.wcs.WCS(hdulist[0].header)
+                w = astropywcs.WCS(hdulist[0].header)
 
                 center_coord = w.pixel_to_world(
                     int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
@@ -2035,7 +2038,7 @@ class Observatory:
             logger.debug("Error in x pixels is %.2f" % error_x_pixels)
             logger.debug("Error in y pixels is %.2f" % error_y_pixels)
 
-            if max(error_x_pixels, error_y_pixels) <= max_pixel_error:
+            if max(error_x_pixels, error_y_pixels) <= tolerance:
                 break
 
             logger.info("Offsetting next slew coordinates")
@@ -2455,9 +2458,9 @@ class Observatory:
             "CAMERA": (self.camera.Name, "Name of camera"),
             "CAMDRVER": (self.camera.DriverVersion, "Camera driver version"),
             "CAMDRV": (self.camera.DriverInfo[0], "Camera driver info"),
-            "CAMINTF": (self.camera.InterfaceVersion, "Camera interface version"),
+            "CAMINTF": (None, "Camera interface version"),
             "CAMDESC": (self.camera.Description, "Camera description"),
-            "SENSOR": (self.camera.SensorName, "Name of sensor"),
+            "SENSOR": (None, "Name of sensor"),
             "WIDTH": (self.camera.CameraXSize, "Width of sensor in pixels"),
             "HEIGHT": (self.camera.CameraYSize, "Height of sensor in pixels"),
             "XPIXSIZE": (self.camera.PixelSizeX, "Pixel width in microns"),
@@ -2470,10 +2473,10 @@ class Observatory:
                 self.camera.HasShutter,
                 "Whether a camera mechanical shutter is present",
             ),
-            "MINEXP": (self.camera.ExposureMin, "Minimum exposure time [seconds]"),
-            "MAXEXP": (self.camera.ExposureMax, "Maximum exposure time [seconds]"),
+            "MINEXP": (None, "Minimum exposure time [seconds]"),
+            "MAXEXP": (None, "Maximum exposure time [seconds]"),
             "EXPRESL": (
-                self.camera.ExposureResolution,
+                None,
                 "Exposure time resolution [seconds]",
             ),
             "MAXBINSX": (self.camera.MaxBinX, "Maximum binning factor in width"),
@@ -2487,11 +2490,11 @@ class Observatory:
                 "Can camera set temperature",
             ),
             "CANPULSE": (self.camera.CanPulseGuide, "Can camera pulse guide"),
-            "FULLWELL": (self.camera.FullWellCapacity, "Full well capacity [e-]"),
-            "MAXADU": (self.camera.MaxADU, "Camera maximum ADU value possible"),
-            "E-ADU": (self.camera.ElectronsPerADU, "Gain [e- per ADU]"),
+            "FULLWELL": (None, "Full well capacity [e-]"),
+            "MAXADU": (None, "Camera maximum ADU value possible"),
+            "E-ADU": (None, "Gain [e- per ADU]"),
             "EGAIN": (None, "Electronic gain"),
-            "CANFASTR": (self.camera.CanFastReadout, "Can camera fast readout"),
+            "CANFASTR": (None, "Can camera fast readout"),
             "READMDS": (None, "Possible readout modes"),
             "GAINS": (None, "Possible electronic gains"),
             "GAINMIN": (None, "Minimum possible electronic gain"),
@@ -2499,7 +2502,7 @@ class Observatory:
             "OFFSETS": (None, "Possible offsets"),
             "OFFSETMN": (None, "Minimum possible offset"),
             "OFFSETMX": (None, "Maximum possible offset"),
-            "CAMSUPAC": (str(self.camera.SupportedActions), "Camera supported actions"),
+            "CAMSUPAC": (None, "Camera supported actions"),
         }
         try:
             info["PCNTCOMP"] = (self.camera.PercentCompleted, info["PCNTCOMP"][1])
@@ -2604,7 +2607,44 @@ class Observatory:
         except:
             pass
         try:
+            info["CANINTF"] = (self.camera.InterfaceVersion, info["CANINTF"][1])
+        except:
+            pass
+        try:
+            info["SENSOR"] = (self.camera.SensorName, info["SENSOR"][1])
+        except:
+            pass
+        try:
+            info["MINEXP"] = (self.camera.ExposureMin, info["MINEXP"][1])
+            info["MAXEXP"] = (self.camera.ExposureMax, info["MAXEXP"][1])
+        except:
+            pass
+        try:
+            info["EXPRESL"] = (self.camera.ExposureResolution, info["EXPRESL"][1])
+        except:
+            pass
+        try:
+            info["FULLWELL"] = (self.camera.FullWellCapacity, info["FULLWELL"][1])
+        except:
+            pass
+        try:
+            info["MAXADU"] = (self.camera.MaxADU, info["MAXADU"][1])
+        except:
+            pass
+        try:
+            info["E-ADU"] = (self.camera.ElectronsPerADU, info["E-ADU"][1])
+        except:
+            pass
+        try:
             info["EGAIN"] = (self.camera.Gain, info["EGAIN"][1])
+        except:
+            pass
+        try:
+            info["CANFASTR"] = (self.camera.CanFastReadout, info["CANFASTR"][1])
+        except:
+            pass
+        try:
+            info["CAMSUPAC"] = (str(self.camera.SupportedActions), info["CAMSUPAC"][1])
         except:
             pass
 
@@ -3421,10 +3461,16 @@ class Observatory:
             ),
             "TELTRCKS": (str(self.telescope.TrackingRates), "Telescope tracking rates"),
             "TELSUPAC": (
-                str(self.telescope.SupportedActions),
+                None,
                 "Telescope supported actions",
             ),
         }
+        # Sometimes, TELDRV has /r or /n in it and it breaks
+        # This is a hack to fix that
+        info["TELDRV"] = (
+            info["TELDRV"][0].replace("\r", "\\r").replace("\n", "\\n"),
+            info["TELDRV"][1],
+        )
         try:
             info["TELALT"] = (self.telescope.Altitude, info["TELALT"][1])
         except:
@@ -3582,6 +3628,13 @@ class Observatory:
             info["TELALN"] = (
                 ["AltAz", "Polar", "GermanPolar"][self.telescope.AlignmentMode],
                 info["TELALN"][1],
+            )
+        except:
+            pass
+        try:
+            info["TELSUPAC"] = (
+                str(self.telescope.SupportedActions),
+                info["TELSUPAC"][1],
             )
         except:
             pass
@@ -3944,7 +3997,7 @@ class Observatory:
             )
         else:
             self._filters[position] = (
-                char(value) if value is not None or value != "" else None
+                chr(value) if value is not None or value != "" else None
             )
         self._config["filter_wheel"]["filters"] = (
             ", ".join(self._filters) if self._filters is not None else ""

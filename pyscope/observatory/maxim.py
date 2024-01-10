@@ -3,6 +3,7 @@ import platform
 import time
 
 from astropy.time import Time
+from win32com.client import Dispatch
 
 from .autofocus import Autofocus
 from .camera import Camera
@@ -20,7 +21,7 @@ class Maxim(Device):
             raise Exception("This class is only available on Windows.")
         else:
             from win32com.client import Dispatch
-
+            print("Running Windows")
             self._app = Dispatch("MaxIm.Application")
             self._app.LockApp = True
 
@@ -191,7 +192,8 @@ class _MaximCamera(Camera):
     @property
     def CanFastReadout(self):
         logger.debug("_MaximCameraCanFastReadout called")
-        raise NotImplementedError
+        # Not implemented, return False
+        return False
 
     @property
     def CanGetCoolerPower(self):
@@ -232,6 +234,21 @@ class _MaximCamera(Camera):
     def CoolerPower(self):
         logger.debug("_MaximCameraCoolerPower called")
         return self._com_object.CoolerPower
+
+    @property
+    def Description(self):
+        logger.debug("_MaximCameraDescription called")
+        return "MaxIm camera for pyscope"
+
+    @property
+    def DriverVersion(self):
+        logger.debug("_MaximCameraDriverVersion called")
+        return "Custom pyscope MaxIm driver"
+
+    @property
+    def DriverInfo(self):
+        logger.debug("_MaximCameraDriverInfo called")
+        return "Custom pyscope MaxIm driver"
 
     @property
     def ElectronsPerADU(self):
@@ -291,7 +308,12 @@ class _MaximCamera(Camera):
     @property
     def Gains(self):
         logger.debug("_MaximCameraGains called")
-        return self._com_object.Speeds
+        return self._com_object.Speeds.replace("(", "").replace(")", "")
+
+    @property
+    def HasFilterWheel(self):
+        logger.debug("_MaximCameraHasFilterWheel called")
+        return self._com_object.HasFilterWheel
 
     @property
     def HasShutter(self):
@@ -317,6 +339,11 @@ class _MaximCamera(Camera):
     def ImageReady(self):
         logger.debug("_MaximCameraImageReady called")
         return self._com_object.ImageReady
+
+    @property
+    def InterfaceVersion(self):
+        logger.debug("_MaximCameraInterfaceVersion called")
+        raise NotImplementedError
 
     @property
     def IsPulseGuiding(self):
