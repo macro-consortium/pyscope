@@ -5,7 +5,6 @@ import time
 import click
 from win32com.client import Dispatch
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
