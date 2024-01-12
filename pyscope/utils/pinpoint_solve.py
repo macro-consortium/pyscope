@@ -5,18 +5,7 @@ import time
 import click
 from win32com.client import Dispatch
 
-# Remove default stream handler
-logging.getLogger().handlers = []
-
-logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
-logger.propagate = False
-
-
-def setup_logger():
-    # Add a StreamHandler to log to the console
-    console_handler = logging.StreamHandler()
-    logger.addHandler(console_handler)
 
 
 def save_image(filepath):
@@ -60,7 +49,54 @@ def platesolve_image(filepath, new_filepath):
     type=click.Path(),
     help="""Directory to save solved images to. If not specified, solved images will be saved to the same directory as the input images.""",
 )
-def pinpoint_solve(input_dir, output_dir=None):
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    type=click.IntRange(0, 1),
+    default=0,
+    help="""Verbosity level. -v prints info messages""",
+)
+def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
+    """ Platesolve images in input_dir and save them to output_dir. \b
+
+    Platesolve images in input_dir and save them to output_dir. If output_dir is not specified, solved images will be saved to the same directory as the input images.
+    Usage: python pinpoint_solve.py -i input_dir -o output_dir
+
+    Parameters
+    ----------
+    input_dir : str
+        Directory containing images to solve.
+    output_dir : str (optional)
+        Directory to save solved images to. If not specified, solved images will be saved to the same directory as the input images.
+    verboxe : int (optional), default=-1
+        Verbosity level. -v prints info messages
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    File directory structure::
+
+        cwd/
+            test_images/
+                image1.fit
+                image2.fit
+                image3.fit
+            solved_images/
+    
+    Command
+        `python pinpoint_solve.py -i "test_images" -o "solved_images"`
+
+    .. Note::
+        You may also pass in absolute paths for `input_dir` and `output_dir`.
+    """
+    if verbose > -1:
+        logger.setLevel(int(10 * (2-verbose)))
+        logger.addHandler(logging.StreamHandler())
+    logger.debug(f"Starting pinpoint_solve_cli({input_dir}, {output_dir})")
     # Add input_dir to the end of the current working directory if it is not an absolute path
     if not os.path.isabs(input_dir):
         input_dir = os.path.join(os.getcwd(), input_dir)
@@ -83,7 +119,10 @@ def pinpoint_solve(input_dir, output_dir=None):
     for filepath, new_filepath in zip(day_filepaths, new_filepaths):
         platesolve_image(filepath, new_filepath)
 
+    logger.debug(f"Finished pinpoint_solve_cli({input_dir}, {output_dir})")
 
-if __name__ == "__main__":
-    setup_logger()
-    pinpoint_solve()
+pinpoint_solve = pinpoint_solve_cli.callback
+
+
+# if __name__ == "__main__":
+#     pinpoint_solve_cli()
