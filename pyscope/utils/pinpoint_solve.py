@@ -58,7 +58,7 @@ def platesolve_image(filepath, new_filepath):
     help="""Verbosity level. -v prints info messages""",
 )
 def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
-    """ Platesolve images in input_dir and save them to output_dir. \b
+    """Platesolve images in input_dir and save them to output_dir. \b
 
     Platesolve images in input_dir and save them to output_dir. If output_dir is not specified, solved images will be saved to the same directory as the input images.
     Usage: python pinpoint_solve.py -i input_dir -o output_dir
@@ -86,7 +86,7 @@ def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
                 image2.fit
                 image3.fit
             solved_images/
-    
+
     Command
         `python pinpoint_solve.py -i "test_images" -o "solved_images"`
 
@@ -94,7 +94,7 @@ def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
         You may also pass in absolute paths for `input_dir` and `output_dir`.
     """
     if verbose > -1:
-        logger.setLevel(int(10 * (2-verbose)))
+        logger.setLevel(int(10 * (2 - verbose)))
         logger.addHandler(logging.StreamHandler())
     logger.debug(f"Starting pinpoint_solve_cli({input_dir}, {output_dir})")
     # Add input_dir to the end of the current working directory if it is not an absolute path
@@ -120,6 +120,7 @@ def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
         platesolve_image(filepath, new_filepath)
 
     logger.debug(f"Finished pinpoint_solve_cli({input_dir}, {output_dir})")
+
 
 pinpoint_solve = pinpoint_solve_cli.callback
 
