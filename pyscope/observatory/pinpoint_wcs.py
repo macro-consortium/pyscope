@@ -12,6 +12,13 @@ from .wcs import WCS
 
 
 class PinpointWCS(WCS):
+    """PinpointWCS is a wrapper around the PinPoint plate solver. \b
+
+    PinPoint is a commercial plate solver. This class is a wrapper around the
+    COM interface to PinPoint. The 64-bit version of PinPoint is required (it is
+    a separate download from the 32-bit version, and may be called an add-on).
+    """
+
     def __init__(self):
         logger.debug("PinpointWCS.__init__() called")
         if platform.system() != "Windows":
