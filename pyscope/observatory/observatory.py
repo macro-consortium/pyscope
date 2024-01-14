@@ -35,6 +35,7 @@ class Observatory:
         logger.debug("config_path: %s" % config_path)
         logger.debug("kwargs: %s" % kwargs)
 
+        # TODO: Add allowed_overwrite keys to config file and parser to check which keys can be overwritten (especially from MaxIm).
         self._config = configparser.ConfigParser()
         self._config["site"] = {}
         self._config["camera"] = {}
@@ -1150,6 +1151,89 @@ class Observatory:
                 frame=coord.FK4(equinox="B1950"),
             )
         return obj
+    
+    def generate_header_dict(self):
+        """Generates the header information for the observatory as a dictionary
+        
+        Returns
+        -------
+        dict
+            The header information
+        """
+        hdr_dict = {}
+        hdr_dict.update(self.observatory_info)
+        hdr_dict.update(self.camera_info)
+        hdr_dict.update(self.telescope_info)
+        hdr_dict.update(self.cover_calibrator_info)
+        hdr_dict.update(self.dome_info)
+        hdr_dict.update(self.filter_wheel_info)
+        hdr_dict.update(self.focuser_info)
+        hdr_dict.update(self.observing_conditions_info)
+        hdr_dict.update(self.rotator_info)
+        hdr_dict.update(self.safety_monitor_info)
+        hdr_dict.update(self.switch_info)
+        hdr_dict.update(self.threads_info)
+        hdr_dict.update(self.autofocus_info) 
+        hdr_dict.update(self.wcs_info)
+
+        return hdr_dict
+    
+    def generate_header_info(self, filename, frametyp=None, custom_header=None, history=None, maxim=False, allowed_overwrite=[]):
+        """Generates the header information for the observatory"""
+        if not maxim:
+            hdr = fits.Header()
+        else:
+            hdr = fits.getheader(filename)
+
+        # The commented out part is unnecessary, as the fits header is automatically generated
+        # when the image is saved.
+        # hdr["SIMPLE"] = True
+        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
+        # hdr["NAXIS"] = (2, "number of axes")
+        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
+        # hdr["NAXIS2"] = (
+        #     len(img_array[0]),
+        #     "next to fastest changing axis",
+        # )
+        hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
+        hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
+        if maxim:
+            hdr["SWUPDATE"] = ("pyscope", "Software used to update file")
+            hdr["SWVERSIO"] = (__version__, "Version of software used to update file")
+        else:
+            hdr["SWCREATE"] = ("pyscope", "Software used to create file")
+            hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
+        hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
+
+        if frametyp is not None:
+            hdr["FRAMETYP"] = (frametyp, "Frame type")
+        elif self.last_camera_shutter_status:
+            hdr["FRAMETYP"] = ("Light", "Frame type")
+        elif not self.last_camera_shutter_status:
+            hdr["FRAMETYP"] = ("Dark", "Frame type")
+
+        hdr_dict = self.generate_header_dict()
+
+        if custom_header is not None:
+            hdr_dict.update(custom_header)
+
+        self.safe_update_header(hdr, hdr_dict, maxim=maxim, allowed_overwrite=allowed_overwrite)
+
+        if history is not None:
+            if type(history) is str:
+                history = [history]
+            for hist in history:
+                hdr["HISTORY"] = hist
+
+        return hdr
+
+    def safe_update_header(self, hdr, hdr_dict, maxim=False, allowed_overwrite=[]):
+        """Safely updates the header information"""
+        if maxim:
+            # Only keep the allowed_overwrite keys in the hdr_dict
+            hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+        hdr.update(hdr_dict)
+            
 
     def save_last_image(
         self,
@@ -1171,60 +1255,74 @@ class Observatory:
         if not self.camera.ImageReady:
             logger.exception("Image is not ready, cannot be saved")
             return False
+        
+        maxim = self.camera_driver.lower() in ("maxim", "maximdl")
 
-        # Read out the image array
-        img_array = self.camera.ImageArray
+        # If camera driver is Maxim, use Maxim to save the image
+        # This is because Maxim does not pass some of the header information
+        # to the camera object, so it is not available to be saved.
+        if not maxim:
+            # Read out the image array
+            img_array = self.camera.ImageArray
 
-        if img_array is None or len(img_array) == 0 or len(img_array) == 0:
-            logger.exception("Image array is empty, cannot be saved")
-            return False
+            if img_array is None or len(img_array) == 0 or len(img_array) == 0:
+                logger.exception("Image array is empty, cannot be saved")
+                return False 
+        else:
+            logger.info("Using Maxim to save image")
+            self.camera.VerifyLatestExposure()
+            self.camera.SaveImageAsFits(filename)
+            img_array = fits.getdata(filename)
+        
+        # Moved below to separate function
+        # hdr = fits.Header()
 
-        hdr = fits.Header()
+        # hdr["SIMPLE"] = True
+        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
+        # hdr["NAXIS"] = (2, "number of axes")
+        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
+        # hdr["NAXIS2"] = (
+        #     len(img_array[0]),
+        #     "next to fastest changing axis",
+        # )
+        # hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
+        # hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
+        # hdr["SWCREATE"] = ("pyscope", "Software used to create file")
+        # hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
+        # hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
 
-        hdr["SIMPLE"] = True
-        hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
-        hdr["NAXIS"] = (2, "number of axes")
-        hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
-        hdr["NAXIS2"] = (
-            len(img_array[0]),
-            "next to fastest changing axis",
-        )
-        hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
-        hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
-        hdr["SWCREATE"] = ("pyscope", "Software used to create file")
-        hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
-        hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
+        # if frametyp is not None:
+        #     hdr["FRAMETYP"] = (frametyp, "Frame type")
+        # elif self.last_camera_shutter_status:
+        #     hdr["FRAMETYP"] = ("Light", "Frame type")
+        # elif not self.last_camera_shutter_status:
+        #     hdr["FRAMETYP"] = ("Dark", "Frame type")
 
-        if frametyp is not None:
-            hdr["FRAMETYP"] = (frametyp, "Frame type")
-        elif self.last_camera_shutter_status:
-            hdr["FRAMETYP"] = ("Light", "Frame type")
-        elif not self.last_camera_shutter_status:
-            hdr["FRAMETYP"] = ("Dark", "Frame type")
+        # hdr.update(self.observatory_info)
+        # hdr.update(self.camera_info)
+        # hdr.update(self.telescope_info)
+        # hdr.update(self.cover_calibrator_info)
+        # hdr.update(self.dome_info)
+        # hdr.update(self.filter_wheel_info)
+        # hdr.update(self.focuser_info)
+        # hdr.update(self.observing_conditions_info)
+        # hdr.update(self.rotator_info)
+        # hdr.update(self.safety_monitor_info)
+        # hdr.update(self.switch_info)
+        # hdr.update(self.threads_info)
+        # hdr.update(self.autofocus_info)
+        # hdr.update(self.wcs_info)
 
-        hdr.update(self.observatory_info)
-        hdr.update(self.camera_info)
-        hdr.update(self.telescope_info)
-        hdr.update(self.cover_calibrator_info)
-        hdr.update(self.dome_info)
-        hdr.update(self.filter_wheel_info)
-        hdr.update(self.focuser_info)
-        hdr.update(self.observing_conditions_info)
-        hdr.update(self.rotator_info)
-        hdr.update(self.safety_monitor_info)
-        hdr.update(self.switch_info)
-        hdr.update(self.threads_info)
-        hdr.update(self.autofocus_info)
-        hdr.update(self.wcs_info)
+        # if custom_header is not None:
+        #     hdr.update(custom_header)
 
-        if custom_header is not None:
-            hdr.update(custom_header)
+        # if history is not None:
+        #     if type(history) is str:
+        #         history = [history]
+        #     for hist in history:
+        #         hdr["HISTORY"] = hist
 
-        if history is not None:
-            if type(history) is str:
-                history = [history]
-            for hist in history:
-                hdr["HISTORY"] = hist
+        hdr = self.generate_header_info(filename, frametyp, custom_header, history)
 
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
