@@ -125,6 +125,10 @@ class _MaximCamera(Camera):
         )
         raise NotImplementedError
 
+    def SaveImageAsFits(self, filename):
+        logger.debug(f"SaveImageAsFits called with filename={filename}")
+        self._com_object.SaveImage(filename)
+
     def StartExposure(self, Duration, Light):
         logger.debug(f"StartExposure called with Duration={Duration}, Light={Light}")
         self._last_exposure_duration = Duration
@@ -134,6 +138,44 @@ class _MaximCamera(Camera):
     def StopExposure(self):
         logger.debug("_MaximCameraStopExposure called")
         self._com_object.AbortExposure()
+
+    def VerifyLatestExposure(self):
+        """Verify that the last exposure is complete. \b
+
+        Make sure that the image that was returned by Maxim was in fact generated
+        by the most recent call to Expose(). I have seen cases where a camera
+        dropout occurs (e.g. if a USB cable gets unplugged and plugged back in)
+        where Maxim will claim that an exposure is complete but just return the
+        same (old) image over and over again.
+
+        Return without error if the image from Maxim appears to be newer than
+        the supplied UTC datetime object based on the DATE-OBS header.
+        Raise an exception if the image is older or if there is an error
+        accessing the image.
+        """
+        logger.debug("_MaximCameraVerifyLatestExposure called")
+
+        try:
+            # Change to document
+            image = self._app.Document
+        except Exception as e:
+            raise Exception(f"Unable to access MaxIm camera image: {e}")
+
+        if image is None:
+            raise Exception("No current image available from MaxIm")
+
+        # Get the DATE-OBS header
+        image_timestamp = image.GetFITSKey["DATE-OBS"]
+        image_datetime = Time(image_timestamp, format="fits")
+
+        logger.debug(f"Image timestamp: {image_timestamp}")
+        logger.debug(f"Image timestamp UTC: {image_datetime}")
+        logger.debug(f"Exposure start time: {self._last_exposure_start_time}")
+
+        if image_datetime < self._last_exposure_start_time:
+            raise Exception(
+                "Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera"
+            )
 
     @property
     def BayerOffsetX(self):
