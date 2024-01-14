@@ -1151,10 +1151,10 @@ class Observatory:
                 frame=coord.FK4(equinox="B1950"),
             )
         return obj
-    
+
     def generate_header_dict(self):
         """Generates the header information for the observatory as a dictionary
-        
+
         Returns
         -------
         dict
@@ -1173,12 +1173,20 @@ class Observatory:
         hdr_dict.update(self.safety_monitor_info)
         hdr_dict.update(self.switch_info)
         hdr_dict.update(self.threads_info)
-        hdr_dict.update(self.autofocus_info) 
+        hdr_dict.update(self.autofocus_info)
         hdr_dict.update(self.wcs_info)
 
         return hdr_dict
-    
-    def generate_header_info(self, filename, frametyp=None, custom_header=None, history=None, maxim=False, allowed_overwrite=[]):
+
+    def generate_header_info(
+        self,
+        filename,
+        frametyp=None,
+        custom_header=None,
+        history=None,
+        maxim=False,
+        allowed_overwrite=[],
+    ):
         """Generates the header information for the observatory"""
         if not maxim:
             hdr = fits.Header()
@@ -1217,7 +1225,9 @@ class Observatory:
         if custom_header is not None:
             hdr_dict.update(custom_header)
 
-        self.safe_update_header(hdr, hdr_dict, maxim=maxim, allowed_overwrite=allowed_overwrite)
+        self.safe_update_header(
+            hdr, hdr_dict, maxim=maxim, allowed_overwrite=allowed_overwrite
+        )
 
         if history is not None:
             if type(history) is str:
@@ -1229,11 +1239,11 @@ class Observatory:
 
     def safe_update_header(self, hdr, hdr_dict, maxim=False, allowed_overwrite=[]):
         """Safely updates the header information"""
+        logger.debug(f"Observatory.safe_update_header called")
         if maxim:
             # Only keep the allowed_overwrite keys in the hdr_dict
             hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
         hdr.update(hdr_dict)
-            
 
     def save_last_image(
         self,
@@ -1244,6 +1254,7 @@ class Observatory:
         overwrite=False,
         custom_header=None,
         history=None,
+        allowed_overwrite=[],
         **kwargs,
     ):
         """Saves the current image"""
@@ -1255,7 +1266,7 @@ class Observatory:
         if not self.camera.ImageReady:
             logger.exception("Image is not ready, cannot be saved")
             return False
-        
+
         maxim = self.camera_driver.lower() in ("maxim", "maximdl")
 
         # If camera driver is Maxim, use Maxim to save the image
@@ -1267,13 +1278,13 @@ class Observatory:
 
             if img_array is None or len(img_array) == 0 or len(img_array) == 0:
                 logger.exception("Image array is empty, cannot be saved")
-                return False 
+                return False
         else:
             logger.info("Using Maxim to save image")
             self.camera.VerifyLatestExposure()
             self.camera.SaveImageAsFits(filename)
             img_array = fits.getdata(filename)
-        
+
         # Moved below to separate function
         # hdr = fits.Header()
 
@@ -1322,7 +1333,9 @@ class Observatory:
         #     for hist in history:
         #         hdr["HISTORY"] = hist
 
-        hdr = self.generate_header_info(filename, frametyp, custom_header, history)
+        hdr = self.generate_header_info(
+            filename, frametyp, custom_header, history, maxim, allowed_overwrite
+        )
 
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
