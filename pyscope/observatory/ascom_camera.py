@@ -257,7 +257,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def ImageArray(self):
-        """Return the image array as a numpy array of the correct data type and in 
+        """Return the image array as a numpy array of the correct data type and in
         standard FITS orientation. \b
 
         Return the image array as a numpy array of the correct data type. The
