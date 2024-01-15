@@ -7,6 +7,7 @@ User Guide
   :maxdepth: 2
 
   examples
+  header
   logging
   config
   help
