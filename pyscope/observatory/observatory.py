@@ -2402,7 +2402,8 @@ class Observatory:
     @property
     def autofocus_info(self):
         logger.debug("Observatory.autofocus_info() called")
-        return {"AUTODRIV": self.autofocus_driver}
+        info = {"AUTODRIV": (self.autofocus_driver, "Autofocus driver")}
+        return info
 
     @property
     def camera_info(self):
@@ -2826,7 +2827,7 @@ class Observatory:
     @property
     def observatory_info(self):
         logger.debug("Observatory.observatory_info() called")
-        return {
+        info = {
             "OBSNAME": (self.site_name, "Observatory name"),
             "OBSINSTN": (self.instrument_name, "Instrument name"),
             "OBSINSTD": (self.instrument_description, "Instrument description"),
@@ -2838,6 +2839,7 @@ class Observatory:
             "XPIXSCAL": (self.pixel_scale[0], "Observatory x-pixel scale"),
             "YPIXSCAL": (self.pixel_scale[1], "Observatory y-pixel scale"),
         }
+        return info
 
     @property
     def observing_conditions_info(self):
@@ -3168,39 +3170,41 @@ class Observatory:
             for i in range(len(self.safety_monitor)):
                 try:
                     self.safety_monitor[i].Connected = True
+                    # Should likely be broken into multiple try/except blocks
+                    info = {
+                        ("SM%iCONN" % i): (True, "Safety monitor connected"),
+                        ("SM%iISSAF" % i): (
+                            self.safety_monitor[i].IsSafe,
+                            "Safety monitor safe",
+                        ),
+                        ("SM%iNAME" % i): (
+                            self.safety_monitor[i].Name,
+                            "Safety monitor name",
+                        ),
+                        ("SM%iDRVER" % i): (
+                            self.safety_monitor[i].DriverVersion,
+                            "Safety monitor driver version",
+                        ),
+                        ("SM%iDRV" % i): (
+                            str(self.safety_monitor[i].DriverInfo),
+                            "Safety monitor driver name",
+                        ),
+                        ("SM%iINTF" % i): (
+                            self.safety_monitor[i].InterfaceVersion,
+                            "Safety monitor interface version",
+                        ),
+                        ("SM%iDESC" % i): (
+                            self.safety_monitor[i].Description,
+                            "Safety monitor description",
+                        ),
+                        ("SM%iSUPAC" % i): (
+                            str(self.safety_monitor[i].SupportedActions),
+                            "Safety monitor supported actions",
+                        ),
+                    }
                 except:
                     info = {"SM%iCONN" % i: (False, "Safety monitor connected")}
-                info = {
-                    ("SM%iCONN" % i): (True, "Safety monitor connected"),
-                    ("SM%iISSAF" % i): (
-                        self.safety_monitor[i].IsSafe,
-                        "Safety monitor safe",
-                    ),
-                    ("SM%iNAME" % i): (
-                        self.safety_monitor[i].Name,
-                        "Safety monitor name",
-                    ),
-                    ("SM%iDRVER" % i): (
-                        self.safety_monitor[i].DriverVersion,
-                        "Safety monitor driver version",
-                    ),
-                    ("SM%iDRV" % i): (
-                        str(self.safety_monitor[i].DriverInfo),
-                        "Safety monitor driver name",
-                    ),
-                    ("SM%iINTF" % i): (
-                        self.safety_monitor[i].InterfaceVersion,
-                        "Safety monitor interface version",
-                    ),
-                    ("SM%iDESC" % i): (
-                        self.safety_monitor[i].Description,
-                        "Safety monitor description",
-                    ),
-                    ("SM%iSUPAC" % i): (
-                        str(self.safety_monitor[i].SupportedActions),
-                        "Safety monitor supported actions",
-                    ),
-                }
+                
                 all_info.append(info)
         else:
             return {"SM0CONN": (False, "Safety monitor connected")}
@@ -3220,61 +3224,67 @@ class Observatory:
             for i in range(len(self.switch)):
                 try:
                     self.switch.Connected = True
+                    try:
+                        info = {
+                            ("SW%iCONN" % i): (True, "Switch connected"),
+                            ("SW%iNAME" % i): (self.switch[i].Name, "Switch name"),
+                            ("SW%iDRVER" % i): (
+                                self.switch[i].DriverVersion,
+                                "Switch driver version",
+                            ),
+                            ("SW%iDRV" % i): (
+                                str(self.switch[i].DriverInfo),
+                                "Switch driver name",
+                            ),
+                            ("SW%iINTF" % i): (
+                                self.switch[i].InterfaceVersion,
+                                "Switch interface version",
+                            ),
+                            ("SW%iDESC" % i): (
+                                self.switch[i].Description,
+                                "Switch description",
+                            ),
+                            ("SW%iSUPAC" % i): (
+                                str(self.switch[i].SupportedActions),
+                                "Switch supported actions",
+                            ),
+                            ("SW%iMAXSW" % i): (
+                                self.switch[i].MaxSwitch,
+                                "Switch maximum switch",
+                            ),
+                        }
+                        for j in range(self.switch[i].MaxSwitch):
+                            try:
+                                info[("SW%iSW%iNM" % (i, j))] = (
+                                    self.switch[i].GetSwitchName(j),
+                                    "Switch %i Device %i name" % (i, j),
+                                )
+                                info[("SW%iSW%iDS" % (i, j))] = (
+                                    self.switch[i].GetSwitchDescription(j),
+                                    "Switch %i Device %i description" % (i, j),
+                                )
+                                info[("SW%iSW%i" % (i, j))] = (
+                                    self.switch[i].GetSwitch(j),
+                                    "Switch %i Device %i state" % (i, j),
+                                )
+                                info[("SW%iSW%iMN" % (i, j))] = (
+                                    self.switch[i].MinSwitchValue(j),
+                                    "Switch %i Device %i minimum value" % (i, j),
+                                )
+                                info[("SW%iSW%iMX" % (i, j))] = (
+                                    self.switch[i].MaxSwitchValue(j),
+                                    "Switch %i Device %i maximum value" % (i, j),
+                                )
+                                info[("SW%iSW%iST" % (i, j))] = (
+                                    self.switch[i].SwitchStep(j),
+                                    "Switch %i Device %i step" % (i, j),
+                                )
+                            except Exception as e:
+                                logger.debug(f"Sub-switch {j} of switch {i} gave the following error: {e}")
+                    except Exception as e:
+                        logger.debug(f"Switch {i} gives the following error: {e}")
                 except:
                     info = {("SW%iCONN" % i): (False, "Switch connected")}
-                info = {
-                    ("SW%iCONN" % i): (True, "Switch connected"),
-                    ("SW%iNAME" % i): (self.switch[i].Name, "Switch name"),
-                    ("SW%iDRVER" % i): (
-                        self.switch[i].DriverVersion,
-                        "Switch driver version",
-                    ),
-                    ("SW%iDRV" % i): (
-                        str(self.switch[i].DriverInfo),
-                        "Switch driver name",
-                    ),
-                    ("SW%iINTF" % i): (
-                        self.switch[i].InterfaceVersion,
-                        "Switch interface version",
-                    ),
-                    ("SW%iDESC" % i): (
-                        self.switch[i].Description,
-                        "Switch description",
-                    ),
-                    ("SW%iSUPAC" % i): (
-                        str(self.switch[i].SupportedActions),
-                        "Switch supported actions",
-                    ),
-                    ("SW%iMAXSW" % i): (
-                        self.switch[i].MaxSwitch,
-                        "Switch maximum switch",
-                    ),
-                }
-                for j in range(self.switch[i].MaxSwitch):
-                    info[("SW%iSW%iNM" % (i, j))] = (
-                        self.switch[i].GetSwitchName(j),
-                        "Switch %i Device %i name" % (i, j),
-                    )
-                    info[("SW%iSW%iDS" % (i, j))] = (
-                        self.switch[i].GetSwitchDescription(j),
-                        "Switch %i Device %i description" % (i, j),
-                    )
-                    info[("SW%iSW%i" % (i, j))] = (
-                        self.switch[i].GetSwitch(j),
-                        "Switch %i Device %i state" % (i, j),
-                    )
-                    info[("SW%iSW%iMN" % (i, j))] = (
-                        self.switch[i].MinSwitchValue(j),
-                        "Switch %i Device %i minimum value" % (i, j),
-                    )
-                    info[("SW%iSW%iMX" % (i, j))] = (
-                        self.switch[i].MaxSwitchValue(j),
-                        "Switch %i Device %i maximum value" % (i, j),
-                    )
-                    info[("SW%iSW%iST" % (i, j))] = (
-                        self.switch[i].SwitchStep(j),
-                        "Switch %i Device %i step" % (i, j),
-                    )
 
                 all_info.append(info)
         else:
@@ -3590,7 +3600,7 @@ class Observatory:
     @property
     def threads_info(self):
         logger.debug("Observatory.threads_info() called")
-        return {
+        info = {
             "DEROTATE": (
                 not self._derotation_thread is None,
                 "Is derotation thread active",
@@ -3604,11 +3614,13 @@ class Observatory:
                 "Is status monitor thread active",
             ),
         }
+        return info
 
     @property
     def wcs_info(self):
         logger.debug("Observatory.wcs_info() called")
-        return {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
+        info = {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
+        return info
 
     @property
     def observatory_location(self):
