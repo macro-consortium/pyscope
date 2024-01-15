@@ -61,7 +61,7 @@ def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
     """Platesolve images in input_dir and save them to output_dir using PinPoint in MaxIm. \b
 
     Platesolve images in input_dir and save them to output_dir. If output_dir is not specified, solved images will be saved to the same directory as the input images.
-    
+
     CLI Usage: `python pinpoint_solve.py -i input_dir -o output_dir`
 
     .. Note::
