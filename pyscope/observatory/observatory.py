@@ -3204,7 +3204,7 @@ class Observatory:
                     }
                 except:
                     info = {"SM%iCONN" % i: (False, "Safety monitor connected")}
-                
+
                 all_info.append(info)
         else:
             return {"SM0CONN": (False, "Safety monitor connected")}
@@ -3280,7 +3280,9 @@ class Observatory:
                                     "Switch %i Device %i step" % (i, j),
                                 )
                             except Exception as e:
-                                logger.debug(f"Sub-switch {j} of switch {i} gave the following error: {e}")
+                                logger.debug(
+                                    f"Sub-switch {j} of switch {i} gave the following error: {e}"
+                                )
                     except Exception as e:
                         logger.debug(f"Switch {i} gives the following error: {e}")
                 except:
