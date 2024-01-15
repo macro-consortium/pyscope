@@ -1,9 +1,9 @@
 import logging
 import os
+import platform
 import time
 
 import click
-from win32com.client import Dispatch
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,14 @@ def platesolve_image(filepath, new_filepath):
     help="""Verbosity level. -v prints info messages""",
 )
 def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
-    """Platesolve images in input_dir and save them to output_dir. \b
+    """Platesolve images in input_dir and save them to output_dir using PinPoint in MaxIm. \b
 
     Platesolve images in input_dir and save them to output_dir. If output_dir is not specified, solved images will be saved to the same directory as the input images.
-    Usage: python pinpoint_solve.py -i input_dir -o output_dir
+    
+    CLI Usage: `python pinpoint_solve.py -i input_dir -o output_dir`
+
+    .. Note::
+        This script requires MaxIm DL to be installed on your system, as it uses the PinPoint solver in MaxIm DL. \b
 
     Parameters
     ----------
@@ -97,6 +101,10 @@ def pinpoint_solve_cli(input_dir, output_dir=None, verbose=-1):
         logger.setLevel(int(10 * (2 - verbose)))
         logger.addHandler(logging.StreamHandler())
     logger.debug(f"Starting pinpoint_solve_cli({input_dir}, {output_dir})")
+    if platform.system() != "Windows":
+        raise Exception("PinPoint is only available on Windows.")
+    else:
+        from win32com.client import Dispatch
     # Add input_dir to the end of the current working directory if it is not an absolute path
     if not os.path.isabs(input_dir):
         input_dir = os.path.join(os.getcwd(), input_dir)
