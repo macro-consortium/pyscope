@@ -5,7 +5,6 @@ import subprocess
 import sys
 from urllib.parse import quote
 
-
 from packaging.version import parse
 from sphinx_astropy.conf.v2 import *
 
@@ -16,7 +15,6 @@ import headerCSVGenerator
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
 import pyscope
-
 
 project = "pyscope"
 copyright = "2023, Walter Golay"
@@ -65,7 +63,9 @@ extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
 # Generate CSV for header info
 print("Generating CSV for header info...")
-targetPath = os.path.join(os.path.dirname(__file__), "user_guide", "observatory_info.csv")
+targetPath = os.path.join(
+    os.path.dirname(__file__), "user_guide", "observatory_info.csv"
+)
 headerCSVGenerator.HeaderCSVGenerator().generate_csv(targetPath)
 
 
