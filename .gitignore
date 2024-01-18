@@ -70,6 +70,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/source/user_guide/observatory_info.csv
 
 # PyBuilder
 target/
@@ -140,3 +141,4 @@ dmypy.json
 *OmniSim*
 !coverage.xml
 docs/source/api/auto_api/
+pgHardware

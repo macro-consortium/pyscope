@@ -51,24 +51,32 @@ class SimulatorServer:
 
         # os.chmod(dirname + "/ascom.alpaca.simulators.exe", 0o755)  # added .exe
 
-        # if platform.system() == "Darwin":
-        #     self.process = subprocess.Popen(
-        #         ("sudo " + dirname + "/ascom.alpaca.simulators"),
-        #         preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
-        # else:
-        #     self.process = subprocess.Popen(
-        #         (dirname + "/ascom.alpaca.simulators"),
-        #         preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
+        if platform.system() == "Darwin":
+            self.process = subprocess.Popen(
+                ("sudo " + dirname + "/ascom.alpaca.simulators"),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
+        elif platform.system() == "Linux":
+            self.process = subprocess.Popen(
+                ("sudo " + dirname + "/ascom.alpaca.simulators"),
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
+        else:
+            self.process = subprocess.Popen(
+                (dirname + "/ascom.alpaca.simulators"),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
 
         self.dirname = dirname
 
