@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 import shutil
+import pathlib
 
 # i will be working on this
 import click
@@ -109,17 +110,17 @@ logger = logging.getLogger(__name__)
 )
 @click.version_option()
 def calib_images_cli(
-    camera_type,
-    image_dir,
-    calib_dir,
-    raw_archive_dir,
-    in_place,
-    astro_scrappy,
-    bad_columns,
-    wcs,
-    zmag,
-    verbose,
-    fnames,
+    camera_type="ccd",
+    image_dir="./images/",
+    calib_dir=None,
+    raw_archive_dir="./images/raw/",
+    in_place=False,
+    astro_scrappy=(1, 3),
+    bad_columns="",
+    wcs=False,
+    zmag=False,
+    verbose=False,
+    fnames=[],
 ):
     """Calibrate a set of images by recursively selecting the
     appropriate flat, dark, and bias frame and then calling
@@ -189,9 +190,10 @@ def calib_images_cli(
             filt = ""
 
         try:
-            readout = hdr["READOUTM"]
+            readout = hdr["READOUTM"].replace(" ", "")
         except KeyError:
-            readout = hdr["READOUT"]
+            readout = hdr["READOUT"].replace(" ", "")
+
 
         try:
             exptime = round(hdr["EXPTIME"], 3)
@@ -208,66 +210,53 @@ def calib_images_cli(
         except:
             ybin = hdr["YBIN"]
 
-        # TODO: Update these names, recursively search for latest set
-        # each of these (flat, dark, bais) are calibration frames that are required for ccd_calib
-        #
-        # if the camera type is ccd, the bias frame is used
-        # if the camera type is cmos, the flat dark frame is used
-        #
-        # this implies that there are 4 possible directories that could exist, but
-        # only 3 would be used for a given camera type
-        #
-        # the 4 directories would live inside the calib_dir
-        #
-        # THIS IS THE PART THAT I AM LESS CONFIDENT ABOUT
-        # if the calib_dir is not passed when the calib_images_cli function is called,
-        # then the frame variables should look in the "default directory" for the latest set of calibration frames
-        #
-        # I have 2 questions, assuming this is the case:
-        # 1. what is the default directory? It it the current working directory? Previous directory?
-        # 2. why would the user not pass the calib_dir when calling the calib_images_cli function?
-        #
-        # For either case, I think the problem can be stated as follows:
-        # We have a series of calibration frames that are required for ccd_calib
-        # If the user passes a calib_dir, then we know where to look for the calibration frames
-        # If the user does not pass a calib_dir, then we need to recursively search for the latest set of
-        # calibration frames in the default directory
-        #
-        # Assuming that the problem is correctly stated, here is a potential solution:
 
-        # observatory_home
-        #     images
-        #         masters - where all the master images will live (maybe individual dirs later)
-        #     config
-        #     schedules
-        #     logs
-
-        # checkout setup-telrun
-
-        # go to macro/images to get images (raw, calibration) and write test in tests/test_calib_images.py
-
-        default_dir = "observatory_home/images/masters"  # NOTE: This assumes that the pyscope system is set up like this
+        observatory_home = os.getenv("observatory_home")
+        masters_dir = pathlib.Path(observatory_home + "/images/masters")
+        flat_frame = None
+        dark_frame = None
+        bias_frame = None
+        flat_dark_frame = None
         if calib_dir is None:
-            # recursive moment
-            for filename in glob(f"{default_dir}/*", recursive=True):
+            files = glob.glob(f"{masters_dir}/*", recursive=True)
+            for filename in files:
                 # find flat_frame, dark_frame, bias_frame, flat_dark_frame
-                with fits.getheader(filename) as hdr:
+                with fits.open(filename) as h:
+                    hdrf = h[0].header
                     # if the corresponding header values match, then set the appropriate frame
                     if (
-                        hdr["FILTER"] == filt
-                        and hdr["READOUTM"] == readout
-                        and hdr["EXPTIME"] == exptime
-                        and hdr["XBINNING"] == xbin
-                        and hdr["YBINNING"] == ybin
+                        "master_flat" in filename and "master_flat_dark" not in filename
+                        and hdrf["FILTER"] == filt
+                        and hdrf["READOUTM"] == readout
+                        and hdrf["EXPTIME"] == exptime
+                        and hdrf["XBINNING"] == xbin
+                        and hdrf["YBINNING"] == ybin
                     ):
-                        if "master_flat" in filename:
-                            flat_frame = filename
-                        elif "master_dark" in filename:
-                            dark_frame = filename
-                        elif "master_bias" in filename:
-                            bias_frame = filename
-                        elif "master_flat_dark" in filename:
-                            flat_dark_frame = filename
+                        flat_frame = pathlib.Path(filename)
+                    elif (
+                        "master_dark" in filename
+                        and hdrf["READOUTM"] == readout
+                        and hdrf["EXPTIME"] == exptime
+                        and hdrf["XBINNING"] == xbin
+                        and hdrf["YBINNING"] == ybin
+                        ):
+                        dark_frame = pathlib.Path(filename)
+                    elif (
+                        "master_bias" in filename
+                        and hdrf["READOUTM"] == readout
+                        and hdrf["XBINNING"] == xbin
+                        and hdrf["YBINNING"] == ybin
+                    ):
+                        bias_frame = pathlib.Path(filename)
+                    elif (
+                        "master_flat_dark" in filename
+                        and hdrf["READOUTM"] == readout
+                        and hdrf["EXPTIME"] == exptime
+                        and hdrf["XBINNING"] == xbin
+                        and hdrf["YBINNING"] == ybin
+                    ):
+                        flat_dark_frame = pathlib.Path(filename)
+                h.close()
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
@@ -277,31 +266,17 @@ def calib_images_cli(
 
         else:  # use the calib_dir passed by the user
             flat_frame = (
-                f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                pathlib.Path(f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts")
             )
             dark_frame = (
-                f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                pathlib.Path(f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts")
             )
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
-                bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+                bias_frame = pathlib.Path(f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts")
             elif camera_type == "cmos":
-                flat_dark_frame = f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-
-        # OLD SCRIPT
-        # flat_frame = (
-        #     f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        # )
-        # dark_frame = f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-
-        # # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
-        # if camera_type == "ccd":
-        #     bias_frame = f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
-        # elif camera_type == "cmos":
-        #     flat_dark_frame = (
-        #         f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-        #     )
+                flat_dark_frame = pathlib.Path(f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts")
 
         # for each image, print out the calibration frames being used
         logger.debug("Using calibration frames:")
@@ -323,7 +298,8 @@ def calib_images_cli(
             astro_scrappy=astro_scrappy,
             bad_columns=bad_columns,
             in_place=in_place,
-            fnames=fname,
+            verbose=verbose,
+            fnames=[fname],
         )
 
         # world coordinate system
