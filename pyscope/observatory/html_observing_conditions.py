@@ -282,7 +282,7 @@ class HTMLObservingConditions(ObservingConditions):
 
     def SensorDescription(self, PropertyName):
         logger.debug("HTMLObservingConditions.SensorDescription({PropertyName}) called")
-        return eval(f"self._{PropertyName.lower()}_keyword")
+        return str(eval(f"self._{PropertyName.lower()}_keyword"))
 
     def TimeSinceLastUpdate(self, PropertyName):
         logger.debug(
@@ -317,6 +317,21 @@ class HTMLObservingConditions(ObservingConditions):
     def CloudCover(self):
         logger.debug("HTMLObservingConditions.CloudCover property called")
         return self._cloud_cover
+    
+    @property
+    def Description(self):
+        logger.debug("HTMLObservingConditions.Description property called")
+        return "HTML Observing Conditions Driver"
+
+    @property
+    def DriverVersion(self):
+        logger.debug("HTMLObservingConditions.DriverVersion property called")
+        return None
+
+    @property
+    def DriverInfo(self):
+        logger.debug("HTMLObservingConditions.DriverInfo property called")
+        return "HTML Observing Conditions Driver"
 
     @property
     def DewPoint(self):
@@ -327,6 +342,16 @@ class HTMLObservingConditions(ObservingConditions):
     def Humidity(self):
         logger.debug("HTMLObservingConditions.Humidity property called")
         return self._humidity
+
+    @property
+    def InterfaceVersion(self):
+        logger.debug("HTMLObservingConditions.InterfaceVersion property called")
+        return 1
+
+    @property
+    def Name(self):
+        logger.debug("HTMLObservingConditions.Name property called")
+        return self._url
 
     @property
     def Pressure(self):
