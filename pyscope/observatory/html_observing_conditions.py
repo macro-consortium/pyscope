@@ -317,7 +317,7 @@ class HTMLObservingConditions(ObservingConditions):
     def CloudCover(self):
         logger.debug("HTMLObservingConditions.CloudCover property called")
         return self._cloud_cover
-    
+
     @property
     def Description(self):
         logger.debug("HTMLObservingConditions.Description property called")

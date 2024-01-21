@@ -49,7 +49,7 @@ class HTMLSafetyMonitor(SafetyMonitor):
     def DriverVersion(self):
         logger.debug(f"""HTMLSafetyMonitor.DriverVersion property called""")
         return "1.0"
-    
+
     @property
     def DriverInfo(self):
         logger.debug(f"""HTMLSafetyMonitor.DriverInfo property called""")

@@ -1254,7 +1254,7 @@ class Observatory:
                 if key not in allowed_overwrite:
                     hdr_dict.pop(key, None)
 
-           # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+        # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -1295,7 +1295,13 @@ class Observatory:
         else:
             # print("Using Maxim to save image")
             logger.info("Using Maxim to save image")
-            allowed_overwrite = ["AIRMASS", "OBJECT", "TELESCOP", "INSTRUME", "OBSERVER"]
+            allowed_overwrite = [
+                "AIRMASS",
+                "OBJECT",
+                "TELESCOP",
+                "INSTRUME",
+                "OBSERVER",
+            ]
             logger.info(f"Overwrite allowed for header keys {allowed_overwrite}")
             self.camera.VerifyLatestExposure()
             # TODO: Below should be updated to the filepath we want to save to
