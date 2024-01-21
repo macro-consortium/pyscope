@@ -236,7 +236,7 @@ class Observatory:
                         "MaxIm DL must be used as the camera driver when using MaxIm DL as the filter wheel driver."
                     )
                 logger.info("Using MaxIm DL as the filter wheel driver")
-                self._filter_wheel = self._maxim.filter_wheel
+                self._filter_wheel = self._maxim._filter_wheel
             else:
                 self._filter_wheel = _import_driver(
                     self.filter_wheel_driver,
@@ -735,6 +735,8 @@ class Observatory:
             logger.warning("Camera failed to connect")
         if self.camera.CanSetCCDTemperature:
             self.cooler_setpoint = self._cooler_setpoint
+            print("Turning cooler on")
+            self.camera.CoolerOn = True
 
         if self.cover_calibrator is not None:
             self.cover_calibrator.Connected = True
@@ -808,7 +810,9 @@ class Observatory:
         """Disconnects from the observatory"""
 
         logger.debug("Observatory.disconnect_all() called")
-
+        # TODO: Implement safe warmup procedure
+        if self.camera.CoolerOn:
+            self.camera.CoolerOn = False
         self.camera.Connected = False
         if not self.camera.Connected:
             logger.info("Camera disconnected")
@@ -1191,6 +1195,7 @@ class Observatory:
         if not maxim:
             hdr = fits.Header()
         else:
+            logger.info("Getting header from MaxIm image")
             hdr = fits.getheader(filename)
 
         # The commented out part is unnecessary, as the fits header is automatically generated
@@ -1242,7 +1247,14 @@ class Observatory:
         logger.debug(f"Observatory.safe_update_header called")
         if maxim:
             # Only keep the allowed_overwrite keys in the hdr_dict
-            hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+            # First get keys in existing header
+            existing_keys = hdr.keys()
+            # If the key is in the existing header, and not in the allowed_overwrite list, remove it
+            for key in existing_keys:
+                if key not in allowed_overwrite:
+                    hdr_dict.pop(key, None)
+
+           # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -1267,7 +1279,8 @@ class Observatory:
             logger.exception("Image is not ready, cannot be saved")
             return False
 
-        maxim = self.camera_driver.lower() in ("maxim", "maximdl")
+        maxim = self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera")
+        # print(self.camera_driver.lower())
 
         # If camera driver is Maxim, use Maxim to save the image
         # This is because Maxim does not pass some of the header information
@@ -1280,9 +1293,14 @@ class Observatory:
                 logger.exception("Image array is empty, cannot be saved")
                 return False
         else:
+            # print("Using Maxim to save image")
             logger.info("Using Maxim to save image")
+            allowed_overwrite = ["AIRMASS", "OBJECT", "TELESCOP", "INSTRUME", "OBSERVER"]
+            logger.info(f"Overwrite allowed for header keys {allowed_overwrite}")
             self.camera.VerifyLatestExposure()
-            self.camera.SaveImageAsFits(filename)
+            # TODO: Below should be updated to the filepath we want to save to
+            filepath = os.path.join(os.getcwd(), filename)
+            self.camera.SaveImageAsFits(filepath)
             img_array = fits.getdata(filename)
 
         # Moved below to separate function
@@ -2892,33 +2910,82 @@ class Observatory:
                     "Filter name (from pyscope observatory object configuration)",
                 ),
                 "FOCOFFCG": (
-                    self.filter_wheel.FocusOffsets[self.filter_wheel.Position],
+                    None,
                     "Filter focus offset (from filter wheel object configuration)",
                 ),
                 "FWNAME": (self.filter_wheel.Name, "Filter wheel name"),
                 "FWDRVER": (
-                    self.filter_wheel.DriverVersion,
+                    None,
                     "Filter wheel driver version",
                 ),
                 "FWDRV": (
-                    str(self.filter_wheel.DriverInfo),
+                    None,
                     "Filter wheel driver info",
                 ),
                 "FWINTF": (
-                    self.filter_wheel.InterfaceVersion,
+                    None,
                     "Filter wheel interface version",
                 ),
-                "FWDESC": (self.filter_wheel.Description, "Filter wheel description"),
+                "FWDESC": (None, "Filter wheel description"),
                 "FWALLNAM": (str(self.filter_wheel.Names), "Filter wheel names"),
                 "FWALLOFF": (
-                    str(self.filter_wheel.FocusOffsets),
+                    None,
                     "Filter wheel focus offsets",
                 ),
                 "FWSUPAC": (
-                    str(self.filter_wheel.SupportedActions),
+                    None,
                     "Filter wheel supported actions",
                 ),
             }
+            try:
+                info["FOCOFFCG"] = (
+                    self.filter_wheel.FocusOffsets[self.filter_wheel.Position],
+                    info["FOCOFFCG"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWDRVER"] = (
+                    self.filter_wheel.DriverVersion,
+                    info["FWDRVER"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWDRV"] = (
+                    str(self.filter_wheel.DriverInfo),
+                    info["FWDRV"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWINTF"] = (
+                    self.filter_wheel.InterfaceVersion,
+                    info["FWINTF"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWDESC"] = (
+                    self.filter_wheel.Description,
+                    info["FWDESC"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWSUPAC"] = (
+                    str(self.filter_wheel.SupportedActions),
+                    info["FWSUPAC"][1],
+                )
+            except:
+                pass
+            try:
+                info["FWALLOFF"] = (
+                    str(self.filter_wheel.FocusOffsets),
+                    info["FWALLOFF"][1],
+                )
+            except:
+                pass
             return info
         else:
             return {"FWCONN": (False, "Filter wheel connected")}
