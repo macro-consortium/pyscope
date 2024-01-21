@@ -3,7 +3,6 @@ import platform
 import time
 
 from astropy.time import Time
-from win32com.client import Dispatch
 
 from .autofocus import Autofocus
 from .camera import Camera
