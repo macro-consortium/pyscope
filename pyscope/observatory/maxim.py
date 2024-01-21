@@ -156,7 +156,7 @@ class _MaximCamera(Camera):
 
         try:
             # Change to document
-            image = self._app.Document
+            image = self._com_object.Document
         except Exception as e:
             raise Exception(f"Unable to access MaxIm camera image: {e}")
 
@@ -164,7 +164,7 @@ class _MaximCamera(Camera):
             raise Exception("No current image available from MaxIm")
 
         # Get the DATE-OBS header
-        image_timestamp = image.GetFITSKey["DATE-OBS"]
+        image_timestamp = image.GetFITSKey("DATE-OBS")
         image_datetime = Time(image_timestamp, format="fits")
 
         logger.debug(f"Image timestamp: {image_timestamp}")
@@ -561,7 +561,7 @@ class _MaximFilterWheel(FilterWheel):
     @property
     def Name(self):
         logger.debug("_MaximFilterWheelName called")
-        self.maxim_camera.FilterWheelName
+        return self.maxim_camera._com_object.FilterWheelName
 
     @property
     def FocusOffsets(self):
@@ -571,17 +571,17 @@ class _MaximFilterWheel(FilterWheel):
     @property
     def Names(self):
         logger.debug("_MaximFilterWheelNames called")
-        return self.maxim_camera.FilterNames
+        return self.maxim_camera._com_object.FilterNames
 
     @property
     def Position(self):
         logger.debug("_MaximFilterWheelPosition called")
-        return self.maxim_camera.Filter
+        return self.maxim_camera._com_object.Filter
 
     @Position.setter
     def Position(self, value):
         logger.debug(f"Position setter called with value={value}")
-        self.maxim_camera.Filter = value
+        self.maxim_camera._com_object.Filter = value
 
 
 class _MaximPinpointWCS(WCS):
