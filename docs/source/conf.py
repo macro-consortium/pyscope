@@ -8,6 +8,10 @@ from urllib.parse import quote
 from packaging.version import parse
 from sphinx_astropy.conf.v2 import *
 
+sys.path.insert(0, pathlib.Path(__file__).parents[0].resolve().as_posix())
+
+import headerCSVGenerator
+
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
 import pyscope
@@ -56,6 +60,13 @@ intersphinx_mapping["astroquery"] = (
 intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/", None)
 
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
+
+# Generate CSV for header info
+print("Generating CSV for header info...")
+targetPath = os.path.join(
+    os.path.dirname(__file__), "user_guide", "observatory_info.csv"
+)
+headerCSVGenerator.HeaderCSVGenerator().generate_csv(targetPath)
 
 
 def linkcode_resolve(domain, info):
