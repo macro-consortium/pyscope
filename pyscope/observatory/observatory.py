@@ -1577,7 +1577,7 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterStatus != 0 and self.dome.CanSetShutter:
+            if self.dome.ShutterStatus != "Open" and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
