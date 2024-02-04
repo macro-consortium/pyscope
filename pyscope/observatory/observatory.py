@@ -507,9 +507,9 @@ class Observatory:
             self._config["cover_calibrator"][
                 "cover_calibrator_driver"
             ] = self._cover_calibrator_driver
-            self._config["cover_calibrator"][
-                "cover_calibrator_kwargs"
-            ] = _kwargs_to_config(self._cover_calibrator_kwargs)
+            self._config["cover_calibrator"]["cover_calibrator_kwargs"] = (
+                _kwargs_to_config(self._cover_calibrator_kwargs)
+            )
 
         # Dome
         self._dome = kwargs.get("dome", self._dome)
@@ -563,9 +563,9 @@ class Observatory:
             self._config["observing_conditions"][
                 "observing_conditions_driver"
             ] = self._observing_conditions_driver
-            self._config["observing_conditions"][
-                "observing_conditions_kwargs"
-            ] = _kwargs_to_config(self._observing_conditions_kwargs)
+            self._config["observing_conditions"]["observing_conditions_kwargs"] = (
+                _kwargs_to_config(self._observing_conditions_kwargs)
+            )
 
         # Rotator
         self._rotator = kwargs.get("rotator", self._rotator)
