@@ -3668,7 +3668,7 @@ class Observatory:
             info["TELDRV"][1],
         )
         info["TELDRV"] = (
-            ''.join([i if ord(i) < 128 else ' ' for i in info["TELDRV"][0]]),
+            "".join([i if ord(i) < 128 else " " for i in info["TELDRV"][0]]),
             info["TELDRV"][1],
         )
         try:
