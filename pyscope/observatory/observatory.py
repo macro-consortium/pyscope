@@ -3667,6 +3667,10 @@ class Observatory:
             info["TELDRV"][0].replace("\r", "\\r").replace("\n", "\\n"),
             info["TELDRV"][1],
         )
+        info["TELDRV"] = (
+            ''.join([i if ord(i) < 128 else ' ' for i in info["TELDRV"][0]]),
+            info["TELDRV"][1],
+        )
         try:
             info["TELALT"] = (self.telescope.Altitude, info["TELALT"][1])
         except:
