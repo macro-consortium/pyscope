@@ -20,6 +20,7 @@ balmer = np.array([397.0, 410.17, 434.05, 486.14, 656.45])
 deg = np.pi/180.
 
 
+
 ##create grism_utils class
 class StopExecution(Exception):
     def _render_traceback_(self):
@@ -217,7 +218,7 @@ class grism_utils:
         params = (wave_ctr,wave_ctr_err,fwhm,fwhm_err,a,a_err)
         return params, wave, amp, amp_mod
 
-    def plot_spectral_line(self,wave,amp,amp_mod,color='r',title=''):
+    def plot_spectral_line(self,wave,amp,amp_mod,wave_ctr,wave_ctr_err,fwhm,fwhm_err,color='r',title=''):
         fig, ax = plt.subplots(1, 1,figsize=(8,5))
         ax.plot(wave,amp_mod,color =color)
         ax.plot(wave,amp,'k.')
@@ -313,84 +314,97 @@ def read_jacoby_file(fname):
         return jacoby_spectrum
 
 # read in .last files
-
 with open('imget.last', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         grism_image = row['grism_image']
         cal_file = row['cal_file']
+if os.path.isfile('spectrum.last'):
+    with open('box.last', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            rotangle = row['rotangle']
+            xwidth = row['xwidth']
+            ywidth = row['ywidth']
+            xoffset = row['xoffset']
+            yoffset = row['yoffset']
+            mybox= row['mybox']
+            f_wave=row['f_wave']
+            f_gain=row['f_gain']
+            savedir=row['savedir']
+else:
+    with open('box.last', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            rotangle = row['rotangle']
+            xwidth = row['xwidth']
+            ywidth = row['ywidth']
+            xoffset = row['xoffset']
+            yoffset = row['yoffset']
+            mybox= row['mybox']
+            f_wave=row['f_wave']
+            f_gain=row['f_gain']
+            savedir=row['savedir']
 
+params = [rotangle, xwidth, ywidth, xoffset, yoffset, mybox, f_wave, f_gain, savedir]
+
+
+# initiating click command and main function
 @click.command(
         epilog="""Check out the documentation at
                 https://pyscope.readthedocs.io/ for more
                 information."""
 )
-@click.option(
-    "-rot",
-    "--rotangle",
-    help='the rotation angle of the box',
-    default=358,
-    show_default=True
-)
-@click.option(
-    "-xw",
-    "--xwidth",
-    help='the width of the box in the x direction',
-    default=1700,
-    show_default=True
-)
-@click.option(
-    "-yw",
-    "--ywidth",
-    help='the width of the box in the y direction',
-    default=60,
-    show_default=True
-)
-@click.option(
-    "-xo",
-    "--xoffset",
-    help='the offset of the box in the x direction',
-    default=200,
-    show_default=True
-)
-@click.option(
-    "-yo",
-    "--yoffset",
-    help='the offset of the box in the y direction',
-    default=-375,
-    show_default=True
-)
+
 @click.option(
     "-sd",
     "--savedir",
     help='the directory to save output images in',
 )
 
-def ga_box(
-    rotangle,
-    xwidth,
-    ywidth,
-    xoffset,
-    yoffset,
+def ga_spectra(
     savedir,
 ):
     '''
     Grism analysis
 
-    This script reads the FITS image obtained from 'grism_imget.py', and allows the user to specify a box to extract a subimage containing the dispersed grism spectrum.
-    The user can also specify the rotation angle, width, height, and position of the subimage box. The script then plots the subimage, and saves it to the specified directory.
+    This script takes the subimage created by 'grism_box.py' and draws some helpful spectra. It will create figures for raw and calibrated spectra, 
+    gain vs. wavelength, and several gaussian fits to the Balmer lines. It will also save these figures to a directory of your choice. 
 
-    This is an adaptation of the original code by RLM.
+    This is an adaptation of original code by RLM.
 
     V0.1 (24 January 2024) CHR
     '''
-    # getting data from image and calibration file
+
+    # read in .last files
+    with open('imget.last', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            grism_image = row['grism_image']
+            cal_file = row['cal_file']
+    with open('box.last', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            rotangle = int(row['rotangle'])
+            xwidth = int(row['xwidth'])
+            ywidth = int(row['ywidth'])
+            xoffset = int(row['xoffset'])
+            yoffset = int(row['yoffset'])
+            mybox= row['mybox']
+            f_wave=row['f_wave']
+            f_gain=row['f_gain']
+            if savedir is None:
+                savedir=row['savedir']
+            else:
+                pass
+
+    # read in image and calibration file
     im, hdr = getdata(grism_image, 0, header=True)
     cal_hdr, box, rot_angle, wavelength_coefficients, gain_coefficients = read_calfile(cal_file)
     f_wave = np.poly1d(wavelength_coefficients)
     f_gain = np.poly1d(gain_coefficients)
 
-    # defining subimage box dimensions as specified by user
+    #Defining subimage box dimensions as specified by user
     click.echo('Creating subimage...')
     xs,ys = im.shape
     xmin = xs//2 -1000 + xoffset
@@ -398,12 +412,7 @@ def ga_box(
     ymin = ys//2 + yoffset - ywidth//2
     ymax = ymin + ywidth
     mybox  = [xmin,xmax,ymin,ymax]
-    click.echo(f'xoffset = {xoffset}, yoffset = {yoffset}')
-    click.echo(f'xwidth  = {xwidth}, ywidth = {ywidth}')
-    click.echo(f'Drawing box {mybox}')
     xi, yi = im.shape
-    click.echo(f'Full image dimensions: {xi},{yi}')
-    click.echo(f'Rotation angle = {rotangle} deg')
 
     # Instantiate with rotation angle and subimage box
     B = grism_utils(grism_image,cal_file,rotangle,mybox,f_wave,f_gain)
@@ -411,24 +420,64 @@ def ga_box(
     # Create subimage using optional box parameters
     subim = B.create_subimage()
     xs,ys = subim.shape
-    click.echo(f'Sub image dimensions: {xs},{ys}')
     zmax = np.max(subim)
-    click.echo(f'Maximum ADU count in subimage = {zmax}')
 
     # Plot subimage
     object_name, obs_date,telescope,camera,title,im,rot_angle, box, _,_ = B.summary_info()
     fig = B.plot_image(image=subim,figsize =(10,2),cmap='jet',title=title)
     click.echo(object_name)
-    fig.savefig('box')
+    
+    # Plot uncalibrated spectrum
+    click.echo('Plotting uncalibrated spectrum...')
+    B = grism_utils(grism_image,cal_file,rotangle,mybox,f_wave,f_gain)
+    object_name, obs_date,telescope,camera,title,im,rot_angle, box, _,_ = B.summary_info()
+    
+    spectrum = B.calibrate_spectrum(subim)
+    fig = B.plot_spectrum(spectrum, xaxis='pixel', yaxis='uncal', subrange = slice(300,2000),\
+                        title='%s Uncalibrated Spectrum' % object_name, medavg = 5,xlims =[0,0],ylims =[-0.1,1])
+    fig.savefig(f'{object_name}(uncalibrated)')
+    
+    # Plot gain curve
+    click.echo('Plotting gain curve...')
+    fig = B.plot_gain_curve(spectrum,color='r',title='Gain curve')
+    fig.savefig('gain curve')
+    
+    # Plot calibrated spectrum
+    click.echo('Plotting calibrated spectrum...')
+    fig = B.plot_spectrum(spectrum, xaxis='wave', yaxis='cal',medavg=7, title='%s Calibrated Spectrum' % object_name,
+    xlims=[400,750],ylims =[0,0],plot_balmer=True)
+    fig.savefig(f'{object_name}.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')    
 
-    # save image to directory
-    if savedir is not None:
-        os.rename('box.png', f'{savedir}/box.png')
-    else:
+    # Fit a line with Gaussian and  plot
+    click.echo('Fitting Balmer Gaussian...')
+    wave_min= []
+    wave_max= []
+    for i in range(5):
+        wave_min.append(balmer[i]-20)
+        wave_max.append(balmer[i]+20)
+    for i in range(5):
+        params, wave, amp, amp_mod = B.fit_gaussian(spectrum,wave_min[i],wave_max[i])
+        wave_ctr,wave_ctr_err,fwhm,fwhm_err,a,a_err = params
+        click.echo(f'Wave_ctr = {round(wave_ctr, 1)} +/- {round(wave_ctr_err, 1)} nm, FWHM = {round(fwhm, 1)} +/- {round(fwhm_err, 1)} nm' )
+        fig = B.plot_spectral_line(wave,amp,amp_mod,wave_ctr,wave_ctr_err,fwhm,fwhm_err,color='red',title=object_name)
+        fig.savefig(f'{object_name} {round(wave_ctr, 1)}nm.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')
+
+    #save images to directory
+    if savedir == 'None':
         pass
+    else:
+        click.echo(f'Saving images to {savedir}...')
+        os.rename(f'{object_name}(uncalibrated).png', f'{savedir}/{object_name}(uncalibrated).png')
+        os.rename('gain curve.png', f'{savedir}/gain curve.png')
+        os.rename(f'{object_name}.png', f'{savedir}/{object_name}.png')
+        os.rename(f'{object_name} 397.0nm.png', f'{savedir}/{object_name} 397.0nm.png')
+        os.rename(f'{object_name} 410.17nm.png', f'{savedir}/{object_name} 410.17nm.png')
+        os.rename(f'{object_name} 434.05nm.png', f'{savedir}/{object_name} 434.05nm.png')
+        os.rename(f'{object_name} 486.14nm.png', f'{savedir}/{object_name} 486.14nm.png')
+        os.rename(f'{object_name} 656.45nm.png', f'{savedir}/{object_name} 656.45nm.png')
 
     # write .last file
-    with open('box.last', 'w', newline='') as file:
+    with open('spectrum.last', 'w', newline='') as file:
         writer = csv.writer(file)
         field = ["rotangle","xwidth","ywidth","xoffset","yoffset","mybox","f_wave","f_gain","savedir"]
         writer.writerow(field)
@@ -436,4 +485,4 @@ def ga_box(
 
 
 if __name__ == '__main__':
-    ga_box()
+    ga_spectra()

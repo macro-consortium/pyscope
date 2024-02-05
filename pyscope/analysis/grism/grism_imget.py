@@ -1,19 +1,5 @@
-'''
-Grism analysis
-
-This script reads a FITS image containing a dispersed grism spectrum and applies wavelength and gain calibration
-read from a previously generated calibration file. It displays the strip subimage, raw and calibrated spectra, 
-gain vs. wavelength, and a 2x2 plot with the corresponding Jacoby spectrum if available. 
-
-This is an adaptation of the original code by RLM.
-
-V0.1 (07 November 2023) CHR
-'''
-
 
 ##imports and definitions
-
-
 import numpy as np
 import numpy.ma as ma
 import matplotlib.pyplot as plt
@@ -30,19 +16,14 @@ import csv
 import click
 import validators
 
-
-
 balmer = np.array([397.0, 410.17, 434.05, 486.14, 656.45])
 deg = np.pi/180.
 
 
 ##create grism_utils class
-
-
 class StopExecution(Exception):
     def _render_traceback_(self):
         pass
-
 class grism_utils:
     def __init__(self, grism_image, cal_file, rot_angle, box, f_wave,f_gain):
         ''' Utilities for calibrating and plotting spectra from grism images'''
@@ -310,8 +291,6 @@ class grism_utils:
 
 
 ##define functions for reading in images
-
-
 def read_calfile(fname):
     ''' Reads grism calibration file (.csv), extracts header line, subimage box, rotation angle, 
     and coefficients to generate functions that convert pixels to wavelength and gain vs wavelength'''
@@ -333,54 +312,110 @@ def read_jacoby_file(fname):
         return jacoby_spectrum
 
 
+#initiating click command and main function
 @click.command(
         epilog="""Check out the documentation at
                 https://pyscope.readthedocs.io/ for more
                 information."""
 )
-
+@click.option(
+    "-u",
+    "--url",
+    default = 'https://macroconsortium.org/images/',
+    show_default=True,
+    help='url of database containing images. (ONLY COMPATIBLE WTH CHRONOS)'
+)
 @click.option(
     "-p",
     "--parent-dir",
-    default = 'https://www.macroconsortium.org/images/macalester/mjc/2023/',
+    default = None,
     show_default=True,
-    help='Parent directory containing all images.'
+    help='Parent directory containing images.'
 )
 @click.option(
-    "-o",
+    "-y",
+    "--year",
+    default = '2023',
+    show_default=True,
+    help='The year of the image you want to analyze.'
+)
+@click.option(
+"-o",
+"--obs-code",
+prompt='Observer code',
+help='The name of the image you want to analyze.'
+)
+@click.option(
+    "-n",
     "--obs-night",
     prompt='Observing night',
     help='The observation night of the image you want to analyze.'
 )
 @click.option(
 "-i",
-"--image-name",
-prompt='Image name',
-help='The name of the image you want to analyze.'
+"--image-number",
+prompt='Image number',
+help='The number of the image you want to analyze. Must be 2 digits (XX)'
 )
 @click.option(
 "-c",
-"--cal-name",
-help='The name of the calibration file .',
+"--cal-dir",
+help='The full directory of the calibration file.',
 default='grism_cal.csv'
 )
 
 def ga_cli(
+    url,
     parent_dir,
+    year,
     obs_night,
-    image_name,
-    cal_name,
+    obs_code,
+    image_number,
+    cal_dir,
 ):
-    url = parent_dir +obs_night+'/'+ image_name
-    fits_head = fits.getheader(url)
-    fits_data = fits.getdata(url)
-    hdu = fits.PrimaryHDU(data=fits_data,header=fits_head)
-    hdu.writeto(image_name,overwrite=True)
-    grism_image = image_name
+    '''
+    Grism analysis
+
+    This script looks for a FITS grism image and calibration file specified by the user. It can take images from a specified directory or URL.
+    They are saved in the directory for analysis by 'grism_box.py' and 'grism_spectrum.py'.
+
+    This is an adaptation of the original code by RLM.
+
+    V0.1 (24 January 2024) CHR
+    '''
+    #update this to use a dictionary and less lines
+    institutions=['macalester','augustana','coe','iowa','knox']
+    if obs_code[0] == 'm':
+        institution = institutions[0]
+    elif obs_code[0] == 'a':
+        institution = institutions[1]
+    elif obs_code[0] == 'c':
+        institution = institutions[2]
+    elif obs_code[0] == 'i':
+        institution = institutions[3]
+    elif obs_code[0] == 'k':
+        institution = institutions[4]
+
+    grism_image = obs_code + obs_night + image_number + '.fts'
+    url = url + '/' + institution + '/' + obs_code + '/' + year + '/' + obs_night + '/' + grism_image
+
+    if parent_dir is not None:
+        image_path = parent_dir + '/' + grism_image
+    else:
+        pass
+
     if validators.url(url):
+        fits_head = fits.getheader(url)
+        fits_data = fits.getdata(url)
+        hdu = fits.PrimaryHDU(data=fits_data,header=fits_head)
+        hdu.writeto(grism_image,overwrite=True)
         click.echo(
             f"Found grism image: {grism_image} at {url}"
         )
+        im, hdr = getdata(grism_image, 0, header=True)
+        object_name  = hdr['OBJECT']
+        obs_date = hdr['DATE-OBS']
+    elif os.path.exists(image_path):
         im, hdr = getdata(grism_image, 0, header=True)
         object_name  = hdr['OBJECT']
         obs_date = hdr['DATE-OBS']
@@ -389,11 +424,11 @@ def ga_cli(
             f"Cannot find {grism_image}, stopping"
         )
         raise StopExecution  
-    cal_file = '/workspaces/pyscope/pyscope/analysis/grism/grism_cal.csv'
-    if os.path.exists(cal_file):
-        307
+    if os.path.exists(cal_dir):
+        #adjust to find the actual name of the cal file
+        cal_file = 'grism_cal.csv'
         click.echo(
-            f"Found calibration file: {cal_name}"
+            f"Found calibration file: {cal_file}"
         )
     else:
         click.echo(
@@ -407,56 +442,7 @@ def ga_cli(
         writer.writerow(field)
         writer.writerow([f"{grism_image}", f"{cal_file}"])
         
-'''
-    #Defining subimage box dimensions as specified by user
-    xs,ys = im.shape
-    xmin = xs//2 -1000 + xoffset
-    xmax = xmin + xwidth
-    ymin = ys//2 + yoffset - ywidth//2
-    ymax = ymin + ywidth
-    mybox  = [xmin,xmax,ymin,ymax]
-    click.echo(f'xoffset = {xoffset}, yoffset = {yoffset}')
-    click.echo(f'xwidth  = {xwidth}, ywidth = {ywidth}')
-    click.echo(f'Drawing box {mybox}')
-    xi, yi = im.shape
-    click.echo(f'Full image dimensions: {xi},{yi}')
-    click.echo(f'Rotation angle = {rotangle} deg')
-
-    # Instantiate with rotation angle and subimage box
-    B = grism_utils(grism_image,cal_file,rotangle,mybox,f_wave,f_gain)
-
-    # Create subimage using optional box parameters
-    subim = B.create_subimage()
-    xs,ys = subim.shape
-    click.echo(f'Sub image dimensions: {xs},{ys}')
-    zmax = np.max(subim)
-    click.echo(f'Maximum ADU count in subimage = {zmax}')
-
-    # Plot subimage
-    object_name, obs_date,telescope,camera,title,im,rot_angle, box, _,_ = B.summary_info()
-    fig = B.plot_image(image=subim,figsize =(10,2),cmap='jet',title=title)
-    click.echo(object_name)
-    fig.savefig('boxtest1')
-
-    ## remove files to prevent accumulation
-    os.remove(grism_image)
-'''
 
 if __name__ == '__main__':
     ga_cli()
 
-##for later: script for finding matching jacoby image
-'''
-# Check for matching Jacoby image
-jacoby_dir = parent + '2023_may12/'
-jacoby_csv = '%s%s-Jacoby-spec.csv' % (jacoby_dir,object_name)
-if os.path.exists(jacoby_csv): 
-    print('Found matching Jacoby spectrum file: %s' % jacoby_csv)
-    jacoby = True
-    jacoby_spectrum = read_jacoby_file(jacoby_csv)
-else:
-    jacoby = False
-    jacoby_spectrum = np.array([])
-
-print('Object: %s, Date: %s' % (object_name,obs_date))
-'''
