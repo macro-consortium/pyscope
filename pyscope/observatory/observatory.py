@@ -1156,23 +1156,23 @@ class Observatory:
         do_fwhm=False,
         overwrite=False,
         custom_header=None,
+        history=None,
         **kwargs,
     ):
         """Saves the current image"""
 
         logger.debug(
-            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {kwargs}) called"
+            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {history}, {kwargs}) called"
         )
 
         if not self.camera.ImageReady:
             logger.exception("Image is not ready, cannot be saved")
             return False
 
-        if (
-            self.camera.ImageArray is None
-            or len(self.camera.ImageArray) == 0
-            or len(self.camera.ImageArray[0]) == 0
-        ):
+        # Read out the image array
+        img_array = self.camera.ImageArray
+
+        if img_array is None or len(img_array) == 0 or len(img_array) == 0:
             logger.exception("Image array is empty, cannot be saved")
             return False
 
@@ -1181,9 +1181,9 @@ class Observatory:
         hdr["SIMPLE"] = True
         hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
         hdr["NAXIS"] = (2, "number of axes")
-        hdr["NAXIS1"] = (len(self.camera.ImageArray), "fastest changing axis")
+        hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
         hdr["NAXIS2"] = (
-            len(self.camera.ImageArray[0]),
+            len(img_array[0]),
             "next to fastest changing axis",
         )
         hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
@@ -1217,7 +1217,13 @@ class Observatory:
         if custom_header is not None:
             hdr.update(custom_header)
 
-        hdu = fits.PrimaryHDU(self.camera.ImageArray, header=hdr)
+        if history is not None:
+            if type(history) is str:
+                history = [history]
+            for hist in history:
+                hdr["HISTORY"] = hist
+
+        hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
         if do_fwhm:
@@ -2368,13 +2374,17 @@ class Observatory:
             "filter_focus_offsets", self.filter_focus_offsets
         )
 
-        self.rotator_reverse = dictionary.get("rotator_reverse", self.rotator_reverse)
-        self.rotator_min_angle = dictionary.get(
-            "rotator_min_angle", self.rotator_min_angle
-        )
-        self.rotator_max_angle = dictionary.get(
-            "rotator_max_angle", self.rotator_max_angle
-        )
+        # Not sure if this if statement is a good idea here...
+        if dictionary.get("rotator_driver", self.rotator_driver) is not None:
+            self.rotator_reverse = dictionary.get(
+                "rotator_reverse", self.rotator_reverse
+            )
+            self.rotator_min_angle = dictionary.get(
+                "rotator_min_angle", self.rotator_min_angle
+            )
+            self.rotator_max_angle = dictionary.get(
+                "rotator_max_angle", self.rotator_max_angle
+            )
 
         self.min_altitude = dictionary.get("min_altitude", self.min_altitude)
         self.settle_time = dictionary.get("settle_time", self.settle_time)
@@ -2392,7 +2402,8 @@ class Observatory:
     @property
     def autofocus_info(self):
         logger.debug("Observatory.autofocus_info() called")
-        return {"AUTODRIV": self.autofocus_driver}
+        info = {"AUTODRIV": (self.autofocus_driver, "Autofocus driver")}
+        return info
 
     @property
     def camera_info(self):
@@ -2415,6 +2426,7 @@ class Observatory:
             "JD": (None, "Julian date"),
             "MJD": (None, "Modified Julian date"),
             "MJD-OBS": (None, "Modified Julian date"),
+            "CAMTIME": (None, "Exposure time from camera (T) or user (F)"),
             "EXPTIME": (None, "Exposure time [seconds]"),
             "EXPOSURE": (None, "Exposure time [seconds]"),
             "SUBEXP": (None, "Subexposure time [seconds]"),
@@ -2511,8 +2523,13 @@ class Observatory:
         except:
             pass
         try:
-            info["EXPTIME"] = (self.camera.ExposureTime, info["EXPTIME"][1])
-            info["EXPOSURE"] = (self.camera.ExposureTime, info["EXPOSURE"][1])
+            last_exposure_duration = self.camera.LastExposureDuration
+            info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
+            info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
+        except:
+            pass
+        try:
+            info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
         except:
             pass
         try:
@@ -2810,7 +2827,7 @@ class Observatory:
     @property
     def observatory_info(self):
         logger.debug("Observatory.observatory_info() called")
-        return {
+        info = {
             "OBSNAME": (self.site_name, "Observatory name"),
             "OBSINSTN": (self.instrument_name, "Instrument name"),
             "OBSINSTD": (self.instrument_description, "Instrument description"),
@@ -2822,6 +2839,7 @@ class Observatory:
             "XPIXSCAL": (self.pixel_scale[0], "Observatory x-pixel scale"),
             "YPIXSCAL": (self.pixel_scale[1], "Observatory y-pixel scale"),
         }
+        return info
 
     @property
     def observing_conditions_info(self):
@@ -3152,39 +3170,41 @@ class Observatory:
             for i in range(len(self.safety_monitor)):
                 try:
                     self.safety_monitor[i].Connected = True
+                    # Should likely be broken into multiple try/except blocks
+                    info = {
+                        ("SM%iCONN" % i): (True, "Safety monitor connected"),
+                        ("SM%iISSAF" % i): (
+                            self.safety_monitor[i].IsSafe,
+                            "Safety monitor safe",
+                        ),
+                        ("SM%iNAME" % i): (
+                            self.safety_monitor[i].Name,
+                            "Safety monitor name",
+                        ),
+                        ("SM%iDRVER" % i): (
+                            self.safety_monitor[i].DriverVersion,
+                            "Safety monitor driver version",
+                        ),
+                        ("SM%iDRV" % i): (
+                            str(self.safety_monitor[i].DriverInfo),
+                            "Safety monitor driver name",
+                        ),
+                        ("SM%iINTF" % i): (
+                            self.safety_monitor[i].InterfaceVersion,
+                            "Safety monitor interface version",
+                        ),
+                        ("SM%iDESC" % i): (
+                            self.safety_monitor[i].Description,
+                            "Safety monitor description",
+                        ),
+                        ("SM%iSUPAC" % i): (
+                            str(self.safety_monitor[i].SupportedActions),
+                            "Safety monitor supported actions",
+                        ),
+                    }
                 except:
                     info = {"SM%iCONN" % i: (False, "Safety monitor connected")}
-                info = {
-                    ("SM%iCONN" % i): (True, "Safety monitor connected"),
-                    ("SM%iISSAF" % i): (
-                        self.safety_monitor[i].IsSafe,
-                        "Safety monitor safe",
-                    ),
-                    ("SM%iNAME" % i): (
-                        self.safety_monitor[i].Name,
-                        "Safety monitor name",
-                    ),
-                    ("SM%iDRVER" % i): (
-                        self.safety_monitor[i].DriverVersion,
-                        "Safety monitor driver version",
-                    ),
-                    ("SM%iDRV" % i): (
-                        str(self.safety_monitor[i].DriverInfo),
-                        "Safety monitor driver name",
-                    ),
-                    ("SM%iINTF" % i): (
-                        self.safety_monitor[i].InterfaceVersion,
-                        "Safety monitor interface version",
-                    ),
-                    ("SM%iDESC" % i): (
-                        self.safety_monitor[i].Description,
-                        "Safety monitor description",
-                    ),
-                    ("SM%iSUPAC" % i): (
-                        str(self.safety_monitor[i].SupportedActions),
-                        "Safety monitor supported actions",
-                    ),
-                }
+
                 all_info.append(info)
         else:
             return {"SM0CONN": (False, "Safety monitor connected")}
@@ -3204,61 +3224,69 @@ class Observatory:
             for i in range(len(self.switch)):
                 try:
                     self.switch.Connected = True
+                    try:
+                        info = {
+                            ("SW%iCONN" % i): (True, "Switch connected"),
+                            ("SW%iNAME" % i): (self.switch[i].Name, "Switch name"),
+                            ("SW%iDRVER" % i): (
+                                self.switch[i].DriverVersion,
+                                "Switch driver version",
+                            ),
+                            ("SW%iDRV" % i): (
+                                str(self.switch[i].DriverInfo),
+                                "Switch driver name",
+                            ),
+                            ("SW%iINTF" % i): (
+                                self.switch[i].InterfaceVersion,
+                                "Switch interface version",
+                            ),
+                            ("SW%iDESC" % i): (
+                                self.switch[i].Description,
+                                "Switch description",
+                            ),
+                            ("SW%iSUPAC" % i): (
+                                str(self.switch[i].SupportedActions),
+                                "Switch supported actions",
+                            ),
+                            ("SW%iMAXSW" % i): (
+                                self.switch[i].MaxSwitch,
+                                "Switch maximum switch",
+                            ),
+                        }
+                        for j in range(self.switch[i].MaxSwitch):
+                            try:
+                                info[("SW%iSW%iNM" % (i, j))] = (
+                                    self.switch[i].GetSwitchName(j),
+                                    "Switch %i Device %i name" % (i, j),
+                                )
+                                info[("SW%iSW%iDS" % (i, j))] = (
+                                    self.switch[i].GetSwitchDescription(j),
+                                    "Switch %i Device %i description" % (i, j),
+                                )
+                                info[("SW%iSW%i" % (i, j))] = (
+                                    self.switch[i].GetSwitch(j),
+                                    "Switch %i Device %i state" % (i, j),
+                                )
+                                info[("SW%iSW%iMN" % (i, j))] = (
+                                    self.switch[i].MinSwitchValue(j),
+                                    "Switch %i Device %i minimum value" % (i, j),
+                                )
+                                info[("SW%iSW%iMX" % (i, j))] = (
+                                    self.switch[i].MaxSwitchValue(j),
+                                    "Switch %i Device %i maximum value" % (i, j),
+                                )
+                                info[("SW%iSW%iST" % (i, j))] = (
+                                    self.switch[i].SwitchStep(j),
+                                    "Switch %i Device %i step" % (i, j),
+                                )
+                            except Exception as e:
+                                logger.debug(
+                                    f"Sub-switch {j} of switch {i} gave the following error: {e}"
+                                )
+                    except Exception as e:
+                        logger.debug(f"Switch {i} gives the following error: {e}")
                 except:
                     info = {("SW%iCONN" % i): (False, "Switch connected")}
-                info = {
-                    ("SW%iCONN" % i): (True, "Switch connected"),
-                    ("SW%iNAME" % i): (self.switch[i].Name, "Switch name"),
-                    ("SW%iDRVER" % i): (
-                        self.switch[i].DriverVersion,
-                        "Switch driver version",
-                    ),
-                    ("SW%iDRV" % i): (
-                        str(self.switch[i].DriverInfo),
-                        "Switch driver name",
-                    ),
-                    ("SW%iINTF" % i): (
-                        self.switch[i].InterfaceVersion,
-                        "Switch interface version",
-                    ),
-                    ("SW%iDESC" % i): (
-                        self.switch[i].Description,
-                        "Switch description",
-                    ),
-                    ("SW%iSUPAC" % i): (
-                        str(self.switch[i].SupportedActions),
-                        "Switch supported actions",
-                    ),
-                    ("SW%iMAXSW" % i): (
-                        self.switch[i].MaxSwitch,
-                        "Switch maximum switch",
-                    ),
-                }
-                for j in range(self.switch[i].MaxSwitch):
-                    info[("SW%iSW%iNM" % (i, j))] = (
-                        self.switch[i].GetSwitchName(j),
-                        "Switch %i Device %i name" % (i, j),
-                    )
-                    info[("SW%iSW%iDS" % (i, j))] = (
-                        self.switch[i].GetSwitchDescription(j),
-                        "Switch %i Device %i description" % (i, j),
-                    )
-                    info[("SW%iSW%i" % (i, j))] = (
-                        self.switch[i].GetSwitch(j),
-                        "Switch %i Device %i state" % (i, j),
-                    )
-                    info[("SW%iSW%iMN" % (i, j))] = (
-                        self.switch[i].MinSwitchValue(j),
-                        "Switch %i Device %i minimum value" % (i, j),
-                    )
-                    info[("SW%iSW%iMX" % (i, j))] = (
-                        self.switch[i].MaxSwitchValue(j),
-                        "Switch %i Device %i maximum value" % (i, j),
-                    )
-                    info[("SW%iSW%iST" % (i, j))] = (
-                        self.switch[i].SwitchStep(j),
-                        "Switch %i Device %i step" % (i, j),
-                    )
 
                 all_info.append(info)
         else:
@@ -3574,7 +3602,7 @@ class Observatory:
     @property
     def threads_info(self):
         logger.debug("Observatory.threads_info() called")
-        return {
+        info = {
             "DEROTATE": (
                 not self._derotation_thread is None,
                 "Is derotation thread active",
@@ -3588,11 +3616,13 @@ class Observatory:
                 "Is status monitor thread active",
             ),
         }
+        return info
 
     @property
     def wcs_info(self):
         logger.debug("Observatory.wcs_info() called")
-        return {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
+        info = {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
+        return info
 
     @property
     def observatory_location(self):
@@ -3677,7 +3707,9 @@ class Observatory:
         self._latitude = (
             coord.Latitude(value) if value is not None or value != "" else None
         )
-        self.telescope.SiteLatitude = self._latitude.deg
+        # If connected, set the telescope site latitude
+        if self.telescope.Connected:
+            self.telescope.SiteLatitude = self._latitude.deg
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3697,7 +3729,8 @@ class Observatory:
             if value is not None or value != ""
             else None
         )
-        self.telescope.SiteLongitude = self._longitude.deg
+        if self.telescope.Connected:
+            self.telescope.SiteLongitude = self._longitude.deg
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -3848,7 +3881,7 @@ class Observatory:
     def cover_calibrator_alt(self, value):
         logger.debug(f"Observatory.cover_calibrator_alt = {value} called")
         self._cover_calibrator_alt = (
-            min(max(float(value), 0), 90) if value is not None or value != "" else None
+            min(max(float(value), 0), 90) if value is not None and value != "" else None
         )
         self._config["cover_calibrator"]["cover_calibrator_alt"] = (
             str(self._cover_calibrator_alt)
@@ -3865,7 +3898,9 @@ class Observatory:
     def cover_calibrator_az(self, value):
         logger.debug(f"Observatory.cover_calibrator_az = {value} called")
         self._cover_calibrator_az = (
-            min(max(float(value), 0), 360) if value is not None or value != "" else None
+            min(max(float(value), 0), 360)
+            if value is not None and value != ""
+            else None
         )
         self._config["cover_calibrator"]["cover_calibrator_az"] = (
             str(self._cover_calibrator_az)
