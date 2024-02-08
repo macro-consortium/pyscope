@@ -82,7 +82,7 @@ class grism_utils:
         plt.title(title)
         return fig 
     
-    def calibrate_spectrum(self,subim):
+    def calibrate_spectrum(self,subim,norm):
         '''Calculates raw spectrum by summing pixels in all vertical slices, then apply wavelength, gain calibration'''
 
         pixels = np.arange(subim.shape[1])
@@ -92,7 +92,10 @@ class grism_utils:
             ymax,signal,signal_max = self.__calc_channel_signal(subim,pixel)
             uncal_amp.append(signal)
         uncal_amp = np.array(uncal_amp)
-        uncal_amp /= np.max(uncal_amp) # Normalize
+        if norm==True:
+            uncal_amp /= np.max(uncal_amp)
+        else:
+            pass
      
         # Wavelength calibration
         wave = self.f_wave(pixels)
@@ -432,56 +435,59 @@ def ga_spectra(
     B = grism_utils(grism_image,cal_file,rotangle,mybox,f_wave,f_gain)
     object_name, obs_date,telescope,camera,title,im,rot_angle, box, _,_ = B.summary_info()
     
-    spectrum = B.calibrate_spectrum(subim)
+    spectrum = B.calibrate_spectrum(subim, norm=True)
     fig = B.plot_spectrum(spectrum, xaxis='pixel', yaxis='uncal', subrange = slice(300,2000),\
-                        title='%s Uncalibrated Spectrum' % object_name, medavg = 5,xlims =[0,0],ylims =[-0.1,1])
+                        title='%s Uncalibrated Spectrum' % object_name, medavg = 5,xlims =[0,0],ylims =[0,0])
     fig.savefig(f'{object_name}(uncalibrated)')
     
-    # Plot gain curve
-    click.echo('Plotting gain curve...')
-    fig = B.plot_gain_curve(spectrum,color='r',title='Gain curve')
-    fig.savefig('gain curve')
+    # # Plot gain curve
+    # click.echo('Plotting gain curve...')
+    # fig = B.plot_gain_curve(spectrum,color='r',title='Gain curve')
+    # fig.savefig('gain curve')
     
-    # Plot calibrated spectrum
-    click.echo('Plotting calibrated spectrum...')
-    fig = B.plot_spectrum(spectrum, xaxis='wave', yaxis='cal',medavg=7, title='%s Calibrated Spectrum' % object_name,
-    xlims=[400,750],ylims =[0,0],plot_balmer=True)
-    fig.savefig(f'{object_name}.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')    
+    # # Plot calibrated spectrum
+    # click.echo('Plotting calibrated spectrum...')
+    # fig = B.plot_spectrum(spectrum, xaxis='wave', yaxis='cal',medavg=7, title='%s Calibrated Spectrum' % object_name,
+    # xlims=[400,750],ylims =[0,0],plot_balmer=True)
+    # fig.savefig(f'{object_name}.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')    
 
-    # Fit a line with Gaussian and  plot
-    click.echo('Fitting Balmer Gaussian...')
-    wave_min= []
-    wave_max= []
-    for i in range(5):
-        wave_min.append(balmer[i]-20)
-        wave_max.append(balmer[i]+20)
-    for i in range(5):
-        params, wave, amp, amp_mod = B.fit_gaussian(spectrum,wave_min[i],wave_max[i])
-        wave_ctr,wave_ctr_err,fwhm,fwhm_err,a,a_err = params
-        click.echo(f'Wave_ctr = {round(wave_ctr, 1)} +/- {round(wave_ctr_err, 1)} nm, FWHM = {round(fwhm, 1)} +/- {round(fwhm_err, 1)} nm' )
-        fig = B.plot_spectral_line(wave,amp,amp_mod,wave_ctr,wave_ctr_err,fwhm,fwhm_err,color='red',title=object_name)
-        fig.savefig(f'{object_name} {round(wave_ctr, 1)}nm.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')
+    # # Fit a line with Gaussian and  plot
+    # click.echo('Fitting Balmer Gaussian...')
+    # wave_min= []
+    # wave_max= []
+    # for i in range(5):
+    #     wave_min.append(balmer[i]-20)
+    #     wave_max.append(balmer[i]+20)
+    # for i in range(5):
+    #     params, wave, amp, amp_mod = B.fit_gaussian(spectrum,wave_min[i],wave_max[i])
+    #     wave_ctr,wave_ctr_err,fwhm,fwhm_err,a,a_err = params
+    #     click.echo(f'Wave_ctr = {round(wave_ctr, 1)} +/- {round(wave_ctr_err, 1)} nm, FWHM = {round(fwhm, 1)} +/- {round(fwhm_err, 1)} nm' )
+    #     fig = B.plot_spectral_line(wave,amp,amp_mod,wave_ctr,wave_ctr_err,fwhm,fwhm_err,color='red',title=object_name)
+    #     fig.savefig(f'{object_name} {round(wave_ctr, 1)}nm.png',dpi=200, bbox_inches = 'tight', transparent=False, facecolor='whitesmoke')
 
-    #save images to directory
-    if savedir == 'None':
-        pass
-    else:
-        click.echo(f'Saving images to {savedir}...')
-        os.rename(f'{object_name}(uncalibrated).png', f'{savedir}/{object_name}(uncalibrated).png')
-        os.rename('gain curve.png', f'{savedir}/gain curve.png')
-        os.rename(f'{object_name}.png', f'{savedir}/{object_name}.png')
-        os.rename(f'{object_name} 397.0nm.png', f'{savedir}/{object_name} 397.0nm.png')
-        os.rename(f'{object_name} 410.17nm.png', f'{savedir}/{object_name} 410.17nm.png')
-        os.rename(f'{object_name} 434.05nm.png', f'{savedir}/{object_name} 434.05nm.png')
-        os.rename(f'{object_name} 486.14nm.png', f'{savedir}/{object_name} 486.14nm.png')
-        os.rename(f'{object_name} 656.45nm.png', f'{savedir}/{object_name} 656.45nm.png')
+    # #save images to directory
+    # if savedir == 'None':
+    #     pass
+    # else:
+    #     click.echo(f'Saving images to {savedir}...')
+    #     os.rename(f'{object_name}(uncalibrated).png', f'{savedir}/{object_name}(uncalibrated).png')
+    #     os.rename('gain curve.png', f'{savedir}/gain curve.png')
+    #     os.rename(f'{object_name}.png', f'{savedir}/{object_name}.png')
+    #     os.rename(f'{object_name} 397.0nm.png', f'{savedir}/{object_name} 397.0nm.png')
+    #     os.rename(f'{object_name} 410.17nm.png', f'{savedir}/{object_name} 410.17nm.png')
+    #     os.rename(f'{object_name} 434.05nm.png', f'{savedir}/{object_name} 434.05nm.png')
+    #     os.rename(f'{object_name} 486.14nm.png', f'{savedir}/{object_name} 486.14nm.png')
+    #     os.rename(f'{object_name} 656.45nm.png', f'{savedir}/{object_name} 656.45nm.png')
 
-    # write .last file
-    with open('spectrum.last', 'w', newline='') as file:
-        writer = csv.writer(file)
-        field = ["rotangle","xwidth","ywidth","xoffset","yoffset","mybox","f_wave","f_gain","savedir"]
-        writer.writerow(field)
-        writer.writerow([f"{rotangle}",f"{xwidth}",f"{ywidth}",f"{xoffset}",f"{yoffset}",f"{mybox}",f"{f_wave}",f"{f_gain}",f"{savedir}"])
+    # # write .last file
+    # with open('spectrum.last', 'w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     field = ["rotangle","xwidth","ywidth","xoffset","yoffset","mybox","f_wave","f_gain","savedir"]
+    #     writer.writerow(field)
+    #     writer.writerow([f"{rotangle}",f"{xwidth}",f"{ywidth}",f"{xoffset}",f"{yoffset}",f"{mybox}",f"{f_wave}",f"{f_gain}",f"{savedir}"])
+
+    print(spectrum)
+    print(subim)
 
 
 if __name__ == '__main__':
