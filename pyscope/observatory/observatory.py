@@ -1984,6 +1984,8 @@ class Observatory:
             check_and_refine is False.
         exposure : float, optional
             The exposure time in seconds to use for the centering images. Default is 10.
+        readout : int, optional
+            The readout mode to use for the centering images. Default is 0.
         save_images : bool, optional
             Whether or not to save the centering images. Default is False.
         save_path : str, optional
@@ -2060,7 +2062,9 @@ class Observatory:
                 return True
 
             logger.info("Taking %.2f second exposure" % exposure)
-            self.camera.ReadoutMode = self.camera.ReadoutModes[readout]
+            self.camera.ReadoutMode = (
+                readout  # self.camera.ReadoutModes[readout] <== This breaks maxim
+            )
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
