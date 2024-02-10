@@ -1,5 +1,8 @@
 import logging
 
+import numpy as np
+from astropy.time import Time
+
 from .ascom_device import ASCOMDevice
 from .camera import Camera
 
@@ -15,10 +18,45 @@ class ASCOMCamera(ASCOMDevice, Camera):
             device_number=device_number,
             protocol=protocol,
         )
+        self._last_exposure_duration = None
+        self._last_exposure_start_time = None
+        self._image_data_type = None
+        self._DoTranspose = True
+        self._camera_time = True
 
     def AbortExposure(self):
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._device.AbortExposure()
+
+    def SetImageDataType(self):
+        """Determine the data type of the image array based on the MaxADU property.
+
+        This method is called automatically when the ImageArray property is called
+        if it has not already been set (initializes to `None`).
+        It will choose from the following data types based on the MaxADU property:
+
+        - numpy.uint8 : (if MaxADU <= 255)
+        - numpy.uint16 : (default if MaxADU is not defined, or if MaxADU <= 65535)
+        - numpy.uint32 : (if MaxADU > 65535)
+
+        See Also
+        --------
+        numpy.uint8
+        numpy.uint16
+        numpy.uint32
+        MaxADU : ASCOM Camera interface property `ASCOM Documentation <https://ascom-standards.org/Help/Developer/html/P_ASCOM_DriverAccess_Camera_MaxADU.htm>`_
+        """
+        logger.debug(f"ASCOMCamera.SetImageDataType() called")
+        try:
+            max_adu = self.MaxADU
+            if max_adu <= 255:
+                self._image_data_type = np.uint8
+            elif max_adu <= 65535:
+                self._image_data_type = np.uint16
+            else:
+                self._image_data_type = np.uint32
+        except:
+            self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
         logger.debug(f"ASCOMCamera.PulseGuide({Direction}, {Duration}) called")
@@ -26,6 +64,8 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     def StartExposure(self, Duration, Light):
         logger.debug(f"ASCOMCamera.StartExposure({Duration}, {Light}) called")
+        self._last_exposure_duration = Duration
+        self._last_exposure_start_time = str(Time.now())
         self._device.StartExposure(Duration, Light)
 
     def StopExposure(self):
@@ -84,6 +124,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def CameraYSize(self):
         logger.debug(f"ASCOMCamera.CameraYSize property called")
         return self._device.CameraYSize
+
+    @property
+    def CameraTime(self):
+        logger.debug(f"ASCOMCamera.CameraTime property called")
+        return self._camera_time
 
     @property
     def CanAbortExposure(self):
@@ -212,8 +257,50 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def ImageArray(self):
+        """Return the image array as a numpy array of the correct data type and in
+        standard FITS orientation. \b
+
+        Return the image array as a numpy array of the correct data type. The
+        data type is determined by the MaxADU property. If the MaxADU property
+        is not defined, or if it is less than or equal to 65535, the data type
+        will be numpy.uint16. If the MaxADU property is greater than 65535, the
+        data type will be numpy.uint32.
+
+        .. Note::
+            The image array is returned in the standard FITS orientation, which
+            deviates from the ASCOM standard (see below).
+
+        The image array is returned in the standard FITS orientation, with the
+        rows and columns transposed (if `_DoTranspose` is `True`). This is the same orientation as the
+        astropy.io.fits package. This is done because the ASCOM standard
+        specifies that the image array should be returned with the first index
+        being the column and the second index being the row. This is the
+        opposite of the FITS standard, which specifies that the first index
+        should be the row and the second index should be the column. The
+        astropy.io.fits package follows the FITS standard, so the image array
+        returned by the pyscope ASCOM driver is transposed to match the FITS
+        standard.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        numpy.ndarray
+            The image array as a numpy array of the correct data type.
+            Rows and columns are transposed to match the FITS standard.
+
+        """
         logger.debug(f"ASCOMCamera.ImageArray property called")
-        return self._device.ImageArray
+        img_array = self._device.ImageArray
+        # Convert to numpy array and check if it is the correct data type
+        if self._image_data_type is None:
+            self.SetImageDataType()
+        img_array = np.array(img_array, dtype=self._image_data_type)
+        if self._DoTranspose:
+            img_array = np.transpose(img_array)
+        return img_array
 
     @property
     def ImageReady(self):
@@ -228,12 +315,34 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def LastExposureDuration(self):
         logger.debug(f"ASCOMCamera.LastExposureDuration property called")
-        return self._device.LastExposureDuration
+        last_exposure_duration = self._device.LastExposureDuration
+        if last_exposure_duration is None or last_exposure_duration == 0:
+            last_exposure_duration = self.LastInputExposureDuration
+            self._camera_time = False
+        return last_exposure_duration
 
     @property
     def LastExposureStartTime(self):
         logger.debug(f"ASCOMCamera.LastExposureStartTime property called")
-        return self._device.LastExposureStartTime
+        last_time = self._device.LastExposureStartTime
+        """ This code is needed to handle the case of the ASCOM ZWO driver
+        which returns an empty string instead of None if the camera does not
+        support the property """
+        return (
+            last_time
+            if last_time != "" and last_time != None
+            else self._last_exposure_start_time
+        )
+
+    @property
+    def LastInputExposureDuration(self):
+        logger.debug(f"ASCOMCamera.LastInputExposureDuration property called")
+        return self._last_exposure_duration
+
+    @LastInputExposureDuration.setter
+    def LastInputExposureDuration(self, value):
+        logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
+        self._last_exposure_duration = value
 
     @property
     def MaxADU(self):
