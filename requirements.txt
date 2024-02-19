@@ -6,7 +6,7 @@ astroscrappy == 1.1.0
 click == 8.1.7
 cmcrameri == 1.8
 markdown == 3.5.2
-matplotlib == 3.8.2
+matplotlib == 3.8.3
 numpy == 1.26.4
 paramiko == 3.4.0
 photutils == 1.10.0
