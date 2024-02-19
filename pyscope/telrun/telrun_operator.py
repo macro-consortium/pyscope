@@ -9,6 +9,7 @@ import threading
 import tkinter as tk
 import tkinter.ttk as ttk
 from io import StringIO
+from pathlib import Path
 from tkinter import font
 
 import astroplan
@@ -26,16 +27,118 @@ logger = logging.getLogger(__name__)
 
 
 class TelrunOperator:
-    def __init__(self, config_path="./config/", gui=True, **kwargs):
+    def __init__(self, telhome="./", gui=True, **kwargs):
+        """
+        The main class for robotic telescope operation.
+
+        TelrunOperator is responsible for connecting to the observatory hardware
+        and executing observing schedules. It has various parameters that modify
+        its behavior for testing and debugging purposes. It also has a GUI that
+        can be used to monitor the status of the observatory hardware and the
+        execution of observing schedules. In addition to the GUI, it will write
+        a number of status variables to a JSON file that can be parsed by other
+        programs, such as a web server that displays the status of the observatory
+        hardware and the execution of schedules.
+
+        Parameters
+        ----------
+        telhome : str, optional
+            The path to the TelrunOperator home directory. The default is the current working directory.
+            Telhome must have a specific directory structure, which is created if it does not exist. The
+            directory structure and some relevant files are as follows::
+
+                telhome/
+                |---start_telrun            # A shortcut script to start a TelrunOperator mainloop
+                |---config/
+                |   |---logging.cfg         # Optional
+                |   |---notifications.cfg   # Optional
+                |   |---observatory.cfg
+                |   |---syncfiles.cfg       # Optional
+                |   |---telrun.cfg
+                |
+                |---images/                 # Images captured by TelrunOperator are saved here
+                |   |---im1.fts
+                |   |---autofocus/
+                |   |---calibrations/
+                |   |   |---masters/        # Master calibration images, created by cal scripts
+                |   |   |   |---YYYY-MM-DD/     # Timestamped calibration sets
+                |   |   |---YYYY-MM-DD/     # Individual calibration images
+                |   |---raw_archive/        # Optional, but recommended. Backup of raw images
+                |   |---recenter/
+                |   |---reduced/            # Optional. Where reduced images are saved if not done in-place
+                |
+                |---logs/                   # TelrunOperator logs and auto-generated reports are saved here if requested
+                |   |---telrun_status.json  # A JSON file containing the current status of TelrunOperator
+                |
+                |---schedules/
+                |   |---aaa000.sch          # A schedule file for schedtel
+                |   |---schedules.cat       # A catalog of sch files to be scheduled
+                |   |---queue.ecsv          # A queue of unscheduled blocks
+                |   |---completed/          # sch files that have been parsed and scheduled
+                |   |---execute/            # Where schedtel puts schedules to be executed
+                |
+                |---tmp/                    # Temporary files are saved here, not synced by default
+
+            .. note::
+                For more info on the directory structure, see the `~pyscope.telrun.init_telrun_dir` command line tool,
+                which can be used to create a TelrunOperator home directory with the correct structure. The `schedules/`
+                directory structure is dictated by the `~pyscope.telrun.schedtel` function, which is used to schedule
+                observing blocks. The `images/` directory structure is dictated by the `~pyscope.reduction` scripts,
+                which are used for rapid image calibration and reduction.
+
+        gui : bool, optional
+            Whether to start the GUI. Default is True.
+
+        **kwargs
+            Keyword arguments to pass to the TelrunOperator constructor. More details in Other Parameters
+            section below.
+
+        Other Parameters
+        ----------------
+        TBD
+
+        Raises
+        ------
+        TelrunException
+
+        See Also
+        --------
+        TBD
+
+        Notes
+        -----
+        TBD
+
+        References
+        ----------
+        TBD
+
+        Examples
+        --------
+        TBD
+
+
+        """
         # Private attributes
         self._config = configparser.ConfigParser()
         self._gui = gui
         self._execution_thread = None
+        self._status_log_thread = None
+        self._wcs_threads = []
         self._execution_event = threading.Event()
         self._status_event = threading.Event()
-        self._status_log_thread = None
         self._status_log_update_event = threading.Event()
-        self._wcs_threads = []
+
+        # Read-only attributes with constructor arguments
+        self._telhome = Path(telhome).resolve()
+        self._queue_fname = None
+        self._dome_type = None  # None, 'dome' or 'safety-monitor' or 'both'
+
+        # More private attributes
+        self._config_path = self._telhome / "config"
+        self._schedules_path = self._telhome / "schedules"
+        self._images_path = self._telhome / "images"
+        self._logs_path = self._telhome / "logs"
 
         # Read-only attributes with no constructor arguments
         self._schedule_fname = None
@@ -61,14 +164,6 @@ class TelrunOperator:
         self._telescope_status = ""
         self._wcs_status = ""
 
-        # Read-only attributes with constructor arguments
-        self._config_path = os.path.abspath(config_path)
-        self._schedules_path = self._config_path + "../schedules/"
-        self._images_path = self._config_path + "../images/"
-        self._logs_path = self._config_path + "../logs/"
-        self._queue_fname = None
-        self._dome_type = None  # None, 'dome' or 'safety-monitor' or 'both'
-
         # Public attributes with constructor arguments
         self._initial_home = True
         self._wait_for_sun = True
@@ -80,8 +175,12 @@ class TelrunOperator:
         self._update_block_status = True
         self._write_to_status_log = True
         self._status_log_update_interval = 5  # seconds
+        self._wait_for_block_start_time = True
+        self._max_block_late_time = 60
+        self._preslew_time = 60
+        self._hardware_timeout = 120
         self._autofocus_interval = 3600
-        self._initial_autofocus = True
+        self._autofocus_initial = True
         self._autofocus_filters = None
         self._autofocus_exposure = 5
         self._autofocus_midpoint = 0
@@ -89,9 +188,6 @@ class TelrunOperator:
         self._autofocus_step_size = 500
         self._autofocus_use_current_pointing = False
         self._autofocus_timeout = 180
-        self._wait_for_block_start_time = True
-        self._max_block_late_time = 60
-        self._preslew_time = 60
         self._recenter_filters = None
         self._recenter_initial_offset_dec = 0
         self._recenter_check_and_refine = True
@@ -99,30 +195,29 @@ class TelrunOperator:
         self._recenter_tolerance = 3
         self._recenter_exposure = 10
         self._recenter_save_images = False
-        self._recenter_save_path = "./"
+        self._recenter_save_path = self._images_path / "recenter"
         self._recenter_sync_mount = False
-        self._hardware_timeout = 120
         self._wcs_filters = None
         self._wcs_timeout = 30
 
+        # Path parsing
         save_at_end = False
-        if os.path.isdir(self._config_path):
-            logger.info("config_path is a directory, looking for telrun.cfg")
-            read_path = os.path.join(self._config_path, "telrun.cfg")
-        elif os.path.isfile(self._config_path):
-            logger.info("config_path is a file, setting config directory to its parent")
-            read_path = self._config_path
-            self._config_path = os.path.abspath(os.path.dirname(self._config_path))
-        else:
-            logger.info(
-                "config_path does not exist, creating a directory at %s"
-                % self._config_path
-            )
-            os.mkdir(self._config_path)
+        if not self._config_path.exists():
+            logger.info("Creating config path: %s" % self._config_path)
+            self._config_path.mkdir(parents=True)
             save_at_end = True
+        if not self._schedules_path.exists():
+            logger.info("Creating schedules path: %s" % self._schedules_path)
+            self._schedules_path.mkdir(parents=True)
+        if not self._images_path.exists():
+            logger.info("Creating images path: %s" % self._images_path)
+            self._images_path.mkdir(parents=True)
+        if not self._logs_path.exists():
+            logger.info("Creating logs path: %s" % self._logs_path)
+            self._logs_path.mkdir(parents=True)
 
         # Load config file if there
-        if os.path.isfile(read_path):
+        if (self._config_path / "telrun.cfg").exists():
             logger.info(
                 "Using config file to initialize telrun: %s" % self._config_path
             )
@@ -132,156 +227,145 @@ class TelrunOperator:
                 raise TelrunException(
                     "Could not read config file: %s" % self._config_path
                 )
-
-            self._schedules_path = self._config.get(
-                "default", "schedules_path", fallback=self._schedules_path
-            )
-            self._images_path = self._config.get(
-                "default", "images_path", fallback=self._images_path
-            )
-            self._logs_path = self._config.get(
-                "default", "logs_path", fallback=self._logs_path
-            )
             self._queue_fname = self._config.get(
-                "default", "queue_fname", fallback=self._queue_fname
+                "telrun", "queue_fname", fallback=self._queue_fname
             )
             self._dome_type = self._config.get(
-                "default", "dome_type", fallback=self._dome_type
+                "telrun", "dome_type", fallback=self._dome_type
             )
             self._initial_home = self._config.getboolean(
-                "default", "initial_home", fallback=self._initial_home
+                "telrun", "initial_home", fallback=self._initial_home
             )
             self._wait_for_sun = self._config.getboolean(
-                "default", "wait_for_sun", fallback=self._wait_for_sun
+                "telrun", "wait_for_sun", fallback=self._wait_for_sun
             )
-            self._max_solar_elev = self._config.getfloat("default", "max_solar_elev")
+            self._max_solar_elev = self._config.getfloat("telrun", "max_solar_elev")
             self._check_safety_monitors = self._config.getboolean(
-                "default", "check_safety_monitors", fallback=self._check_safety_monitors
+                "telrun", "check_safety_monitors", fallback=self._check_safety_monitors
             )
             self._wait_for_cooldown = self._config.getboolean(
-                "default", "wait_for_cooldown", fallback=self._wait_for_cooldown
+                "telrun", "wait_for_cooldown", fallback=self._wait_for_cooldown
             )
             self._default_readout = self._config.getint(
-                "default", "default_readout", fallback=self._default_readout
+                "telrun", "default_readout", fallback=self._default_readout
             )
             self._check_block_status = self._config.getboolean(
-                "default", "check_block_status", fallback=self._check_block_status
+                "telrun", "check_block_status", fallback=self._check_block_status
             )
             self._update_block_status = self._config.getboolean(
-                "default", "update_block_status", fallback=self._update_block_status
+                "telrun", "update_block_status", fallback=self._update_block_status
             )
             self._write_to_status_log = self._config.getboolean(
-                "default", "write_to_status_log", fallback=self._write_to_status_log
+                "telrun", "write_to_status_log", fallback=self._write_to_status_log
             )
             self._status_log_update_interval = self._config.getfloat(
-                "default",
+                "telrun",
                 "status_log_update_interval",
                 fallback=self._status_log_update_interval,
             )
-            self._autofocus_interval = self._config.getfloat(
-                "default", "autofocus_interval", fallback=self._autofocus_interval
-            )
-            self._initial_autofocus = self._config.getboolean(
-                "default", "initial_autofocus", fallback=self._initial_autofocus
-            )
-
-            self._autofocus_filters = [
-                f.strip()
-                for f in self._config.get("default", "autofocus_filters").split(",")
-            ]
-
-            self._autofocus_exposure = self._config.getfloat(
-                "default", "autofocus_exposure", fallback=self._autofocus_exposure
-            )
-            self._autofocus_midpoint = self._config.getfloat(
-                "default", "autofocus_midpoint", fallback=self._autofocus_midpoint
-            )
-            self._autofocus_nsteps = self._config.getint(
-                "default", "autofocus_nsteps", fallback=self._autofocus_nsteps
-            )
-            self._autofocus_step_size = self._config.getfloat(
-                "default", "autofocus_step_size", fallback=self._autofocus_step_size
-            )
-            self._autofocus_use_current_pointing = self._config.getboolean(
-                "default",
-                "autofocus_use_current_pointing",
-                fallback=self._autofocus_use_current_pointing,
-            )
-            self._autofocus_timeout = self._config.getfloat(
-                "default", "autofocus_timeout", fallback=self._autofocus_timeout
-            )
             self._wait_for_block_start_time = self._config.getboolean(
-                "default",
+                "telrun",
                 "wait_for_block_start_time",
                 fallback=self._wait_for_block_start_time,
             )
             self._max_block_late_time = self._config.getfloat(
-                "default", "max_block_late_time", fallback=self._max_block_late_time
+                "telrun", "max_block_late_time", fallback=self._max_block_late_time
             )
             self._preslew_time = self._config.getfloat(
-                "default", "preslew_time", fallback=self._preslew_time
+                "telrun", "preslew_time", fallback=self._preslew_time
+            )
+            self._hardware_timeout = self._config.getfloat(
+                "telrun", "hardware_timeout", fallback=self._hardware_timeout
+            )
+            self._autofocus_interval = self._config.getfloat(
+                "autofocus", "autofocus_interval", fallback=self._autofocus_interval
+            )
+            self._autofocus_initial = self._config.getboolean(
+                "autofocus", "autofocus_initial", fallback=self._autofocus_initial
             )
 
-            self._recenter_filters = [
+            self._autofocus_filters = [
                 f.strip()
-                for f in self._config.get("default", "recenter_filters").split(",")
+                for f in self._config.get("autofocus", "autofocus_filters").split(",")
             ]
 
+            self._autofocus_exposure = self._config.getfloat(
+                "autofocus", "autofocus_exposure", fallback=self._autofocus_exposure
+            )
+            self._autofocus_midpoint = self._config.getfloat(
+                "autofocus", "autofocus_midpoint", fallback=self._autofocus_midpoint
+            )
+            self._autofocus_nsteps = self._config.getint(
+                "autofocus", "autofocus_nsteps", fallback=self._autofocus_nsteps
+            )
+            self._autofocus_step_size = self._config.getfloat(
+                "autofocus", "autofocus_step_size", fallback=self._autofocus_step_size
+            )
+            self._autofocus_use_current_pointing = self._config.getboolean(
+                "autofocus",
+                "autofocus_use_current_pointing",
+                fallback=self._autofocus_use_current_pointing,
+            )
+            self._autofocus_timeout = self._config.getfloat(
+                "autofocus", "autofocus_timeout", fallback=self._autofocus_timeout
+            )
+            self._recenter_filters = [
+                f.strip()
+                for f in self._config.get("recenter", "recenter_filters").split(",")
+            ]
             self._recenter_initial_offset_dec = self._config.getfloat(
-                "default",
+                "recenter",
                 "recenter_initial_offset_dec",
                 fallback=self._recenter_initial_offset_dec,
             )
             self._recenter_check_and_refine = self._config.getboolean(
-                "default",
+                "recenter",
                 "recenter_check_and_refine",
                 fallback=self._recenter_check_and_refine,
             )
             self._recenter_max_attempts = self._config.getint(
-                "default", "recenter_max_attempts", fallback=self._recenter_max_attempts
+                "recenter",
+                "recenter_max_attempts",
+                fallback=self._recenter_max_attempts,
             )
             self._recenter_tolerance = self._config.getfloat(
-                "default", "recenter_tolerance", fallback=self._recenter_tolerance
+                "recenter", "recenter_tolerance", fallback=self._recenter_tolerance
             )
             self._recenter_exposure = self._config.getfloat(
-                "default", "recenter_exposure", fallback=self._recenter_exposure
+                "recenter", "recenter_exposure", fallback=self._recenter_exposure
             )
             self._recenter_save_images = self._config.getboolean(
-                "default", "recenter_save_images", fallback=self._recenter_save_images
+                "recenter", "recenter_save_images", fallback=self._recenter_save_images
             )
             self._recenter_save_path = self._config.get(
-                "default", "recenter_save_path", fallback=self._recenter_save_path
+                "recenter", "recenter_save_path", fallback=self._recenter_save_path
             )
             self._recenter_sync_mount = self._config.getboolean(
-                "default", "recenter_sync_mount", fallback=self._recenter_sync_mount
+                "recenter", "recenter_sync_mount", fallback=self._recenter_sync_mount
             )
-            self._hardware_timeout = self._config.getfloat(
-                "default", "hardware_timeout", fallback=self._hardware_timeout
-            )
-
             self._wcs_filters = [
-                f.strip() for f in self._config.get("default", "wcs_filters").split(",")
+                f.strip() for f in self._config.get("wcs", "wcs_filters").split(",")
             ]
 
             self._wcs_timeout = self._config.getfloat(
-                "default", "wcs_timeout", fallback=self._wcs_timeout
+                "wcs", "wcs_timeout", fallback=self._wcs_timeout
             )
 
         # Parse observatory
-        self._observatory = os.path.join(self._config_path, "observatory.cfg")
+        self._observatory = self._config_path / "observatory.cfg"
         self._observatory = kwargs.get("observatory", self._observatory)
-        if type(self._observatory) is str:
+        if type(self._observatory) is Path:
             logger.info(
                 "Observatory is string, loading from config file and saving to config path"
             )
             self._observatory = Observatory(config_path=self._observatory)
             self.observatory.save_config(
-                os.path.join(self._config_path, "observatory.cfg")
+                self._config_path / "observatory.cfg", overwrite=True
             )
         elif type(self._observatory) is Observatory:
             logger.info("Observatory is Observatory object, saving to config path")
             self.observatory.save_config(
-                os.path.join(self._config_path, "observatory.cfg")
+                self._config_path / "observatory.cfg", overwrite=True
             )
         else:
             raise TelrunException(
@@ -289,16 +373,10 @@ class TelrunOperator:
             )
 
         # Load kwargs
-        self._schedules_path = os.path.abspath(
-            kwargs.get("schedules_path", self._schedules_path)
-        )
-        self._images_path = os.path.abspath(
-            kwargs.get("images_path", self._images_path)
-        )
-        self._logs_path = os.path.abspath(kwargs.get("logs_path", self._logs_path))
-        self._queue_fname = os.path.abspath(
-            kwargs.get("queue_fname", self._queue_fname)
-        )
+        if kwargs.get("queue_fname", self._queue_fname) is not None:
+            self._queue_fname = self._schedules_path / kwargs.get(
+                "queue_fname", self._queue_fname
+            )
 
         # Parse dome_type
         self._dome_type = kwargs.get("dome_type", self._dome_type)
@@ -337,11 +415,19 @@ class TelrunOperator:
         self.status_log_update_interval = kwargs.get(
             "status_log_update_interval", self._status_log_update_interval
         )
+        self.wait_for_block_start_time = kwargs.get(
+            "wait_for_block_start_time", self._wait_for_block_start_time
+        )
+        self.max_block_late_time = kwargs.get(
+            "max_block_late_time", self._max_block_late_time
+        )
+        self.preslew_time = kwargs.get("preslew_time", self._preslew_time)
+        self.hardware_timeout = kwargs.get("hardware_timeout", self._hardware_timeout)
         self.autofocus_interval = kwargs.get(
             "autofocus_interval", self._autofocus_interval
         )
-        self.initial_autofocus = kwargs.get(
-            "initial_autofocus", self._initial_autofocus
+        self.autofocus_initial = kwargs.get(
+            "autofocus_initial", self._autofocus_initial
         )
         self.autofocus_filters = kwargs.get(
             "autofocus_filters", self._autofocus_filters
@@ -362,13 +448,6 @@ class TelrunOperator:
         self.autofocus_timeout = kwargs.get(
             "autofocus_timeout", self._autofocus_timeout
         )
-        self.wait_for_block_start_time = kwargs.get(
-            "wait_for_block_start_time", self._wait_for_block_start_time
-        )
-        self.max_block_late_time = kwargs.get(
-            "max_block_late_time", self._max_block_late_time
-        )
-        self.preslew_time = kwargs.get("preslew_time", self._preslew_time)
         self.recenter_filters = kwargs.get("recenter_filters", self._recenter_filters)
         self.recenter_initial_offset_dec = kwargs.get(
             "recenter_initial_offset_dec", self._recenter_initial_offset_dec
@@ -394,7 +473,6 @@ class TelrunOperator:
         self.recenter_sync_mount = kwargs.get(
             "recenter_sync_mount", self._recenter_sync_mount
         )
-        self.hardware_timeout = kwargs.get("hardware_timeout", self._hardware_timeout)
         self.wcs_filters = kwargs.get("wcs_filters", self._wcs_filters)
         self.wcs_timeout = kwargs.get("wcs_timeout", self._wcs_timeout)
 
@@ -481,8 +559,8 @@ class TelrunOperator:
 
     def save_config(self, filename):
         logger.debug("Saving config to %s" % filename)
-        self.observatory.save_config(os.path.join(self.config_path, "observatory.cfg"))
-        with open(os.path.join(self.config_path, filename), "w") as config_file:
+        self.observatory.save_config(self.config_path / "observatory.cfg")
+        with open(self.config_path / filename, "w") as config_file:
             self._config.write(config_file)
 
     def mainloop(self):
@@ -498,7 +576,7 @@ class TelrunOperator:
             # Check for new schedule
             logger.debug("Checking for new schedule...")
             potential_schedules = glob.glob(
-                self.schedules_path + "telrun_????-??-??_??-??-??.ecsv"
+                self.schedules_path + "telrun_????-??-??T??-??-??.ecsv"
             )
             if len(potential_schedules) < 1:
                 logger.debug(
@@ -508,10 +586,13 @@ class TelrunOperator:
                 continue
             potential_times = astrotime.Time(
                 [
-                    f.split("/")[-1].split("_")[1].split(".")[0]
+                    f.split("/")[-1]
+                    .split("telrun_")[1]
+                    .split(".")[0]
+                    .strptime("%Y-%m-%dT%H-%M-%S")
                     for f in potential_schedules
                 ],
-                format="iso",
+                format="datetime",
             )
             potential_times = potential_times[potential_times < astrotime.Time.now()]
             potential_times.sort()
@@ -538,7 +619,7 @@ class TelrunOperator:
                 logger.exception("Schedule file empty, waiting for new schedule...")
                 time.sleep(1)
                 continue
-            if self.schedules_path + fname == self._schedule_fname:
+            if self.schedules_path / fname == self._schedule_fname:
                 logger.debug("Schedule already loaded, waiting for new schedule...")
                 time.sleep(1)
                 continue
@@ -557,7 +638,7 @@ class TelrunOperator:
             logger.info("Starting new schedule execution thread...")
             self._execution_thread = threading.Thread(
                 target=self.execute_schedule,
-                args=(self.schedules_path + fname),
+                args=(self.schedules_path / fname),
                 daemon=True,
                 name="Telrun Schedule Execution Thread",
             )
@@ -567,7 +648,7 @@ class TelrunOperator:
     def execute_schedule(self, schedule):
         logger.info("Executing schedule: %s" % schedule)
         sched_fname = None
-        if schedule is str:
+        if type(schedule) is Path:
             sched_fname = schedule
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         elif type(schedule) is not table.Table:
@@ -581,12 +662,12 @@ class TelrunOperator:
         try:
             schedtab.validate(schedule, self.observatory)
         except Exception as e:
-            logger.exception("Schedule failed validation, exiting...")
             logger.exception(e)
+            logger.exception("Schedule failed validation, exiting...")
             return
 
         if sched_fname is None:
-            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%d_%H-%M-%S")
+            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
             sched_fname = self.schedules_path + "telrun_" + first_time + ".ecsv"
         self._schedule_fname = sched_fname
         self._schedule = schedule
@@ -709,7 +790,7 @@ class TelrunOperator:
         if self.autofocus_interval > 0:
             self._do_periodic_autofocus = True
 
-        if self.initial_autofocus and self.do_periodic_autofocus:
+        if self.autofocus_initial and self.do_periodic_autofocus:
             self._last_autofocus_time = time.time() - self.autofocus_interval - 1
 
         # Process blocks
@@ -1839,7 +1920,7 @@ class TelrunOperator:
 
         json.dump(
             status_log,
-            open(self.log_path + "status.json", "w"),
+            open(self.log_path + "telrun_status.json", "w"),
         )
 
         return status_log
@@ -2190,20 +2271,8 @@ class TelrunOperator:
         return self._observatory
 
     @property
-    def config_path(self):
-        return self._config_path
-
-    @property
-    def schedules_path(self):
-        return self._schedules_path
-
-    @property
-    def images_path(self):
-        return self._images_path
-
-    @property
-    def logs_path(self):
-        return self._logs_path
+    def telhome(self):
+        return self._telhome
 
     @property
     def queue_fname(self):
@@ -2319,13 +2388,13 @@ class TelrunOperator:
         self._config["default"]["autofocus_interval"] = str(self._autofocus_interval)
 
     @property
-    def initial_autofocus(self):
-        return self._initial_autofocus
+    def autofocus_initial(self):
+        return self._autofocus_initial
 
-    @initial_autofocus.setter
-    def initial_autofocus(self, value):
-        self._initial_autofocus = bool(value)
-        self._config["default"]["initial_autofocus"] = str(self._initial_autofocus)
+    @autofocus_initial.setter
+    def autofocus_initial(self, value):
+        self._autofocus_initial = bool(value)
+        self._config["default"]["autofocus_initial"] = str(self._autofocus_initial)
 
     @property
     def autofocus_filters(self):
