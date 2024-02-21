@@ -7,7 +7,6 @@ from pathlib import Path
 import click
 
 from . import init_queue
-from .synctools import sync_manager
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +16,6 @@ logger = logging.getLogger(__name__)
                https://pyscope.readthedocs.io/en/latest/
                for more information."""
 )
-@click.option(
-    "-r",
-    "--remote",
-    type=bool,
-    default=False,
-    is_flag=True,
-    help="Optionally direct the user through initializing a synced remote telrun home directory.",
-)
 @click.argument(
     "path",
     type=click.Path(resolve_path=True),
@@ -32,7 +23,7 @@ logger = logging.getLogger(__name__)
     required=False,
 )
 @click.version_option()
-def init_telrun_dir_cli(remote=False, path="./telhome/"):
+def init_telrun_dir_cli(path="./telhome/"):
     """
     Initialize a telrun home directory at PATH.
 
@@ -46,7 +37,7 @@ def init_telrun_dir_cli(remote=False, path="./telhome/"):
         |   |---logging.cfg         # Optional
         |   |---notifications.cfg   # Optional
         |   |---observatory.cfg
-        |   |---sync_manager.cfg    # Optional
+        |   |---sync.cfg            # Optional
         |   |---telrun.cfg
         |
         |---images/                 # Images captured by TelrunOperator are saved here
@@ -74,9 +65,6 @@ def init_telrun_dir_cli(remote=False, path="./telhome/"):
 
     Parameters
     ----------
-    remote : `bool`, optional, default=False
-        If True, the user will be directed through initializing a synced remote telrun home directory
-
     path : `str`, optional, default="./telhome/"
         The path to the telrun home directory to be created
 
@@ -88,126 +76,166 @@ def init_telrun_dir_cli(remote=False, path="./telhome/"):
     --------
     pyscope.telrun.TelrunOperator : The main class for running a telescope
     pyscope.telrun.schedtel : Schedule a sch file
-    pyscope.telrun.sync_manager : Sync a local telrun home directory with a remote one
+    pyscope.telrun.synctools.sync : Sync a local telrun home directory with a remote one
 
     """
 
-    logger.debug(f"init_telrun_dir(remote={remote}, path={path})")
+    logger.debug(f"init_telrun_dir(path={path})")
 
     path = Path(path).resolve()
+
     logger.info("Initializing a telrun home directory at %s" % path)
 
-    if path.exists():
-        logger.error(f"Path {path} already exists")
-        raise click.Abort()
+    if not path.exists():
+        logger.info(f"Creating directory {path}")
+        path.mkdir()
+    elif not path.is_dir():
+        raise ValueError(f"{path} is not a directory")
 
-    logger.info(f"Creating directory {path}")
-    path.mkdir()
+    if not (path / "config").exists():
+        logger.info("Creating config directory")
+        (path / "config").mkdir()
 
-    logger.info("Creating config directory")
-    (path / "config").mkdir()
+    cfg_templates = Path(os.path.dirname(__file__)).resolve() / "../bin/cfg_templates/"
+    bin_scripts = Path(os.path.dirname(__file__)).resolve() / "../bin/scripts/"
+
     logger.info("Creating empty config files")
-    shutil.copyfile(
-        Path(os.path.dirname(__file__)) / "../bin/cfg_templates/telrun-empty.cfg",
-        path / "config/telrun.cfg",
-    )
-    shutil.copyfile(
-        Path(os.path.dirname(__file__)) / "../bin/cfg_templates/observatory-empty.cfg",
-        path / "config/observatory.cfg",
-    )
-    shutil.copyfile(
-        Path(os.path.dirname(__file__)) / "../bin/cfg_templates/logging-empty.cfg",
-        path / "config/logging.cfg",
-    )
-    shutil.copyfile(
-        Path(os.path.dirname(__file__))
-        / "../bin/cfg_templates/notifications-empty.cfg",
-        path / "config/notifications.cfg",
-    )
-    shutil.copyfile(
-        Path(os.path.dirname(__file__)) / "../bin/cfg_templates/sync_manager-empty.cfg",
-        path / "config/sync_manager.cfg",
-    )
+
+    if not (path / "config/telrun.cfg").exists():
+        shutil.copyfile(
+            cfg_templates / "telrun-empty.cfg",
+            path / "config/telrun.cfg",
+        )
+    else:
+        logger.warning("telrun.cfg already exists, skipping")
+
+    if not (path / "config/observatory.cfg").exists():
+        shutil.copyfile(
+            cfg_templates / "observatory-empty.cfg",
+            path / "config/observatory.cfg",
+        )
+    else:
+        logger.warning("observatory.cfg already exists, skipping")
+
+    if not (path / "config/logging.cfg").exists():
+        shutil.copyfile(
+            cfg_templates / "logging-empty.cfg",
+            path / "config/logging.cfg",
+        )
+    else:
+        logger.warning("logging.cfg already exists, skipping")
+
+    if not (path / "config/notifications.cfg").exists():
+        shutil.copyfile(
+            cfg_templates / "notifications-empty.cfg",
+            path / "config/notifications.cfg",
+        )
+    else:
+        logger.warning("notifications.cfg already exists, skipping")
+
+    if not (path / "config/sync.cfg").exists():
+        shutil.copyfile(
+            cfg_templates / "sync-empty.cfg",
+            path / "config/sync.cfg",
+        )
+    else:
+        logger.warning("sync.cfg already exists, skipping")
 
     logger.info("Creating images directory")
-    (path / "images").mkdir()
-    (path / "images" / "autofocus").mkdir()
-    (path / "images" / "calibrations").mkdir()
-    (path / "images" / "calibrations" / "masters").mkdir()
-    (path / "images" / "raw_archive").mkdir()
-    (path / "images" / "reduced").mkdir()
+
+    if not (path / "images").exists():
+        (path / "images").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "images"))
+
+    if not (path / "images" / "autofocus").exists():
+        (path / "images" / "autofocus").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "images" / "autofocus"))
+
+    if not (path / "images" / "calibrations").exists():
+        (path / "images" / "calibrations").mkdir()
+    else:
+        logger.warning(
+            "%s already exists, skipping" % (path / "images" / "calibrations")
+        )
+
+    if not (path / "images" / "calibrations" / "masters").exists():
+        (path / "images" / "calibrations" / "masters").mkdir()
+    else:
+        logger.warning(
+            "%s already exists, skipping"
+            % (path / "images" / "calibrations" / "masters")
+        )
+
+    if not (path / "images" / "raw_archive").exists():
+        (path / "images" / "raw_archive").mkdir()
+    else:
+        logger.warning(
+            "%s already exists, skipping" % (path / "images" / "raw_archive")
+        )
+
+    if not (path / "images" / "recenter").exists():
+        (path / "images" / "recenter").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "images" / "recenter"))
+
+    if not (path / "images" / "reduced").exists():
+        (path / "images" / "reduced").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "images" / "reduced"))
 
     logger.info("Creating logs directory")
-    (path / "logs").mkdir()
+    if not (path / "logs").exists():
+        (path / "logs").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "logs"))
 
     logger.info("Creating schedules directory")
-    (path / "schedules").mkdir()
-    (path / "schedules" / "completed").mkdir()
-    (path / "schedules" / "execute").mkdir()
-    (path / "schedules" / "schedules.cat").touch()
+    if not (path / "schedules").exists():
+        (path / "schedules").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "schedules"))
+
+    if not (path / "schedules" / "completed").exists():
+        (path / "schedules" / "completed").mkdir()
+    else:
+        logger.warning(
+            "%s already exists, skipping" % (path / "schedules" / "completed")
+        )
+
+    if not (path / "schedules" / "execute").exists():
+        (path / "schedules" / "execute").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "schedules" / "execute"))
+
+    if not (path / "schedules" / "schedules.cat").exists():
+        (path / "schedules" / "schedules.cat").touch()
+    else:
+        logger.warning(
+            "%s already exists, skipping" % (path / "schedules" / "schedules.cat")
+        )
+
+    # TODO: call init_queue here
     # init_queue(path / "schedules" / "queue.ecsv")
+
+    logger.info("Creating tmp directory")
+    if not (path / "tmp").exists():
+        (path / "tmp").mkdir()
+    else:
+        logger.warning("%s already exists, skipping" % (path / "tmp"))
 
     logger.info("Copying default shortcut startup script")
     if platform.system() == "Windows":
         shutil.copyfile(
-            Path(os.path.dirname(__file__)) / "../bin/scripts/start_telrun.bat",
+            bin_scripts / "start_telrun.bat",
             path / "start_telrun.bat",
         )
     else:
         shutil.copyfile(
-            Path(os.path.dirname(__file__)) / "../bin/scripts/start_telrun",
+            bin_scripts / "start_telrun",
             path / "start_telrun",
         )
-
-    if remote:
-        logger.info(
-            "Remote option selected, directing user through remote initialization"
-        )
-        logger.info("Opening config files for editing")
-        if platform.system() == "Windows":
-            os.system(path / "config/sync_manager.cfg")
-        else:
-            try:
-                logger.info(
-                    "Trying to open $EDITOR: '%s %s'"
-                    % (os.getenv("EDITOR"), path / "config/sync_manager.cfg")
-                )
-                os.system(
-                    "%s %s" % (os.getenv("EDITOR"), path / "config/sync_manager.cfg")
-                )
-            except:
-                logger.warning(
-                    "Could not open $EDITOR, trying to open vi: 'vi %s'"
-                    % (path / "config/sync_manager.cfg")
-                )
-                try:
-                    os.system("vi " + str(path / "config/sync_manager.cfg"))
-                except:
-                    logger.error(
-                        "Could not open vi, please edit the config files manually"
-                    )
-                    logger.error(
-                        "You can find the documentation at https://pyscope.readthedocs.io/en/latest/"
-                    )
-                    return
-
-        _ = input("Press any key to continue with syncing directory...")
-
-        logger.info("Syncing directory")
-        sync_manager(config=path / "config/sync_manager.cfg", do_once=True)
-
-        logger.info("Copying default shortcut startup script")
-        if platform.system() == "Windows":
-            shutil.copyfile(
-                Path(os.path.dirname(__file__))
-                / "../bin/scripts/start_sync_manager.bat",
-                path / "start_sync_manager.bat",
-            )
-        else:
-            shutil.copyfile(
-                Path(os.path.dirname(__file__)) / "../bin/scripts/start_sync_manager",
-                path / "start_sync_manager",
-            )
 
     logger.info("Done")
 

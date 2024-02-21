@@ -13,7 +13,7 @@ def test_sync_manager():
     logging.getLogger("paramiko").addHandler(logging.StreamHandler())
     logger.addHandler(logging.StreamHandler())
 
-    sync_manager(config="./tests/bin/sync_manager.cfg", do_once=True)
+    sync_manager(config="./tests/bin/sync.cfg", do_once=True)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import paramiko
 
 logger = logging.getLogger(__name__)
 
-# TODO: Add support for syncing individual files
+# TODO: Add support for syncing individual files, add support for syncing within local directories
 
 
 @click.command(
