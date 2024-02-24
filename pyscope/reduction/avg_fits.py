@@ -38,22 +38,24 @@ logger = logging.getLogger(__name__)
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
-def avg_fits_cli(mode, outfile, fnames, verbose):
+def avg_fits_cli(mode, outfile, fnames, verbose=False):
     if verbose:
         logger.setLevel(logging.DEBUG)
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
+    print(fnames)
     images = np.array([fits.open(fname)[0].data for fname in fnames])
     images = images.astype(np.float32)
     logger.info(f"Loaded {len(images)} FITS files")
 
     logger.info("Averaging FITS files...")
-    if mode == "0":
+    print(f"mode: {mode}, {type(mode)}")
+    if str(mode) == "0":
         logger.debug("Calculating median...")
         image_avg = np.median(images, axis=0)
-    elif mode == "1":
+    elif str(mode) == "1":
         logger.debug("Calculating mean...")
         image_avg = np.mean(images, axis=0)
 
