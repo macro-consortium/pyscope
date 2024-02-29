@@ -6,6 +6,12 @@ from astropy.io import fits
 
 logger = logging.getLogger(__name__)
 
+"""
+TODO: use ccdproc to average FITS files
+- look into ccdproc library
+- write tests for avg_fits
+- make a new file avg_fits_ccdproc.py
+"""
 
 @click.command(
     epilog="""Check out the documentation at
@@ -39,6 +45,11 @@ logger = logging.getLogger(__name__)
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
 def avg_fits_cli(mode, outfile, fnames, verbose=False):
+    """
+    Test
+    asdf
+    """
+    
     if verbose:
         logger.setLevel(logging.DEBUG)
 
