@@ -6,7 +6,7 @@
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="../../_static/logo16.png" sizes="16x16" rel="icon" type="image/png">
     <link href="../../_static/logo32.png" sizes="32x32" rel="icon" type="image/png">
     <link href="../../_static/logo48.png" sizes="48x48" rel="icon" type="image/png">
@@ -574,7 +574,7 @@ document.write(`
 <h1>TelrunOperator<a class="headerlink" href="#telrunoperator" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyscope.telrun.</span></span><span class="sig-name descname"><span class="pre">TelrunOperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./config/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gui</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/main/pyscope/telrun/telrun_operator.py#L26-L2279"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyscope.telrun.</span></span><span class="sig-name descname"><span class="pre">TelrunOperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./config/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gui</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/73b892704d56b40295c124f6d9f5b9c0ad806a82/pyscope/telrun/telrun_operator.py#L29-L2612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator" title="Link to this definition">#</a></dt>
 <dd><p class="linemarker linemarker-1">Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p class="rubric">Attributes Summary</p>
 <table class="autosummary longtable table autosummary">
@@ -642,79 +642,73 @@ document.write(`
 <tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.hardware_timeout" title="pyscope.telrun.TelrunOperator.hardware_timeout"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hardware_timeout</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.initial_autofocus" title="pyscope.telrun.TelrunOperator.initial_autofocus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initial_autofocus</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.initial_home" title="pyscope.telrun.TelrunOperator.initial_home"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initial_home</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.initial_home" title="pyscope.telrun.TelrunOperator.initial_home"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initial_home</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.last_autofocus_time" title="pyscope.telrun.TelrunOperator.last_autofocus_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">last_autofocus_time</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.last_autofocus_time" title="pyscope.telrun.TelrunOperator.last_autofocus_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">last_autofocus_time</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.max_block_late_time" title="pyscope.telrun.TelrunOperator.max_block_late_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_block_late_time</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.max_block_late_time" title="pyscope.telrun.TelrunOperator.max_block_late_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_block_late_time</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.max_solar_elev" title="pyscope.telrun.TelrunOperator.max_solar_elev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_solar_elev</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.max_solar_elev" title="pyscope.telrun.TelrunOperator.max_solar_elev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_solar_elev</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.next_block" title="pyscope.telrun.TelrunOperator.next_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next_block</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.next_block" title="pyscope.telrun.TelrunOperator.next_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next_block</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.observatory" title="pyscope.telrun.TelrunOperator.observatory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">observatory</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.observatory" title="pyscope.telrun.TelrunOperator.observatory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">observatory</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.observing_conditions_status" title="pyscope.telrun.TelrunOperator.observing_conditions_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">observing_conditions_status</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.observing_conditions_status" title="pyscope.telrun.TelrunOperator.observing_conditions_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">observing_conditions_status</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.preslew_time" title="pyscope.telrun.TelrunOperator.preslew_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preslew_time</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.preslew_time" title="pyscope.telrun.TelrunOperator.preslew_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preslew_time</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.previous_block" title="pyscope.telrun.TelrunOperator.previous_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">previous_block</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.previous_block" title="pyscope.telrun.TelrunOperator.previous_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">previous_block</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_check_and_refine" title="pyscope.telrun.TelrunOperator.recenter_check_and_refine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_check_and_refine</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_check_and_refine" title="pyscope.telrun.TelrunOperator.recenter_check_and_refine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_check_and_refine</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_exposure" title="pyscope.telrun.TelrunOperator.recenter_exposure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_exposure</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_exposure" title="pyscope.telrun.TelrunOperator.recenter_exposure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_exposure</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_filters" title="pyscope.telrun.TelrunOperator.recenter_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_filters</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_filters" title="pyscope.telrun.TelrunOperator.recenter_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_filters</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_initial_offset_dec" title="pyscope.telrun.TelrunOperator.recenter_initial_offset_dec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_initial_offset_dec</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_initial_offset_dec" title="pyscope.telrun.TelrunOperator.recenter_initial_offset_dec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_initial_offset_dec</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_max_attempts" title="pyscope.telrun.TelrunOperator.recenter_max_attempts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_max_attempts</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_max_attempts" title="pyscope.telrun.TelrunOperator.recenter_max_attempts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_max_attempts</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_save_images" title="pyscope.telrun.TelrunOperator.recenter_save_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_save_images</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_save_images" title="pyscope.telrun.TelrunOperator.recenter_save_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_save_images</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_save_path" title="pyscope.telrun.TelrunOperator.recenter_save_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_save_path</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_save_path" title="pyscope.telrun.TelrunOperator.recenter_save_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_save_path</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_sync_mount" title="pyscope.telrun.TelrunOperator.recenter_sync_mount"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_sync_mount</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_sync_mount" title="pyscope.telrun.TelrunOperator.recenter_sync_mount"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_sync_mount</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_tolerance" title="pyscope.telrun.TelrunOperator.recenter_tolerance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_tolerance</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.recenter_tolerance" title="pyscope.telrun.TelrunOperator.recenter_tolerance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recenter_tolerance</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.rotator_status" title="pyscope.telrun.TelrunOperator.rotator_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotator_status</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.rotator_status" title="pyscope.telrun.TelrunOperator.rotator_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotator_status</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.safety_monitor_status" title="pyscope.telrun.TelrunOperator.safety_monitor_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">safety_monitor_status</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.safety_monitor_status" title="pyscope.telrun.TelrunOperator.safety_monitor_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">safety_monitor_status</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.skipped_block_count" title="pyscope.telrun.TelrunOperator.skipped_block_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">skipped_block_count</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.skipped_block_count" title="pyscope.telrun.TelrunOperator.skipped_block_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">skipped_block_count</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.switch_status" title="pyscope.telrun.TelrunOperator.switch_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">switch_status</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.switch_status" title="pyscope.telrun.TelrunOperator.switch_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">switch_status</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.telescope_status" title="pyscope.telrun.TelrunOperator.telescope_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">telescope_status</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.telpath" title="pyscope.telrun.TelrunOperator.telpath"><code class="xref py py-obj docutils literal notranslate"><span class="pre">telpath</span></code></a></p></td>
+<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.telescope_status" title="pyscope.telrun.TelrunOperator.telescope_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">telescope_status</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.update_block_status" title="pyscope.telrun.TelrunOperator.update_block_status"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_block_status</span></code></a></p></td>
@@ -735,10 +729,7 @@ document.write(`
 <tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.wcs_timeout" title="pyscope.telrun.TelrunOperator.wcs_timeout"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wcs_timeout</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.write_to_schedule_log" title="pyscope.telrun.TelrunOperator.write_to_schedule_log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_to_schedule_log</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.write_to_status_log" title="pyscope.telrun.TelrunOperator.write_to_status_log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_to_status_log</span></code></a></p></td>
+<tr class="row-odd"><td><p class="linemarker linemarker-1"><a class="reference internal" href="#pyscope.telrun.TelrunOperator.write_to_status_log" title="pyscope.telrun.TelrunOperator.write_to_status_log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_to_status_log</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -769,6 +760,11 @@ document.write(`
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.autofocus_filters">
 <span class="sig-name descname"><span class="pre">autofocus_filters</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.autofocus_filters" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.autofocus_initial">
+<span class="sig-name descname"><span class="pre">autofocus_initial</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.autofocus_initial" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -807,6 +803,11 @@ document.write(`
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.best_focus_result">
+<span class="sig-name descname"><span class="pre">best_focus_result</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.best_focus_result" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.camera_status">
 <span class="sig-name descname"><span class="pre">camera_status</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.camera_status" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -829,6 +830,11 @@ document.write(`
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.current_block">
 <span class="sig-name descname"><span class="pre">current_block</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.current_block" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.current_block_index">
+<span class="sig-name descname"><span class="pre">current_block_index</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.current_block_index" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -864,11 +870,6 @@ document.write(`
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.hardware_timeout">
 <span class="sig-name descname"><span class="pre">hardware_timeout</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.hardware_timeout" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.initial_autofocus">
-<span class="sig-name descname"><span class="pre">initial_autofocus</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.initial_autofocus" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -914,6 +915,11 @@ document.write(`
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.previous_block">
 <span class="sig-name descname"><span class="pre">previous_block</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.previous_block" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.queue_fname">
+<span class="sig-name descname"><span class="pre">queue_fname</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.queue_fname" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -972,8 +978,23 @@ document.write(`
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.schedule">
+<span class="sig-name descname"><span class="pre">schedule</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.schedule" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.schedule_fname">
+<span class="sig-name descname"><span class="pre">schedule_fname</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.schedule_fname" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.skipped_block_count">
 <span class="sig-name descname"><span class="pre">skipped_block_count</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.skipped_block_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.status_log_update_interval">
+<span class="sig-name descname"><span class="pre">status_log_update_interval</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.status_log_update_interval" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -987,8 +1008,13 @@ document.write(`
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.telpath">
-<span class="sig-name descname"><span class="pre">telpath</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.telpath" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.telhome">
+<span class="sig-name descname"><span class="pre">telhome</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.telhome" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.telrun_info">
+<span class="sig-name descname"><span class="pre">telrun_info</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.telrun_info" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -999,6 +1025,11 @@ document.write(`
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.wait_for_block_start_time">
 <span class="sig-name descname"><span class="pre">wait_for_block_start_time</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.wait_for_block_start_time" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.wait_for_cooldown">
+<span class="sig-name descname"><span class="pre">wait_for_cooldown</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.wait_for_cooldown" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1022,11 +1053,6 @@ document.write(`
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.write_to_schedule_log">
-<span class="sig-name descname"><span class="pre">write_to_schedule_log</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.write_to_schedule_log" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.write_to_status_log">
 <span class="sig-name descname"><span class="pre">write_to_status_log</span></span><a class="headerlink" href="#pyscope.telrun.TelrunOperator.write_to_status_log" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1034,22 +1060,22 @@ document.write(`
 <p class="rubric">Methods Documentation</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.execute_block">
-<span class="sig-name descname"><span class="pre">execute_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/main/pyscope/telrun/telrun_operator.py#L774-L1808"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.execute_block" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/73b892704d56b40295c124f6d9f5b9c0ad806a82/pyscope/telrun/telrun_operator.py#L648-L873"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.execute_block" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.execute_schedule">
-<span class="sig-name descname"><span class="pre">execute_schedule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schedule</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/main/pyscope/telrun/telrun_operator.py#L528-L772"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.execute_schedule" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_schedule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schedule</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/73b892704d56b40295c124f6d9f5b9c0ad806a82/pyscope/telrun/telrun_operator.py#L30-L558"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.execute_schedule" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.mainloop">
-<span class="sig-name descname"><span class="pre">mainloop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/main/pyscope/telrun/telrun_operator.py#L476-L526"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.mainloop" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mainloop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/73b892704d56b40295c124f6d9f5b9c0ad806a82/pyscope/telrun/telrun_operator.py#L30-L558"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.mainloop" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyscope.telrun.TelrunOperator.save_config">
-<span class="sig-name descname"><span class="pre">save_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/main/pyscope/telrun/telrun_operator.py#L470-L474"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.save_config" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/WWGolay/pyscope/blob/73b892704d56b40295c124f6d9f5b9c0ad806a82/pyscope/telrun/telrun_operator.py#L30-L558"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyscope.telrun.TelrunOperator.save_config" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1106,6 +1132,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator"><code class="docutils literal notranslate"><span class="pre">TelrunOperator</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_exposure"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_exposure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_filters"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_filters</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_initial"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_initial</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_interval"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_interval</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_midpoint"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_midpoint</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_nsteps"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_nsteps</span></code></a></li>
@@ -1113,11 +1140,13 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_step_size"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_step_size</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_timeout"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_timeout</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.autofocus_use_current_pointing"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.autofocus_use_current_pointing</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.best_focus_result"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.best_focus_result</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.camera_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.camera_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.check_block_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.check_block_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.check_safety_monitors"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.check_safety_monitors</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.cover_calibrator_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.cover_calibrator_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.current_block"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.current_block</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.current_block_index"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.current_block_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.default_readout"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.default_readout</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.do_periodic_autofocus"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.do_periodic_autofocus</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.dome_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.dome_status</span></code></a></li>
@@ -1125,7 +1154,6 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.filter_wheel_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.filter_wheel_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.focuser_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.focuser_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.hardware_timeout"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.hardware_timeout</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.initial_autofocus"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.initial_autofocus</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.initial_home"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.initial_home</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.last_autofocus_time"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.last_autofocus_time</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.max_block_late_time"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.max_block_late_time</span></code></a></li>
@@ -1135,6 +1163,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.observing_conditions_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.observing_conditions_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.preslew_time"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.preslew_time</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.previous_block"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.previous_block</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.queue_fname"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.queue_fname</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.recenter_check_and_refine"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.recenter_check_and_refine</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.recenter_exposure"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.recenter_exposure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.recenter_filters"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.recenter_filters</span></code></a></li>
@@ -1146,17 +1175,21 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.recenter_tolerance"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.recenter_tolerance</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.rotator_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.rotator_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.safety_monitor_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.safety_monitor_status</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.schedule"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.schedule</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.schedule_fname"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.schedule_fname</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.skipped_block_count"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.skipped_block_count</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.status_log_update_interval"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.status_log_update_interval</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.switch_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.switch_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.telescope_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.telescope_status</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.telpath"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.telpath</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.telhome"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.telhome</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.telrun_info"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.telrun_info</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.update_block_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.update_block_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wait_for_block_start_time"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wait_for_block_start_time</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wait_for_cooldown"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wait_for_cooldown</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wait_for_sun"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wait_for_sun</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wcs_filters"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wcs_filters</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wcs_status"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wcs_status</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.wcs_timeout"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.wcs_timeout</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.write_to_schedule_log"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.write_to_schedule_log</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.write_to_status_log"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.write_to_status_log</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.execute_block"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.execute_block()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pyscope.telrun.TelrunOperator.execute_schedule"><code class="docutils literal notranslate"><span class="pre">TelrunOperator.execute_schedule()</span></code></a></li>

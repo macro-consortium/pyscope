@@ -10,8 +10,20 @@ HTMLSafetyMonitor
 
    .. autosummary::
 
+      ~HTMLSafetyMonitor.Description
+      ~HTMLSafetyMonitor.DriverInfo
+      ~HTMLSafetyMonitor.DriverVersion
+      ~HTMLSafetyMonitor.InterfaceVersion
       ~HTMLSafetyMonitor.IsSafe
+      ~HTMLSafetyMonitor.Name
+      ~HTMLSafetyMonitor.SupportedActions
 
    .. rubric:: Attributes Documentation
 
+   .. autoattribute:: Description
+   .. autoattribute:: DriverInfo
+   .. autoattribute:: DriverVersion
+   .. autoattribute:: InterfaceVersion
    .. autoattribute:: IsSafe
+   .. autoattribute:: Name
+   .. autoattribute:: SupportedActions
