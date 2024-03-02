@@ -384,7 +384,14 @@ class TelrunOperator:
             case None | "None" | "none":
                 logger.info("dome_type is None, setting to None")
                 self._dome_type = "None"
-            case "dome" | "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor" | "both":
+            case (
+                "dome"
+                | "safety-monitor"
+                | "safety_monitor"
+                | "safetymonitor"
+                | "safety monitor"
+                | "both"
+            ):
                 pass
             case _:
                 raise TelrunException(
@@ -716,7 +723,9 @@ class TelrunOperator:
                         self.observatory.dome.FindHome()
                         self._dome_status = "Idle"
                         logger.info("Found.")
-            case "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor":
+            case (
+                "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor"
+            ):
                 logger.info("Designating first safety monitor state as dome...")
                 if self.observatory.safety_monitor is not None:
                     status = False
@@ -1078,7 +1087,9 @@ class TelrunOperator:
                         logger.removeHandler(str_handler)
                         return (new_status, "Dome shutter is not open", block)
 
-            case "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor":
+            case (
+                "safety-monitor" | "safety_monitor" | "safetymonitor" | "safety monitor"
+            ):
                 if self.observatory.safety_monitor is not None:
                     status = False
                     if self.observatory.safety_monitor is not (iter, tuple, list):
@@ -1640,11 +1651,12 @@ class TelrunOperator:
             self._current_block = None
             if self.update_block_status:
                 block["status"] = "F"
-                block[
-                    "message"
-                ] = "Requested startx and numx of %i, %i is not supported" % (
-                    block["frame_position"][0],
-                    block["frame_size"][0],
+                block["message"] = (
+                    "Requested startx and numx of %i, %i is not supported"
+                    % (
+                        block["frame_position"][0],
+                        block["frame_size"][0],
+                    )
                 )
             logger.removeHandler(str_handler)
             return (
@@ -1679,11 +1691,12 @@ class TelrunOperator:
             self._current_block = None
             if self.update_block_status:
                 block["status"] = "F"
-                block[
-                    "message"
-                ] = "Requested starty and numy of %i, %i is not supported" % (
-                    block["frame_position"][1],
-                    block["frame_size"][1],
+                block["message"] = (
+                    "Requested starty and numy of %i, %i is not supported"
+                    % (
+                        block["frame_position"][1],
+                        block["frame_size"][1],
+                    )
                 )
             logger.removeHandler(str_handler)
             return (
@@ -1993,9 +2006,11 @@ class TelrunOperator:
         """Returns a dictionary of information about the current status of TelrunOperator."""
 
         info = {
-            "OPMODE": ("Robotic", "Operation mode")
-            if self._execution_thread is not None
-            else ("Manual", "Operation mode"),
+            "OPMODE": (
+                ("Robotic", "Operation mode")
+                if self._execution_thread is not None
+                else ("Manual", "Operation mode")
+            ),
             "SUNELEV": (self.observatory.sun_altaz()[0].deg, "Sun elevation"),
             "MOONELEV": (self.observatory.moon_altaz()[0].deg, "Moon elevation"),
             "MOONILL": (self.observatory.moon_illumination(), "Moon illumination"),

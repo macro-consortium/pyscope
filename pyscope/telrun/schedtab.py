@@ -42,9 +42,11 @@ def blocks_to_table(observing_blocks):
 
     t["ID"] = np.ma.array(
         [
-            block.configuration["ID"]
-            if hasattr(block, "target")
-            else astrotime.Time(0, format="mjd")
+            (
+                block.configuration["ID"]
+                if hasattr(block, "target")
+                else astrotime.Time(0, format="mjd")
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -52,22 +54,24 @@ def blocks_to_table(observing_blocks):
 
     # Populate simple columns
     t["name"] = [
-        block.name
-        if hasattr(block, "target")
-        else "TransitionBlock"
-        if type(block) is not astroplan.Slot
-        else "EmptyBlock"
+        (
+            block.name
+            if hasattr(block, "target")
+            else (
+                "TransitionBlock" if type(block) is not astroplan.Slot else "EmptyBlock"
+            )
+        )
         for block in observing_blocks
     ]
 
     t["start_time"] = astrotime.Time(
         np.ma.array(
             [
-                block.start.mjd
-                if type(block) is astroplan.Slot
-                else 0
-                if block.start_time is None
-                else block.start_time.mjd
+                (
+                    block.start.mjd
+                    if type(block) is astroplan.Slot
+                    else 0 if block.start_time is None else block.start_time.mjd
+                )
                 for block in observing_blocks
             ],
             mask=unscheduled_blocks_mask,
@@ -78,11 +82,11 @@ def blocks_to_table(observing_blocks):
     t["end_time"] = astrotime.Time(
         np.ma.array(
             [
-                block.end.mjd
-                if type(block) is astroplan.Slot
-                else 0
-                if block.end_time is None
-                else block.end_time.mjd
+                (
+                    block.end.mjd
+                    if type(block) is astroplan.Slot
+                    else 0 if block.end_time is None else block.end_time.mjd
+                )
                 for block in observing_blocks
             ],
             mask=unscheduled_blocks_mask,
@@ -92,9 +96,11 @@ def blocks_to_table(observing_blocks):
 
     t["target"] = coord.SkyCoord(
         [
-            block.target.to_string("hmsdms")
-            if hasattr(block, "target")
-            else "0h0m0.0s -90d0m0.0s"
+            (
+                block.target.to_string("hmsdms")
+                if hasattr(block, "target")
+                else "0h0m0.0s -90d0m0.0s"
+            )
             for block in observing_blocks
         ]
     )
@@ -229,9 +235,11 @@ def blocks_to_table(observing_blocks):
 
     t["pm_ra_cosdec"] = np.ma.array(
         [
-            block.configuration["pm_ra_cosdec"].to(u.arcsec / u.hour).value
-            if hasattr(block, "target")
-            else 0
+            (
+                block.configuration["pm_ra_cosdec"].to(u.arcsec / u.hour).value
+                if hasattr(block, "target")
+                else 0
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -239,9 +247,11 @@ def blocks_to_table(observing_blocks):
 
     t["pm_dec"] = np.ma.array(
         [
-            block.configuration["pm_dec"].to(u.arcsec / u.hour).value
-            if hasattr(block, "target")
-            else 0
+            (
+                block.configuration["pm_dec"].to(u.arcsec / u.hour).value
+                if hasattr(block, "target")
+                else 0
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -281,9 +291,11 @@ def blocks_to_table(observing_blocks):
 
     t["sched_time"] = np.ma.array(
         [
-            block.configuration["sched_time"]
-            if hasattr(block, "target")
-            else astrotime.Time(0, format="jd")
+            (
+                block.configuration["sched_time"]
+                if hasattr(block, "target")
+                else astrotime.Time(0, format="jd")
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -327,21 +339,25 @@ def blocks_to_table(observing_blocks):
                 elif type(constraint) is astroplan.AtNightConstraint:
                     constraint_dict = {
                         "type": "AtNightConstraint",
-                        "max_solar_altitude": constraint.max_solar_altitude.to(
-                            u.deg
-                        ).value
-                        if constraint.max_solar_altitude is not None
-                        else 0,
+                        "max_solar_altitude": (
+                            constraint.max_solar_altitude.to(u.deg).value
+                            if constraint.max_solar_altitude is not None
+                            else 0
+                        ),
                     }
                 elif type(constraint) is astroplan.AltitudeConstraint:
                     constraint_dict = {
                         "type": "AltitudeConstraint",
-                        "min": constraint.min.to(u.deg).value
-                        if constraint.min is not None
-                        else 0,
-                        "max": constraint.max.to(u.deg).value
-                        if constraint.max is not None
-                        else 90,
+                        "min": (
+                            constraint.min.to(u.deg).value
+                            if constraint.min is not None
+                            else 0
+                        ),
+                        "max": (
+                            constraint.max.to(u.deg).value
+                            if constraint.max is not None
+                            else 90
+                        ),
                         "boolean_constraint": constraint.boolean_constraint,
                     }
                 elif type(constraint) is astroplan.AirmassConstraint:
@@ -349,19 +365,25 @@ def blocks_to_table(observing_blocks):
                         "type": "AirmassConstraint",
                         "min": constraint.min if constraint.min is not None else 0,
                         "max": constraint.max if constraint.max is not None else 100,
-                        "boolean_constraint": constraint.boolean_constraint
-                        if constraint.boolean_constraint is not None
-                        else False,
+                        "boolean_constraint": (
+                            constraint.boolean_constraint
+                            if constraint.boolean_constraint is not None
+                            else False
+                        ),
                     }
                 elif type(constraint) is astroplan.MoonSeparationConstraint:
                     constraint_dict = {
                         "type": "MoonSeparationConstraint",
-                        "min": constraint.min.to(u.deg).value
-                        if constraint.min is not None
-                        else 0,
-                        "max": constraint.max.to(u.deg).value
-                        if constraint.max is not None
-                        else 360,
+                        "min": (
+                            constraint.min.to(u.deg).value
+                            if constraint.min is not None
+                            else 0
+                        ),
+                        "max": (
+                            constraint.max.to(u.deg).value
+                            if constraint.max is not None
+                            else 360
+                        ),
                     }
                 elif constraint is None:
                     continue
@@ -554,7 +576,7 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type str, not {column.dtype}"
                     )
-            case ("start_time" | "end_time" | "sched_time"):
+            case "start_time" | "end_time" | "sched_time":
                 if type(column) is not astrotime.Time:
                     logger.error(
                         f"Column '{column.name}' must be of type astropy.time.Time, not {type(column)}"
@@ -562,7 +584,7 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type astropy.time.Time, not {type(column)}"
                     )
-            case ("target"):
+            case "target":
                 if type(column) is not coord.SkyCoord:
                     logger.error(
                         f"Column '{column.name}' must be of type astropy.coordinates.SkyCoord, not {type(column)}"
@@ -586,7 +608,7 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type int64, not {column.dtype}"
                     )
-            case ("exposure" | "pm_ra_cosdec" | "pm_dec"):
+            case "exposure" | "pm_ra_cosdec" | "pm_dec":
                 if not np.issubdtype(column.dtype, np.dtype("float64")):
                     logger.error(
                         f"Column '{column.name}' must be of type float64, not {column.dtype}"
@@ -594,7 +616,7 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type float64, not {column.dtype}"
                     )
-            case ("shutter_state"):
+            case "shutter_state":
                 if column.dtype != bool:
                     logger.error(
                         f"Column '{column.name}' must be of type bool, not {column.dtype}"
