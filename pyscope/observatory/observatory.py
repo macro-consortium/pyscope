@@ -10,6 +10,7 @@ import tempfile
 import threading
 import time
 from ast import literal_eval
+from datetime import datetime
 
 import numpy as np
 from astropy import coordinates as coord
@@ -2321,7 +2322,7 @@ class Observatory:
                         logger.info("Starting %s exposure" % self.filters[i])
                         self.camera.StartExposure(filter_exposure[i], False)
                         save_string = save_path + (
-                            "flat_%s_%ix%i_%ss_%s__%i.fts"
+                            "/flat_%s_%ix%i_%ss_%s__%i.fts"
                             % (
                                 self.filters[i],
                                 self.camera.BinX,
@@ -2329,12 +2330,22 @@ class Observatory:
                                 ("%4.4g" % filter_exposure[i])
                                 .replace(".", "-")
                                 .replace(" ", ""),
-                                self.camera.ReadoutModes[
-                                    self.camera.ReadoutMode
-                                ].replace(" ", ""),
+                                # self.camera.ReadoutModes[
+                                #     self.camera.ReadoutMode
+                                # ].replace(" ", ""),
+                                self.camera.ReadoutMode,
                                 j,
                             )
                         )
+
+                        print("-------------------")
+                        print()
+                        print(save_string)
+                        print(self.camera.ReadoutModes)
+                        print(type(self.camera.ReadoutMode))
+                        print(self.camera.ReadoutModes[self.camera.ReadoutMode])
+                        print()
+                        print("-------------------")
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp="Flat")
@@ -2408,14 +2419,15 @@ class Observatory:
                         logger.info("Starting %4.4gs dark exposure" % exposure)
                         self.camera.StartExposure(exposure, False)
                         save_string = save_path + (
-                            "dark_%ix%i_%ss_%s__%i.fts"
+                            "/dark_%ix%i_%ss_%s__%i.fts"
                             % (
                                 self.camera.BinX,
                                 self.camera.BinY,
                                 ("%4.4g" % exposure).replace(".", "-").replace(" ", ""),
-                                self.camera.ReadoutModes[
-                                    self.camera.ReadoutMode
-                                ].replace(" ", ""),
+                                # self.camera.ReadoutModes[
+                                #     self.camera.ReadoutMode
+                                # ].replace(" ", ""),
+                                self.camera.ReadoutMode,
                                 j,
                             )
                         )

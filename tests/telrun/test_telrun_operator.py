@@ -7,6 +7,10 @@ from pyscope.observatory import Observatory
 from pyscope.telrun import TelrunOperator
 
 
+def test_dynamic_schedtel(tmp_path):
+    pass
+
+
 def test_telrun_operator(tmp_path):
     logger.setLevel("INFO")
     logger.addHandler(logging.StreamHandler())
@@ -18,4 +22,4 @@ def test_telrun_operator(tmp_path):
 
 
 if __name__ == "__main__":
-    test_telrun_operator("./")
+    test_dynamic_schedtel("./my_test/")
