@@ -12,9 +12,14 @@ HTMLObservingConditions
 
       ~HTMLObservingConditions.AveragePeriod
       ~HTMLObservingConditions.CloudCover
+      ~HTMLObservingConditions.Description
       ~HTMLObservingConditions.DewPoint
+      ~HTMLObservingConditions.DriverInfo
+      ~HTMLObservingConditions.DriverVersion
       ~HTMLObservingConditions.Humidity
+      ~HTMLObservingConditions.InterfaceVersion
       ~HTMLObservingConditions.LastUpdated
+      ~HTMLObservingConditions.Name
       ~HTMLObservingConditions.Pressure
       ~HTMLObservingConditions.RainRate
       ~HTMLObservingConditions.SkyBrightness
@@ -38,9 +43,14 @@ HTMLObservingConditions
 
    .. autoattribute:: AveragePeriod
    .. autoattribute:: CloudCover
+   .. autoattribute:: Description
    .. autoattribute:: DewPoint
+   .. autoattribute:: DriverInfo
+   .. autoattribute:: DriverVersion
    .. autoattribute:: Humidity
+   .. autoattribute:: InterfaceVersion
    .. autoattribute:: LastUpdated
+   .. autoattribute:: Name
    .. autoattribute:: Pressure
    .. autoattribute:: RainRate
    .. autoattribute:: SkyBrightness

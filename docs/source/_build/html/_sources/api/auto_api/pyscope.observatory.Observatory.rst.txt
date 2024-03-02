@@ -95,6 +95,8 @@ Observatory
 
       ~Observatory.connect_all
       ~Observatory.disconnect_all
+      ~Observatory.generate_header_dict
+      ~Observatory.generate_header_info
       ~Observatory.get_current_object
       ~Observatory.get_object_altaz
       ~Observatory.get_object_slew
@@ -103,6 +105,7 @@ Observatory
       ~Observatory.moon_illumination
       ~Observatory.recenter
       ~Observatory.run_autofocus
+      ~Observatory.safe_update_header
       ~Observatory.safety_status
       ~Observatory.save_config
       ~Observatory.save_last_image
@@ -205,6 +208,8 @@ Observatory
 
    .. automethod:: connect_all
    .. automethod:: disconnect_all
+   .. automethod:: generate_header_dict
+   .. automethod:: generate_header_info
    .. automethod:: get_current_object
    .. automethod:: get_object_altaz
    .. automethod:: get_object_slew
@@ -213,6 +218,7 @@ Observatory
    .. automethod:: moon_illumination
    .. automethod:: recenter
    .. automethod:: run_autofocus
+   .. automethod:: safe_update_header
    .. automethod:: safety_status
    .. automethod:: save_config
    .. automethod:: save_last_image
