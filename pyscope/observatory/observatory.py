@@ -986,8 +986,8 @@ class Observatory:
 
         logger.info("Attempting to turn off telescope tracking...")
         try:
-            self.observatory.telescope.DeclinationRate = 0
-            self.observatory.telescope.RightAscensionRate = 0
+            self.telescope.DeclinationRate = 0
+            self.telescope.RightAscensionRate = 0
             self.telescope.Tracking = False
             logger.info("Telescope tracking turned off")
         except:
@@ -1019,9 +1019,7 @@ class Observatory:
             t = self.observatory_time
         else:
             t = astrotime.Time(t)
-        return (
-            t.sidereal_time("apparent", self.observatory_location).to("hourangle").value
-        )
+        return t.sidereal_time("apparent", self.observatory_location).to("hourangle")
 
     def sun_altaz(self, t=None):
         """Returns the altitude of the sun"""
@@ -2441,8 +2439,12 @@ class Observatory:
 
         return True
 
-    def save_config(self, filename):
+    def save_config(self, filename, overwrite=False):
         logger.debug("Saving observatory configuration to %s" % filename)
+        if os.path.exists(filename) and not overwrite:
+            raise ObservatoryException(
+                "The file %s already exists and overwrite is False" % filename
+            )
         with open(filename, "w") as configfile:
             self._config.write(configfile)
 
@@ -3959,8 +3961,12 @@ class Observatory:
             coord.Latitude(value) if value is not None or value != "" else None
         )
         # If connected, set the telescope site latitude
-        if self.telescope.Connected:
-            self.telescope.SiteLatitude = self._latitude.deg
+        try:
+            if self.telescope.Connected:
+                self.telescope.SiteLatitude = self._latitude.deg
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's latitude")
+
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3980,8 +3986,12 @@ class Observatory:
             if value is not None or value != ""
             else None
         )
-        if self.telescope.Connected:
-            self.telescope.SiteLongitude = self._longitude.deg
+        try:
+            if self.telescope.Connected:
+                self.telescope.SiteLongitude = self._longitude.deg
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's longitude")
+
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -4307,7 +4317,13 @@ class Observatory:
         self._config["rotator"]["rotator_reverse"] = (
             str(self._rotator_reverse) if self._rotator_reverse is not None else ""
         )
-        self.rotator.Reverse = self._rotator_reverse
+        try:
+            if self.rotator is not None:
+                self.rotator.Reverse = self._rotator_reverse
+        except:
+            logger.warning(
+                "Rotator not connected, you should reconnect to the rotator and then set the reverse property"
+            )
 
     @property
     def rotator_min_angle(self):

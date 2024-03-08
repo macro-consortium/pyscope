@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import threading
+import time
 import tkinter as tk
 import tkinter.ttk as ttk
 from io import StringIO
@@ -21,7 +22,7 @@ from astropy import units as u
 from astroquery import mpc
 
 from ..observatory import Observatory
-from . import TelrunException, schedtab
+from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
 
@@ -140,12 +141,16 @@ class TelrunOperator:
         self._images_path = self._telhome / "images"
         self._logs_path = self._telhome / "logs"
 
+        save_at_end = False
+        if not self._config_path.exists():
+            save_at_end = True
+
         # Read-only attributes with no constructor arguments
         self._schedule_fname = None
         self._schedule = None
         self._best_focus_result = None
         self._do_periodic_autofocus = True
-        self._last_autofocus_time = 0
+        self._last_autofocus_time = astrotime.Time("2000-01-01T00:00:00", format="isot")
         self._skipped_block_count = 0
         self._current_block_index = None
         self._current_block = None
@@ -179,9 +184,9 @@ class TelrunOperator:
         self._max_block_late_time = 60
         self._preslew_time = 60
         self._hardware_timeout = 120
+        self._autofocus_filters = None
         self._autofocus_interval = 3600
         self._autofocus_initial = True
-        self._autofocus_filters = None
         self._autofocus_exposure = 5
         self._autofocus_midpoint = 0
         self._autofocus_nsteps = 5
@@ -197,32 +202,18 @@ class TelrunOperator:
         self._recenter_save_images = False
         self._recenter_save_path = self._images_path / "recenter"
         self._recenter_sync_mount = False
+        self._recenter_timeout = 180
         self._wcs_filters = None
         self._wcs_timeout = 30
-
-        # Path parsing
-        save_at_end = False
-        if not self._config_path.exists():
-            logger.info("Creating config path: %s" % self._config_path)
-            self._config_path.mkdir(parents=True)
-            save_at_end = True
-        if not self._schedules_path.exists():
-            logger.info("Creating schedules path: %s" % self._schedules_path)
-            self._schedules_path.mkdir(parents=True)
-        if not self._images_path.exists():
-            logger.info("Creating images path: %s" % self._images_path)
-            self._images_path.mkdir(parents=True)
-        if not self._logs_path.exists():
-            logger.info("Creating logs path: %s" % self._logs_path)
-            self._logs_path.mkdir(parents=True)
 
         # Load config file if there
         if (self._config_path / "telrun.cfg").exists():
             logger.info(
-                "Using config file to initialize telrun: %s" % self._config_path
+                "Using config file to initialize telrun: %s"
+                % (self._config_path / "telrun.cfg")
             )
             try:
-                self._config.read(self._config_path)
+                self._config.read(self._config_path / "telrun.cfg")
             except:
                 raise TelrunException(
                     "Could not read config file: %s" % self._config_path
@@ -239,7 +230,9 @@ class TelrunOperator:
             self._wait_for_sun = self._config.getboolean(
                 "telrun", "wait_for_sun", fallback=self._wait_for_sun
             )
-            self._max_solar_elev = self._config.getfloat("telrun", "max_solar_elev")
+            self._max_solar_elev = self._config.getfloat(
+                "telrun", "max_solar_elev", fallback=self._max_solar_elev
+            )
             self._check_safety_monitors = self._config.getboolean(
                 "telrun", "check_safety_monitors", fallback=self._check_safety_monitors
             )
@@ -277,18 +270,16 @@ class TelrunOperator:
             self._hardware_timeout = self._config.getfloat(
                 "telrun", "hardware_timeout", fallback=self._hardware_timeout
             )
+            self._autofocus_filters = [
+                f.strip()
+                for f in self._config.get("autofocus", "autofocus_filters").split(",")
+            ]
             self._autofocus_interval = self._config.getfloat(
                 "autofocus", "autofocus_interval", fallback=self._autofocus_interval
             )
             self._autofocus_initial = self._config.getboolean(
                 "autofocus", "autofocus_initial", fallback=self._autofocus_initial
             )
-
-            self._autofocus_filters = [
-                f.strip()
-                for f in self._config.get("autofocus", "autofocus_filters").split(",")
-            ]
-
             self._autofocus_exposure = self._config.getfloat(
                 "autofocus", "autofocus_exposure", fallback=self._autofocus_exposure
             )
@@ -343,6 +334,9 @@ class TelrunOperator:
             self._recenter_sync_mount = self._config.getboolean(
                 "recenter", "recenter_sync_mount", fallback=self._recenter_sync_mount
             )
+            self._recenter_timeout = self._config.getfloat(
+                "recenter", "recenter_timeout", fallback=self._recenter_timeout
+            )
             self._wcs_filters = [
                 f.strip() for f in self._config.get("wcs", "wcs_filters").split(",")
             ]
@@ -350,6 +344,13 @@ class TelrunOperator:
             self._wcs_timeout = self._config.getfloat(
                 "wcs", "wcs_timeout", fallback=self._wcs_timeout
             )
+        else:
+            self._config["telrun"] = {}
+            self._config["autofocus"] = {}
+            self._config["recenter"] = {}
+            self._config["wcs"] = {}
+
+        init_telrun_dir(self.telhome)
 
         # Parse observatory
         self._observatory = self._config_path / "observatory.cfg"
@@ -377,6 +378,7 @@ class TelrunOperator:
             self._queue_fname = self._schedules_path / kwargs.get(
                 "queue_fname", self._queue_fname
             )
+        self._config["telrun"]["queue_fname"] = str(self._queue_fname)
 
         # Parse dome_type
         self._dome_type = kwargs.get("dome_type", self._dome_type)
@@ -397,7 +399,7 @@ class TelrunOperator:
                 raise TelrunException(
                     'dome_type must be None, "dome", "safety-monitor", "both", or "None"'
                 )
-        self._config["default"]["dome_type"] = str(self._dome_type)
+        self._config["telrun"]["dome_type"] = str(self._dome_type)
 
         # Parse other kwargs
         self.initial_home = kwargs.get("initial_home", self._initial_home)
@@ -480,6 +482,7 @@ class TelrunOperator:
         self.recenter_sync_mount = kwargs.get(
             "recenter_sync_mount", self._recenter_sync_mount
         )
+        self.recenter_timeout = kwargs.get("recenter_timeout", self._recenter_timeout)
         self.wcs_filters = kwargs.get("wcs_filters", self._wcs_filters)
         self.wcs_timeout = kwargs.get("wcs_timeout", self._wcs_timeout)
 
@@ -517,7 +520,7 @@ class TelrunOperator:
 
         # Register shutdown with atexit
         logger.debug("Registering observatory shutdown with atexit")
-        atexit.register(self._terminate())
+        atexit.register(self._terminate)
         logger.debug("Registered")
 
         # Open GUI if requested
@@ -555,19 +558,21 @@ class TelrunOperator:
         if self.observatory.switch is not None:
             self._switch_status = "Idle"
         self._telescope_status = "Idle"
-        if self.observatory.wcs is not None:
+        if self.observatory._wcs is not None:
             self._wcs_status = "Idle"
 
         if self.write_to_status_log:
-            self.start_status_log_thread()
+            self.start_status_log_thread(interval=self.status_log_update_interval)
 
         if save_at_end:
             self.save_config("telrun.cfg")
 
     def save_config(self, filename):
         logger.debug("Saving config to %s" % filename)
-        self.observatory.save_config(self.config_path / "observatory.cfg")
-        with open(self.config_path / filename, "w") as config_file:
+        self.observatory.save_config(
+            self._config_path / "observatory.cfg", overwrite=True
+        )
+        with open(self._config_path / filename, "w") as config_file:
             self._config.write(config_file)
 
     def mainloop(self):
@@ -800,7 +805,9 @@ class TelrunOperator:
             self._do_periodic_autofocus = True
 
         if self.autofocus_initial and self.do_periodic_autofocus:
-            self._last_autofocus_time = time.time() - self.autofocus_interval - 1
+            self._last_autofocus_time = (
+                astrotime.Time.now() - self.autofocus_interval * u.second - 1 * u.second
+            )
 
         # Process blocks
         for block_index, block in enumerate(self._schedule):
@@ -1201,7 +1208,8 @@ class TelrunOperator:
         if (
             self.observatory.focuser is not None
             and self.do_periodic_autofocus
-            and time.time() - self.last_autofocus_time > self.autofocus_interval
+            and (astrotime.Time.now() - self.last_autofocus_time).to(u.s).value
+            > self.autofocus_interval
             and not block["do_not_interrupt"]
         ):
             logger.info(
@@ -1288,7 +1296,7 @@ class TelrunOperator:
                 self._best_focus_result = self.focuser.Position
                 logger.warning("Autofocus failed, will try again on next block")
             else:
-                self._last_autofocus_time = time.time()
+                self._last_autofocus_time = astrotime.Time.now()
                 logger.info(
                     "Autofocus complete, best focus position: %i"
                     % self._best_focus_result
@@ -1933,7 +1941,7 @@ class TelrunOperator:
 
         json.dump(
             status_log,
-            open(self.log_path + "telrun_status.json", "w"),
+            open(self._logs_path / "telrun_status.json", "w"),
         )
 
         return status_log
@@ -2011,44 +2019,66 @@ class TelrunOperator:
                 if self._execution_thread is not None
                 else ("Manual", "Operation mode")
             ),
-            "SUNELEV": (self.observatory.sun_altaz()[0].deg, "Sun elevation"),
-            "MOONELEV": (self.observatory.moon_altaz()[0].deg, "Moon elevation"),
+            "SUNELEV": (self.observatory.sun_altaz()[0], "Sun elevation"),
+            "MOONELEV": (self.observatory.moon_altaz()[0], "Moon elevation"),
             "MOONILL": (self.observatory.moon_illumination(), "Moon illumination"),
-            "LST": (self.observatory.lst().fits, "Local sidereal time"),
-            "UT": (self.observatory.observatory_time().fits, "Universal time"),
+            "LST": (self.observatory.lst().value, "Local sidereal time"),
+            "UT": (self.observatory.observatory_time.fits, "Universal time"),
             "LASTAUTO": (
-                self.observatory.last_autofocus_time.fits,
+                self.last_autofocus_time.fits,
                 "Last autofocus time",
             ),
             "NEXTAUTO": (
                 (
-                    self.observatory.last_aufocus_time
-                    + self.autofocus_period
-                    - self.observatory.observatory_time()
-                ).second,
+                    self.last_autofocus_time
+                    + self.autofocus_interval * u.s
+                    - self.observatory.observatory_time
+                )
+                .to(u.s)
+                .value,
                 "Seconds till next autofocus",
             ),
             "PREVBLKT": (
                 (
-                    self.previous_block["start_time"]
-                    - self.observatory.observatory_time()
-                ).second,
-                "Seconds till previous block",
+                    (
+                        self.previous_block["start_time"]
+                        - self.observatory.observatory_time
+                    )
+                    .to(u.s)
+                    .value,
+                    "Seconds till previous block",
+                )
+                if self.previous_block is not None
+                else (0, "Seconds till previous block")
             ),
             "CURRBLKT": (
                 (
-                    self.current_block["start_time"]
-                    - self.observatory.observatory_time()
-                ).second,
-                "Seconds till current block",
+                    (
+                        self.current_block["start_time"]
+                        - self.observatory.observatory_time
+                    )
+                    .to(u.s)
+                    .value,
+                    "Seconds till current block",
+                )
+                if self.current_block is not None
+                else (0, "Seconds till current block")
             ),
             "NEXTBLKT": (
                 (
-                    self.next_block["start_time"] - self.observatory.observatory_time()
-                ).second,
-                "Seconds till next block",
+                    (self.next_block["start_time"] - self.observatory.observatory_time)
+                    .to(u.s)
+                    .value,
+                    "Seconds till next block",
+                )
+                if self.next_block is not None
+                else (0, "Seconds till next block")
             ),
-            "CURRIDX": (self.current_block_index, "Current block index"),
+            "CURRIDX": (
+                (self.current_block_index, "Current block index")
+                if self.current_block_index is not None
+                else (0, "Current block index")
+            ),
             "SKIPPED": (self.skipped_block_count, "Number of skipped blocks"),
             "TOTALBLK": (
                 len(self._schedule) if self._schedule is not None else 1,
@@ -2165,7 +2195,7 @@ class TelrunOperator:
             logger.warning("Process timed out after %.1f seconds" % timeout)
             # TODO: Add auto-recovery capability for the affected hardware
 
-    def start_status_log_thread(self, interval=None):
+    def start_status_log_thread(self, interval=60):
         self._status_log_update_event.clear()
         self._write_to_status_log = True
         if interval is not None:
@@ -2173,7 +2203,9 @@ class TelrunOperator:
         interval = self.status_log_update_interval
         self._status_log_thread = threading.Thread(
             target=self._update_status_log_thread,
-            args=(interval),
+            args=[
+                interval,
+            ],
             daemon=True,
             name="status_log_thread",
         )
@@ -2304,7 +2336,7 @@ class TelrunOperator:
     @initial_home.setter
     def initial_home(self, value):
         self._initial_home = bool(value)
-        self._config["default"]["initial_home"] = str(self._initial_home)
+        self._config["telrun"]["initial_home"] = str(self._initial_home)
 
     @property
     def wait_for_sun(self):
@@ -2313,7 +2345,7 @@ class TelrunOperator:
     @wait_for_sun.setter
     def wait_for_sun(self, value):
         self._wait_for_sun = bool(value)
-        self._config["default"]["wait_for_sun"] = str(self._wait_for_sun)
+        self._config["telrun"]["wait_for_sun"] = str(self._wait_for_sun)
 
     @property
     def max_solar_elev(self):
@@ -2322,7 +2354,7 @@ class TelrunOperator:
     @max_solar_elev.setter
     def max_solar_elev(self, value):
         self._max_solar_elev = float(value)
-        self._config["default"]["max_solar_elev"] = str(self._max_solar_elev)
+        self._config["telrun"]["max_solar_elev"] = str(self._max_solar_elev)
 
     @property
     def check_safety_monitors(self):
@@ -2331,7 +2363,7 @@ class TelrunOperator:
     @check_safety_monitors.setter
     def check_safety_monitors(self, value):
         self._check_safety_monitors = bool(value)
-        self._config["default"]["check_safety_monitors"] = str(
+        self._config["telrun"]["check_safety_monitors"] = str(
             self._check_safety_monitors
         )
 
@@ -2340,9 +2372,9 @@ class TelrunOperator:
         return self._wait_for_cooldown
 
     @wait_for_cooldown.setter
-    def _wait_for_cooldown(self, value):
+    def wait_for_cooldown(self, value):
         self._wait_for_cooldown = bool(value)
-        self._config["default"]["wait_for_cooldown"] = str(self._wait_for_cooldown)
+        self._config["telrun"]["wait_for_cooldown"] = str(self._wait_for_cooldown)
 
     @property
     def default_readout(self):
@@ -2351,7 +2383,7 @@ class TelrunOperator:
     @default_readout.setter
     def default_readout(self, value):
         self._default_readout = int(value)
-        self._config["default"]["default_readout"] = str(self._default_readout)
+        self._config["telrun"]["default_readout"] = str(self._default_readout)
 
     @property
     def check_block_status(self):
@@ -2360,7 +2392,7 @@ class TelrunOperator:
     @check_block_status.setter
     def check_block_status(self, value):
         self._check_block_status = bool(value)
-        self._config["default"]["check_block_status"] = str(self._check_block_status)
+        self._config["telrun"]["check_block_status"] = str(self._check_block_status)
 
     @property
     def update_block_status(self):
@@ -2369,7 +2401,7 @@ class TelrunOperator:
     @update_block_status.setter
     def update_block_status(self, value):
         self._update_block_status = bool(value)
-        self._config["default"]["update_block_status"] = str(self._update_block_status)
+        self._config["telrun"]["update_block_status"] = str(self._update_block_status)
 
     @property
     def write_to_status_log(self):
@@ -2378,7 +2410,7 @@ class TelrunOperator:
     @write_to_status_log.setter
     def write_to_status_log(self, value):
         self._write_to_status_log = bool(value)
-        self._config["default"]["write_to_status_log"] = str(self._write_to_status_log)
+        self._config["telrun"]["write_to_status_log"] = str(self._write_to_status_log)
         if self._write_to_status_log:
             self.start_status_log_thread()
 
@@ -2389,93 +2421,9 @@ class TelrunOperator:
     @status_log_update_interval.setter
     def status_log_update_interval(self, value):
         self._status_log_update_interval = float(value)
-        self._config["default"]["status_log_update_interval"] = str(
+        self._config["telrun"]["status_log_update_interval"] = str(
             self._status_log_update_interval
         )
-
-    @property
-    def autofocus_interval(self):
-        return self._autofocus_interval
-
-    @autofocus_interval.setter
-    def autofocus_interval(self, value):
-        self._autofocus_interval = float(value)
-        self._config["default"]["autofocus_interval"] = str(self._autofocus_interval)
-
-    @property
-    def autofocus_initial(self):
-        return self._autofocus_initial
-
-    @autofocus_initial.setter
-    def autofocus_initial(self, value):
-        self._autofocus_initial = bool(value)
-        self._config["default"]["autofocus_initial"] = str(self._autofocus_initial)
-
-    @property
-    def autofocus_filters(self):
-        return self._autofocus_filters
-
-    @autofocus_filters.setter
-    def autofocus_filters(self, value):
-        self._autofocus_filters = iter(value)
-        for v in value:
-            self._config["default"]["autofocus_filters"] += str(v) + ","
-
-    @property
-    def autofocus_exposure(self):
-        return self._autofocus_exposure
-
-    @autofocus_exposure.setter
-    def autofocus_exposure(self, value):
-        self._autofocus_exposure = float(value)
-        self._config["default"]["autofocus_exposure"] = str(self._autofocus_exposure)
-
-    @property
-    def autofocus_midpoint(self):
-        return self._autofocus_midpoint
-
-    @autofocus_midpoint.setter
-    def autofocus_midpoint(self, value):
-        self._autofocus_midpoint = float(value)
-        self._config["default"]["autofocus_midpoint"] = str(self._autofocus_midpoint)
-
-    @property
-    def autofocus_nsteps(self):
-        return self._autofocus_nsteps
-
-    @autofocus_nsteps.setter
-    def autofocus_nsteps(self, value):
-        self._autofocus_nsteps = int(value)
-        self._config["default"]["autofocus_nsteps"] = str(self._autofocus_nsteps)
-
-    @property
-    def autofocus_step_size(self):
-        return self._autofocus_step_size
-
-    @autofocus_step_size.setter
-    def autofocus_step_size(self, value):
-        self._autofocus_step_size = int(value)
-        self._config["default"]["autofocus_step_size"] = str(self._autofocus_step_size)
-
-    @property
-    def autofocus_use_current_pointing(self):
-        return self._autofocus_use_current_pointing
-
-    @autofocus_use_current_pointing.setter
-    def autofocus_use_current_pointing(self, value):
-        self._autofocus_use_current_pointing = bool(value)
-        self._config["default"]["autofocus_use_current_pointing"] = str(
-            self._autofocus_use_current_pointing
-        )
-
-    @property
-    def autofocus_timeout(self):
-        return self._autofocus_timeout
-
-    @autofocus_timeout.setter
-    def autofocus_timeout(self, value):
-        self._autofocus_timeout = float(value)
-        self._config["default"]["autofocus_timeout"] = str(self._autofocus_timeout)
 
     @property
     def wait_for_block_start_time(self):
@@ -2484,7 +2432,7 @@ class TelrunOperator:
     @wait_for_block_start_time.setter
     def wait_for_block_start_time(self, value):
         self._wait_for_block_start_time = bool(value)
-        self._config["default"]["wait_for_block_start_time"] = str(
+        self._config["telrun"]["wait_for_block_start_time"] = str(
             self._wait_for_block_start_time
         )
 
@@ -2497,7 +2445,7 @@ class TelrunOperator:
         if value < 0:
             value = 1e99
         self._max_block_late_time = float(value)
-        self._config["default"]["max_block_late_time"] = str(self._max_block_late_time)
+        self._config["telrun"]["max_block_late_time"] = str(self._max_block_late_time)
 
     @property
     def preslew_time(self):
@@ -2506,7 +2454,114 @@ class TelrunOperator:
     @preslew_time.setter
     def preslew_time(self, value):
         self._preslew_time = float(value)
-        self._config["default"]["preslew_time"] = str(self._preslew_time)
+        self._config["telrun"]["preslew_time"] = str(self._preslew_time)
+
+    @property
+    def hardware_timeout(self):
+        return self._hardware_timeout
+
+    @hardware_timeout.setter
+    def hardware_timeout(self, value):
+        self._hardware_timeout = float(value)
+        self._config["telrun"]["hardware_timeout"] = str(self._hardware_timeout)
+
+    @property
+    def autofocus_filters(self):
+        return self._autofocus_filters
+
+    @autofocus_filters.setter
+    def autofocus_filters(self, value):
+        if value is self._autofocus_filters:
+            return
+        if type(value) is list:
+            self._autofocus_filters = value
+        else:
+            self._autofocus_filters = (
+                [v for v in value.replace(" ", "").split(",")]
+                if value is not None or value != ""
+                else None
+            )
+        self._config["autofocus"]["autofocus_filters"] = (
+            ", ".join(self._autofocus_filters)
+            if self._autofocus_filters is not None
+            else ""
+        )
+
+    @property
+    def autofocus_interval(self):
+        return self._autofocus_interval
+
+    @autofocus_interval.setter
+    def autofocus_interval(self, value):
+        self._autofocus_interval = float(value)
+        self._config["autofocus"]["autofocus_interval"] = str(self._autofocus_interval)
+
+    @property
+    def autofocus_initial(self):
+        return self._autofocus_initial
+
+    @autofocus_initial.setter
+    def autofocus_initial(self, value):
+        self._autofocus_initial = bool(value)
+        self._config["autofocus"]["autofocus_initial"] = str(self._autofocus_initial)
+
+    @property
+    def autofocus_exposure(self):
+        return self._autofocus_exposure
+
+    @autofocus_exposure.setter
+    def autofocus_exposure(self, value):
+        self._autofocus_exposure = float(value)
+        self._config["autofocus"]["autofocus_exposure"] = str(self._autofocus_exposure)
+
+    @property
+    def autofocus_midpoint(self):
+        return self._autofocus_midpoint
+
+    @autofocus_midpoint.setter
+    def autofocus_midpoint(self, value):
+        self._autofocus_midpoint = float(value)
+        self._config["autofocus"]["autofocus_midpoint"] = str(self._autofocus_midpoint)
+
+    @property
+    def autofocus_nsteps(self):
+        return self._autofocus_nsteps
+
+    @autofocus_nsteps.setter
+    def autofocus_nsteps(self, value):
+        self._autofocus_nsteps = int(value)
+        self._config["autofocus"]["autofocus_nsteps"] = str(self._autofocus_nsteps)
+
+    @property
+    def autofocus_step_size(self):
+        return self._autofocus_step_size
+
+    @autofocus_step_size.setter
+    def autofocus_step_size(self, value):
+        self._autofocus_step_size = int(value)
+        self._config["autofocus"]["autofocus_step_size"] = str(
+            self._autofocus_step_size
+        )
+
+    @property
+    def autofocus_use_current_pointing(self):
+        return self._autofocus_use_current_pointing
+
+    @autofocus_use_current_pointing.setter
+    def autofocus_use_current_pointing(self, value):
+        self._autofocus_use_current_pointing = bool(value)
+        self._config["autofocus"]["autofocus_use_current_pointing"] = str(
+            self._autofocus_use_current_pointing
+        )
+
+    @property
+    def autofocus_timeout(self):
+        return self._autofocus_timeout
+
+    @autofocus_timeout.setter
+    def autofocus_timeout(self, value):
+        self._autofocus_timeout = float(value)
+        self._config["autofocus"]["autofocus_timeout"] = str(self._autofocus_timeout)
 
     @property
     def recenter_filters(self):
@@ -2514,9 +2569,21 @@ class TelrunOperator:
 
     @recenter_filters.setter
     def recenter_filters(self, value):
-        self._recenter_filters = iter(value)
-        for v in value:
-            self._config["default"]["recenter_filters"] += str(v) + ","
+        if value is self._recenter_filters:
+            return
+        if type(value) is list:
+            self._recenter_filters = value
+        else:
+            self._recenter_filters = (
+                [v for v in value.replace(" ", "").split(",")]
+                if value is not None or value != ""
+                else None
+            )
+        self._config["recenter"]["recenter_filters"] = (
+            ", ".join(self._recenter_filters)
+            if self._recenter_filters is not None
+            else ""
+        )
 
     @property
     def recenter_initial_offset_dec(self):
@@ -2525,7 +2592,7 @@ class TelrunOperator:
     @recenter_initial_offset_dec.setter
     def recenter_initial_offset_dec(self, value):
         self._recenter_initial_offset_dec = float(value)
-        self._config["default"]["recenter_initial_offset_dec"] = str(
+        self._config["recenter"]["recenter_initial_offset_dec"] = str(
             self._recenter_initial_offset_dec
         )
 
@@ -2536,7 +2603,7 @@ class TelrunOperator:
     @recenter_check_and_refine.setter
     def recenter_check_and_refine(self, value):
         self._recenter_check_and_refine = bool(value)
-        self._config["default"]["recenter_check_and_refine"] = str(
+        self._config["recenter"]["recenter_check_and_refine"] = str(
             self._recenter_check_and_refine
         )
 
@@ -2547,7 +2614,7 @@ class TelrunOperator:
     @recenter_max_attempts.setter
     def recenter_max_attempts(self, value):
         self._recenter_max_attempts = int(value)
-        self._config["default"]["recenter_max_attempts"] = str(
+        self._config["recenter"]["recenter_max_attempts"] = str(
             self._recenter_max_attempts
         )
 
@@ -2558,7 +2625,7 @@ class TelrunOperator:
     @recenter_tolerance.setter
     def recenter_tolerance(self, value):
         self._recenter_tolerance = float(value)
-        self._config["default"]["recenter_tolerance"] = str(self._recenter_tolerance)
+        self._config["recenter"]["recenter_tolerance"] = str(self._recenter_tolerance)
 
     @property
     def recenter_exposure(self):
@@ -2567,7 +2634,7 @@ class TelrunOperator:
     @recenter_exposure.setter
     def recenter_exposure(self, value):
         self._recenter_exposure = float(value)
-        self._config["default"]["recenter_exposure"] = str(self._recenter_exposure)
+        self._config["recenter"]["recenter_exposure"] = str(self._recenter_exposure)
 
     @property
     def recenter_save_images(self):
@@ -2576,7 +2643,7 @@ class TelrunOperator:
     @recenter_save_images.setter
     def recenter_save_images(self, value):
         self._recenter_save_images = bool(value)
-        self._config["default"]["recenter_save_images"] = str(
+        self._config["recenter"]["recenter_save_images"] = str(
             self._recenter_save_images
         )
 
@@ -2587,7 +2654,7 @@ class TelrunOperator:
     @recenter_save_path.setter
     def recenter_save_path(self, value):
         self._recenter_save_path = os.path.abspath(value)
-        self._config["default"]["recenter_save_path"] = str(self._recenter_save_path)
+        self._config["recenter"]["recenter_save_path"] = str(self._recenter_save_path)
 
     @property
     def recenter_sync_mount(self):
@@ -2596,16 +2663,16 @@ class TelrunOperator:
     @recenter_sync_mount.setter
     def recenter_sync_mount(self, value):
         self._recenter_sync_mount = bool(value)
-        self._config["default"]["recenter_sync_mount"] = str(self._recenter_sync_mount)
+        self._config["recenter"]["recenter_sync_mount"] = str(self._recenter_sync_mount)
 
     @property
-    def hardware_timeout(self):
-        return self._hardware_timeout
+    def recenter_timeout(self):
+        return self._recenter_timeout
 
-    @hardware_timeout.setter
-    def hardware_timeout(self, value):
-        self._hardware_timeout = float(value)
-        self._config["default"]["hardware_timeout"] = str(self._hardware_timeout)
+    @recenter_timeout.setter
+    def recenter_timeout(self, value):
+        self._recenter_timeout = float(value)
+        self._config["recenter"]["recenter_timeout"] = str(self._recenter_timeout)
 
     @property
     def wcs_filters(self):
@@ -2613,9 +2680,19 @@ class TelrunOperator:
 
     @wcs_filters.setter
     def wcs_filters(self, value):
-        self._wcs_filters = iter(value)
-        for v in value:
-            self._config["default"]["wcs_filters"] += str(v) + ","
+        if value is self._wcs_filters:
+            return
+        if type(value) is list:
+            self._wcs_filters = value
+        else:
+            self._wcs_filters = (
+                [v for v in value.replace(" ", "").split(",")]
+                if value is not None or value != ""
+                else None
+            )
+        self._config["wcs"]["wcs_filters"] = (
+            ", ".join(self._wcs_filters) if self._wcs_filters is not None else ""
+        )
 
     @property
     def wcs_timeout(self):
@@ -2624,7 +2701,7 @@ class TelrunOperator:
     @wcs_timeout.setter
     def wcs_timeout(self, value):
         self._wcs_timeout = float(value)
-        self._config["default"]["wcs_timeout"] = str(self._wcs_timeout)
+        self._config["wcs"]["wcs_timeout"] = str(self._wcs_timeout)
 
 
 class _TelrunGUI(ttk.Frame):
