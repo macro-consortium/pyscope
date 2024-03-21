@@ -4,8 +4,8 @@ from pyscope.telrun import plot_schedule_gantt, plot_schedule_sky, schedtel
 
 
 def test_schedtel(tmp_path):
-    catalog = "./tests/reference/test_schedtel.cat"
-    observatory = "./tests/reference/simulator_observatory.cfg"
+    catalog = "./tests/bin/test_schedtel.cat"
+    observatory = "./tests/bin/simulator_observatory.cfg"
 
     schedule = schedtel(
         catalog=catalog,

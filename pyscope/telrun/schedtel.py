@@ -292,7 +292,7 @@ def schedtel_cli(
         level = logging.INFO
     elif verbose >= 2:
         level = logging.DEBUG
-    logging.basicConfig(level=level)
+    # logging.basicConfig(level=level)
 
     logger.info("Starting schedtel")
     logger.debug(f"catalog: {catalog}")
@@ -349,7 +349,10 @@ def schedtel_cli(
         obs_lon = observatory.observatory_location.lon
         obs_lat = observatory.observatory_location.lat
         slew_rate = observatory.slew_rate * u.deg / u.second
-        instrument_reconfig_times = observatory.instrument_reconfig_times
+        instrument_reconfig_times = observatory.instrument_reconfiguration_times
+        observatory = astroplan.Observer(
+            location=coord.EarthLocation(lon=obs_lon, lat=obs_lat)
+        )
     elif type(observatory) is astroplan.Observer:
         obs_lon = observatory.location.lon
         obs_lat = observatory.location.lat
@@ -397,7 +400,25 @@ def schedtel_cli(
                 "No catalog provided, using schedule.cat from current working directory"
             )
 
-    if os.path.isfile(catalog):
+    if type(catalog) is list:
+        logger.debug(f"catalog is a list")
+        for block in catalog:
+            if type(block) is list:
+                for b in block:
+                    if type(b) is not astroplan.ObservingBlock:
+                        logger.error(
+                            f"Object {b} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
+                        )
+                        continue
+                block_groups.append(block)
+            elif type(block) is astroplan.ObservingBlock:
+                block_groups.append([block])
+            else:
+                logger.error(
+                    f"Object {block} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
+                )
+                continue
+    elif os.path.isfile(catalog):
         logger.debug(f"catalog is a file")
         if catalog.endswith(".cat"):
             with open(catalog, "r") as f:
@@ -430,25 +451,6 @@ def schedtel_cli(
                 block_groups.append(sch.read(catalog))
             except Exception as e:
                 logger.error(f"File {catalog} is not a valid .sch file: {e}")
-
-    elif type(catalog) is list:
-        logger.debug(f"catalog is a list")
-        for block in catalog:
-            if type(block) is list:
-                for b in block:
-                    if type(b) is not astroplan.ObservingBlock:
-                        logger.error(
-                            f"Object {b} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
-                        )
-                        continue
-                block_groups.append(block)
-            elif type(block) is astroplan.ObservingBlock:
-                block_groups.append([block])
-            else:
-                logger.error(
-                    f"Object {block} in catalog {catalog} is not an astroplan.ObservingBlock, skipping."
-                )
-                continue
     else:
         logger.error(
             f"Catalog {catalog} is not a valid .cat file or list of astroplan.ObservingBlocks."
@@ -668,12 +670,22 @@ def schedtel_cli(
         if block.configuration["filename"] == "":
             block.configuration["filename"] = name_format.format(
                 index=block_number,
-                target=block.target.to_string("hmsdms").replace(" ", "_"),
-                start_time=block.start_time.isot.replace(":", "").split(".")[0],
-                end_time=block.end_time.isot.replace(":", "").split(".")[0],
+                target=block.target.to_string("hmsdms")
+                .replace(" ", "_")
+                .replace(".", "-"),
+                start_time=block.start_time.isot.replace(":", "-").split(".")[0],
+                end_time=block.end_time.isot.replace(":", "-").split(".")[0],
                 duration="%i" % block.duration.to(u.second).value,
-                ra=block.target.ra.to_string(sep="hms").replace(" ", "_"),
-                dec=block.target.dec.to_string(sep="dms").replace(" ", "_"),
+                ra=block.target.ra.to_string(
+                    sep="hms", unit="hourangle", precision=2, pad=True
+                )
+                .replace(" ", "_")
+                .replace(".", "-"),
+                dec=block.target.dec.to_string(
+                    sep="dms", precision=3, alwayssign=True, pad=True
+                )
+                .replace(" ", "_")
+                .replace(".", "-"),
                 observer=block.configuration["observer"],
                 code=block.configuration["code"],
                 title=block.configuration["title"],
@@ -709,6 +721,7 @@ def schedtel_cli(
         not in [b.configuration["ID"] for b in scheduled_blocks]
     ]
 
+    # TODO: Fix this condition
     if type(observatory) is Observatory:
         validated_blocks = schedtab.validate(scheduled_blocks, observatory=observatory)
     else:
@@ -794,9 +807,9 @@ def schedtel_cli(
             )
         except:
             try:
-                path = os.environ.get("OBSERVATORY_HOME") + "/schedules/"
+                path = os.environ.get("TELHOME") + "/schedules/execute/"
                 logger.info(
-                    "-t/--telrun flag set, writing schedule to %s from $OBSERVATORY_HOME environment variable"
+                    "-t/--telrun flag set, writing schedule to %s from $TELHOME environment variable"
                     % path
                 )
             except:

@@ -112,7 +112,7 @@ class Observatory:
         self._telescope = None
         self._telescope_driver = None
         self._telescope_kwargs = None
-        self._min_altitude = 10
+        self._min_altitude = 10 * u.deg
         self._settle_time = 5
 
         self._autofocus = None
@@ -1256,6 +1256,8 @@ class Observatory:
                     hdr_dict.pop(key, None)
 
         # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+        for key, value in hdr_dict.items():
+            print(key, value)
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -1441,6 +1443,14 @@ class Observatory:
                 raise ObservatoryException(
                     "Filter %s not found in filter list" % filter_name
                 )
+        elif filter_index is None:
+            try:
+                filter_index = self.filters.index(filter_name)
+                logger.info("Filter %s found at index %i" % (filter_name, filter_index))
+            except:
+                raise ObservatoryException(
+                    "Filter %s not found in filter list" % filter_name
+                )
 
         if self.filter_wheel is not None:
             if self.filter_wheel.Connected:
@@ -1533,7 +1543,7 @@ class Observatory:
         if not self.telescope.Connected:
             raise ObservatoryException("The telescope is not connected.")
 
-        if altaz_obj.alt.deg <= self.min_altitude:
+        if altaz_obj.alt <= self.min_altitude:
             logger.exception(
                 "Target is below the minimum altitude of %.2f degrees"
                 % self.min_altitude
@@ -1602,8 +1612,7 @@ class Observatory:
                     self.dome.SlewToAzimuth(altaz_obj.az.deg)
 
         if control_rotator and self.rotator is not None:
-            rotation_angle = (self.lst() - slew_obj.ra.hour) * 15
-
+            rotation_angle = (self.lst().value - slew_obj.ra.hourangle) * 15
             if (
                 self.rotator.MechanicalPosition + rotation_angle
                 >= self.rotator_max_angle
@@ -2296,7 +2305,10 @@ class Observatory:
                     self.camera.BinX = binning.split("x")[0]
                     self.camera.BinY = binning.split("x")[1]
                     for j in range(repeat):
-                        if self.camera.CanSetCCDTemperature:
+                        if (
+                            self.camera.CanSetCCDTemperature
+                            and self.cooler_setpoint is not None
+                        ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
                             ):
@@ -2510,7 +2522,7 @@ class Observatory:
         self.diameter = dictionary.get("diameter", self.diameter)
         self.focal_length = dictionary.get("focal_length", self.focal_length)
 
-        self._cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
+        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
         self.cooler_tolerance = dictionary.get(
             "cooler_tolerance", self.cooler_tolerance
         )
@@ -3722,7 +3734,7 @@ class Observatory:
             .value,
             info["OBJCTAZ"][1],
         )
-        info["OBJCTHA"] = (np.abs(self.lst() - obj.ra.hour), info["OBJCTHA"][1])
+        info["OBJCTHA"] = ((self.lst() - obj.ra).value, info["OBJCTHA"][1])
         info["AIRMASS"] = (
             airmass(
                 obj.transform_to(
@@ -4066,18 +4078,26 @@ class Observatory:
     @cooler_setpoint.setter
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
-        self._cooler_setpoint = (
-            max(float(value), -273.15) if value is not None or value != "" else None
-        )
-        self._config["camera"]["cooler_setpoint"] = (
-            str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
-        )
-        if self.camera.CanSetCCDTemperature and self._cooler_setpoint is not None:
-            self.camera.SetCCDTemperature = self._cooler_setpoint
-        else:
-            raise ObservatoryException(
-                "Camera does not support setting the CCD temperature"
+        if value is not None:
+            self._cooler_setpoint = (
+                max(float(value), -273.15) if value is not None or value != "" else None
             )
+            self._config["camera"]["cooler_setpoint"] = (
+                str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
+            )
+        else:
+            self._cooler_setpoint = None
+            self._config["camera"]["cooler_setpoint"] = ""
+        try:
+            if self.camera.CanSetCCDTemperature and self._cooler_setpoint is not None:
+                self.camera.SetCCDTemperature = self._cooler_setpoint
+                logger.info(f"CCD Temp Set to {self._cooler_setpoint}")
+            else:
+                self._cooler_setpoint = None
+                self._config["camera"]["cooler_setpoint"] = ""
+                logger.warning("Camera does not support setting the CCD temperature")
+        except:
+            pass
 
     @property
     def cooler_tolerance(self):
@@ -4408,11 +4428,18 @@ class Observatory:
     @min_altitude.setter
     def min_altitude(self, value):
         logger.debug(f"Observatory.min_altitude = {value} called")
-        self._min_altitude = (
-            min(max(float(value), 0), 90) if value is not None or value != "" else None
-        )
+        if type(value) is u.Quantity:
+            self._min_altitude = value
+        else:
+            self._min_altitude = (
+                min(max(float(value), 0), 90)
+                if value is not None or value != ""
+                else None
+            ) * u.deg
         self._config["telescope"]["min_altitude"] = (
-            str(self._min_altitude) if self._min_altitude is not None else ""
+            str(self._min_altitude.to(u.deg).value)
+            if self._min_altitude is not None
+            else ""
         )
 
     @property

@@ -40,16 +40,20 @@ def blocks_to_table(observing_blocks):
         [not hasattr(block, "target") for block in observing_blocks]
     )
 
-    t["ID"] = np.ma.array(
-        [
-            (
-                block.configuration["ID"]
-                if hasattr(block, "target")
-                else astrotime.Time(0, format="mjd")
-            )
-            for block in observing_blocks
-        ],
-        mask=open_slots_mask,
+    t["ID"] = astrotime.Time(
+        np.ma.array(
+            [
+                (
+                    block.configuration["ID"].mjd
+                    if hasattr(block, "target")
+                    and type(block.configuration["ID"]) is astrotime.Time
+                    else astrotime.Time.now().mjd
+                )
+                for block in observing_blocks
+            ],
+            mask=open_slots_mask,
+        ),
+        format="mjd",
     )
 
     # Populate simple columns
@@ -289,16 +293,19 @@ def blocks_to_table(observing_blocks):
         mask=open_slots_mask,
     )
 
-    t["sched_time"] = np.ma.array(
-        [
-            (
-                block.configuration["sched_time"]
-                if hasattr(block, "target")
-                else astrotime.Time(0, format="jd")
-            )
-            for block in observing_blocks
-        ],
-        mask=open_slots_mask,
+    t["sched_time"] = astrotime.Time(
+        np.ma.array(
+            [
+                (
+                    block.configuration["sched_time"].mjd
+                    if hasattr(block, "target")
+                    else 0
+                )
+                for block in observing_blocks
+            ],
+            mask=open_slots_mask,
+        ),
+        format="mjd",
     )
 
     # Turn the constraints into a list of dicts
@@ -400,6 +407,8 @@ def blocks_to_table(observing_blocks):
     )
 
     t.add_index("ID", unique=True)
+
+    # TODO: Change string columns to handle arbitrary length strings instead of truncating
 
     return t
 
