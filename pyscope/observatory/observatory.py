@@ -1588,7 +1588,7 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterStatus != 0 and self.dome.CanSetShutter:
+            if self.dome.ShutterStatus != "Open" and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
@@ -1994,6 +1994,8 @@ class Observatory:
             check_and_refine is False.
         exposure : float, optional
             The exposure time in seconds to use for the centering images. Default is 10.
+        readout : int, optional
+            The readout mode to use for the centering images. Default is 0.
         save_images : bool, optional
             Whether or not to save the centering images. Default is False.
         save_path : str, optional
@@ -2070,7 +2072,9 @@ class Observatory:
                 return True
 
             logger.info("Taking %.2f second exposure" % exposure)
-            self.camera.ReadoutMode = self.camera.ReadoutModes[readout]
+            self.camera.ReadoutMode = (
+                readout  # self.camera.ReadoutModes[readout] <== This breaks maxim
+            )
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
@@ -3693,6 +3697,10 @@ class Observatory:
         # This is a hack to fix that
         info["TELDRV"] = (
             info["TELDRV"][0].replace("\r", "\\r").replace("\n", "\\n"),
+            info["TELDRV"][1],
+        )
+        info["TELDRV"] = (
+            "".join([i if ord(i) < 128 else " " for i in info["TELDRV"][0]]),
             info["TELDRV"][1],
         )
         try:
