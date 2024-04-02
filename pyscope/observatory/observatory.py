@@ -10,6 +10,7 @@ import tempfile
 import threading
 import time
 from ast import literal_eval
+from datetime import datetime
 
 import numpy as np
 from astropy import coordinates as coord
@@ -111,7 +112,7 @@ class Observatory:
         self._telescope = None
         self._telescope_driver = None
         self._telescope_kwargs = None
-        self._min_altitude = 10
+        self._min_altitude = 10 * u.deg
         self._settle_time = 5
 
         self._autofocus = None
@@ -985,6 +986,8 @@ class Observatory:
 
         logger.info("Attempting to turn off telescope tracking...")
         try:
+            self.telescope.DeclinationRate = 0
+            self.telescope.RightAscensionRate = 0
             self.telescope.Tracking = False
             logger.info("Telescope tracking turned off")
         except:
@@ -1016,9 +1019,7 @@ class Observatory:
             t = self.observatory_time
         else:
             t = astrotime.Time(t)
-        return (
-            t.sidereal_time("apparent", self.observatory_location).to("hourangle").value
-        )
+        return t.sidereal_time("apparent", self.observatory_location).to("hourangle")
 
     def sun_altaz(self, t=None):
         """Returns the altitude of the sun"""
@@ -1255,6 +1256,8 @@ class Observatory:
                     hdr_dict.pop(key, None)
 
         # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+        for key, value in hdr_dict.items():
+            print(key, value)
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -1440,6 +1443,14 @@ class Observatory:
                 raise ObservatoryException(
                     "Filter %s not found in filter list" % filter_name
                 )
+        elif filter_index is None:
+            try:
+                filter_index = self.filters.index(filter_name)
+                logger.info("Filter %s found at index %i" % (filter_name, filter_index))
+            except:
+                raise ObservatoryException(
+                    "Filter %s not found in filter list" % filter_name
+                )
 
         if self.filter_wheel is not None:
             if self.filter_wheel.Connected:
@@ -1532,7 +1543,7 @@ class Observatory:
         if not self.telescope.Connected:
             raise ObservatoryException("The telescope is not connected.")
 
-        if altaz_obj.alt.deg <= self.min_altitude:
+        if altaz_obj.alt <= self.min_altitude:
             logger.exception(
                 "Target is below the minimum altitude of %.2f degrees"
                 % self.min_altitude
@@ -1601,8 +1612,7 @@ class Observatory:
                     self.dome.SlewToAzimuth(altaz_obj.az.deg)
 
         if control_rotator and self.rotator is not None:
-            rotation_angle = (self.lst() - slew_obj.ra.hour) * 15
-
+            rotation_angle = (self.lst().value - slew_obj.ra.hourangle) * 15
             if (
                 self.rotator.MechanicalPosition + rotation_angle
                 >= self.rotator_max_angle
@@ -2299,7 +2309,10 @@ class Observatory:
                     self.camera.BinX = binning.split("x")[0]
                     self.camera.BinY = binning.split("x")[1]
                     for j in range(repeat):
-                        if self.camera.CanSetCCDTemperature:
+                        if (
+                            self.camera.CanSetCCDTemperature
+                            and self.cooler_setpoint is not None
+                        ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
                             ):
@@ -2323,7 +2336,7 @@ class Observatory:
                         logger.info("Starting %s exposure" % self.filters[i])
                         self.camera.StartExposure(filter_exposure[i], False)
                         save_string = save_path + (
-                            "flat_%s_%ix%i_%ss_%s__%i.fts"
+                            "/flat_%s_%ix%i_%ss_%s__%i.fts"
                             % (
                                 self.filters[i],
                                 self.camera.BinX,
@@ -2331,12 +2344,22 @@ class Observatory:
                                 ("%4.4g" % filter_exposure[i])
                                 .replace(".", "-")
                                 .replace(" ", ""),
-                                self.camera.ReadoutModes[
-                                    self.camera.ReadoutMode
-                                ].replace(" ", ""),
+                                # self.camera.ReadoutModes[
+                                #     self.camera.ReadoutMode
+                                # ].replace(" ", ""),
+                                self.camera.ReadoutMode,
                                 j,
                             )
                         )
+
+                        print("-------------------")
+                        print()
+                        print(save_string)
+                        print(self.camera.ReadoutModes)
+                        print(type(self.camera.ReadoutMode))
+                        print(self.camera.ReadoutModes[self.camera.ReadoutMode])
+                        print()
+                        print("-------------------")
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(save_string, frametyp="Flat")
@@ -2410,14 +2433,15 @@ class Observatory:
                         logger.info("Starting %4.4gs dark exposure" % exposure)
                         self.camera.StartExposure(exposure, False)
                         save_string = save_path + (
-                            "dark_%ix%i_%ss_%s__%i.fts"
+                            "/dark_%ix%i_%ss_%s__%i.fts"
                             % (
                                 self.camera.BinX,
                                 self.camera.BinY,
                                 ("%4.4g" % exposure).replace(".", "-").replace(" ", ""),
-                                self.camera.ReadoutModes[
-                                    self.camera.ReadoutMode
-                                ].replace(" ", ""),
+                                # self.camera.ReadoutModes[
+                                #     self.camera.ReadoutMode
+                                # ].replace(" ", ""),
+                                self.camera.ReadoutMode,
                                 j,
                             )
                         )
@@ -2431,8 +2455,12 @@ class Observatory:
 
         return True
 
-    def save_config(self, filename):
+    def save_config(self, filename, overwrite=False):
         logger.debug("Saving observatory configuration to %s" % filename)
+        if os.path.exists(filename) and not overwrite:
+            raise ObservatoryException(
+                "The file %s already exists and overwrite is False" % filename
+            )
         with open(filename, "w") as configfile:
             self._config.write(configfile)
 
@@ -2498,7 +2526,7 @@ class Observatory:
         self.diameter = dictionary.get("diameter", self.diameter)
         self.focal_length = dictionary.get("focal_length", self.focal_length)
 
-        self._cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
+        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
         self.cooler_tolerance = dictionary.get(
             "cooler_tolerance", self.cooler_tolerance
         )
@@ -3714,7 +3742,7 @@ class Observatory:
             .value,
             info["OBJCTAZ"][1],
         )
-        info["OBJCTHA"] = (np.abs(self.lst() - obj.ra.hour), info["OBJCTHA"][1])
+        info["OBJCTHA"] = ((self.lst() - obj.ra).value, info["OBJCTHA"][1])
         info["AIRMASS"] = (
             airmass(
                 obj.transform_to(
@@ -3953,8 +3981,12 @@ class Observatory:
             coord.Latitude(value) if value is not None or value != "" else None
         )
         # If connected, set the telescope site latitude
-        if self.telescope.Connected:
-            self.telescope.SiteLatitude = self._latitude.deg
+        try:
+            if self.telescope.Connected:
+                self.telescope.SiteLatitude = self._latitude.deg
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's latitude")
+
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._latitude is not None
@@ -3974,8 +4006,12 @@ class Observatory:
             if value is not None or value != ""
             else None
         )
-        if self.telescope.Connected:
-            self.telescope.SiteLongitude = self._longitude.deg
+        try:
+            if self.telescope.Connected:
+                self.telescope.SiteLongitude = self._longitude.deg
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's longitude")
+
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
             if self._longitude is not None
@@ -4050,18 +4086,26 @@ class Observatory:
     @cooler_setpoint.setter
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
-        self._cooler_setpoint = (
-            max(float(value), -273.15) if value is not None or value != "" else None
-        )
-        self._config["camera"]["cooler_setpoint"] = (
-            str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
-        )
-        if self.camera.CanSetCCDTemperature and self._cooler_setpoint is not None:
-            self.camera.SetCCDTemperature = self._cooler_setpoint
-        else:
-            raise ObservatoryException(
-                "Camera does not support setting the CCD temperature"
+        if value is not None:
+            self._cooler_setpoint = (
+                max(float(value), -273.15) if value is not None or value != "" else None
             )
+            self._config["camera"]["cooler_setpoint"] = (
+                str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
+            )
+        else:
+            self._cooler_setpoint = None
+            self._config["camera"]["cooler_setpoint"] = ""
+        try:
+            if self.camera.CanSetCCDTemperature and self._cooler_setpoint is not None:
+                self.camera.SetCCDTemperature = self._cooler_setpoint
+                logger.info(f"CCD Temp Set to {self._cooler_setpoint}")
+            else:
+                self._cooler_setpoint = None
+                self._config["camera"]["cooler_setpoint"] = ""
+                logger.warning("Camera does not support setting the CCD temperature")
+        except:
+            pass
 
     @property
     def cooler_tolerance(self):
@@ -4301,7 +4345,13 @@ class Observatory:
         self._config["rotator"]["rotator_reverse"] = (
             str(self._rotator_reverse) if self._rotator_reverse is not None else ""
         )
-        self.rotator.Reverse = self._rotator_reverse
+        try:
+            if self.rotator is not None:
+                self.rotator.Reverse = self._rotator_reverse
+        except:
+            logger.warning(
+                "Rotator not connected, you should reconnect to the rotator and then set the reverse property"
+            )
 
     @property
     def rotator_min_angle(self):
@@ -4386,11 +4436,18 @@ class Observatory:
     @min_altitude.setter
     def min_altitude(self, value):
         logger.debug(f"Observatory.min_altitude = {value} called")
-        self._min_altitude = (
-            min(max(float(value), 0), 90) if value is not None or value != "" else None
-        )
+        if type(value) is u.Quantity:
+            self._min_altitude = value
+        else:
+            self._min_altitude = (
+                min(max(float(value), 0), 90)
+                if value is not None or value != ""
+                else None
+            ) * u.deg
         self._config["telescope"]["min_altitude"] = (
-            str(self._min_altitude) if self._min_altitude is not None else ""
+            str(self._min_altitude.to(u.deg).value)
+            if self._min_altitude is not None
+            else ""
         )
 
     @property

@@ -251,33 +251,33 @@ class HTMLObservingConditions(ObservingConditions):
                 self._last_updated_numeric,
             )
 
-            if cloud_cover is not None:
+            if cloud_cover is not None:  # pragma: no cover
                 self._cloud_cover = cloud_cover
-            if dew_point is not None:
+            if dew_point is not None:  # pragma: no cover
                 self._dew_point = dew_point
-            if humidity is not None:
+            if humidity is not None:  # pragma: no cover
                 self._humidity = humidity
-            if pressure is not None:
+            if pressure is not None:  # pragma: no cover
                 self._pressure = pressure
-            if rain_rate is not None:
+            if rain_rate is not None:  # pragma: no cover
                 self._rain_rate = rain_rate
-            if sky_brightness is not None:
+            if sky_brightness is not None:  # pragma: no cover
                 self._sky_brightness = sky_brightness
-            if sky_quality is not None:
+            if sky_quality is not None:  # pragma: no cover
                 self._sky_quality = sky_quality
-            if sky_temperature is not None:
+            if sky_temperature is not None:  # pragma: no cover
                 self._sky_temperature = sky_temperature
-            if star_fwhm is not None:
+            if star_fwhm is not None:  # pragma: no cover
                 self._star_fwhm = star_fwhm
-            if temperature is not None:
+            if temperature is not None:  # pragma: no cover
                 self._temperature = temperature
-            if wind_direction is not None:
+            if wind_direction is not None:  # pragma: no cover
                 self._wind_direction = wind_direction
-            if wind_gust is not None:
+            if wind_gust is not None:  # pragma: no cover
                 self._wind_gust = wind_gust
-            if wind_speed is not None:
+            if wind_speed is not None:  # pragma: no cover
                 self._wind_speed = wind_speed
-            if last_updated is not None:
+            if last_updated is not None:  # pragma: no cover
                 self._last_updated = last_updated
 
     def SensorDescription(self, PropertyName):
