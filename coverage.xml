@@ -4527,6 +4527,7 @@
 						<line number="4" hits="1"/>
 						<line number="5" hits="1"/>
 						<line number="6" hits="1"/>
+						<line number="7" hits="1"/>
 					</lines>
 				</class>
 				<class name="avg_fits.py" filename="pyscope/reduction/avg_fits.py" complexity="0" line-rate="0.3514" branch-rate="0.5833">

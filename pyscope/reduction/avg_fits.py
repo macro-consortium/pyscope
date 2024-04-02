@@ -36,6 +36,31 @@ TODO: use ccdproc to average FITS files
     help="Path to save averaged FITS file.",
 )
 @click.option(
+    "-d",
+    "--datatype",
+    type=click.Choice(
+        [
+            np.int_,
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.uint,
+            np.uint8,
+            np.uint16,
+            np.uint32,
+            np.uint64,
+            np.float_,
+            np.float32,
+            np.float64,
+        ]
+    ),  # TODO: update rest of file to match this
+    default=np.uint16,
+    show_choices=True,
+    show_default=True,
+    help="Data type to use for averaged FITS file.",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -45,10 +70,26 @@ TODO: use ccdproc to average FITS files
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
-def avg_fits_cli(mode, outfile, fnames, verbose=False):
-    """
-    Test
-    asdf
+def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
+    """Averages FITS files.
+
+    Parameters
+    ----------
+    mode : str, default="0"
+        Mode to use for averaging FITS files (0 = median, 1 = mean).
+
+    outfile : str
+        Path to save averaged FITS files.
+
+    fnames : list
+        List of FITS file paths to average.
+
+    verbose : bool, default=False
+        Print verbose output.
+
+    Returns
+    -------
+    None
     """
 
     if verbose:
@@ -57,13 +98,15 @@ def avg_fits_cli(mode, outfile, fnames, verbose=False):
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
-    print(fnames)
+
     images = np.array([fits.open(fname)[0].data for fname in fnames])
-    images = images.astype(np.float32)
+
+    images = images.astype(datatype)
+
     logger.info(f"Loaded {len(images)} FITS files")
 
     logger.info("Averaging FITS files...")
-    print(f"mode: {mode}, {type(mode)}")
+
     if str(mode) == "0":
         logger.debug("Calculating median...")
         image_avg = np.median(images, axis=0)
@@ -74,7 +117,7 @@ def avg_fits_cli(mode, outfile, fnames, verbose=False):
     logger.debug(f"Image mean: {np.mean(image_avg)}")
     logger.debug(f"Image median: {np.median(image_avg)}")
 
-    image_avg = image_avg.astype(np.uint16)
+    image_avg = image_avg.astype(datatype)
 
     logger.info(f"Saving averaged FITS file to {outfile}")
 

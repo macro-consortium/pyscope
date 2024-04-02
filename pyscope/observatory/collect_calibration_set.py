@@ -10,8 +10,7 @@ from .observatory import Observatory
 logger = logging.getLogger(__name__)
 
 """
-TODO: make flag that allows user make masters or not
-- write docstrings
+TODO: incorporate ccd_proc into this, if possible
 """
 
 
@@ -152,6 +151,9 @@ def collect_calibration_set_cli(
 
     mode : int, default=0
 
+    master : bool, default=True
+        Create master calibration files in process.
+
     Returns
     -------
     None
@@ -169,10 +171,6 @@ def collect_calibration_set_cli(
         logger.exception(f"Invalid observatory type: {type(observatory)}")
         print(f"Invalid observatory type: {type(observatory)}")
         return False
-
-    # if type(binnings) == str:
-    #     binnings = binnings.split(",")
-    # binnings = [tuple(map(int, b.split("x"))) for b in binnings]
 
     obs.connect_all()
 
@@ -269,14 +267,6 @@ def collect_calibration_set_cli(
                     dark_paths = []
                     for i in range(repeat):
                         dark_paths.append(
-                            # os.path.join(
-                            #     os.path.join(save_folder, "darks"),
-                            #     (
-                            #         # "dark_%s_%ix%i_%4.4gs__%i.fts"
-                            #         # % (readout, int(binning[0]), int(binning[2]), exposure, i)
-                            #         f"dark_{readout}_{int(binning[0])}x{int(binning[2])}_{exposure}__{i}.fts"
-                            #     ),
-                            # )
                             save_folder
                             + "/darks/"
                             + f"dark_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
@@ -287,8 +277,6 @@ def collect_calibration_set_cli(
                         outfile=os.path.join(
                             os.path.join(save_folder, "masters"),
                             (
-                                # "master_dark_%s_%ix%i_%4.4gs.fts"
-                                # % (readout, int(binning[0]), int(binning[2]), exposure)
                                 f"master_dark_{readout}_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
                             ),
                         ),
@@ -301,13 +289,6 @@ def collect_calibration_set_cli(
                     bias_paths = []
                     for i in range(repeat):
                         bias_paths.append(
-                            # os.path.join(
-                            #     os.path.join(save_folder, "biases"),
-                            #     (
-                            #         "bias_%s_%ix%i__%i.fts"
-                            #         % (readout, int(binning[0]), int(binning[2]), i)
-                            #     ),
-                            # )
                             save_folder
                             + "/biases/"
                             + f"dark_{int(binning[0])}x{int(binning[2])}_0s_{readout}__{i}.fts"
@@ -318,8 +299,6 @@ def collect_calibration_set_cli(
                         outfile=os.path.join(
                             os.path.join(save_folder, "masters"),
                             (
-                                # "master_bias_%s_%ix%i.fts"
-                                # % (readout, int(binning[0]), int(binning[2]))
                                 f"master_bias_{int(binning[0])}x{int(binning[2])}_{readout}.fts"
                             ),
                         ),
@@ -328,18 +307,10 @@ def collect_calibration_set_cli(
 
                 logger.info("Creating master flats...")
                 print("Creating master flats...")
-                # for filt, exposure, brightness in zip(obs.filters, filter_exposures, filter_brightness):
                 for filt, exposure in zip(obs.filters, filter_exposures):
                     flat_paths = []
                     for i in range(repeat):
                         flat_paths.append(
-                            # os.path.join(
-                            #     os.path.join(save_folder, "flats"),
-                            #     (
-                            #         "flat_%s_%s_%ix%i_%4.4gs__%i.fts"
-                            #         % (filt, readout, int(binning[0]), int(binning[2]), exposure, i)
-                            #     ),
-                            # )
                             save_folder
                             + "/flats/"
                             + f"flat_{filt}_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
@@ -350,8 +321,6 @@ def collect_calibration_set_cli(
                         outfile=os.path.join(
                             os.path.join(save_folder, "masters"),
                             (
-                                # "master_flat_%s_%ix%i_%4.4gs.fts"
-                                # % (readout, int(binning[0]), int(binning[2]), exposure)
                                 f"master_flat_{filt}_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
                             ),
                         ),
@@ -366,13 +335,6 @@ def collect_calibration_set_cli(
                         flat_dark_paths = []
                         for i in range(repeat):
                             flat_dark_paths.append(
-                                # os.path.join(
-                                #     os.path.join(save_folder, "flat_darks"),
-                                #     (
-                                #         "dark_%s_%ix%i_%4.4gs__%i.fts"
-                                #         % (readout, int(binning[0]), int(binning[2]), exposure, i)
-                                #     ),
-                                # )
                                 save_folder
                                 + "/flat_darks/"
                                 + f"dark_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
@@ -383,8 +345,6 @@ def collect_calibration_set_cli(
                             outfile=os.path.join(
                                 os.path.join(save_folder, "masters"),
                                 (
-                                    # "master_flat_dark_%s_%ix%i_%4.4gs.fts"
-                                    # % (readout, int(binning[0]), int(binning[2]), exposure)
                                     f"master_flat_dark_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
                                 ),
                             ),
