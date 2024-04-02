@@ -92,6 +92,11 @@ class _MaximAutofocus(Autofocus):
 class _MaximCamera(Camera):
     def __init__(self):
         logger.debug("_MaximCamera_MaximCamera __init__ called")
+        if platform.system() != "Windows":
+            raise Exception("This class is only available on Windows.")
+        else:
+            from win32com.client import Dispatch
+        
         self._com_object = Dispatch("MaxIm.CCDCamera")
         self._com_object.DisableAutoShutdown = True
 
