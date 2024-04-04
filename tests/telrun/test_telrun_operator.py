@@ -34,6 +34,7 @@ def test_telrun_operator(tmp_path):
     obs = Observatory(
         config_path="./tests/bin/simulator_observatory.cfg", longitude=new_longitude
     )
+    obs.telescope.Unpark()
 
     # get the local sidereal time
     lst = obs.observatory_time.sidereal_time("apparent", longitude=obs.longitude)

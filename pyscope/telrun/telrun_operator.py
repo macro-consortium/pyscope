@@ -14,6 +14,7 @@ from pathlib import Path
 from tkinter import font
 
 import astroplan
+import numpy as np
 import tksheet
 from astropy import coordinates as coord
 from astropy import table
@@ -1915,10 +1916,11 @@ class TelrunOperator:
                 self._wcs_threads[-1].start()
 
         # If multiple exposures, update filename as a list
-        if block["nexp"] > 1:
+        # TODO: fix this
+        """if block["nexp"] > 1:
             block["filename"] = [
                 block["filename"] + "_%i" % i for i in range(block["nexp"])
-            ]
+            ]"""
 
         # Set block status to done
         self._current_block = None
@@ -1965,7 +1967,7 @@ class TelrunOperator:
 
         # Define custom header
         info = {
-            "BLKID": (block["ID"].value, "Block ID"),
+            "BLKID": (block["ID"], "Block ID"),
             "BLKNAME": (block["name"], "Block name"),
             "BLKSTRT": (block["start_time"].fits, "Block scheduled start time"),
             "BLKEND": (block["end_time"].fits, "Block scheduled end time"),
@@ -2012,7 +2014,7 @@ class TelrunOperator:
                 "BLKSTAT": (block["status"], "Block status"),
                 "BLKMSG": (block["message"], "Block message"),
                 "BLKST": (
-                    str(block["sched_time"].fits),
+                    block["sched_time"],
                     "Time when block was scheduled",
                 ),
             }

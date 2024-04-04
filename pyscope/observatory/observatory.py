@@ -1256,8 +1256,14 @@ class Observatory:
                     hdr_dict.pop(key, None)
 
         # hdr_dict = {k: v for k, v in hdr_dict.items() if k in allowed_overwrite}
+
+        # convert masked values to None and lists to strings
         for key, value in hdr_dict.items():
-            print(key, value)
+            if type(value[0]) == np.ma.core.MaskedConstant:
+                hdr_dict[key] = (None, value[1])
+            if type(value[0]) == list:
+                hdr_dict[key] = (str(value[0]), value[1])
+
         hdr.update(hdr_dict)
 
     def save_last_image(

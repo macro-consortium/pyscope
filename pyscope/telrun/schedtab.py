@@ -40,20 +40,16 @@ def blocks_to_table(observing_blocks):
         [not hasattr(block, "target") for block in observing_blocks]
     )
 
-    t["ID"] = astrotime.Time(
-        np.ma.array(
-            [
-                (
-                    block.configuration["ID"].mjd
-                    if hasattr(block, "target")
-                    and type(block.configuration["ID"]) is astrotime.Time
-                    else astrotime.Time.now().mjd
-                )
-                for block in observing_blocks
-            ],
-            mask=open_slots_mask,
-        ),
-        format="mjd",
+    t["ID"] = np.ma.array(
+        [
+            (
+                block.configuration["ID"]
+                if hasattr(block, "target")
+                else astrotime.Time.now().mjd
+            )
+            for block in observing_blocks
+        ],
+        mask=open_slots_mask,
     )
 
     # Populate simple columns
@@ -293,19 +289,12 @@ def blocks_to_table(observing_blocks):
         mask=open_slots_mask,
     )
 
-    t["sched_time"] = astrotime.Time(
-        np.ma.array(
-            [
-                (
-                    block.configuration["sched_time"].mjd
-                    if hasattr(block, "target")
-                    else 0
-                )
-                for block in observing_blocks
-            ],
-            mask=open_slots_mask,
-        ),
-        format="mjd",
+    t["sched_time"] = np.ma.array(
+        [
+            (block.configuration["sched_time"].mjd if hasattr(block, "target") else 0)
+            for block in observing_blocks
+        ],
+        mask=open_slots_mask,
     )
 
     # Turn the constraints into a list of dicts
@@ -585,7 +574,7 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type str, not {column.dtype}"
                     )
-            case "start_time" | "end_time" | "sched_time":
+            case "start_time" | "end_time":
                 if type(column) is not astrotime.Time:
                     logger.error(
                         f"Column '{column.name}' must be of type astropy.time.Time, not {type(column)}"
@@ -641,7 +630,7 @@ def validate(schedule_table, observatory=None):
             and row["name"] != "TransitionBlock"
             and row["name"] != "EmptyBlock"
         ):
-            row["ID"] = astrotime.Time.now()
+            row["ID"] = astrotime.Time.now().mjd
             logger.info(f"Assigned {row['ID']} to row {row.index}")
 
     if observatory is not None:
