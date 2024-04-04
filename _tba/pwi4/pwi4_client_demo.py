@@ -7,7 +7,6 @@ import time
 
 from pwi4_client import PWI4
 
-
 print("Connecting to PWI4...")
 
 pwi4 = PWI4()
@@ -28,13 +27,15 @@ pwi4.mount_goto_ra_dec_j2000(10, 70)
 while True:
     s = pwi4.status()
 
-    print("RA: %.5f hours;  Dec: %.4f degs, Axis0 dist: %.1f arcsec, Axis1 dist: %.1f arcsec" % (
-        s.mount.ra_j2000_hours, 
-        s.mount.dec_j2000_degs,
-        s.mount.axis0.dist_to_target_arcsec,
-        s.mount.axis1.dist_to_target_arcsec
-    ))
-
+    print(
+        "RA: %.5f hours;  Dec: %.4f degs, Axis0 dist: %.1f arcsec, Axis1 dist: %.1f arcsec"
+        % (
+            s.mount.ra_j2000_hours,
+            s.mount.dec_j2000_degs,
+            s.mount.axis0.dist_to_target_arcsec,
+            s.mount.axis1.dist_to_target_arcsec,
+        )
+    )
 
     if not s.mount.is_slewing:
         break
@@ -42,4 +43,3 @@ while True:
 
 print("Slew complete. Stopping...")
 pwi4.mount_stop()
-

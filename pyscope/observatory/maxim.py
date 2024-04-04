@@ -96,7 +96,7 @@ class _MaximCamera(Camera):
             raise Exception("This class is only available on Windows.")
         else:
             from win32com.client import Dispatch
-        
+
         self._com_object = Dispatch("MaxIm.CCDCamera")
         self._com_object.DisableAutoShutdown = True
 

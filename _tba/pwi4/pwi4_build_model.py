@@ -9,11 +9,12 @@ an image from your camera upon request. The implementation could be
 as simple as waiting for an image to be manually taken and for the
 FITS image to be placed in the requested location.
 
-This script also requires the PlateSolve library and star catalog. 
+This script also requires the PlateSolve library and star catalog.
 Please contact PlaneWave Instruments for details.
 """
 
 import time
+
 import pwi4_client
 from platesolve import platesolve
 
@@ -21,6 +22,7 @@ from platesolve import platesolve
 # for an image taken with your camera.
 # For PWI4 Virtual Camera, the default is 1.0 arcsec/pixel.
 IMAGE_ARCSEC_PER_PIXEL = 1.0
+
 
 def main():
     pwi4 = pwi4_client.PWI4()
@@ -41,14 +43,15 @@ def main():
         pwi4.mount_enable(1)
 
     # Construct a grid of 3 x 6 = 18 Alt-Az points
-    # ranging from 20 to 80 degrees Altitude, and from 
+    # ranging from 20 to 80 degrees Altitude, and from
     # 5 to 355 degrees Azimuth.
     points = create_point_list(3, 20, 80, 6, 5, 355)
-    
-    for (alt, azm) in points:
+
+    for alt, azm in points:
         map_point(pwi4, alt, azm)
 
     print("DONE!")
+
 
 def create_point_list(num_alt, min_alt, max_alt, num_azm, min_azm, max_azm):
     """
@@ -61,16 +64,18 @@ def create_point_list(num_alt, min_alt, max_alt, num_azm, min_azm, max_azm):
         azm = min_azm + (max_azm - min_azm) * i / float(num_azm)
 
         for j in range(num_alt):
-            alt = min_alt + (max_alt - min_alt) * j / float(num_alt-1)
+            alt = min_alt + (max_alt - min_alt) * j / float(num_alt - 1)
 
             points.append((alt, azm))
 
     return points
 
+
 def take_image(filename, pwi4):
     # TODO: Replace this with your own routine to take an image
     # with your camera and save a FITS file to "image.fits"
     take_image_virtualcam(filename, pwi4)
+
 
 def take_image_virtualcam(filename, pwi4):
     """
@@ -99,7 +104,7 @@ def map_point(pwi4, alt_degs, azm_degs):
         if not status.mount.is_slewing:
             break
         time.sleep(0.1)
-    
+
     # Confirm that we actually reached our target.
     # If, for example, the user clicked Stop in the GUI during
     # the slew, we probably don't want to continue building the model.
@@ -109,13 +114,15 @@ def map_point(pwi4, alt_degs, azm_degs):
     alt_error = abs(status.mount.altitude_degs - alt_degs)
 
     if azm_error > 0.1 or alt_error > 0.1:
-        raise Exception("Mount stopped at azimuth %.4f, altitude %.4f, which is too far from the target %.4f, %.4f." % (
-            status.mount.azimuth_degs,
-            status.mount.altitude_degs,
-            azm_degs,
-            alt_degs
-        ))
-
+        raise Exception(
+            "Mount stopped at azimuth %.4f, altitude %.4f, which is too far from the target %.4f, %.4f."
+            % (
+                status.mount.azimuth_degs,
+                status.mount.altitude_degs,
+                azm_degs,
+                alt_degs,
+            )
+        )
 
     # Mount will be stopped after an alt-az slew, so turn
     # on sidereal tracking before taking an image
@@ -133,9 +140,10 @@ def map_point(pwi4, alt_degs, azm_degs):
     except Exception as ex:
         print(ex.message)
         return
-    
+
     pwi4.mount_model_add_point(match["ra_j2000_hours"], match["dec_j2000_degrees"])
     print("Added point")
+
 
 if __name__ == "__main__":
     main()

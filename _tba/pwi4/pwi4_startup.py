@@ -9,10 +9,12 @@ from pwi4_client import PWI4
 
 pwi4 = PWI4()
 
+
 def main():
     connect_to_mount()
     enable_motors()
     find_home()
+
 
 def connect_to_mount():
     print("Connecting to mount...")
@@ -20,6 +22,7 @@ def connect_to_mount():
     while not pwi4.status().mount.is_connected:
         time.sleep(1)
     print("Done")
+
 
 def enable_motors():
     print("Enabling motors")
@@ -31,6 +34,7 @@ def enable_motors():
             break
         time.sleep(1)
     print("Done")
+
 
 def find_home():
     print("Finding home")
@@ -50,6 +54,7 @@ def find_home():
 
         time.sleep(1)
     print("Done")
+
 
 if __name__ == "__main__":
     main()
