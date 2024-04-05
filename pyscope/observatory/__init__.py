@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ._docstring_inheritee import _DocstringInheritee
+from ._pwi4 import _PWI4
 
 from .device import Device
 
@@ -39,6 +40,7 @@ from .html_safety_monitor import HTMLSafetyMonitor
 from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pinpoint_wcs import PinpointWCS
+from .pwi4_focuser import PWI4Focuser
 
 from .simulator_server import SimulatorServer
 
@@ -81,6 +83,7 @@ __all__ = [
     "Observatory",
     "ObservingConditions",
     "PinpointWCS",
+    "PWI4Focuser",
     "PWIAutofocus",
     "Rotator",
     "SafetyMonitor",
