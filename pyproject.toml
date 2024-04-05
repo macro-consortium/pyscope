@@ -40,7 +40,7 @@ line-length = 88
         # Don't complain about excepts:
         "except",
 
-        # Don't complaina about break/continue/return:
+        # Don't complain about break/continue/return:
         "break",
         "continue",
         "return",
