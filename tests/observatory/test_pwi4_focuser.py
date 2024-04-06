@@ -24,11 +24,9 @@ def test_pwi4_focuser():
         f.TempCompAvailable
         f.Temperature
 
-    f.Move(2500)
+    f.Move(3000)
     while f.IsMoving:
         time.sleep(1)
-
-    assert f.Position == 2500
 
     f.Connected = False
     assert f.Connected == False

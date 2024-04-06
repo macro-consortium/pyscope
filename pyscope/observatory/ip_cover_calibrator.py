@@ -73,7 +73,7 @@ class IPCoverCalibrator(CoverCalibrator):
             return False
         finally:
             data = s.recv(self.buffer_size)
-            if data != "U":
+            if data != b"U":
                 return False
             s.close()
             return True

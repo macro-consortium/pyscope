@@ -41,7 +41,7 @@ class PWI4Focuser(Focuser):
     @property
     def IsMoving(self):
         logger.debug("PWI4Focuser.IsMoving() called")
-        return self._app.status.focuser.is_moving
+        return self._app.status().focuser.is_moving
 
     @property
     def MaxIncrement(self):
@@ -54,7 +54,7 @@ class PWI4Focuser(Focuser):
     @property
     def Position(self):
         logger.debug("PWI4Focuser.Position() called")
-        return self._app.status.focuser.position
+        return self._app.status().focuser.position
 
     @property
     def StepSize(self):
@@ -83,10 +83,10 @@ class PWI4Focuser(Focuser):
     @property
     def Connected(self):
         logger.debug("PWI4Focuser.Connected() called")
-        if self._app.status.focuser.exists:
+        if self._app.status().focuser.exists:
             return (
-                self._app.status.focuser.is_connected
-                and self._app.status.focuser.is_enabled
+                self._app.status().focuser.is_connected
+                and self._app.status().focuser.is_enabled
             )
         else:
             return False
