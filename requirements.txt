@@ -7,7 +7,7 @@ ccdproc == 2.4.1
 click == 8.1.7
 cmcrameri == 1.8
 markdown == 3.6
-matplotlib == 3.8.3
+matplotlib == 3.8.4
 numpy == 1.26.4
 paramiko == 3.4.0
 photutils == 1.11.0
