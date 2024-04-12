@@ -436,7 +436,7 @@ class Observatory:
                 if val == "":
                     continue
                 try:
-                    split_val = val.replace(" ", "").split(",")
+                    split_val = val.replace(" ", "").split(",") if "," in val else [val]
                     self._wcs_driver.append(split_val[0])
                     if len(split_val) > 1:
                         kw = split_val[1:]
@@ -448,12 +448,14 @@ class Observatory:
                         )
                     else:
                         self._wcs_kwargs.append(None)
-                    if self._wcs_driver[-1].lower() in ("maxim", "maximdl"):
+                    for i in range(len(self._wcs_driver)):
+                        self._wcs_driver[i] = self._wcs_driver[i].lower()
+                    if self._wcs_driver[-1] == "maxim" or self._wcs_driver[-1] == "maximdl":
                         if self._maxim is None:
                             raise ObservatoryException(
                                 "MaxIm DL must be used as the camera driver when using MaxIm DL as the WCS driver."
                             )
-                        self._wcs.append(self._maxim.wcs)
+                        self._wcs.append(self._maxim._wcs)
                         logger.info("Using MaxIm DL as the WCS driver")
                     else:
                         self._wcs.append(
@@ -1962,6 +1964,7 @@ class Observatory:
         save_images=False,
         save_path="./",
         sync_mount=False,
+        settle_time=5,
         do_initial_slew=True,
     ):
         """Attempts to place the requested right ascension and declination at the requested pixel location
@@ -2022,13 +2025,13 @@ class Observatory:
         success : bool
             True if the target was successfully centered, False otherwise.
         """
+        slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
-
-        logger.info(
+        # TODO: fix 
+        '''logger.info(
             "Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)"
             % (
-                frame,
+                obj,
                 obj.ra.hms[0],
                 obj.ra.hms[1],
                 obj.ra.hms[2],
@@ -2038,7 +2041,7 @@ class Observatory:
                 target_x_pixel,
                 target_y_pixel,
             )
-        )
+        )'''
 
         if initial_offset_dec != 0 and do_initial_slew:
             logger.info(
@@ -2047,7 +2050,7 @@ class Observatory:
             )
 
         for attempt in range(max_attempts):
-            slew_obj = self.get_object_slew(obj)
+            slew_obj = self.get_object_slew(slew_obj)
 
             if check_and_refine:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
@@ -2062,8 +2065,8 @@ class Observatory:
                     )
             else:
                 self.slew_to_coordinates(
-                    slew_obj.ra.hour,
-                    slew_obj.dec.deg,
+                    ra=slew_obj.ra.hour,
+                    dec=slew_obj.dec.deg,
                     control_dome=(self.dome is not None),
                     control_rotator=(self.rotator is not None),
                 )
@@ -2088,16 +2091,16 @@ class Observatory:
 
             temp_image = (
                 tempfile.gettempdir()
-                + "%s.fts" % astrotime.Time(self.observatory_time, format="fits").value
+                + "%s.fts" % astrotime.Time(self.observatory_time, format="fits").value.replace(":", "-")
             )
-            self.save_last_image(temp_image)
+            self.save_last_image(temp_image, overwrite=True)
 
             logger.info("Searching for a WCS solution...")
             if type(self._wcs) is WCS:
                 self._wcs.Solve(
                     temp_image,
-                    ra_key="TELRAIC",
-                    dec_key="TELDECIC",
+                    ra_key="TARGRA",
+                    dec_key="TARGDEC",
                     ra_dec_units=("hour", "deg"),
                     solve_timeout=60,
                     scale_units="arcsecperpix",
@@ -2111,8 +2114,8 @@ class Observatory:
                 for i, wcs in enumerate(self._wcs):
                     solution_found = wcs.Solve(
                         temp_image,
-                        ra_key="TELRAIC",
-                        dec_key="TELDECIC",
+                        ra_key="TARGRA",
+                        dec_key="TARGDEC",
                         ra_dec_units=("hour", "deg"),
                         solve_timeout=60,
                         scale_units="arcsecperpix",
@@ -2127,7 +2130,15 @@ class Observatory:
 
             if save_images:
                 logger.info("Saving the centering image to %s" % save_path)
-                shutil.copy(temp_image, save_path)
+                self.save_last_image(
+                    save_path + temp_image.split("\\")[-1],
+                    overwrite=True,
+                )
+            
+            self.save_last_image(
+                    temp_image,
+                    overwrite=True,
+                )
 
             if not solution_found:
                 logger.warning("No WCS solution found, skipping this attempt")
@@ -2137,15 +2148,15 @@ class Observatory:
                 "WCS solution found, solving for the pixel location of the target"
             )
             try:
-                hdulist = fits.open(temp_image)
-                w = astropywcs.WCS(hdulist[0].header)
+                hdr = fits.getheader(temp_image)
+                w = astropywcs.WCS(hdr) 
 
                 center_coord = w.pixel_to_world(
                     int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
                 )
                 center_ra = center_coord.ra.hour
                 center_dec = center_coord.dec.deg
-                logger.debug(
+                '''logger.debug(
                     "Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
                     % (
                         center_coord.ra.hms[0],
@@ -2155,12 +2166,12 @@ class Observatory:
                         center_coord.dec.dms[1],
                         center_coord.dec.dms[2],
                     )
-                )
+                )'''
 
-                coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
-                target_pixel_ra = coord.ra.hour
-                target_pixel_dec = coord.dec.deg
-                logger.debug(
+                target_coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
+                target_pixel_ra = target_coord.ra.hour
+                target_pixel_dec = target_coord.dec.deg
+                '''logger.debug(
                     "Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
                     % (
                         coord.ra.hms[0],
@@ -2170,7 +2181,7 @@ class Observatory:
                         coord.dec.dms[1],
                         coord.dec.dms[2],
                     )
-                )
+                )'''
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
@@ -2178,7 +2189,8 @@ class Observatory:
                 logger.debug(
                     "Object is at pixel (%.2f, %.2f)" % (obj_x_pixel, obj_y_pixel)
                 )
-            except:
+            except Exception as e:
+                logger.warning(e)
                 logger.warning(
                     "Could not solve for the pixel location of the target, skipping this attempt"
                 )
@@ -2188,21 +2200,23 @@ class Observatory:
             error_dec = obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel
             error_y_pixels = obj_y_pixel - target_y_pixel
-            logger.debug("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))
-            logger.debug("Error in Dec is %.2f arcseconds" % (error_dec * 3600))
-            logger.debug("Error in x pixels is %.2f" % error_x_pixels)
-            logger.debug("Error in y pixels is %.2f" % error_y_pixels)
+            logger.info("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))
+            logger.info("Error in Dec is %.2f arcseconds" % (error_dec * 3600))
+            logger.info("Error in x pixels is %.2f" % error_x_pixels)
+            logger.info("Error in y pixels is %.2f" % error_y_pixels)
 
             if max(error_x_pixels, error_y_pixels) <= tolerance:
                 break
 
             logger.info("Offsetting next slew coordinates")
-            obj = self._parse_obj_ra_dec(
-                ra=obj.ra.hour + error_ra,
-                dec=obj.dec.deg + error_dec,
+
+            slew_obj = coord.SkyCoord(
+                ra=slew_obj.ra.hour + error_ra,
+                dec=slew_obj.dec.deg + error_dec,
                 unit=("hour", "deg"),
-                frame="icrs",
+                frame=slew_obj.frame,
             )
+            logger.info(slew_obj)
         else:
             logger.warning(
                 "Target could not be centered after %d attempts" % max_attempts
@@ -2592,9 +2606,7 @@ class Observatory:
             "CAMCON": (True, "Camera connection"),
             "CAMREADY": (self.camera.ImageReady, "Image ready"),
             "CAMSTATE": (
-                ["Idle", "Waiting", "Exposing", "Reading", "Download", "Error"][
-                    self.camera.CameraState
-                ],
+                self.camera.CameraState,
                 "Camera state",
             ),
             "PCNTCOMP": (None, "Function percent completed"),
@@ -3928,8 +3940,8 @@ class Observatory:
         """Returns the pixel scale of the camera"""
         logger.debug("Observatory.pixel_scale() called")
         return (
-            self.plate_scale * self.camera.PixelSizeX * 1e-3,
-            self.plate_scale * self.camera.PixelSizeY * 1e-3,
+            self.plate_scale * self.camera.PixelSizeX * 1e-6,
+            self.plate_scale * self.camera.PixelSizeY * 1e-6,
         )
 
     @property
