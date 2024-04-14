@@ -1107,6 +1107,7 @@ class Observatory:
         t = astrotime.Time(t)
 
         eq_system = self.telescope.EquatorialSystem
+        #eq_system = 1 # TODO: Remove this line, this is a temp. fix for our SiTech mount
         if eq_system == 0:
             logger.warning(
                 "Telescope equatorial system is not set, assuming Topocentric"
@@ -1114,6 +1115,7 @@ class Observatory:
             eq_system = 1
 
         if eq_system == 1:
+            logger.debug("Converting object to TETE")
             obj_slew = obj.transform_to(
                 coord.TETE(obstime=t, location=self.observatory_location)
             )
@@ -1580,6 +1582,7 @@ class Observatory:
             logger.warning("Tracking cannot be turned on.")
 
         logger.info("Attempting to slew to coordinates...")
+        logger.info("Slewing to RA %.5f and Dec %.5f" % (slew_obj.ra.hour, slew_obj.dec.deg))
         if self.telescope.CanSlew:
             if self.telescope.CanSlewAsync:
                 self.telescope.SlewToCoordinatesAsync(
@@ -2050,7 +2053,8 @@ class Observatory:
             )
 
         for attempt in range(max_attempts):
-            slew_obj = self.get_object_slew(slew_obj)
+            #logger.info("Getting object slew once.")
+            #slew_obj = self.get_object_slew(slew_obj) # removed this line since it was being performed twice
 
             if check_and_refine:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
@@ -2529,7 +2533,6 @@ class Observatory:
             obj = coord.SkyCoord(ra=ra, dec=dec, unit=unit, frame=frame)
         else:
             raise Exception("Either the object, the ra, or the dec must be specified.")
-
         return obj.transform_to("icrs")
 
     def _read_out_kwargs(self, dictionary):
