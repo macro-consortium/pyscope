@@ -3,18 +3,23 @@ import os
 import platform
 import signal
 import subprocess
+from pathlib import Path
 from tarfile import TarFile
 from zipfile import ZipFile
 
+import oschmod
+
 
 class SimulatorServer:
-    def __init__(self):
+    def __init__(self, force_update=False):
         if platform.system() == "Darwin":
             sys_name = "macos-x64"
             zip_type = ".zip"
+            executable = "ascom.alpaca.simulators"
         elif platform.system() == "Linux":
             sys_name = "linux"
             zip_type = ".tar.xz"
+            executable = "ascom.alpaca.simulators"
 
             if "arm" in platform.machine():
                 sys_name += "-armhf"
@@ -26,59 +31,59 @@ class SimulatorServer:
         elif platform.system() == "Windows":
             sys_name = "windows"
             zip_type = ".zip"
+            executable = "ascom.alpaca.simulators.exe"
 
-            if "x86_64" in platform.machine():
+            if "86" in platform.machine():
                 sys_name += "-x86"
-            elif "x64" in platform.machine():
+            elif "64" in platform.machine():
                 sys_name += "-x64"
 
         else:
             raise Exception("Unsupported platform")
 
-        dirname = "ascom.alpaca.simulators." + sys_name
+        dirname = Path("ascom.alpaca.simulators." + sys_name)
 
-        # p = subprocess.check_output(
-        #     f"""gh release download v0.3.1 --repo ASCOMInitiative/ASCOM.Alpaca.Simulators --skip-existing --pattern {dirname}{zip_type}""",
-        #     shell=True,
-        # )
+        if not os.path.exists(dirname) or force_update:
 
-        # if zip_type == ".zip":
-        #     with ZipFile(dirname + zip_type, "r") as zipObj:
-        #         zipObj.extractall()
-        # elif zip_type == ".tar.xz":
-        #     with TarFile.open(dirname + zip_type, "r") as tarObj:
-        #         tarObj.extractall()
+            p = subprocess.check_output(
+                f"""gh release download v0.3.1 --repo ASCOMInitiative/ASCOM.Alpaca.Simulators --skip-existing --pattern {dirname}{zip_type}""",
+                shell=True,
+            )
 
-        # os.chmod(dirname + "/ascom.alpaca.simulators.exe", 0o755)  # added .exe
+            if zip_type == ".zip":
+                with ZipFile(dirname / zip_type, "r") as zipObj:
+                    zipObj.extractall()
+            elif zip_type == ".tar.xz":
+                with TarFile.open(dirname / zip_type, "r") as tarObj:
+                    tarObj.extractall()
 
-        # if platform.system() == "Darwin":
-        #     self.process = subprocess.Popen(
-        #         ("sudo " + dirname + "/ascom.alpaca.simulators"),
-        #         preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
-        # elif platform.system() == "Linux":
-        #     self.process = subprocess.Popen(
-        #         ("sudo " + dirname + "/ascom.alpaca.simulators"),
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
-        # else:
-        #     self.process = subprocess.Popen(
-        #         (dirname + "/ascom.alpaca.simulators"),
-        #         preexec_fn=os.setpgrp,
-        #         start_new_session=True,
-        #         stderr=subprocess.DEVNULL,
-        #         stdout=subprocess.DEVNULL,
-        #         shell=True,
-        #     )
+            oshmod.set_mode(dirname, 0o755)
 
-        self.dirname = dirname + "/ascom.alpaca.simulators.exe"
+        current_dir = os.getcwd()
+        os.chdir(dirname)
+
+        if platform.system() == "Darwin" or platform.system() == "Linux":
+            self.process = subprocess.Popen(
+                ("sudo " + str(dirname / executable)),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
+        else:
+            self.process = subprocess.Popen(
+                str(dirname / executable),
+                preexec_fn=os.setpgrp,
+                start_new_session=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True,
+            )
+
+        self.executable = dirname / executable
+
+        os.chdir(current_dir)
 
     def __del__(self):
         subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)

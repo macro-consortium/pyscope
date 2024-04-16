@@ -450,7 +450,10 @@ class Observatory:
                         self._wcs_kwargs.append(None)
                     for i in range(len(self._wcs_driver)):
                         self._wcs_driver[i] = self._wcs_driver[i].lower()
-                    if self._wcs_driver[-1] == "maxim" or self._wcs_driver[-1] == "maximdl":
+                    if (
+                        self._wcs_driver[-1] == "maxim"
+                        or self._wcs_driver[-1] == "maximdl"
+                    ):
                         if self._maxim is None:
                             raise ObservatoryException(
                                 "MaxIm DL must be used as the camera driver when using MaxIm DL as the WCS driver."
@@ -2027,8 +2030,8 @@ class Observatory:
         """
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        # TODO: fix 
-        '''logger.info(
+        # TODO: fix
+        """logger.info(
             "Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)"
             % (
                 obj,
@@ -2041,7 +2044,7 @@ class Observatory:
                 target_x_pixel,
                 target_y_pixel,
             )
-        )'''
+        )"""
 
         if initial_offset_dec != 0 and do_initial_slew:
             logger.info(
@@ -2089,10 +2092,9 @@ class Observatory:
                 time.sleep(0.1)
             logger.info("Exposure complete")
 
-            temp_image = (
-                tempfile.gettempdir()
-                + "%s.fts" % astrotime.Time(self.observatory_time, format="fits").value.replace(":", "-")
-            )
+            temp_image = tempfile.gettempdir() + "%s.fts" % astrotime.Time(
+                self.observatory_time, format="fits"
+            ).value.replace(":", "-")
             self.save_last_image(temp_image, overwrite=True)
 
             logger.info("Searching for a WCS solution...")
@@ -2134,11 +2136,11 @@ class Observatory:
                     save_path + temp_image.split("\\")[-1],
                     overwrite=True,
                 )
-            
+
             self.save_last_image(
-                    temp_image,
-                    overwrite=True,
-                )
+                temp_image,
+                overwrite=True,
+            )
 
             if not solution_found:
                 logger.warning("No WCS solution found, skipping this attempt")
@@ -2149,14 +2151,14 @@ class Observatory:
             )
             try:
                 hdr = fits.getheader(temp_image)
-                w = astropywcs.WCS(hdr) 
+                w = astropywcs.WCS(hdr)
 
                 center_coord = w.pixel_to_world(
                     int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
                 )
                 center_ra = center_coord.ra.hour
                 center_dec = center_coord.dec.deg
-                '''logger.debug(
+                """logger.debug(
                     "Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
                     % (
                         center_coord.ra.hms[0],
@@ -2166,12 +2168,12 @@ class Observatory:
                         center_coord.dec.dms[1],
                         center_coord.dec.dms[2],
                     )
-                )'''
+                )"""
 
                 target_coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
                 target_pixel_ra = target_coord.ra.hour
                 target_pixel_dec = target_coord.dec.deg
-                '''logger.debug(
+                """logger.debug(
                     "Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
                     % (
                         coord.ra.hms[0],
@@ -2181,7 +2183,7 @@ class Observatory:
                         coord.dec.dms[1],
                         coord.dec.dms[2],
                     )
-                )'''
+                )"""
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
