@@ -6,16 +6,7 @@ import pytest
 
 from pyscope.observatory import Observatory, collect_calibration_set
 
-"""Testing this:
-- look at test_observatory.py for a good example
-
-- start simulator server
-- run collect_calibration_set
-- check that the flats, darks
-    - ccd master bias
-    - cmos master flat-dark
-- check that the masters are created in folder
-
+"""
 File Naming Convention:
 {type}_{filter}_{binning}_{exposure}_{readout}__{repeat}.fts
 """
