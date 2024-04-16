@@ -66,7 +66,7 @@ def test_avg_fits_ccdproc(tmp_path):
         mode="1",
         outfile=f"{tmp_path}/averaged/avg_fits_mean.fits",
         fnames=files,
-        datatype=np.float64,
+        datatype="float64",
         verbose=True,
     )
     mean_data = fits.getdata(f"{tmp_path}/averaged/avg_fits_mean.fits")
