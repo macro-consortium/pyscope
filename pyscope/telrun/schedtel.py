@@ -479,8 +479,7 @@ def schedtel_cli(
             try:
                 block_groups[i][j].configuration["ID"]
             except:
-                block_groups[i][j].configuration["ID"] = astrotime.Time.now()
-                block_groups[i][j].configuration["ID"].format = "mjd"
+                block_groups[i][j].configuration["ID"] = astrotime.Time.now().mjd
 
     previously_queued_blocks = None
     if queue is not None and len(block_groups) > 0:

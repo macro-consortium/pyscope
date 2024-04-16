@@ -92,6 +92,11 @@ class _MaximAutofocus(Autofocus):
 class _MaximCamera(Camera):
     def __init__(self):
         logger.debug("_MaximCamera_MaximCamera __init__ called")
+        if platform.system() != "Windows":
+            raise Exception("This class is only available on Windows.")
+        else:
+            from win32com.client import Dispatch
+
         self._com_object = Dispatch("MaxIm.CCDCamera")
         self._com_object.DisableAutoShutdown = True
 
@@ -586,13 +591,14 @@ class _MaximFilterWheel(FilterWheel):
 class _MaximPinpointWCS(WCS):
     def __init__(self, maxim_camera):
         logger.debug("_MaximPinpointWCS __init__ called")
-        self.maxim_camera = maxim_camera
+        self.maxim_camera = maxim_camera._com_object
 
     def Solve(self, ra=None, dec=None, scale_est=None, *args, **kwargs):
         logger.debug(
             f"_MaximPinpointWCS.Solve called with ra={ra}, dec={dec}, and scale_est={scale_est}"
         )
-        self.maxim_camera.document.PinpointSolve(ra, dec, scale_est, scale_est)
+        # TODO: support arguments
+        self.maxim_camera.document.PinpointSolve()
 
         while self.maxim_camera.document.PinpointStatus == 3:
             time.sleep(1)

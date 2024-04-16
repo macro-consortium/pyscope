@@ -5,3 +5,16 @@ coverage:
       default:
         target: auto
         threshold: 1%
+
+  range: 60..80
+  round: nearest
+  precision: 0
+
+  ignore:
+    - "*/__init__.py"
+    - "*/setup.py"
+    - "*/conftest.py"
+    - "*/_version.py"
+    - "*/_compat.py"
+    - "*/conftest.py"
+    - "./docs/source/headerCSVGenerator.py"

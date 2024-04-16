@@ -9,6 +9,7 @@ cmcrameri == 1.8
 markdown == 3.6
 matplotlib == 3.8.4
 numpy == 1.26.4
+oschmod == 0.3.12
 paramiko == 3.4.0
 photutils == 1.12.0
 prettytable == 3.10.0

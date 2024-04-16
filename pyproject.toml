@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel", "numpy>=1.25"]
+requires = ["setuptools>=42.0", "wheel", "numpy>=1.26"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
@@ -40,7 +40,7 @@ line-length = 88
         # Don't complain about excepts:
         "except",
 
-        # Don't complaina about break/continue/return:
+        # Don't complain about break/continue/return:
         "break",
         "continue",
         "return",
