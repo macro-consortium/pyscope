@@ -108,19 +108,19 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     logger.info(f"Loaded {len(images)} FITS files")
 
     logger.info("Averaging FITS files...")
-
+    print("averaging fits files")
     if str(mode) == "0":
         logger.debug("Calculating median...")
         image_avg = np.median(images, axis=0)
     elif str(mode) == "1":
         logger.debug("Calculating mean...")
         image_avg = np.mean(images, axis=0)
-
+    print("image_avg")
     logger.debug(f"Image mean: {np.mean(image_avg)}")
     logger.debug(f"Image median: {np.median(image_avg)}")
 
     image_avg = image_avg.astype(datatype)
-
+    print("changing type")
     logger.info(f"Saving averaged FITS file to {outfile}")
 
     print("testing101",fnames)
@@ -130,6 +130,7 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     hdr.add_comment(f"Averaged {len(images)} FITS files using pyscope")
     hdr.add_comment(f"Average mode: {mode}")
     fits.writeto(outfile, image_avg, hdr, overwrite=True)
+    print("done")
 
     logger.info("Done!")
 
