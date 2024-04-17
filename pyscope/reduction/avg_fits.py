@@ -63,6 +63,7 @@ TODO: use ccdproc to average FITS files
 @click.option(
     "-v",
     "--verbose",
+    type=click.BOOL,
     is_flag=True,
     default=False,
     show_default=True,
