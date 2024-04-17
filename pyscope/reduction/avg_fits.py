@@ -81,8 +81,8 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     outfile : str
         Path to save averaged FITS files.
 
-    fnames : list
-        List of FITS file paths to average.
+    fnames : path
+        path of directory of FITS files to average.
 
     verbose : bool, default=False
         Print verbose output.
@@ -98,7 +98,9 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
+    print("og", fnames)
     fnames = glob.glob(fnames)
+    print("glob", fnames)
     images = np.array([fits.open(fname)[0].data for fname in fnames])
     
     images = images.astype(datatype)
