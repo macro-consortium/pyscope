@@ -24,13 +24,13 @@ def test_avg_fits(tmp_path):
         fits.writeto(f"{tmp_path}/avg_fits_test_{i}.fits", data * i, overwrite=True)
         print(data * i)
 
-    files = glob.glob(f"{tmp_path}/avg_fits_test_*.fits")
+    # files = glob.glob(f"{tmp_path}/avg_fits_test_*.fits")
 
     # test median mode
     avg_fits(
         mode="0",
         outfile=f"{tmp_path}/averaged/avg_fits_median.fits",
-        fnames=files,
+        fnames=f"{tmp_path}/avg_fits_test_*.fits",
         verbose=True,
     )
     med_data = fits.getdata(f"{tmp_path}/averaged/avg_fits_median.fits")
@@ -44,7 +44,7 @@ def test_avg_fits(tmp_path):
     avg_fits(
         mode="1",
         outfile=f"{tmp_path}/averaged/avg_fits_mean.fits",
-        fnames=files,
+        fnames=f"{tmp_path}/avg_fits_test_*.fits",
         verbose=True,
     )
     mean_data = fits.getdata(f"{tmp_path}/averaged/avg_fits_mean.fits")
@@ -58,7 +58,7 @@ def test_avg_fits(tmp_path):
     avg_fits(
         mode="1",
         outfile=f"{tmp_path}/averaged/avg_fits_mean.fits",
-        fnames=files,
+        fnames=f"{tmp_path}/avg_fits_test_*.fits",
         datatype="float64",
         verbose=True,
     )

@@ -98,7 +98,7 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
-    fnames = glob.glob(f"{fnames}*.fts")
+    fnames = glob.glob(fnames)
     images = np.array([fits.open(fname)[0].data for fname in fnames])
     
     images = images.astype(datatype)
@@ -121,6 +121,7 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
 
     logger.info(f"Saving averaged FITS file to {outfile}")
 
+    print("testing101",fnames)
     with fits.open(fnames[-1]) as hdul:
         hdr = hdul[0].header
 

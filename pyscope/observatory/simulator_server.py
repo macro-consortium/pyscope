@@ -7,7 +7,7 @@ from pathlib import Path
 from tarfile import TarFile
 from zipfile import ZipFile
 
-import oschmod
+# import oschmod
 
 
 class SimulatorServer:
