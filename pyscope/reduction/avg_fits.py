@@ -63,12 +63,13 @@ TODO: use ccdproc to average FITS files
 @click.option(
     "-v",
     "--verbose",
-    count=True,
+    is_flag=True,
+#    show_default=True,
     help="Print verbose output.",
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
-def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=0):
+def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     """Averages FITS files.
 
     Parameters
@@ -90,7 +91,7 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=0):
     None
     """
 
-    if verbose >0:
+    if verbose:
         logger.setLevel(logging.DEBUG)
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
