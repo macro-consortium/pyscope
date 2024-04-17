@@ -1,5 +1,5 @@
 import logging
-
+import glob
 import click
 import numpy as np
 from astropy.io import fits
@@ -98,9 +98,9 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
-
+    fnames = glob.glob(f"{fnames}*.fts")
     images = np.array([fits.open(fname)[0].data for fname in fnames])
-
+    
     images = images.astype(datatype)
 
     logger.info(f"Loaded {len(images)} FITS files")
