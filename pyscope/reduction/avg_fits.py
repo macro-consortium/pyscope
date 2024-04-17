@@ -61,8 +61,8 @@ TODO: use ccdproc to average FITS files
     help="Data type to use for averaged FITS file.",
 )
 @click.option(
-    "-v",
-    "--verbose",
+    "-nv/-v",
+    "--not-verbose/--verbose",
     type=click.BOOL,
     is_flag=True,
     default=False,
