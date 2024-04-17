@@ -64,7 +64,6 @@ TODO: use ccdproc to average FITS files
     "-v",
     "--verbose",
     count=True,
-    is_flag=True,
     help="Print verbose output.",
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
