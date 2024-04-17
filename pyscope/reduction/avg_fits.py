@@ -92,7 +92,8 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     """
     print(verbose)
     if verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
+        #logger.setLevel(logging.DEBUG)
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
