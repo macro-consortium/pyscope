@@ -99,7 +99,7 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
 
     logger.info("Loading FITS files...")
     print("og", fnames)
-    fnames = glob.glob(fnames)
+    fnames = glob.glob(fnames[0])
     print("glob", fnames)
     images = np.array([fits.open(fname)[0].data for fname in fnames])
     
