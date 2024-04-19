@@ -100,7 +100,9 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     
     fnames = glob.glob(f"{fnames[0]}/*.fts") + glob.glob(f"{fnames[0]}/*.fits") + glob.glob(f"{fnames[0]}/*.fit")
     
-    images = np.array([fits.open(fname)[0].data for fname in fnames])
+    # TODO: try reading in one image at a time, then add the pixel values to an array. then close the file and move to the next one.
+    # images = np.array([fits.open(fname)[0].data for fname in fnames])
+    images = np.array([fits.getdata(fname) for fname in fnames])
     
     images = images.astype(datatype)
     
