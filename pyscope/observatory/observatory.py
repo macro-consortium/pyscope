@@ -1110,7 +1110,7 @@ class Observatory:
         t = astrotime.Time(t)
 
         eq_system = self.telescope.EquatorialSystem
-        #eq_system = 1 # TODO: Remove this line, this is a temp. fix for our SiTech mount
+        # eq_system = 1 # TODO: Remove this line, this is a temp. fix for our SiTech mount
         if eq_system == 0:
             logger.warning(
                 "Telescope equatorial system is not set, assuming Topocentric"
@@ -1585,7 +1585,9 @@ class Observatory:
             logger.warning("Tracking cannot be turned on.")
 
         logger.info("Attempting to slew to coordinates...")
-        logger.info("Slewing to RA %.5f and Dec %.5f" % (slew_obj.ra.hour, slew_obj.dec.deg))
+        logger.info(
+            "Slewing to RA %.5f and Dec %.5f" % (slew_obj.ra.hour, slew_obj.dec.deg)
+        )
         if self.telescope.CanSlew:
             if self.telescope.CanSlewAsync:
                 self.telescope.SlewToCoordinatesAsync(
@@ -2056,8 +2058,8 @@ class Observatory:
             )
 
         for attempt in range(max_attempts):
-            #logger.info("Getting object slew once.")
-            #slew_obj = self.get_object_slew(slew_obj) # removed this line since it was being performed twice
+            # logger.info("Getting object slew once.")
+            # slew_obj = self.get_object_slew(slew_obj) # removed this line since it was being performed twice
 
             if check_and_refine:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
