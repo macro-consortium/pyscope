@@ -14,7 +14,7 @@ paramiko == 3.4.0
 photutils == 1.12.0
 prettytable == 3.10.0
 pywin32 == 306;platform_system=='Windows'
-scikit-image == 0.23.1
+scikit-image == 0.23.2
 scipy == 1.13.0
 smplotlib == 0.0.9
 timezonefinder == 6.5.0
