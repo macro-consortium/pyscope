@@ -4272,7 +4272,7 @@ class Observatory:
             )
         else:
             self._filters[position] = (
-                chr(value) if value is not None or value != "" else None
+                str(value) if value is not None or value != "" else None
             )
         self._config["filter_wheel"]["filters"] = (
             ", ".join(self._filters) if self._filters is not None else ""
