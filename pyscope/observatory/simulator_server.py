@@ -87,8 +87,10 @@ class SimulatorServer:
 
     def __del__(self):
         if platform.system() == "Darwin" or platform.system() == "Linux":
-            self.process.kill()
-            # subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
+            # self.process.kill() # doesn't work since sudo is needed
+            subprocess.Popen(
+                f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True
+            )
         else:
             self.process.kill()
             # subprocess.Popen(f"taskkill /PID {(os.getpgid(self.process.pid)+1)} /F", shell=True)
