@@ -5,7 +5,7 @@ astroquery == 0.4.7
 astroscrappy == 1.1.0
 ccdproc == 2.4.1
 click == 8.1.7
-cmcrameri == 1.8
+cmcrameri == 1.9
 markdown == 3.6
 matplotlib == 3.8.4
 numpy == 1.26.4
