@@ -57,14 +57,14 @@ class SimulatorServer:
                 with TarFile.open(dirname / zip_type, "r") as tarObj:
                     tarObj.extractall()
 
-            oshmod.set_mode(dirname, 0o755)
+            oschmod.set_mode(dirname, 0o755)
 
         current_dir = os.getcwd()
         os.chdir(dirname)
 
         if platform.system() == "Darwin" or platform.system() == "Linux":
             self.process = subprocess.Popen(
-                ("sudo " + str(dirname / executable)),
+                ("sudo ./" + str(executable)),
                 preexec_fn=os.setpgrp,
                 start_new_session=True,
                 stderr=subprocess.DEVNULL,
@@ -73,7 +73,7 @@ class SimulatorServer:
             )
         else:
             self.process = subprocess.Popen(
-                str(dirname / executable),
+                str(executable),
                 preexec_fn=os.setpgrp,
                 start_new_session=True,
                 stderr=subprocess.DEVNULL,
