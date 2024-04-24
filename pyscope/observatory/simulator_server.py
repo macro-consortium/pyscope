@@ -51,13 +51,13 @@ class SimulatorServer:
             )
 
             if zip_type == ".zip":
-                with ZipFile(dirname / zip_type, "r") as zipObj:
+                with ZipFile(str(dirname) + zip_type, "r") as zipObj:
                     zipObj.extractall()
             elif zip_type == ".tar.xz":
-                with TarFile.open(dirname / zip_type, "r") as tarObj:
+                with TarFile.open(str(dirname) + zip_type, "r") as tarObj:
                     tarObj.extractall()
 
-            oschmod.set_mode(dirname, 0o755)
+            oschmod.set_mode(str(dirname), 0o755)
 
         current_dir = os.getcwd()
         os.chdir(dirname)
@@ -74,7 +74,7 @@ class SimulatorServer:
         else:
             self.process = subprocess.Popen(
                 str(executable),
-                preexec_fn=os.setpgrp,
+                # preexec_fn=os.setpgrp,
                 start_new_session=True,
                 stderr=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
@@ -86,4 +86,9 @@ class SimulatorServer:
         os.chdir(current_dir)
 
     def __del__(self):
-        subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
+        if platform.system() == "Darwin" or platform.system() == "Linux":
+            self.process.kill()
+            # subprocess.Popen(f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True)
+        else:
+            self.process.kill()
+            # subprocess.Popen(f"taskkill /PID {(os.getpgid(self.process.pid)+1)} /F", shell=True)
