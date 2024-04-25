@@ -3074,13 +3074,21 @@ class Observatory:
                     self.focuser.Absolute,
                     "Can focuser move to absolute position",
                 ),
-                "FOCMAXIN": (self.focuser.MaxIncrement, "Focuser maximum increment"),
-                "FOCMAXST": (self.focuser.MaxStep, "Focuser maximum step"),
+                "FOCMAXIN": (None, "Focuser maximum increment"),
+                "FOCMAXST": (None, "Focuser maximum step"),
                 "FOCTEMPC": (
-                    self.focuser.TempCompAvailable,
+                    None,
                     "Focuser temperature compensation available",
                 ),
             }
+            try:
+                info["FOCMAXIN"] = (self.focuser.MaxIncrement, info["FOCMAXIN"][1])
+            except:
+                pass
+            try:
+                info["FOCMAXST"] = (self.focuser.MaxStep, info["FOCMAXST"][1])
+            except:
+                pass
             try:
                 info["FOCPOS"] = (self.focuser.Position, info["FOCPOS"][1])
             except:

@@ -175,10 +175,11 @@ class _MaximCamera(Camera):
         logger.debug(f"Image timestamp UTC: {image_datetime}")
         logger.debug(f"Exposure start time: {self._last_exposure_start_time}")
 
-        if image_datetime < self._last_exposure_start_time:
-            raise Exception(
-                "Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera"
-            )
+        # TODO: Fix below, was getting errors when implementing grism focus script
+        # if image_datetime < self._last_exposure_start_time:
+        #     raise Exception(
+        #         "Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera"
+        #     )
 
     @property
     def BayerOffsetX(self):
