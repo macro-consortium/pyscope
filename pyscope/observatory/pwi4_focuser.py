@@ -16,7 +16,7 @@ class PWI4Focuser(Focuser):
         logger.debug("Starting autofocus in PWI4Focuser")
         self._app.request("/autofocus/start")
         return True
-    
+
     def Enabled(self):
         logger.debug("Checking if focuser is enabled in PWI4Focuser")
         self._app.request("/autofocus/start")
@@ -47,23 +47,23 @@ class PWI4Focuser(Focuser):
     @Absolute.setter
     def Absolute(self, value):
         raise NotImplementedError
-    
+
     @property
     def Description(self):
         return "PWI4 Focuser"
-    
+
     @property
     def DriverInfo(self):
         return "PWI4Driver"
-    
+
     @property
     def DriverVersion(self):
         return "PWI4Driver"
-    
+
     @property
     def InterfaceVersion(self):
         return "PWI4Interface"
-    
+
     @property
     def IsMoving(self):
         logger.debug("PWI4Focuser.IsMoving() called")
@@ -76,7 +76,7 @@ class PWI4Focuser(Focuser):
     @property
     def MaxStep(self):
         raise NotImplementedError
-    
+
     @property
     def Name(self):
         return "PWI4 Focuser"
@@ -120,7 +120,7 @@ class PWI4Focuser(Focuser):
             )
         else:
             return False
-    
+
     @property
     def Enabled(self):
         logger.debug("PWI4Focuser.Enabled() called")
