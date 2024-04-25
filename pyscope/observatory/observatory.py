@@ -2035,21 +2035,14 @@ class Observatory:
         """
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        # TODO: fix
-        """logger.info(
-            "Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)"
+        logger.info(
+            "Attempting to put %s on pixel (%.2f, %.2f)"
             % (
-                obj,
-                obj.ra.hms[0],
-                obj.ra.hms[1],
-                obj.ra.hms[2],
-                obj.dec.dms[0],
-                obj.dec.dms[1],
-                obj.dec.dms[2],
+                slew_obj.to_string("hmsdms"),
                 target_x_pixel,
                 target_y_pixel,
             )
-        )"""
+        )
 
         if initial_offset_dec != 0 and do_initial_slew:
             logger.info(
@@ -2058,9 +2051,6 @@ class Observatory:
             )
 
         for attempt in range(max_attempts):
-            # logger.info("Getting object slew once.")
-            # slew_obj = self.get_object_slew(slew_obj) # removed this line since it was being performed twice
-
             if check_and_refine:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
 
@@ -2162,34 +2152,14 @@ class Observatory:
                 center_coord = w.pixel_to_world(
                     int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
                 )
-                center_ra = center_coord.ra.hour
-                center_dec = center_coord.dec.deg
-                """logger.debug(
-                    "Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
-                    % (
-                        center_coord.ra.hms[0],
-                        center_coord.ra.hms[1],
-                        center_coord.ra.hms[2],
-                        center_coord.dec.dms[0],
-                        center_coord.dec.dms[1],
-                        center_coord.dec.dms[2],
-                    )
-                )"""
+                logger.debug(
+                    "Center of the image is at %s" % center_coord.to_string("hmsdms")
+                )
 
                 target_coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
                 target_pixel_ra = target_coord.ra.hour
                 target_pixel_dec = target_coord.dec.deg
-                """logger.debug(
-                    "Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
-                    % (
-                        coord.ra.hms[0],
-                        coord.ra.hms[1],
-                        coord.ra.hms[2],
-                        coord.dec.dms[0],
-                        coord.dec.dms[1],
-                        coord.dec.dms[2],
-                    )
-                )"""
+                logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
@@ -2204,8 +2174,8 @@ class Observatory:
                 )
                 continue
 
-            error_ra = obj.ra.hour - target_pixel_ra
-            error_dec = obj.dec.deg - target_pixel_dec
+            error_ra = slew_obj.ra.hour - target_pixel_ra
+            error_dec = slew_obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel
             error_y_pixels = obj_y_pixel - target_y_pixel
             logger.info("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))

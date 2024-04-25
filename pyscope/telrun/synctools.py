@@ -136,7 +136,10 @@ def sync_directory_cli(
                     "Putting local path %s to remote path %s" % (f, remote_dir / f.name)
                 )
                 sftp.put(str(f), str(remote_dir / f.name))
-                sftp.utime(str(remote_dir / f.name), (int(f.stat().st_atime), int(f.stat().st_mtime)))
+                sftp.utime(
+                    str(remote_dir / f.name),
+                    (int(f.stat().st_atime), int(f.stat().st_mtime)),
+                )
 
     if mode in ["receive", "both"]:
 
