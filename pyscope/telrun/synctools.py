@@ -6,7 +6,7 @@ import os
 import stat
 import threading
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import click
 import paramiko
@@ -81,7 +81,7 @@ def sync_directory_cli(
     )
 
     local_dir = Path(local_dir)
-    remote_dir = Path(remote_dir)
+    remote_dir = PurePosixPath(remote_dir)
 
     close_ssh_at_exit = False
     if sftp is None:
@@ -98,7 +98,7 @@ def sync_directory_cli(
 
     if mode in ["send", "both"]:
         if remote_dir.name != local_dir.name:
-            remote_dir = remote_dir / local_dir.name
+            remote_dir = PurePosixPath(remote_dir / local_dir.name)
         try:
             sftp.stat(str(remote_dir))
         except Exception as e:
@@ -136,9 +136,10 @@ def sync_directory_cli(
                     "Putting local path %s to remote path %s" % (f, remote_dir / f.name)
                 )
                 sftp.put(str(f), str(remote_dir / f.name))
-                sftp.utime(f.name, (int(f.stat().st_atime), int(f.stat().st_mtime)))
+                sftp.utime(str(remote_dir / f.name), (int(f.stat().st_atime), int(f.stat().st_mtime)))
 
     if mode in ["receive", "both"]:
+
         sftp.chdir(str(remote_dir))
         if not local_dir.is_dir():
             logger.info("Creating local directory %s" % local_dir)
