@@ -452,7 +452,7 @@ def table_to_blocks(table):
                 constraints.append(None)
 
         if row["ID"] is None:
-            row["ID"] = astrotime.Time.now()
+            row["ID"] = astrotime.Time.now().mjd
 
         blocks.append(
             astroplan.ObservingBlock(
