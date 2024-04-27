@@ -123,7 +123,7 @@ def sync_directory_cli(
                 )
             elif f.suffix in ignore_ext:
                 continue
-            if f.name in sftp.listdir():
+            elif f.name in sftp.listdir():
                 if int(sftp.stat(f.name).st_mtime) < int(f.stat().st_mtime):
                     logger.info(
                         "Putting local path %s to remote path %s"
@@ -132,14 +132,15 @@ def sync_directory_cli(
                     sftp.put(str(f), str(remote_dir / f.name))
                     sftp.utime(f.name, (int(f.stat().st_atime), int(f.stat().st_mtime)))
             else:
-                logger.info(
+                pass
+                '''logger.info(
                     "Putting local path %s to remote path %s" % (f, remote_dir / f.name)
                 )
                 sftp.put(str(f), str(remote_dir / f.name))
                 sftp.utime(
                     str(remote_dir / f.name),
                     (int(f.stat().st_atime), int(f.stat().st_mtime)),
-                )
+                )'''
 
     if mode in ["receive", "both"]:
 
