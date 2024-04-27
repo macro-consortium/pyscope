@@ -124,7 +124,7 @@ def sync_directory_cli(
             elif f.suffix in ignore_ext:
                 continue
             elif f.name in sftp.listdir():
-                if int(sftp.stat(f.name).st_mtime) < int(f.stat().st_mtime):
+                if int(sftp.stat(f.name).st_mtime) != int(f.stat().st_mtime):
                     logger.info(
                         "Putting local path %s to remote path %s"
                         % (f, remote_dir / f.name)
@@ -132,15 +132,14 @@ def sync_directory_cli(
                     sftp.put(str(f), str(remote_dir / f.name))
                     sftp.utime(f.name, (int(f.stat().st_atime), int(f.stat().st_mtime)))
             else:
-                pass
-                """logger.info(
+                logger.info(
                     "Putting local path %s to remote path %s" % (f, remote_dir / f.name)
                 )
                 sftp.put(str(f), str(remote_dir / f.name))
                 sftp.utime(
                     str(remote_dir / f.name),
                     (int(f.stat().st_atime), int(f.stat().st_mtime)),
-                )"""
+                )
 
     if mode in ["receive", "both"]:
 
@@ -163,7 +162,7 @@ def sync_directory_cli(
             elif Path(fname).suffix in ignore_ext:
                 continue
             elif (local_dir / fname).exists():
-                if int(f_attr.st_mtime) > int((local_dir / fname).stat().st_mtime):
+                if int(f_attr.st_mtime) != int((local_dir / fname).stat().st_mtime):
                     logger.info(
                         "Getting remote path %s to local path %s"
                         % (remote_dir / fname, local_dir / fname)
@@ -385,11 +384,11 @@ def get_client(username, host, port=22, key=None):
 
 
 def _continuous_sync(
-    sftp, ssh, local_dir, remote_dir, mode, ignore_dir, ignore_ext, event
+    sftp, ssh, local_dir, remote_dir, mode, ignore_dir, ignore_ext, event, delay=10,
 ):
     while not event.is_set():
         sync_directory(local_dir, remote_dir, mode, ignore_dir, ignore_ext, sftp=sftp)
-        time.sleep(1)
+        time.sleep(delay)
     else:
         logger.info("Thread %s is exiting" % threading.current_thread().name)
         ssh.close()
