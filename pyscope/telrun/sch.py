@@ -841,8 +841,6 @@ def read(
                     final_fname = f"{fname}_{j}"
                 else:
                     final_fname = f"{fname}"
-                temp_id = astrotime.Time.now()
-                temp_id.format = "mjd"
                 blocks.append(
                     astroplan.ObservingBlock(
                         target=obj,
@@ -869,7 +867,7 @@ def read(
                             "pm_dec": pm_dec,
                             "comment": comment,
                             "sch": filename.split("/")[-1].split(".")[0],
-                            "ID": temp_id,
+                            "ID": astrotime.Time.now().mjd,
                             "status": "U",
                             "message": "Unscheduled",
                             "sched_time": None,

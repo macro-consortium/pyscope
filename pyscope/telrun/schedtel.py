@@ -53,7 +53,7 @@ C = completed
     help="""The catalog of .sch files to be scheduled. The catalog can be a
     single .sch file or a .cat file containing a list of .sch files. If no
     catalog is provided, then the function searches for a schedule.cat file
-    in the $OBSERVATORY_HOME/schedules/ directory, then searches
+    in the $TELHOME/schedules/ directory, then searches
     in the current working directory.""",
 )
 @click.option(
@@ -123,7 +123,7 @@ C = completed
     type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
     help="""The observatory configuration file. If no observatory configuration
     file is provided, then the function searches for an observatory.cfg file
-    in the $OBSERVATORY_HOME/config/ directory, then searches in the current working
+    in the $TELHOME/config/ directory, then searches in the current working
     directory.""",
 )
 @click.option(
@@ -170,7 +170,7 @@ C = completed
     "--scheduler",
     nargs=2,
     type=(
-        click.Path(exists=True, resolve_path=True, dir_okay=False, executable=True),
+        str,
         str,
     ),
     default=("", ""),
@@ -222,14 +222,14 @@ C = completed
 )
 @click.option(
     "-t",
-    "--telrun-execute",
-    "telrun_execute",
+    "--telrun",
+    "telrun",
     is_flag=True,
     default=False,
     show_default=True,
     help="""Places the output file in specified by the $TELRUN_EXECUTE environment
-    variable. If not defined, then the $OBSERVATORY_HOME/schedules/ directory is used.
-    If neither are defined, then ./schedules/ is used. WARNING: If the file already exists,
+    variable. If not defined, then the $TELHOME/schedules/execute/ directory is used.
+    If neither are defined, then ./schedules/execute/ is used. WARNING: If the file already exists,
     it will be overwritten.""",
 )
 @click.option(
@@ -319,23 +319,23 @@ def schedtel_cli(
     # Define the observatory
     if observatory is None:
         try:
-            observatory = os.environ.get("OBSERVATORY_HOME") + "/config/observatory.cfg"
+            observatory = os.environ.get("TELHOME") + "/config/observatory.cfg"
             logger.info(
-                "No observatory provided, using observatory.cfg from $OBSERVATORY_HOME environment variable"
+                "No observatory provided, using observatory.cfg from $TELHOME environment variable"
             )
         except:
-            observatory = os.getcwd() + "/observatory.cfg"
+            observatory = os.getcwd() + "/config/observatory.cfg"
             logger.info(
-                "No observatory provided, using observatory.cfg from current working directory"
+                "No observatory provided, using ./config/observatory.cfg from current working directory"
             )
 
     logger.info("Parsing the observatory config")
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
-        slew_rate = obs_cfg.getfloat("scheduling", "slew_rate") * u.deg / u.second
+        slew_rate = obs_cfg["scheduling"].getfloat("slew_rate") * u.deg / u.second
         instrument_reconfig_times = json.loads(
-            obs_cfg.get("scheduling", "instrument_reconfig_times")
+            obs_cfg["scheduling"].get("instrument_reconfig_times")
         )
         observatory = astroplan.Observer(
             location=coord.EarthLocation(
@@ -390,12 +390,12 @@ def schedtel_cli(
 
     if catalog is None and queue is None:
         try:
-            catalog = os.environ.get("OBSERVATORY_HOME") + "/schedules/schedule.cat"
+            catalog = os.environ.get("TELHOME") + "/schedules/schedule.cat"
             logger.info(
-                "No catalog provided, using schedule.cat from $OBSERVATORY_HOME environment variable"
+                "No catalog provided, using schedule.cat from $TELHOME environment variable"
             )
         except:
-            catalog = os.getcwd() + "/schedule.cat"
+            catalog = os.getcwd() + "/schedules/schedule.cat"
             logger.info(
                 "No catalog provided, using schedule.cat from current working directory"
             )
@@ -798,30 +798,17 @@ def schedtel_cli(
     write_queue = False
     if telrun:
         write_queue = True
-        try:
-            path = os.environ.get("TELRUN_EXECUTE")
-            logger.info(
-                "-t/--telrun flag set, writing schedule to %s from $TELRUN_EXECUTE environment variable"
-                % path
-            )
-        except:
-            try:
-                path = os.environ.get("TELHOME") + "/schedules/execute/"
-                logger.info(
-                    "-t/--telrun flag set, writing schedule to %s from $TELHOME environment variable"
-                    % path
-                )
-            except:
-                path = os.getcwd() + "/schedules/"
-                logger.info(
-                    "-t/--telrun flag set, writing schedule to %s from current working directory"
-                    % path
-                )
-        if not os.path.isdir(path):
-            path = os.getcwd() + "/"
-            logger.warning(
-                f"Path {path} does not exist, writing to current working directory instead: {path}"
-            )
+
+        path = os.environ.get("TELRUN_EXECUTE")
+        if path is None:
+            path = os.environ.get("TELHOME")
+        if path is None:
+            path = os.getcwd() + "/schedules/execute/"
+        else:
+            path += "/schedules/execute/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+            logger.info("Creating directory %s" % path)
     else:
         write_queue = False
         path = os.getcwd() + "/"
