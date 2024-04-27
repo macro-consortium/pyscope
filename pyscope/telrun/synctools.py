@@ -392,7 +392,7 @@ def _continuous_sync(
     ignore_dir,
     ignore_ext,
     event,
-    delay=10,
+    delay=2,
 ):
     while not event.is_set():
         sync_directory(local_dir, remote_dir, mode, ignore_dir, ignore_ext, sftp=sftp)
