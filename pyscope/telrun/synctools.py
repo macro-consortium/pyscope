@@ -384,7 +384,15 @@ def get_client(username, host, port=22, key=None):
 
 
 def _continuous_sync(
-    sftp, ssh, local_dir, remote_dir, mode, ignore_dir, ignore_ext, event, delay=10,
+    sftp,
+    ssh,
+    local_dir,
+    remote_dir,
+    mode,
+    ignore_dir,
+    ignore_ext,
+    event,
+    delay=10,
 ):
     while not event.is_set():
         sync_directory(local_dir, remote_dir, mode, ignore_dir, ignore_ext, sftp=sftp)
