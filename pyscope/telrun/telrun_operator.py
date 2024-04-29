@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 import tkinter.ttk as ttk
 from io import StringIO
-from pathlib import Path
+from pathlib import Path, WindowsPath
 from tkinter import font
 
 import astroplan
@@ -358,10 +358,12 @@ class TelrunOperator:
         # Parse observatory
         self._observatory = self._config_path / "observatory.cfg"
         self._observatory = kwargs.get("observatory", self._observatory)
-        if type(self._observatory) is Path:
+        # TODO: Fix, this path on a windows machine is a pathlib.WindowsPath, not a path...
+        if type(self._observatory) is Path or type(self._observatory) is WindowsPath:
             logger.info(
                 "Observatory is string, loading from config file and saving to config path"
             )
+            print(f"Starting observatory with config file: {self._observatory}")
             self._observatory = Observatory(config_path=self._observatory)
             self.observatory.save_config(
                 self._config_path / "observatory.cfg", overwrite=True
@@ -373,7 +375,7 @@ class TelrunOperator:
             )
         else:
             raise TelrunException(
-                "observatory must be a string representing an observatory config file path or an Observatory object"
+                f"observatory must be a string representing an observatory config file path or an Observatory object, currently {self._observatory}, {type(self._observatory)}"
             )
 
         # Load kwargs
@@ -1794,18 +1796,19 @@ class TelrunOperator:
         self._telescope_status = "Tracking"
 
         # Wait for focuser, dome motion to complete
-        condition = True
-        logger.info("Waiting for focuser or dome motion to complete...")
-        while condition:
-            if self.observatory.focuser is not None:
-                condition = self.observatory.focuser.IsMoving
-                if not condition:
-                    self._focuser_status = "Idle"
-            if self.observatory.dome is not None:
-                if not self.observatory.dome.Slewing:
-                    self._dome_status = "Idle"
-                condition = condition or self.observatory.dome.Slewing
-            time.sleep(0.1)
+        if self.observatory.focuser is not None and self.observatory.dome is not None:
+            condition = True
+            logger.info("Waiting for focuser or dome motion to complete...")
+            while condition:
+                if self.observatory.focuser is not None:
+                    condition = self.observatory.focuser.IsMoving
+                    if not condition:
+                        self._focuser_status = "Idle"
+                if self.observatory.dome is not None:
+                    if not self.observatory.dome.Slewing:
+                        self._dome_status = "Idle"
+                    condition = condition or self.observatory.dome.Slewing
+                time.sleep(0.1)
 
         # Get previous, current, next block info and add to custom header
         custom_header = self.block_info(block)
@@ -1895,6 +1898,7 @@ class TelrunOperator:
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
+                        overwrite=True,  # Added during initial pyscope telrun debugging 4-27-2024 PEG
                     )
             else:
                 logger.info("No filter wheel, attempting WCS solve...")

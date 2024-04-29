@@ -590,22 +590,22 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type astropy.coordinates.SkyCoord, not {type(column)}"
                     )
-            case (
-                "priority"
-                | "nexp"
-                | "readout"
-                | "frame_position"
-                | "frame_size"
-                | "binning"
-                | "repositioning"
-            ):
-                if not np.issubdtype(column.dtype, np.dtype("int64")):
-                    logger.error(
-                        f"Column '{column.name}' must be of type int64, not {column.dtype}"
-                    )
-                    raise ValueError(
-                        f"Column '{column.name}' must be of type int64, not {column.dtype}"
-                    )
+            # case (
+            #     "priority"
+            #     | "nexp"
+            #     | "readout"
+            #     | "frame_position"
+            #     | "frame_size"
+            #     | "binning"
+            #     | "repositioning"
+            # ):
+            #     if not np.issubdtype(column.dtype, np.dtype("int64")):
+            #         logger.error(
+            #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
+            #         )
+            #         raise ValueError(
+            #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
+            #         )
             case "exposure" | "pm_ra_cosdec" | "pm_dec":
                 if not np.issubdtype(column.dtype, np.dtype("float64")):
                     logger.error(
