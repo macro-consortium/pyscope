@@ -1,7 +1,7 @@
 {
     "name":"pyscope",
-    "image":"mcr.microsoft.com/devcontainers/python:0-3.10-bullseye",
-    "postCreateCommand": "pip install -e '.[dev]'",
+    "image":"mcr.microsoft.com/devcontainers/python:0-3.12-bullseye",
+    "postCreateCommand": "pip install -v -e '.[dev]'",
     "waitFor":"postCreateCommand",
     "customizations": {
         "vscode" : {
