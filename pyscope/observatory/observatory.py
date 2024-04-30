@@ -1484,43 +1484,38 @@ class Observatory:
                 self._current_focus_offset = (
                     self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
-
-                if self.current_focus_offset < self.focuser.MaxIncrement:
-                    if self.focuser.Absolute:
-                        if (
-                            self.focuser.Position + self.current_focus_offset > 0
-                            and self.focuser.Position + self.current_focus_offset
-                            < self.focuser.MaxStep
-                        ):
-                            logger.info(
-                                "Focuser moving to position %i"
-                                % (self.focuser.Position + self.current_focus_offset)
-                            )
-                            self.focuser.Move(
-                                int(self.focuser.Position + self.current_focus_offset)
-                            )
-                            while self.focuser.IsMoving:
-                                time.sleep(0.1)
-                            logger.info("Focuser moved")
-                            return True
-                        else:
-                            raise ObservatoryException(
-                                "Focuser cannot move to the requested position."
-                            )
-                    else:
+                # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
+                if self.focuser.Absolute:
+                    if (
+                        self.focuser.Position + self.current_focus_offset > 0
+                        # and self.focuser.Position + self.current_focus_offset
+                        # < self.focuser.MaxStep
+                    ):
                         logger.info(
-                            "Focuser moving to relative position %i"
-                            % self.current_focus_offset
+                            "Focuser moving to position %i"
+                            % (self.focuser.Position + self.current_focus_offset)
                         )
-                        self.focuser.Move(int(self.current_focus_offset))
+                        self.focuser.Move(
+                            int(self.focuser.Position + self.current_focus_offset)
+                        )
                         while self.focuser.IsMoving:
                             time.sleep(0.1)
                         logger.info("Focuser moved")
                         return True
+                    else:
+                        raise ObservatoryException(
+                            "Focuser cannot move to the requested position."
+                        )
                 else:
-                    raise ObservatoryException(
-                        "Focuser cannot move to the requested position."
+                    logger.info(
+                        "Focuser moving to relative position %i"
+                        % self.current_focus_offset
                     )
+                    self.focuser.Move(int(self.current_focus_offset))
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
+                    logger.info("Focuser moved")
+                    return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
         else:

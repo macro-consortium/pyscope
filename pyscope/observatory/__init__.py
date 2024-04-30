@@ -40,6 +40,7 @@ from .html_safety_monitor import HTMLSafetyMonitor
 from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pinpoint_wcs import PinpointWCS
+from .pwi4_autofocus import PWI4Autofocus
 from .pwi4_focuser import PWI4Focuser
 
 from .simulator_server import SimulatorServer
@@ -83,6 +84,7 @@ __all__ = [
     "Observatory",
     "ObservingConditions",
     "PinpointWCS",
+    "PWI4Autofocus",
     "PWI4Focuser",
     "PWIAutofocus",
     "Rotator",

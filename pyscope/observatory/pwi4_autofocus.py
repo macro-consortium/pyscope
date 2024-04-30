@@ -12,13 +12,21 @@ class PWI4Autofocus(Autofocus):
         self._port = port
         self._app = _PWI4(host=self._host, port=self._port)
 
-    def Run(self):
+    def Run(self, *args, **kwargs):
         logger.debug("Starting autofocus in PWI4Autofocus")
         self._app.request("/autofocus/start")
-        logger.info("Autofocus started, sleeping for 210 seconds")
-        time.sleep(210)
+        logger.info("Autofocus started")
+        time.sleep(1)
+        while self._app.status().autofocus.is_running:
+            time.sleep(1)
         logger.info("Autofocus complete")
-        return True
+
+        logger.info("Moving focuser to best position")
+        while self._app.status().focuser.is_moving:
+            time.sleep(1)
+        logger.info("Focuser moved to best position")
+        
+        return self._app.status().autofocus.best_position
     
     def Abort(self):
         logger.debug("Aborting autofocus in PWI4Autofocus")

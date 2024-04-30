@@ -38,7 +38,7 @@ class PWI4Focuser(Focuser):
 
     @property
     def Absolute(self):
-        return False
+        return True
 
     @Absolute.setter
     def Absolute(self, value):

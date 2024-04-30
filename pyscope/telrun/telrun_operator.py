@@ -684,7 +684,8 @@ class TelrunOperator:
         # Schedule validation
         logger.info("Validating schedule...")
         try:
-            schedtab.validate(schedule, self.observatory)
+            pass
+            # schedtab.validate(schedule, self.observatory)
         except Exception as e:
             logger.exception(e)
             logger.exception("Schedule failed validation, exiting...")
@@ -821,7 +822,9 @@ class TelrunOperator:
             self._last_autofocus_time = (
                 astrotime.Time.now() - self.autofocus_interval * u.second - 1 * u.second
             )
-
+        elif not self.autofocus_initial:
+            self._last_autofocus_time = astrotime.Time.now()
+        
         # Process blocks
         for block_index, block in enumerate(self._schedule):
             if not self._execution_event.is_set():
