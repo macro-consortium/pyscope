@@ -303,7 +303,11 @@ def blocks_to_table(observing_blocks):
             len(observing_blocks),
             np.max(
                 [
-                    len(block.constraints) if hasattr(block, "target") else 0
+                    (
+                        len(block.constraints)
+                        if hasattr(block, "target") and block.constraints is not None
+                        else 0
+                    )
                     for block in observing_blocks
                 ]
             ),
@@ -314,13 +318,17 @@ def blocks_to_table(observing_blocks):
         constraint_list = np.full(
             np.max(
                 [
-                    len(block.constraints) if hasattr(block, "target") else 0
+                    (
+                        len(block.constraints)
+                        if hasattr(block, "target") and block.constraints is not None
+                        else 0
+                    )
                     for block in observing_blocks
                 ]
             ),
             dict(),
         )
-        if hasattr(block, "target"):
+        if hasattr(block, "target") and block.constraints is not None:
             for constraint_num, constraint in enumerate(block.constraints):
                 if type(constraint) is astroplan.TimeConstraint:
                     constraint_dict = {

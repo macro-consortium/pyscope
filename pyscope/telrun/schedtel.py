@@ -275,7 +275,7 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
-    name_format="{code}_{sch}_{ra}_{dec}_{start_time}",
+    name_format="{code}_{sch}_{target}_{filter}_{exposure}s_{start_time}",
     filename=None,
     telrun=False,
     plot=None,
@@ -669,9 +669,11 @@ def schedtel_cli(
         if block.configuration["filename"] == "":
             block.configuration["filename"] = name_format.format(
                 index=block_number,
-                target=block.target.to_string("hmsdms")
-                .replace(" ", "_")
-                .replace(".", "-"),
+                target=(
+                    block.target.to_string("hmsdms").replace(" ", "_").replace(".", "-")
+                    if block.name == ""
+                    else block.name
+                ),
                 start_time=block.start_time.isot.replace(":", "-").split(".")[0],
                 end_time=block.end_time.isot.replace(":", "-").split(".")[0],
                 duration="%i" % block.duration.to(u.second).value,
@@ -690,7 +692,7 @@ def schedtel_cli(
                 title=block.configuration["title"],
                 type=block.configuration["type"],
                 backend=block.configuration["backend"],
-                exposure=block.configuration["exposure"],
+                exposure=format_exptime(block.configuration["exposure"]),
                 nexp=block.configuration["nexp"],
                 repositioning=block.configuration["repositioning"],
                 shutter_state=block.configuration["shutter_state"],
@@ -706,6 +708,8 @@ def schedtel_cli(
                 status=block.configuration["status"],
                 message=block.configuration["message"],
                 sched_time=block.configuration["sched_time"],
+                name=block.name,
+                filter=block.configuration["filter"],
             )
 
     # Report unscheduled or invalid blocks, and report sch files that were
@@ -875,6 +879,8 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
+    # TODO: for columns that are integrated objects, convert their underlying MaskedNDArrays to NDArrays and remove all unscheduled blocks
+
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
@@ -901,7 +907,8 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 
     tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
     tz = zoneinfo.ZoneInfo(tz)
-    date = np.min(schedule_table["start_time"]).datetime
+    date = str(np.min(schedule_table["start_time"]).isot)
+    date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
     t0 = astrotime.Time(
         datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
     )
@@ -1056,6 +1063,10 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
+    # remove all blocks that are not scheduled
+    schedule_table = schedule_table[schedule_table["status"] == "S"]
+    schedule_table = table.Table(schedule_table, masked=False, copy=False)
+
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
@@ -1102,6 +1113,12 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     fig.set_dpi(300)
 
     return fig, ax
+
+
+def format_exptime(exptime):
+    return (
+        f"{exptime:.0f}" if exptime.is_integer() else f"{exptime:.2g}".replace(".", "-")
+    )
 
 
 schedtel = schedtel_cli.callback

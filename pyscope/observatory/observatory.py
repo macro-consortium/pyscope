@@ -124,7 +124,7 @@ class Observatory:
         self._wcs_kwargs = []
 
         self._slew_rate = None
-        self._instrument_reconfiguration_times = None
+        self._instrument_reconfig_times = None
 
         self._maxim = None
 
@@ -155,7 +155,7 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            if self.camera_driver.lower() in ("maxim", "maximdl"):
+            if self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera"):
                 logger.info("Using MaxIm DL as the camera driver")
                 self._maxim = _import_driver("Maxim")
                 self._camera = self._maxim.camera
@@ -231,7 +231,11 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            if self.filter_wheel_driver.lower() in ("maxim", "maximdl"):
+            if self.filter_wheel_driver.lower() in (
+                "maxim",
+                "maximdl",
+                "_maximfilterwheel",
+            ):
                 if self._maxim is None:
                     raise ObservatoryException(
                         "MaxIm DL must be used as the camera driver when using MaxIm DL as the filter wheel driver."
@@ -2559,10 +2563,10 @@ class Observatory:
         self.slew_rate = dictionary.get("slew_rate", self.slew_rate)
 
         t = dictionary.get(
-            "instrument_reconfiguration_times",
-            self.instrument_reconfiguration_times,
+            "instrument_reconfig_times",
+            self.instrument_reconfig_times,
         )
-        self.instrument_reconfiguration_times = (
+        self.instrument_reconfig_times = (
             json.loads(t) if t is not None and t != "" and t != {} else "{}"
         )
 
@@ -4507,19 +4511,19 @@ class Observatory:
         )
 
     @property
-    def instrument_reconfiguration_times(self):
-        logger.debug("Observatory.instrument_reconfiguration_times property called")
-        return self._instrument_reconfiguration_times
+    def instrument_reconfig_times(self):
+        logger.debug("Observatory.instrument_reconfig_times property called")
+        return self._instrument_reconfig_times
 
-    @instrument_reconfiguration_times.setter
-    def instrument_reconfiguration_times(self, value):
-        logger.debug(f"Observatory.instrument_reconfiguration_times = {value} called")
-        self._instrument_reconfiguration_times = (
+    @instrument_reconfig_times.setter
+    def instrument_reconfig_times(self, value):
+        logger.debug(f"Observatory.instrument_reconfig_times = {value} called")
+        self._instrument_reconfig_times = (
             value if value is not None or value != "" else {}
         )
-        self._config["scheduling"]["instrument_reconfiguration_times"] = (
-            json.dumps(self._instrument_reconfiguration_times)
-            if self._instrument_reconfiguration_times is not None
+        self._config["scheduling"]["instrument_reconfig_times"] = (
+            json.dumps(self._instrument_reconfig_times)
+            if self._instrument_reconfig_times is not None
             else ""
         )
 

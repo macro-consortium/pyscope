@@ -1319,10 +1319,7 @@ class TelrunOperator:
                 )
 
         # Check 8: Camera temperature
-        if (
-            self.wait_for_cooldown
-            and self.observatory.camera.cooler_setpoint is not None
-        ):
+        if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
                 > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
@@ -1874,7 +1871,7 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self.images_path / fname + ".tmp",
+                        str(self._images_path / fname) + ".fts.tmp",
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -1882,7 +1879,7 @@ class TelrunOperator:
                     self._wcs_threads.append(
                         threading.Thread(
                             target=self._async_wcs_solver,
-                            args=(self.images_path + fname + ".tmp",),
+                            args=(str(self._images_path / fname) + ".fts.tmp",),
                             daemon=True,
                             name="wcs_threads",
                         )
@@ -1894,7 +1891,7 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self._images_path / fname,
+                        str(self._images_path / fname) + ".fts",
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -1904,7 +1901,7 @@ class TelrunOperator:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    self.images_path + fname + ".tmp",
+                    str(self._images_path / fname) + ".fts.tmp",
                     frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
@@ -1912,7 +1909,7 @@ class TelrunOperator:
                 self._wcs_threads.append(
                     threading.Thread(
                         target=self._async_wcs_solver,
-                        args=(self.images_path + fname + ".tmp",),
+                        args=(str(self._images_path / fname) + ".fts.tmp",),
                         daemon=True,
                         name="wcs_threads",
                     )

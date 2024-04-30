@@ -1,4 +1,5 @@
 import logging
+import time
 
 from ._pwi4 import _PWI4
 from .focuser import Focuser
@@ -11,11 +12,6 @@ class PWI4Focuser(Focuser):
         self._host = host
         self._port = port
         self._app = _PWI4(host=self._host, port=self._port)
-
-    def Autofocus(self):
-        logger.debug("Starting autofocus in PWI4Focuser")
-        self._app.request("/autofocus/start")
-        return True
 
     def Enabled(self):
         logger.debug("Checking if focuser is enabled in PWI4Focuser")
