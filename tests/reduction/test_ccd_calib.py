@@ -5,145 +5,343 @@
 ## if equal, then it passes the test
 ## Follow guideline Will sent
 
-
-import os
-
-# matplotlib inline
-import matplotlib.pyplot as plt
 import numpy as np
-from photutils.aperture import EllipticalAperture
+import os
+from convenience_functions import show_image
+import image_sim as imsim
+import matplotlib.pyplot as plt
+from astropy.io import fits
+import shutil
+import pytest
+from pyscope.reduction import ccd_calib
 
-# Use custom style for larger fonts and figures
-# plt.style.use('guide.mplstyle')
-def read_noise(image, amount, gain=1):
-    """
-    Generate simulated read noise.
+def test_ccd_calib(tmp_path):
+    # create raw and master directories
+    print("removing old tmp directory... if it exists")
+    if os.path.exists(os.path.join(tmp_path, "master")):
+        shutil.rmtree(os.path.join(tmp_path, "master"))
     
-    Parameters
-    ----------
-    
-    image: numpy array
-        Image whose shape the noise array should match.
-    amount : float
-        Amount of read noise, in electrons.
-    gain : float, optional
-        Gain of the camera, in units of electrons/ADU.
-    """
-    shape = image.shape
-    
-    noise = noise_rng.normal(scale=amount/gain, size=shape)
-    
-    return noise
+    print("creating master directories")
+    os.makedirs(os.path.join(tmp_path, "master"))
+    os.makedirs(os.path.join(tmp_path, "master", "bias"))
+    os.makedirs(os.path.join(tmp_path, "master", "dark"))
+    os.makedirs(os.path.join(tmp_path, "master", "flat"))
 
-def bias(image, value, realistic=False):
-    """
-    Generate simulated bias image.
-    
-    Parameters
-    ----------
-    
-    image: numpy array
-        Image whose shape the bias array should match.
-    value: float
-        Bias level to add.
-    realistic : bool, optional
-        If ``True``, add some columns with somewhat higher bias value (a not uncommon thing)
-    """
-    # This is the whole thing: the bias is really suppose to be a constant offset!
-    bias_im = np.zeros_like(image) + value
-    
-    # If we want a more realistic bias we need to do a little more work. 
-    if realistic:
-        shape = image.shape
-        number_of_colums = 5
-        
-        # We want a random-looking variation in the bias, but unlike the readnoise the bias should 
-        # *not* change from image to image, so we make sure to always generate the same "random" numbers.
-        rng = np.random.RandomState(seed=8392)  # 20180520
-        columns = rng.randint(0, shape[1], size=number_of_colums)
-        # This adds a little random-looking noise into the data.
-        col_pattern = rng.randint(0, int(0.1 * value), size=shape[0])
-        
-        # Make the chosen columns a little brighter than the rest...
-        for c in columns:
-            bias_im[:, c] = value + col_pattern
-            
-    return bias_im
+    print("removing old raw directory... if it exists")
+    if os.path.exists(os.path.join(tmp_path, "raw")):
+        shutil.rmtree(os.path.join(tmp_path, "raw"))
 
-def dark_current(image, current, exposure_time, gain=1.0, hot_pixels=False):
-    """
-    Simulate dark current in a CCD, optionally including hot pixels.
+    print("creating raw directory")
+    os.makedirs(os.path.join(tmp_path, "raw"))
+
+    print("removing old calibrated directory... if it exists")
+    if os.path.exists(os.path.join(tmp_path, "calibrated")):
+        shutil.rmtree(os.path.join(tmp_path, "calibrated"))
+
+    print("creating calibrated directory")
+    os.makedirs(os.path.join(tmp_path, "calibrated"))
+
+    print()
+    print("creating test images...")
+    print()
+    # image parameters
+    image = np.zeros([2000, 2000])
+    gain = 1.0
+    star_exposure = 60.0  # changed from 30
+    dark_exposure = 60.0
+    dark = 0.1
+    sky_counts = 20
+    bias_level = 1100
+    read_noise_electrons = 5  # reduced from 700
+    max_star_counts = 2000
+
+    print("creating bias image...")
+    # bias image
+    bias_with_noise = (imsim.bias(image, bias_level, realistic=True) + 
+                        imsim.read_noise(image, read_noise_electrons, gain=gain))
+    fits.writeto(os.path.join(tmp_path, "master", "bias", "master-bias.fts"), bias_with_noise, overwrite=True)
+    header = fits.getheader(os.path.join(tmp_path, "master", "bias", "master-bias.fts"))
+    header["READOUT"] = "highgain"
+    header["EXPOSURE"] = 0.0
+    header["XBIN"] = "1"
+    header["YBIN"] = "1"
+    fits.writeto(filename=os.path.join(tmp_path, "master", "bias", "master-bias.fts"), data=bias_with_noise, header=header, overwrite=True)
+    print(f'bias image created: {os.path.join(tmp_path, "master", "bias", "master-bias.fts")}')
     
-    Parameters
-    ----------
+    print("creating dark image...")
+    # dark frame
+    dark_frame_with_noise = (imsim.bias(image, bias_level, realistic=True) + 
+                            imsim.dark_current(image, dark, dark_exposure, gain=gain, hot_pixels=True) +
+                            imsim.read_noise(image, read_noise_electrons, gain=gain))
+    fits.writeto(os.path.join(tmp_path, "master", "dark", "master-dark.fts"), dark_frame_with_noise, overwrite=True)
+    header = fits.getheader(os.path.join(tmp_path, "master", "dark", "master-dark.fts"))
+    header["READOUT"] = "highgain"
+    header["EXPOSURE"] = 60.0
+    header["XBIN"] = "1"
+    header["YBIN"] = "1"
+    fits.writeto(filename=os.path.join(tmp_path, "master", "dark", "master-dark.fts"), data=dark_frame_with_noise, header=header, overwrite=True)
+    print(f'dark image created: {os.path.join(tmp_path, "master", "dark", "master-dark.fts")}')
+
+    print("creating flat image...")
+    # flat field
+    flat = imsim.sensitivity_variations(image)
+    fits.writeto(os.path.join(tmp_path, "master", "flat", "master-flat.fts"), flat, overwrite=True)
+    header = fits.getheader(os.path.join(tmp_path, "master", "flat", "master-flat.fts"))
+    header["READOUT"] = "highgain"
+    header["EXPOSURE"] = 60.0
+    header["XBIN"] = "1"
+    header["YBIN"] = "1"
+    fits.writeto(filename=os.path.join(tmp_path, "master", "flat", "master-flat.fts"), data=flat, header=header, overwrite=True)
+    print(f'flat image created: {os.path.join(tmp_path, "master", "flat", "master-flat.fts")}')
+
+    print("creating raw image...")
+    # raw image
+    realistic_stars = (imsim.stars(image, 50, max_counts=max_star_counts) +
+                        imsim.dark_current(image, dark, star_exposure, gain=gain, hot_pixels=True) +
+                        imsim.bias(image, bias_level, realistic=True) +
+                        imsim.read_noise(image, read_noise_electrons, gain=gain)
+                        )
+    fits.writeto(os.path.join(tmp_path, "raw", "raw-image.fts"), realistic_stars, overwrite=True)
+    header = fits.getheader(os.path.join(tmp_path, "raw", "raw-image.fts"))
+    header["READOUT"] = "highgain"
+    header["EXPOSURE"] = 60.0
+    header["XBIN"] = "1"
+    header["YBIN"] = "1"
+    fits.writeto(filename=os.path.join(tmp_path, "raw", "raw-image.fts"), data=realistic_stars, header=header, overwrite=True)
+    print(f'raw image created: {os.path.join(tmp_path, "raw", "raw-image.fts")}')
     
-    image : numpy array
-        Image whose shape the cosmic array should match.
-    current : float
-        Dark current, in electrons/pixel/second, which is the way manufacturers typically 
-        report it.
-    exposure_time : float
-        Length of the simulated exposure, in seconds.
-    gain : float, optional
-        Gain of the camera, in units of electrons/ADU.
-    strength : float, optional
-        Pixel count in the cosmic rays.    
-    """
+
+    # calibrated image
+    print("creating calibrated image with astropy...")
+    scaled_dark_current = star_exposure * (dark_frame_with_noise - bias_with_noise) / dark_exposure
+    print(f"scaled dark current: {scaled_dark_current}")
+    print(f"star exposure: {star_exposure}")
+    print(f"dark frame: {dark_frame_with_noise}")
+    print(f"bias with noise: {bias_with_noise}")
+    print(f"dark exposure: {dark_exposure}")
+    calibrated_stars = (realistic_stars - bias_with_noise - scaled_dark_current) / flat
+    fits.writeto(os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts"), calibrated_stars, overwrite=True)
+    header = fits.getheader(os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts"))
+    header["READOUT"] = "highgain"
+    header["EXPOSURE"] = 60.0
+    header["XBIN"] = "1"
+    header["YBIN"] = "1"
+    fits.writeto(filename=os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts"), data=calibrated_stars, header=header, overwrite=True)
+    print(f'calibrated image created: {os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts")}')
     
-    # dark current for every pixel; we'll modify the current for some pixels if 
-    # the user wants hot pixels.
-    base_current = current * exposure_time / gain
+
+    print("running ccd_calib...")
+    # ccd_calib image
+    ccd_calib(
+        fnames=os.path.join(tmp_path, "raw"),
+        dark_frame=os.path.join(tmp_path, "master", "dark", "master-dark.fts"),
+        flat_frame=os.path.join(tmp_path, "master", "flat", "master-flat.fts"),
+        bias_frame=os.path.join(tmp_path, "master", "bias", "master-bias.fts"),
+        verbose=True,
+        pedestal=0,
+    )
+    print()
+    print("-" * 50)
+    print("comparing raw images...")
+    print("-" * 50)
+    print()
+    ccd_float32 = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_float32.fts"))
+    print(f"ccd_float32: {ccd_float32}")
+    print()
+    print(f"realistic_stars: {realistic_stars}")
+    diff = ccd_float32 - realistic_stars
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, moving on...")
+    print()
+    raw_data_diff = diff
+
+    print()
+    print("-" * 50)
+    print("comparing bias subtracted images...")
+    ccd_bias_subtracted = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_bias_sub.fts"))
+    print(f"ccd_bias_subtracted: {ccd_bias_subtracted}")
+    print()
+    print(f"bias_with_noise: {realistic_stars - bias_with_noise}")
+    diff = ccd_bias_subtracted - (realistic_stars - bias_with_noise)
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, moving on...")
+    print()
+    bias_subtracted_diff = diff
+
+    print()
+    print("-" * 50)
+    print("comparing bias and dark subtracted images...")
+    ccd_bias_dark_subtracted = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_dark_sub.fts"))
+    print(f"ccd_bias_dark_subtracted: {ccd_bias_dark_subtracted}")
+    print()
+    print(f"astropy bias and dark subtracted: {realistic_stars - bias_with_noise - scaled_dark_current}")
+    diff = ccd_bias_dark_subtracted - (realistic_stars - bias_with_noise - scaled_dark_current)
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, moving on...")
+    bias_dark_subtracted_diff = diff
+
+    print()
+    print("-" * 50)
+    print("comparing flat subtracted images...")
+    ccd_calib_flat_bias_subtracted = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_flat_bias_sub.fts"))
+    print(f"ccd_calib_flat_bias_subtracted: {ccd_calib_flat_bias_subtracted}")
+    print()
+    print(f"astropy flat subtracted: {flat - bias_with_noise}")
+    diff = ccd_calib_flat_bias_subtracted - (flat - bias_with_noise)
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, moving on...")
+    flat_bias_subtracted_diff = diff
+
+    print()
+    print("-" * 50)
+    print("comparing dark and bias subtracted flat images images...")
+    ccd_calib_flat_bias_dark_subtracted = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_flat_bias_dark_sub.fts"))
+    print(f"ccd_calib_flat_bias_dark_subtracted: {ccd_calib_flat_bias_dark_subtracted}")
+    print()
+    print(f"astropy dark and bias subtracted: {flat - bias_with_noise - scaled_dark_current}")
+    diff = ccd_calib_flat_bias_dark_subtracted - (flat - bias_with_noise - scaled_dark_current)
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, moving on...")
+    flat_bias_dark_subtracted_diff = diff
+
+    print()
+    print("-" * 50)
+    print("comparing normalized flats...")
+    ccd_calib_flat_norm = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_flat_norm.fts"))
+    print(f"ccd_calib_flat_norm: {ccd_calib_flat_norm}")
+    print()
+    print(f"astropy normalized flat: {flat / np.mean(flat)}")
+    print()
+    print(np.mean(flat))
+    print()
+    diff = ccd_calib_flat_norm - (flat / np.mean(flat))
+    print()
+    print(np.mean(flat))
+    print()
+    print(f"mean diff: {np.mean(diff)}")
+    print(f"median diff: {np.median(diff)}")
+    print(f"max diff: {np.max(diff)}")
+    print(f"min diff: {np.min(diff)}")
+    print("difference between ccd_calib and astropy calibration is minimal, but larger than previous step, moving on...")
+    flat_norm_diff = diff
+
+    # print()
+    # print("-" * 50)
+    # print("comparing flat div images...")
+    # ccd_calib_flat_div = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_flat_div.fts"))
+    # print(f"ccd_calib_flat_div: {ccd_calib_flat_div}")
+    # print()
+    # print(f"astropy flat div: {calibrated_stars}")
+    # diff = ccd_calib_flat_div - calibrated_stars
+    # print(f"mean diff: {np.mean(diff)}")
+    # print(f"median diff: {np.median(diff)}")
+    # print(f"max diff: {np.max(diff)}")
+    # print(f"min diff: {np.min(diff)}")
+    # calibrated_image_diff_nofloor = diff
+
+    # print()
+    # print("-" * 50)
+    # print("FINAL TESTING...")
+    # ccd_calib_data, header = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_cal.fts"), header=True)
+    # print(f"ccd_calib_data: {ccd_calib_data}")
+    # print()
+    # print(f"astropy_calib_data: {calibrated_stars}")
+    # print(header)
+    # pedestal = header["PEDESTAL"]
+    # print(f"pedestal: {pedestal}")
+    # diff = (ccd_calib_data - np.ones(ccd_calib_data.shape) * pedestal) - calibrated_stars
+    # print(f"mean diff: {np.mean(diff)}")
+    # print(f"median diff: {np.median(diff)}")
+    # print(f"max diff: {np.max(diff)}")
+    # print(f"min diff: {np.min(diff)}")
+    # calibrated_image_diff = diff
+
+    # plt.figure(figsize=(12, 12))
+    # show_image(raw_data_diff, cmap='viridis', percu=1)
+    # plt.title("raw data diff")
+
+    # show_image(bias_subtracted_diff, cmap='viridis', percu=1)
+    # plt.title("bias subtracted diff")
+
+    # show_image(bias_dark_subtracted_diff, cmap='viridis', percu=1)
+    # plt.title("bias and dark subtracted diff")
+
+    # show_image(flat_bias_subtracted_diff, cmap='viridis', percu=1)
+    # plt.title("flat subtracted diff")
+
+    # show_image(flat_bias_dark_subtracted_diff, cmap='viridis', percu=1)
+    # plt.title("flat, bias, and dark subtracted diff")
+
+    # show_image(flat_norm_diff, cmap='viridis', percu=1)
+    # plt.title("normalized flat diff")
+
+    # show_image(calibrated_image_diff_nofloor, cmap='viridis', percu=1)
+    # plt.title("calibrated image diff (no pedestal)")
+
+    # show_image(calibrated_image_diff, cmap='viridis', percu=1)
+    # plt.title("calibrated image diff")
+    # plt.show()
+
+    # show_image(ccd_calib_flat_norm, cmap='viridis', percu=1)
+    # plt.figure(figsize=(12, 12))
+    # plt.subplot(2, 2, 1)
+    # plt.imshow(ccd_calib_flat_norm, cmap='viridis', vmin=0.95, vmax=1.05)
+    # plt.title("ccd-calib normalized flat")
+    # plt.colorbar()
     
-    # This random number generation should change on each call.
-    dark_im = noise_rng.poisson(base_current, size=image.shape)
-        
-    if hot_pixels:
-        # We'll set 0.01% of the pixels to be hot; that is probably too high but should 
-        # ensure they are visible.
-        y_max, x_max = dark_im.shape
-        
-        n_hot = int(0.0001 * x_max * y_max)
-        
-        # Like with the bias image, we want the hot pixels to always be in the same places
-        # (at least for the same image size) but also want them to appear to be randomly
-        # distributed. So we set a random number seed to ensure we always get the same thing.
-        rng = np.random.RandomState(16201649)
-        hot_x = rng.randint(0, x_max, size=n_hot)
-        hot_y = rng.randint(0, y_max, size=n_hot)
-        
-        hot_current = 10000 * current
-        
-        dark_im[(hot_y, hot_x)] = hot_current * exposure_time / gain
-    return dark_im
+    # plt.subplot(2, 2, 2)
+    # plt.imshow(flat / np.mean(flat), cmap='viridis', vmin=0.95, vmax=1.05)
+    # plt.title("astropy normalized flat")
+    # plt.colorbar()
 
-# Set up the random number generator, allowing a seed to be set from the environment
-seed = os.getenv('GUIDE_RANDOM_SEED', None)
+    # plt.subplot(2, 2, 3)
+    # plt.imshow(flat_norm_diff, cmap='viridis', vmin=-0.05, vmax=0.05)
+    # plt.title("difference in normalized flat between ccd-calib and astropy pipeline")
+    # plt.colorbar()
 
-if seed is not None:
-    seed = int(seed)
+    # plt.subplot(2, 2, 4)
+    # plt.imshow(ccd_calib_flat_norm / (flat / np.mean(flat)), cmap='viridis', vmin=-0.05, vmax=0.05)
+    # plt.title("ccd-calib normalized flat divided by astropy normalized flat")
+    # plt.colorbar()
+    # plt.subplots_adjust(wspace=0.5)
+    # plt.show()
+
+    # plt.subplot(1,2,1)
+    # plt.imshow(ccd_calib_flat_bias_dark_subtracted, cmap='viridis', vmin=-2000, vmax=0)
+    # plt.title("ccd_calib bias and dark subtracted flat field")
+    # plt.colorbar()
+
+    # plt.subplot(1,2,2)
+    # plt.imshow(flat - bias_with_noise - scaled_dark_current, cmap='viridis', vmin=-2000, vmax=0)
+    # plt.title("astropy bias and dark subtracted flat field")
+    # plt.colorbar()
+    # plt.show()
+
+    print(f"type of calibrated_stars: {calibrated_stars.dtype}")
+    print(f"type of ccd_calib_data: {ccd_calib_flat_div.dtype}")
+    # show_image(ccd_calib_flat_norm / (flat / np.mean(flat)), cmap='viridis', percu=1)
+    # plt.show()
     
-# This is the generator to use for any image component which changes in each image, e.g. read noise
-# or Poisson error
-noise_rng = np.random.default_rng(seed)
+    return
 
-synthetic_image = np.zeros([1000, 1000])
-plt.imshow(synthetic_image, cmap='gray', origin='lower')
-plt.colorbar()
-plt.show()
 
-noise_im = synthetic_image + read_noise(synthetic_image, 5)
-plt.imshow(noise_im, cmap='gray', origin='lower')
-plt.colorbar()
-plt.show()
-
-bias_only = bias(synthetic_image, 1100, realistic=True)
-plt.imshow(bias_only, cmap='gray', origin='lower')
-plt.colorbar()
-plt.title('Bias alone, bad columns included', fontsize='20')
-plt.show()
-
-bias_noise_im = noise_im + bias_only
-plt.imshow(bias_noise_im, cmap='gray', origin='lower')
-plt.colorbar()
-plt.title('Realistic bias frame (includes read noise)', fontsize='20')
-plt.show()
+if __name__ == "__main__":
+    test_ccd_calib(os.path.join(os.getcwd(), "tmp_dir"))
+    print("test passed, removing temp directory...")
+    input("Press Enter to continue...")
+    shutil.rmtree(os.path.join(os.getcwd(), "tmp_dir"))

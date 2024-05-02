@@ -6,13 +6,6 @@ from astropy.io import fits
 
 logger = logging.getLogger(__name__)
 
-"""
-TODO: use ccdproc to average FITS files
-- look into ccdproc library
-- write tests for avg_fits
-- make a new file avg_fits_ccdproc.py
-"""
-
 
 @click.command(
     epilog="""Check out the documentation at
@@ -93,16 +86,25 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
     
     fnames = glob.glob(f"{fnames[0]}/*.fts") + glob.glob(f"{fnames[0]}/*.fits") + glob.glob(f"{fnames[0]}/*.fit")
-    
+
     # TODO: try reading in one image at a time, then add the pixel values to an array. then close the file and move to the next one.
-    # images = np.array([fits.open(fname)[0].data for fname in fnames])
-    images = np.array([fits.getdata(fname) for fname in fnames])
+    # Figure out a way to do this for averaging medians as well.
+    # TODO: add coverage for averaging sky flats using outlier rejection
+    # sky flats: new script
+    # bias and dark subtract each flat on a per image basis
+    # median normalize by middle half of image for each image
+    # then take median along each pixel
+    
+    images = np.array([fits.open(fname)[0].data for fname in fnames])
+    # images = np.array([fits.getdata(fname) for fname in fnames])
+    
     
     images = images.astype(datatype)
     

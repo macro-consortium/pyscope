@@ -5,6 +5,8 @@ import astroscrappy
 import click
 import numpy as np
 from astropy.io import fits
+import glob
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -78,27 +80,36 @@ logger = logging.getLogger(__name__)
     show_default=True,
     help="Print verbose output.",
 )
+@click.option(
+    "-p",
+    "--pedestal",
+    default=1000,
+    show_default=True,
+    help="Pedestal value to add to calibrated image.",
+)
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
 def ccd_calib_cli(
-    camera_type,
+    fnames,
     dark_frame,
     flat_frame,
     bias_frame,
-    flat_dark_frame,
-    astro_scrappy,
-    bad_columns,
-    in_place,
-    verbose,
-    fnames,
+    flat_dark_frame="",
+    camera_type="ccd",
+    astro_scrappy=(1, 3),
+    bad_columns="",
+    in_place=False,
+    verbose=False,
+    pedestal=1000,
+    
 ):
     if verbose:
+        logging.basicConfig(level=logging.DEBUG)
         logger.setLevel(logging.DEBUG)
 
+    fnames = fnames[0]
     logger.debug(
-        f"""ccd_calib(camera_type={camera_type}, dark_frame={dark_frame},
-    flat_frame={flat_frame}, bias_frame={bias_frame}, astro_scrappy={astro_scrappy},
-    bad_columns={bad_columns}, in_place={in_place}, fnames={fnames})"""
+        f"""ccd_calib(\n\tcamera_type={camera_type}, \n\tdark_frame={dark_frame}, \n\tflat_frame={flat_frame}, \n\tbias_frame={bias_frame}, \n\tastro_scrappy={astro_scrappy}, \n\tbad_columns={bad_columns}, \n\tin_place={in_place}, \n\tfnames={fnames}, \n\tverbose={verbose}, \n\tpedestal={pedestal}\n)"""
     )
 
     if camera_type == "ccd":
@@ -107,7 +118,7 @@ def ccd_calib_cli(
             with fits.open(bias_frame) as hdul:
                 bias = hdul[0].data
                 hdr = hdul[0].header
-            bias = bias.astype(np.float32)
+            bias = bias.astype(np.float64)
 
             try:
                 bias_readout_mode = hdr["READOUTM"]
@@ -140,7 +151,7 @@ def ccd_calib_cli(
             with fits.open(flat_dark_frame) as hdul:
                 flat_dark = hdul[0].data
                 hdr = hdul[0].header
-            flat_dark = flat_dark.astype(np.float32)
+            flat_dark = flat_dark.astype(np.float64)
 
             try:
                 flat_dark_filter = hdr["FILTER"]
@@ -178,7 +189,7 @@ def ccd_calib_cli(
         with fits.open(dark_frame) as hdul:
             dark = hdul[0].data
             hdr = hdul[0].header
-        dark = dark.astype(np.float32)
+        dark = dark.astype(np.float64)
 
         try:
             dark_readout_mode = hdr["READOUTM"]
@@ -211,7 +222,7 @@ def ccd_calib_cli(
             flat = hdul[0].data
             hdr = hdul[0].header
 
-        flat = flat.astype(np.float32)
+        flat = flat.astype(np.float64)
 
         try:
             flat_filter = hdr["FILTER"]
@@ -244,13 +255,29 @@ def ccd_calib_cli(
         logger.debug(f"Flat frame Y binning: {flat_ybin}")
 
     logger.info("Looping through images...")
+    
+    if os.path.isfile(fnames):
+        logger.info(f"{fnames} is a file")
+        fnames = [fnames]
+    elif os.path.isdir(fnames):
+        logger.info(f"{fnames} is a directory")
+        # print(fnames)
+        # print(glob.glob(f"{fnames}/*.fts") + glob.glob(f"{fnames}/*.fits") + glob.glob(f"{fnames}/*.fit"))
+        fnames = glob.glob(f"{fnames}/*.fts") + glob.glob(f"{fnames}/*.fits") + glob.glob(f"{fnames}/*.fit")
+    else:
+        logger.error(f"{fnames} is not a valid file or directory")
+    logger.info(f"Found {len(fnames)} images")
     for fname in fnames:
-        with fits.open(fname) as hdul:
-            image = hdul[0].data
-            hdr = hdul[0].header
+        # with fits.open(fname) as hdul:
+        #     image = hdul[0].data
+        #     hdr = hdul[0].header
+        logger.info(f"Calibrating {fname}...")
+        image, hdr = fits.getdata(fname, header=True)
+        
 
-        image = image.astype(np.float32)
+        image = image.astype(np.float64)
 
+        # fits.writeto(fname.split(".")[:-1][0] + "_float32.fts", image, overwrite=True)
         try:
             image_filter = hdr["FILTER"]
         except KeyError:
@@ -343,6 +370,7 @@ def ccd_calib_cli(
             if bias_frame is not None:
                 logger.info("Applying bias frame (CCD selected)...")
                 cal_image -= bias
+                # fits.writeto(fname.split(".")[:-1][0] + "_bias_sub.fts", cal_image, overwrite=True)
 
             if dark_frame is not None:
                 logger.info(
@@ -352,6 +380,12 @@ def ccd_calib_cli(
                 )
 
                 cal_image -= (dark - bias) * (image_exptime / dark_exptime)
+                print(f"cal_image: {cal_image}")
+                print(f"dark: {dark}")
+                print(f"bias: {bias}")
+                print(f"image_exptime: {image_exptime}")
+                print(f"dark_exptime: {dark_exptime}")
+                # fits.writeto(fname.split(".")[:-1][0] + "_dark_sub.fts", cal_image, overwrite=True)
         elif camera_type == "cmos":
             if flat_dark_frame is not None:
                 logger.info(
@@ -371,10 +405,10 @@ def ccd_calib_cli(
                 )
                 if bias_frame is not None:
                     flat -= bias
-
+                    # fits.writeto(fname.split(".")[:-1][0] + "_flat_bias_sub.fts", flat, overwrite=True)
                 if dark_frame is not None:
                     flat -= (dark - bias) * (flat_exptime / dark_exptime)
-
+                    # fits.writeto(fname.split(".")[:-1][0] + "_flat_bias_dark_sub.fts", flat, overwrite=True)
             elif camera_type == "cmos":
                 logger.debug(
                     """CMOS selected so the flat frame is simply
@@ -383,37 +417,39 @@ def ccd_calib_cli(
                 if flat_dark_frame is not None:
                     flat -= flat_dark
 
-            logger.info(
-                """Normalizing the flat frame by the mean of the
-                        middle quarter of the image."""
-            )
-            x_size = flat.shape[1]
-            y_size = flat.shape[0]
-            x_start = int(x_size / 4)
-            x_end = int(3 * x_size / 4)
-            y_start = int(y_size / 4)
-            y_end = int(3 * y_size / 4)
+            logger.info("Normalizing the flat frame by the mean of the entire image.")
 
-            flat_mean = np.mean(flat[y_start:y_end, x_start:x_end])
-            flat /= flat_mean
-
-            logger.debug("Clipping negative values to 1...")
-            flat[flat <= 0] = 1
+            flat_mean = np.mean(flat)
+            print(f"flat_mean: {flat_mean}")
+            # flat /= flat_mean
+            flat = np.divide(flat, flat_mean, out=flat)
+            # fits.writeto(fname.split(".")[:-1][0] + "_flat_norm.fts", flat, overwrite=True)
+            # logger.debug("Clipping negative values to 1...")
+            # flat[flat <= 0] = 1
 
             logger.info("Applying the flat frame...")
             cal_image /= flat
+            # fits.writeto(fname.split(".")[:-1][0] + "_flat_div.fts", cal_image, overwrite=True)
 
         logger.info("Flooring the calibrated image...")
         cal_image = np.floor(cal_image)
 
-        logger.info("Checking if pedestal is necessary...")
-        if np.min(cal_image) < 0:
-            logger.info(
-                "Minimum value is %i, adding pedestal of equal value"
-                % np.min(cal_image)
-            )
-            cal_image += np.abs(np.min(cal_image))
-            hdr["PEDESTAL"] = np.abs(np.min(cal_image))
+        # logger.info("Checking if pedestal is necessary...")
+        # if np.min(cal_image) < 0:
+        #     logger.info(
+        #         "Minimum value is %i, adding pedestal of equal value"
+        #         % np.min(cal_image)
+        #     )
+        #     cal_image += np.abs(np.min(cal_image))
+        #     hdr["PEDESTAL"] = np.abs(np.min(cal_image))
+        #     print(np.min(cal_image))
+        #     print(np.abs(np.min(cal_image)))
+        #     print(hdr["PEDESTAL"])
+        logger.info(f"Adding pedestal of {pedestal}")
+        hdr["PEDESTAL"] = pedestal
+        print(f"cal_image: {cal_image}")
+        cal_image += pedestal
+        print(f"cal_image after ped: {cal_image}")
 
         if astro_scrappy[0] > 0:
             logger.info("Removing hot pixels...")
@@ -434,10 +470,13 @@ def ccd_calib_cli(
                 cal_image[:, badcol] = (
                     cal_image[:, badcol - 1] + cal_image[:, badcol + 1]
                 ) / 2
-
+        
+        # testing if preclipped image matches astropy calibrated
+        # fits.writeto(fname.split(".")[:-1][0] + "_noclip_cal.fts", cal_image, hdr, overwrite=True)
+        # remove above when done
         logger.info("Clipping to uint16 range...")
-        cal_image = np.clip(cal_image, 0, 65535)
-        cal_image = cal_image.astype(np.uint16)
+        # cal_image = np.clip(cal_image, 0, 65535)
+        # cal_image = cal_image.astype(np.uint16)
 
         logger.info("Writing calibrated status to header...")
         hdr["CALSTAT"] = True
