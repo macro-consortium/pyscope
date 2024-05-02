@@ -33,7 +33,7 @@ def start_telrun_operator_cli(path="./", gui=True):
 )
 @click.version_option()
 def start_sync_manager_cli(path="./", do_async=False):
-    sync_manager(config=path / "config/sync_manager.cfg", do_async=do_async)
+    sync_manager(config=path / "config/sync.cfg", do_async=do_async)
 
 
 start_telrun_operator = start_telrun_operator_cli.callback
