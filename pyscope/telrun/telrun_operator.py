@@ -1290,7 +1290,8 @@ class TelrunOperator:
             logger.info("Setting camera readout mode to %s" % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
-            logger.info("Starting autofocus...")
+            logger.info("Starting autofocus, ensuring tracking is on...")
+            self.observatory.telescope.Tracking = True
             t = threading.Thread(
                 target=self._is_process_complete,
                 args=(self.autofocus_timeout, self._status_event),
@@ -1520,8 +1521,8 @@ class TelrunOperator:
             )
             centered = self.observatory.recenter(
                 obj=block["target"],
-                target_x_pixel=block["respositioning"][0],
-                target_y_pixel=block["respositioning"][1],
+                target_x_pixel=1024, # Hardcoded fix this
+                target_y_pixel=1024, # Hardcoded fix this
                 initial_offset_dec=self.recenter_initial_offset_dec,
                 check_and_refine=self.recenter_check_and_refine,
                 max_attempts=self.recenter_max_attempts + add_attempt,
@@ -1531,10 +1532,11 @@ class TelrunOperator:
                 save_path=self.recenter_save_path,
                 sync_mount=self.recenter_sync_mount,
                 do_initial_slew=slew,
+                readout=self.default_readout,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
-            self._wcs_status = "Idle" if self.observatory.wcs is not None else ""
+            self._wcs_status = "Idle" if self.observatory._wcs is not None else ""
             self._dome_status = "Idle" if self.observatory.dome is not None else ""
             self._rotator_status = (
                 "Idle" if self.observatory.rotator is not None else ""

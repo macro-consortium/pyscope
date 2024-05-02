@@ -1555,10 +1555,12 @@ class Observatory:
         if not self.telescope.Connected:
             raise ObservatoryException("The telescope is not connected.")
 
+        # if not isinstance(altaz_obj.alt, u.Quantity):
+        #     altaz_obj.alt = altaz_obj.alt * u.deg
+
         if altaz_obj.alt <= self.min_altitude:
             logger.exception(
-                "Target is below the minimum altitude of %.2f degrees"
-                % self.min_altitude
+                "Target is below the minimum altitude of %.2f degrees" % self.min_altitude.to(u.deg).value
             )
             return False
 
@@ -2032,6 +2034,7 @@ class Observatory:
         success : bool
             True if the target was successfully centered, False otherwise.
         """
+        logger.info(f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}")
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
         logger.info(
@@ -2054,13 +2057,23 @@ class Observatory:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
 
             if attempt == 0:
+                #JW EDIT
                 if do_initial_slew:
+                    ra_hours = Angle(slew_obj.ra.hour, unit=u.hour)
+                    dec_degrees = Angle(slew_obj.dec.deg, unit=u.deg) + Angle(initial_offset_dec, unit=u.arcsec).to(u.deg)
                     self.slew_to_coordinates(
-                        ra=slew_obj.ra.hour,
-                        dec=slew_obj.dec.deg + initial_offset_dec / 3600,
+                        ra=ra_hours.hour,
+                        dec=dec_degrees.deg,
                         control_dome=(self.dome is not None),
                         control_rotator=(self.rotator is not None),
                     )
+                # if do_initial_slew:
+                #     self.slew_to_coordinates(
+                #         ra=slew_obj.ra.hour,
+                #         dec=slew_obj.dec.deg + initial_offset_dec / 3600,
+                #         control_dome=(self.dome is not None),
+                #         control_rotator=(self.rotator is not None),
+                #     )
             else:
                 self.slew_to_coordinates(
                     ra=slew_obj.ra.hour,
@@ -2182,7 +2195,7 @@ class Observatory:
             logger.info("Error in x pixels is %.2f" % error_x_pixels)
             logger.info("Error in y pixels is %.2f" % error_y_pixels)
 
-            if max(error_x_pixels, error_y_pixels) <= tolerance:
+            if np.sqrt(error_x_pixels**2 + error_y_pixels**2) <= tolerance:
                 break
 
             logger.info("Offsetting next slew coordinates")
@@ -4435,22 +4448,42 @@ class Observatory:
         logger.debug("Observatory.min_altitude property called")
         return self._min_altitude
 
+#JW EDIT
+
     @min_altitude.setter
     def min_altitude(self, value):
-        logger.debug(f"Observatory.min_altitude = {value} called")
-        if type(value) is u.Quantity:
+        logger.debug(f"Setting min_altitude = {value}")
+        try:
+            # Check if the value is already a Quantity with unit of degrees
+            if isinstance(value, u.Quantity):
+                value = value.to(u.deg)
+            else:
+                # Assume the value is numeric and needs degree units
+                value = float(value) * u.deg
+            # Ensure value is within physical limits [0, 90] degrees
+            value = max(0 * u.deg, min(90 * u.deg, value))
             self._min_altitude = value
-        else:
-            self._min_altitude = (
-                min(max(float(value), 0), 90)
-                if value is not None or value != ""
-                else None
-            ) * u.deg
-        self._config["telescope"]["min_altitude"] = (
-            str(self._min_altitude.to(u.deg).value)
-            if self._min_altitude is not None
-            else ""
-        )
+            self._config["telescope"]["min_altitude"] = str(value.value)  # save the numeric part
+        except ValueError:
+            logger.error(f"Invalid type for min_altitude: {value}")
+            raise ValueError("min_altitude must be a number or an astropy Quantity with angle units.")
+
+    # @min_altitude.setter
+    # def min_altitude(self, value):
+    #     logger.debug(f"Observatory.min_altitude = {value} called")
+    #     if type(value) is u.Quantity:
+    #         self._min_altitude = value
+    #     else:
+    #         self._min_altitude = (
+    #             min(max(float(value), 0), 90)
+    #             if value is not None or value != ""
+    #             else None
+    #         ) * u.deg
+    #     self._config["telescope"]["min_altitude"] = (
+    #         str(self._min_altitude.to(u.deg).value)
+    #         if self._min_altitude is not None
+    #         else ""
+    #     )
 
     @property
     def settle_time(self):

@@ -541,7 +541,19 @@ def schedtel_cli(
     # Transitioner
     logger.info("Defining transitioner")
     if instrument_reconfig_times == {}:
-        instrument_reconfig_times = None
+        logger.info("Using default instrument reconfiguration times of 5 seconds")
+        instrument_reconfig_times = {"filter":{'default': 5*u.second}}
+    else:
+        logger.debug(f"Using custom instrument reconfiguration times {instrument_reconfig_times}")
+        # Multiply any integer values by u.second
+        # for key, value in instrument_reconfig_times.items():
+        #     if isinstance(value, int):
+        #         instrument_reconfig_times[key] = value * u.second
+        #     elif isinstance(value, dict):
+        #         for k, v in value.items():
+        #             if isinstance(v, int):
+        #                 instrument_reconfig_times[key][k] = v * u.second
+        logger.debug(f"Updated instrument reconfiguration times {instrument_reconfig_times}")
     transitioner = astroplan.Transitioner(
         slew_rate, instrument_reconfig_times=instrument_reconfig_times
     )
