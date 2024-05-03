@@ -1,19 +1,17 @@
 import os
 
 import numpy as np
-
-from astropy.modeling.models import Gaussian2D, RickerWavelet2D, Const2D
-from photutils.datasets import (make_random_gaussians_table,
-                                make_gaussian_sources_image)
+from astropy.modeling.models import Const2D, Gaussian2D, RickerWavelet2D
 from photutils.aperture import EllipticalAperture
+from photutils.datasets import make_gaussian_sources_image, make_random_gaussians_table
 
 # To use a seed, set it in the environment. Useful for minimizing changes when
 # publishing the book.
-seed = os.getenv('GUIDE_RANDOM_SEED', None)
+seed = os.getenv("GUIDE_RANDOM_SEED", None)
 
 if seed is not None:
     seed = int(seed)
-    
+
 default_rng = np.random.default_rng(seed)
 
 
@@ -168,15 +166,18 @@ def stars(image, number, max_counts=10000, gain=1, fwhm=4):
     ymean_range = [0.1 * y_max, 0.9 * y_max]
     xstddev_range = [fwhm, fwhm]
     ystddev_range = [fwhm, fwhm]
-    params = dict([('amplitude', flux_range),
-                   ('x_mean', xmean_range),
-                   ('y_mean', ymean_range),
-                   ('x_stddev', xstddev_range),
-                   ('y_stddev', ystddev_range),
-                   ('theta', [0, 2 * np.pi])])
+    params = dict(
+        [
+            ("amplitude", flux_range),
+            ("x_mean", xmean_range),
+            ("y_mean", ymean_range),
+            ("x_stddev", xstddev_range),
+            ("y_stddev", ystddev_range),
+            ("theta", [0, 2 * np.pi]),
+        ]
+    )
 
-    sources = make_random_gaussians_table(number, params,
-                                          seed=12345)
+    sources = make_random_gaussians_table(number, params, seed=12345)
 
     star_im = make_gaussian_sources_image(image.shape, sources)
 
@@ -208,14 +209,13 @@ def make_cosmic_rays(image, number, strength=10000):
     maximum_pos = np.min(cr_image.shape)
     # These will be center points of the cosmic rays, which we place away from
     # the edges to ensure they are visible.
-    xy_cr = default_rng.integers(0.1 * maximum_pos, 0.9 * maximum_pos,
-                                 size=[number, 2])
+    xy_cr = default_rng.integers(0.1 * maximum_pos, 0.9 * maximum_pos, size=[number, 2])
 
     cr_length = 5  # pixels, a little big
     cr_width = 2
     theta_cr = 2 * np.pi * default_rng.uniform()
     apertures = EllipticalAperture(xy_cr, cr_length, cr_width, theta_cr)
-    masks = apertures.to_mask(method='center')
+    masks = apertures.to_mask(method="center")
     for mask in masks:
         cr_image += strength * mask.to_image(shape=cr_image.shape)
 
@@ -224,14 +224,17 @@ def make_cosmic_rays(image, number, strength=10000):
 
 # Functions related to simulated flat images
 
+
 def make_one_donut(center, diameter=10, amplitude=0.25):
     sigma = diameter / 2
-    mh = RickerWavelet2D(amplitude=amplitude,
-                      x_0=center[0], y_0=center[1],
-                      sigma=sigma)
-    gauss = Gaussian2D(amplitude=amplitude,
-                       x_mean=center[0], y_mean=center[1],
-                       x_stddev=sigma, y_stddev=sigma)
+    mh = RickerWavelet2D(amplitude=amplitude, x_0=center[0], y_0=center[1], sigma=sigma)
+    gauss = Gaussian2D(
+        amplitude=amplitude,
+        x_mean=center[0],
+        y_mean=center[1],
+        x_stddev=sigma,
+        y_stddev=sigma,
+    )
     return Const2D(amplitude=1) + (mh - gauss)
 
 
@@ -268,27 +271,22 @@ def add_donuts(image, number=20):
     max_diam = int(0.05 * shape.max())
 
     # Weight towards the smaller donuts because it looks more like real flats..
-    diameters = rng.choice([min_diam, min_diam, min_diam, max_diam],
-                           size=number)
+    diameters = rng.choice([min_diam, min_diam, min_diam, max_diam], size=number)
 
     # Add a little variation in amplitude
     amplitudes = rng.normal(0.25, 0.05, size=number)
-    center_x = rng.randint(border_padding,
-                           high=shape[1] - border_padding, size=number)
-    center_y = rng.randint(border_padding,
-                           high=shape[0] - border_padding, size=number)
+    center_x = rng.randint(border_padding, high=shape[1] - border_padding, size=number)
+    center_y = rng.randint(border_padding, high=shape[0] - border_padding, size=number)
     centers = [[x, y] for x, y in zip(center_x, center_y)]
 
-    donut_model = make_one_donut(centers[0], diameter=diameters[0],
-                                 amplitude=amplitudes[0])
+    donut_model = make_one_donut(
+        centers[0], diameter=diameters[0], amplitude=amplitudes[0]
+    )
     donut_im = donut_model(x, y)
     idx = 1
-    for center, diam, amplitude in zip(centers[1:],
-                                       diameters[1:],
-                                       amplitudes[1:]):
+    for center, diam, amplitude in zip(centers[1:], diameters[1:], amplitudes[1:]):
         idx += 1
-        donut_model = make_one_donut(center, diameter=diam,
-                                      amplitude=amplitude)
+        donut_model = make_one_donut(center, diameter=diam, amplitude=amplitude)
         donut_im += donut_model(x, y)
 
     donut_im /= number
@@ -325,10 +323,13 @@ def sensitivity_variations(image, vignetting=True, dust=True):
     if vignetting:
         # Generate very wide gaussian centered on the center of the image,
         # multiply the sensitivity by it.
-        vign_model = Gaussian2D(amplitude=1,
-                                x_mean=shape[0] / 2, y_mean=shape[1] / 2,
-                                x_stddev=2 * shape.max(),
-                                y_stddev=2 * shape.max())
+        vign_model = Gaussian2D(
+            amplitude=1,
+            x_mean=shape[0] / 2,
+            y_mean=shape[1] / 2,
+            x_stddev=2 * shape.max(),
+            y_stddev=2 * shape.max(),
+        )
         vign_im = vign_model(x, y)
         sensitivity *= vign_im
 

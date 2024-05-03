@@ -1,6 +1,6 @@
+import logging
 import os
 from pathlib import Path
-import logging
 
 import click
 
@@ -43,7 +43,7 @@ def start_telrun_operator_cli(path="./", gui=True):
 )
 @click.version_option()
 def start_sync_manager_cli(path="./", do_async=False):
-    logger = logging.getLogger('pyscope')
+    logger = logging.getLogger("pyscope")
     logging.basicConfig(level=logging.INFO)
 
     sync_manager(config=Path(path) / "config/sync.cfg", do_async=do_async)

@@ -23,11 +23,13 @@ def test_avg_fits(tmp_path):
 
     os.makedirs(os.path.join(cwd, tmp_path, "averaged"))
     os.makedirs(os.path.join(cwd, tmp_path, "images"))
-    
+
     # create a test FITS file of
     for i in range(1, 11):
         data = np.ones((10, 10), dtype=np.uint16)
-        fits.writeto(f"{tmp_path}/images/avg_fits_test_{i}.fts", data * i, overwrite=True)
+        fits.writeto(
+            f"{tmp_path}/images/avg_fits_test_{i}.fts", data * i, overwrite=True
+        )
         # print(data * i)
 
     # files = glob.glob(f"{tmp_path}/avg_fits_test_*.fits")

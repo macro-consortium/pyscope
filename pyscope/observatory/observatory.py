@@ -2408,7 +2408,12 @@ class Observatory:
         return True
 
     def take_darks(
-        self, exposures, readouts, binnings, repeat=10, save_path=None, new_folder=None
+        self,
+        exposures,
+        readouts=[0],
+        binnings=["1x1"],
+        repeat=10,
+        save_path=None,
     ):
         """Takes a sequence of dark frames"""
 

@@ -161,7 +161,7 @@ TODO: fix click options
 @click.option(
     "-scht",
     "--sigma_clip_high_thresh",
-    type=click.Choice([click.FLOAT, None]), 
+    type=click.Choice([click.FLOAT, None]),
     default=3,
     show_default=True,
     help="",

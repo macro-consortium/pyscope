@@ -4,12 +4,21 @@ from astropy.nddata.utils import Cutout2D
 from matplotlib import pyplot as plt
 
 
-def show_image(image,
-               percl=99, percu=None, is_mask=False,
-               figsize=(10, 10),
-               cmap='viridis', log=False, clip=True,
-               show_colorbar=True, show_ticks=True,
-               fig=None, ax=None, input_ratio=None):
+def show_image(
+    image,
+    percl=99,
+    percu=None,
+    is_mask=False,
+    figsize=(10, 10),
+    cmap="viridis",
+    log=False,
+    clip=True,
+    show_colorbar=True,
+    show_ticks=True,
+    fig=None,
+    ax=None,
+    input_ratio=None,
+):
     """
     Show an image in matplotlib with some basic astronomically-appropriat stretching.
 
@@ -29,8 +38,9 @@ def show_image(image,
         percl = 100 - percl
 
     if (fig is None and ax is not None) or (fig is not None and ax is None):
-        raise ValueError('Must provide both "fig" and "ax" '
-                         'if you provide one of them')
+        raise ValueError(
+            'Must provide both "fig" and "ax" ' "if you provide one of them"
+        )
     elif fig is None and ax is None:
         if figsize is not None:
             # Rescale the fig size to match the image dimensions, roughly
@@ -38,7 +48,6 @@ def show_image(image,
             figsize = (max(figsize) * image_aspect_ratio, max(figsize))
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
-
 
     # To preserve details we should *really* downsample correctly and
     # not rely on matplotlib to do it correctly for us (it won't).
@@ -62,7 +71,7 @@ def show_image(image,
         # Divide by the square of the ratio to keep the flux the same in the
         # reduced image. We do *not* want to do this for images which are
         # masks, since their values should be zero or one.
-         reduced_data = reduced_data / ratio**2
+        reduced_data = reduced_data / ratio**2
 
     # Of course, now that we have downsampled, the axis limits are changed to
     # match the smaller image size. Setting the extent will do the trick to
@@ -74,9 +83,12 @@ def show_image(image,
     else:
         stretch = aviz.LinearStretch()
 
-    norm = aviz.ImageNormalize(reduced_data,
-                               interval=aviz.AsymmetricPercentileInterval(percl, percu),
-                               stretch=stretch, clip=clip)
+    norm = aviz.ImageNormalize(
+        reduced_data,
+        interval=aviz.AsymmetricPercentileInterval(percl, percu),
+        stretch=stretch,
+        clip=clip,
+    )
 
     if is_mask:
         # The image is a mask in which pixels should be zero or one.
@@ -87,8 +99,14 @@ def show_image(image,
     else:
         scale_args = dict(norm=norm)
 
-    im = ax.imshow(reduced_data, origin='lower',
-                   cmap=cmap, extent=extent, aspect='equal', **scale_args)
+    im = ax.imshow(
+        reduced_data,
+        origin="lower",
+        cmap=cmap,
+        extent=extent,
+        aspect="equal",
+        **scale_args
+    )
 
     if show_colorbar:
         # I haven't a clue why the fraction and pad arguments below work to make
@@ -102,10 +120,21 @@ def show_image(image,
         # https://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html#colorbar-whose-height-or-width-in-sync-with-the-master-axes
 
     if not show_ticks:
-        ax.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
+        ax.tick_params(
+            labelbottom=False, labelleft=False, labelright=False, labeltop=False
+        )
 
-def image_snippet(image, center, width=50, axis=None, fig=None,
-                  is_mask=False, pad_black=False, **kwargs):
+
+def image_snippet(
+    image,
+    center,
+    width=50,
+    axis=None,
+    fig=None,
+    is_mask=False,
+    pad_black=False,
+    **kwargs
+):
     """
     Display a subsection of an image about a center.
 
@@ -136,21 +165,27 @@ def image_snippet(image, center, width=50, axis=None, fig=None,
         if the slice is near the edge.
     """
     if pad_black:
-        sub_image = Cutout2D(image, center, width, mode='partial', fill_value=0)
+        sub_image = Cutout2D(image, center, width, mode="partial", fill_value=0)
     else:
         # Return a smaller subimage if extent goes out side image
-        sub_image = Cutout2D(image, center, width, mode='trim')
-    show_image(sub_image.data, cmap='gray', ax=axis, fig=fig,
-               show_colorbar=False, show_ticks=False, is_mask=is_mask,
-               **kwargs)
+        sub_image = Cutout2D(image, center, width, mode="trim")
+    show_image(
+        sub_image.data,
+        cmap="gray",
+        ax=axis,
+        fig=fig,
+        show_colorbar=False,
+        show_ticks=False,
+        is_mask=is_mask,
+        **kwargs
+    )
 
 
 def _mid(sl):
     return (sl.start + sl.stop) // 2
 
 
-def display_cosmic_rays(cosmic_rays, images, titles=None,
-                        only_display_rays=None):
+def display_cosmic_rays(cosmic_rays, images, titles=None, only_display_rays=None):
     """
     Display cutouts of the region around each cosmic ray and the other images
     passed in.
@@ -177,8 +212,7 @@ def display_cosmic_rays(cosmic_rays, images, titles=None,
     # Check whether the first image is actually a mask.
 
     if not ((images[0] == 0) | (images[0] == 1)).all():
-        raise ValueError('The first image must be a mask with '
-                         'values of zero or one')
+        raise ValueError("The first image must be a mask with " "values of zero or one")
 
     if only_display_rays is None:
         n_rows = len(cosmic_rays.slices)
@@ -193,12 +227,13 @@ def display_cosmic_rays(cosmic_rays, images, titles=None,
     # a whole does not allow for square plots then one ends up with a bunch
     # of whitespace. The plots here are square by design.
     height = width / n_columns * n_rows
-    fig, axes = plt.subplots(n_rows, n_columns, sharex=False, sharey='row',
-                             figsize=(width, height))
+    fig, axes = plt.subplots(
+        n_rows, n_columns, sharex=False, sharey="row", figsize=(width, height)
+    )
 
     # Generate empty titles if none were provided.
     if titles is None:
-        titles = [''] * n_columns
+        titles = [""] * n_columns
 
     display_row = 0
 
@@ -216,12 +251,15 @@ def display_cosmic_rays(cosmic_rays, images, titles=None,
             title = plot_info[1]
             is_mask = column == 0
             ax = axes[display_row, column]
-            image_snippet(image, (x, y), width=80, axis=ax, fig=fig,
-                          is_mask=is_mask)
+            image_snippet(image, (x, y), width=80, axis=ax, fig=fig, is_mask=is_mask)
             if is_mask:
-                ax.annotate('Cosmic ray {}'.format(row), (0.1, 0.9),
-                            xycoords='axes fraction',
-                            color='cyan', fontsize=20)
+                ax.annotate(
+                    "Cosmic ray {}".format(row),
+                    (0.1, 0.9),
+                    xycoords="axes fraction",
+                    color="cyan",
+                    fontsize=20,
+                )
 
             if display_row == 0:
                 # Only set the title if it isn't empty.
