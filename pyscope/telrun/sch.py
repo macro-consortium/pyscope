@@ -506,8 +506,6 @@ def read(
                 ra,
                 dec,
                 unit=(u.hourangle, u.deg),
-                pm_ra_cosdec=pm_ra_cosdec,
-                pm_dec=pm_dec,
             )
             if source_name is None:
                 source_name = obj.to_string("hmsdms")

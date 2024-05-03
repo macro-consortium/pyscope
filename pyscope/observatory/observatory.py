@@ -1487,7 +1487,8 @@ class Observatory:
                 # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
                 if self.focuser.Absolute:
                     if (
-                        self.focuser.Position + self.current_focus_offset > 0
+                        self.focuser.Position + self.current_focus_offset
+                        > 0
                         # and self.focuser.Position + self.current_focus_offset
                         # < self.focuser.MaxStep
                     ):
@@ -1560,7 +1561,8 @@ class Observatory:
 
         if altaz_obj.alt <= self.min_altitude:
             logger.exception(
-                "Target is below the minimum altitude of %.2f degrees" % self.min_altitude.to(u.deg).value
+                "Target is below the minimum altitude of %.2f degrees"
+                % self.min_altitude.to(u.deg).value
             )
             return False
 
@@ -2034,7 +2036,9 @@ class Observatory:
         success : bool
             True if the target was successfully centered, False otherwise.
         """
-        logger.info(f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}")
+        logger.info(
+            f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
+        )
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
         logger.info(
@@ -2057,10 +2061,12 @@ class Observatory:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
 
             if attempt == 0:
-                #JW EDIT
+                # JW EDIT
                 if do_initial_slew:
                     ra_hours = Angle(slew_obj.ra.hour, unit=u.hour)
-                    dec_degrees = Angle(slew_obj.dec.deg, unit=u.deg) + Angle(initial_offset_dec, unit=u.arcsec).to(u.deg)
+                    dec_degrees = Angle(slew_obj.dec.deg, unit=u.deg) + Angle(
+                        initial_offset_dec, unit=u.arcsec
+                    ).to(u.deg)
                     self.slew_to_coordinates(
                         ra=ra_hours.hour,
                         dec=dec_degrees.deg,
@@ -4448,7 +4454,7 @@ class Observatory:
         logger.debug("Observatory.min_altitude property called")
         return self._min_altitude
 
-#JW EDIT
+    # JW EDIT
 
     @min_altitude.setter
     def min_altitude(self, value):
@@ -4463,10 +4469,14 @@ class Observatory:
             # Ensure value is within physical limits [0, 90] degrees
             value = max(0 * u.deg, min(90 * u.deg, value))
             self._min_altitude = value
-            self._config["telescope"]["min_altitude"] = str(value.value)  # save the numeric part
+            self._config["telescope"]["min_altitude"] = str(
+                value.value
+            )  # save the numeric part
         except ValueError:
             logger.error(f"Invalid type for min_altitude: {value}")
-            raise ValueError("min_altitude must be a number or an astropy Quantity with angle units.")
+            raise ValueError(
+                "min_altitude must be a number or an astropy Quantity with angle units."
+            )
 
     # @min_altitude.setter
     # def min_altitude(self, value):

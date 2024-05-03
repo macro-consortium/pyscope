@@ -542,9 +542,11 @@ def schedtel_cli(
     logger.info("Defining transitioner")
     if instrument_reconfig_times == {}:
         logger.info("Using default instrument reconfiguration times of 5 seconds")
-        instrument_reconfig_times = {"filter":{'default': 5*u.second}}
+        instrument_reconfig_times = {"filter": {"default": 5 * u.second}}
     else:
-        logger.debug(f"Using custom instrument reconfiguration times {instrument_reconfig_times}")
+        logger.debug(
+            f"Using custom instrument reconfiguration times {instrument_reconfig_times}"
+        )
         # Multiply any integer values by u.second
         # for key, value in instrument_reconfig_times.items():
         #     if isinstance(value, int):
@@ -553,7 +555,9 @@ def schedtel_cli(
         #         for k, v in value.items():
         #             if isinstance(v, int):
         #                 instrument_reconfig_times[key][k] = v * u.second
-        logger.debug(f"Updated instrument reconfiguration times {instrument_reconfig_times}")
+        logger.debug(
+            f"Updated instrument reconfiguration times {instrument_reconfig_times}"
+        )
     transitioner = astroplan.Transitioner(
         slew_rate, instrument_reconfig_times=instrument_reconfig_times
     )
@@ -891,8 +895,6 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
-    # TODO: for columns that are integrated objects, convert their underlying MaskedNDArrays to NDArrays and remove all unscheduled blocks
-
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
@@ -926,6 +928,9 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     )
     t1 = t0 + 1 * u.day
 
+    # Only keep scheduled blocks
+    schedule_table = schedule_table[schedule_table["status"] == "S"]
+
     obscodes = list(np.unique(schedule_table["code"]))
 
     fig, ax = plt.subplots(1, 1, figsize=(12, len(obscodes) * 0.75))
@@ -937,13 +942,12 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
         ]
 
         for block in plot_blocks:
-            start_time = block["start_time"]
-            end_time = block["end_time"]
-            length_minutes = int(np.ceil((end_time - start_time).sec / 60))
+            start_time = astrotime.Time(np.float64(block["start_time"].jd), format="jd")
+            end_time = astrotime.Time(np.float64(block["end_time"].jd), format="jd")
+            length_min = int((end_time - start_time).sec / 60 + 1)
             times = (
                 start_time
-                + np.linspace(0, length_minutes, length_minutes, endpoint=True)
-                * u.minute
+                + np.linspace(0, length_min, length_min, endpoint=True) * u.minute
             )
             airmass = []
             for t in times:
@@ -1013,12 +1017,12 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
         "Time beginning %s [UTC]"
         % (twilight_times[1] - 0.5 * u.hour).strftime("%Y-%m-%d")
     )
-    ax.set_xlim(
+    """ax.set_xlim(
         [
             (twilight_times[1] - 0.5 * u.hour).datetime,
             (twilight_times[-2] + 0.5 * u.hour).datetime,
         ]
-    )
+    )"""
     ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
     ax.xaxis.set_minor_locator(mdates.HourLocator(interval=1))
@@ -1075,9 +1079,8 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
 
-    # remove all blocks that are not scheduled
+    # Only keep scheduled blocks
     schedule_table = schedule_table[schedule_table["status"] == "S"]
-    schedule_table = table.Table(schedule_table, masked=False, copy=False)
 
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
@@ -1109,7 +1112,7 @@ def plot_schedule_sky_cli(schedule_table, observatory):
         ax = astroplan_plots.plot_sky(
             astroplan.FixedTarget(row["target"]),
             observatory,
-            row["start_time"],
+            astrotime.Time(np.float64(row["start_time"].jd), format="jd"),
             ax=ax,
             style_kwargs={
                 "label": row["target"].to_string("hmsdms"),

@@ -6,6 +6,7 @@ from .autofocus import Autofocus
 
 logger = logging.getLogger(__name__)
 
+
 class PWI4Autofocus(Autofocus):
     def __init__(self, host="localhost", port=8220):
         self._host = host
@@ -25,10 +26,9 @@ class PWI4Autofocus(Autofocus):
         while self._app.status().focuser.is_moving:
             time.sleep(1)
         logger.info("Focuser moved to best position")
-        
+
         return self._app.status().autofocus.best_position
-    
+
     def Abort(self):
         logger.debug("Aborting autofocus in PWI4Autofocus")
         _ = self._app.focuser_stop()
-

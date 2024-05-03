@@ -824,7 +824,7 @@ class TelrunOperator:
             )
         elif not self.autofocus_initial:
             self._last_autofocus_time = astrotime.Time.now()
-        
+
         # Process blocks
         for block_index, block in enumerate(self._schedule):
             if not self._execution_event.is_set():
@@ -1521,8 +1521,8 @@ class TelrunOperator:
             )
             centered = self.observatory.recenter(
                 obj=block["target"],
-                target_x_pixel=1024, # Hardcoded fix this
-                target_y_pixel=1024, # Hardcoded fix this
+                target_x_pixel=1024,  # Hardcoded fix this
+                target_y_pixel=1024,  # Hardcoded fix this
                 initial_offset_dec=self.recenter_initial_offset_dec,
                 check_and_refine=self.recenter_check_and_refine,
                 max_attempts=self.recenter_max_attempts + add_attempt,

@@ -44,13 +44,15 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def Park(self):
         logger.debug("ASCOMTelescope.Park() called")
-        #self._device.Park()
+        # self._device.Park()
         try:
             if callable(self._device.Park):
                 logger.debug("SetPark() is callable and will be executed.")
                 self._device.Park()
             else:
-                logger.debug("SetPark() is not callable, using 'self._device.Park' to park the telescope")
+                logger.debug(
+                    "SetPark() is not callable, using 'self._device.Park' to park the telescope"
+                )
                 # Handle it as a property if necessary, or simply ignore if no action is required.
                 self._device.Park
         except Exception as e:
