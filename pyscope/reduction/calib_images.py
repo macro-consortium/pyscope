@@ -167,18 +167,17 @@ def calib_images_cli(
     for fname in fnames:
         logger.info(f"Calibrating {fname}")
 
-        if raw_archive_dir is not None:
-            raw_archive_dir = os.path.join(
-                raw_archive_dir, datetime.datetime.now().strftime("%Y-%m-%d")
-            )
-            if not os.path.exists(raw_archive_dir):
-                logger.info(f"Creating raw archive directory: {raw_archive_dir}")
-                os.makedirs(raw_archive_dir)
-            logger.info(f"Archiving {fname} to {raw_archive_dir}")
-            shutil.copy(fname, raw_archive_dir)
+        hdr = fits.getheader(fname, 0)
 
-        with fits.open(fname) as hdu:
-            hdr = hdu[0].header
+        if raw_archive_dir is not None:
+            raw_archive_dir_date = os.path.join(
+                raw_archive_dir, hdr.get('DATE-OBS')[:10]
+            )
+            if not os.path.exists(raw_archive_dir_date):
+                logger.info(f"Creating raw archive directory: {raw_archive_dir_date}")
+                os.makedirs(raw_archive_dir_date)
+            logger.info(f"Archiving {fname} to {raw_archive_dir_date}")
+            shutil.copy(fname, raw_archive_dir_date)
 
         if "CALSTAT" in hdr.keys():
             logger.info(f"{fname} has already been calibrated, skipping.")
@@ -201,12 +200,12 @@ def calib_images_cli(
 
         try:
             xbin = hdr["XBINNING"]
-        except:
+        except KeyError:
             xbin = hdr["XBIN"]
 
         try:
             ybin = hdr["YBINNING"]
-        except:
+        except KeyError:
             ybin = hdr["YBIN"]
 
         observatory_home = os.getenv("observatory_home")
