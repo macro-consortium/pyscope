@@ -114,6 +114,7 @@ def sync_directory_cli(
             raise NotADirectoryError(f"{local_dir} is not a directory")
         else:
             iterdir = local_dir.iterdir()
+        existing_files = sftp.listdir()
         for f in iterdir:
             if f.is_dir():
                 if f.name in ignore_dir:
@@ -123,7 +124,7 @@ def sync_directory_cli(
                 )
             elif f.suffix in ignore_ext:
                 continue
-            elif f.name in sftp.listdir():
+            elif f.name in existing_files:
                 if int(sftp.stat(f.name).st_mtime) != int(f.stat().st_mtime):
                     logger.info(
                         "Putting local path %s to remote path %s"

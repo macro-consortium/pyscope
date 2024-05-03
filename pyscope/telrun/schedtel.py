@@ -688,7 +688,7 @@ def schedtel_cli(
                 target=(
                     block.target.to_string("hmsdms").replace(" ", "_").replace(".", "-")
                     if block.name == ""
-                    else block.name
+                    else block.name.replace(" ", "_").replace(".", "_")
                 ),
                 start_time=block.start_time.isot.replace(":", "-").split(".")[0],
                 end_time=block.end_time.isot.replace(":", "-").split(".")[0],
