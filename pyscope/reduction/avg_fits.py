@@ -1,17 +1,10 @@
 import logging
-
+import glob
 import click
 import numpy as np
 from astropy.io import fits
 
 logger = logging.getLogger(__name__)
-
-"""
-TODO: use ccdproc to average FITS files
-- look into ccdproc library
-- write tests for avg_fits
-- make a new file avg_fits_ccdproc.py
-"""
 
 
 @click.command(
@@ -64,8 +57,7 @@ TODO: use ccdproc to average FITS files
     "-v",
     "--verbose",
     is_flag=True,
-    default=False,
-    show_default=True,
+#    show_default=True,
     help="Print verbose output.",
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
@@ -81,8 +73,8 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     outfile : str
         Path to save averaged FITS files.
 
-    fnames : list
-        List of FITS file paths to average.
+    fnames : path
+        path of directory of FITS files to average.
 
     verbose : bool, default=False
         Print verbose output.
@@ -91,18 +83,31 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     -------
     None
     """
-
+    
     if verbose:
+        logging.basicConfig(level=logging.DEBUG)
         logger.setLevel(logging.DEBUG)
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
     logger.info("Loading FITS files...")
+    
+    fnames = glob.glob(f"{fnames[0]}/*.fts") + glob.glob(f"{fnames[0]}/*.fits") + glob.glob(f"{fnames[0]}/*.fit")
 
+    # TODO: try reading in one image at a time, then add the pixel values to an array. then close the file and move to the next one.
+    # Figure out a way to do this for averaging medians as well.
+    # TODO: add coverage for averaging sky flats using outlier rejection
+    # sky flats: new script
+    # bias and dark subtract each flat on a per image basis
+    # median normalize by middle half of image for each image
+    # then take median along each pixel
+    
     images = np.array([fits.open(fname)[0].data for fname in fnames])
-
+    # images = np.array([fits.getdata(fname) for fname in fnames])
+    
+    
     images = images.astype(datatype)
-
+    
     logger.info(f"Loaded {len(images)} FITS files")
 
     logger.info("Averaging FITS files...")

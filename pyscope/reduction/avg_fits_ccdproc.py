@@ -11,21 +11,7 @@ from astropy.nddata import CCDData
 logger = logging.getLogger(__name__)
 
 """
-TODO: use ccdproc to average FITS files
-
-for reading in files as CCDData types:
-    default to user specified, then header BUNIT, then default to adu
-
-    if unit == None:
-        then the user didn't specify a unit, so check the header for BUNIT
-        if BUNIT exists, use that,
-            unit = header["BUNIT"]
-        else:
-            unit = "adu"
-
-
-
-    or if the header doesn't contain BUNIT, set BUNIT to adu, then use that
+TODO: fix click options
 """
 
 
@@ -143,7 +129,7 @@ for reading in files as CCDData types:
 @click.option(
     "-mcn",
     "--minmax_clip_min",
-    type=click.Choice([float, None]),
+    type=click.Choice([click.FLOAT, None]),
     default=None,
     show_default=True,
     help="",
@@ -151,7 +137,7 @@ for reading in files as CCDData types:
 @click.option(
     "-mcx",
     "--minmax_clip_max",
-    type=click.Choice([float, None]),
+    type=click.Choice([click.FLOAT, None]),
     default=None,
     show_default=True,
     help="",
@@ -167,7 +153,7 @@ for reading in files as CCDData types:
 @click.option(
     "-sclt",
     "--sigma_clip_low_thresh",
-    type=click.Choice([float, None]),
+    type=click.Choice([click.FLOAT, None]),
     default=3,
     show_default=True,
     help="",
@@ -175,7 +161,7 @@ for reading in files as CCDData types:
 @click.option(
     "-scht",
     "--sigma_clip_high_thresh",
-    type=click.Choice([float, None]),
+    type=click.Choice([click.FLOAT, None]), 
     default=3,
     show_default=True,
     help="",
