@@ -96,10 +96,12 @@ def isSuccessfullyCalibrated(img):
     except KeyError: return False
     else: return True
 
-def store_image(img, dest):
+def store_image(img, dest, update_db=False):
     """store image in long-term archive directory :dest
     check that the target is older or doesn't exist
     log errors
+    future: use s3cmd library to interact with object storage more efficiently
+    future: update_db=True adds image info to database
     """
     if not dest.exists(): dest.mkdir(mode=0o775)
     target = dest / img.name
