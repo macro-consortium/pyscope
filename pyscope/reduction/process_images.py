@@ -98,7 +98,7 @@ def isSuccessfullyCalibrated(img):
 
 def store_image(img, dest):
     """store image in long-term archive directory :dest
-    check that the target doesn't exist or is older
+    check that the target is older or doesn't exist
     log errors
     """
     if not dest.exists(): dest.mkdir(mode=0o775)
@@ -115,6 +115,8 @@ def store_image(img, dest):
 
 def process_image(img):
     """process a single image
+    calibrate if needed
+    move to reduced or failed depending on status
     """
     try:
         header = fits.getheader(img, 0)
@@ -122,55 +124,53 @@ def process_image(img):
         logger.exception(f"Corrupt FITS file {img}")
         return
 
-    if isCalibrated(img):
-        # only do things to raw images
-        return
-
     img_isodate = fits.getval(img, 'DATE-OBS')[:10]
-    fil = fits.getval(img, 'FILTER').strip().lower()
 
-    # store a copy of the raw image in long-term storage
-    store_image(img, STORAGE_ROOT / 'rawimage' / img_isodate)
+    if not isCalibrated(img):
+        fil = fits.getval(img, 'FILTER').strip().lower()
 
-    # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
-    # NB overwrite switch on to override ZAG solution from Pinpoint
-    zmag = False
-    if img.name[:3] == 'foc':
-        ra = round(float(fits.getval(img, 'RA')[:2]))
-        if fil in ('g', 'r', 'i') and ra in sloan_ra:
-        zmag = True
+        # store a copy of the raw image in long-term storage
+        store_image(img, STORAGE_ROOT / 'rawimage' / img_isodate)
 
-    # send this single image to calib_images
-    calib_images(
-        camera_type=CAMERA_TYPE,
-        calib_dir=CALIB_DIR,
-        image_dir=None,
-        fnames=[img],
-        raw_archive_dir=img.parent / 'raw_archive'
-        in_place=True,
-        wcs=False,
-        zmag=zmag,
-        verbose=False,
-    )
+        # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
+        # NB overwrite switch on to override ZAG solution from Pinpoint
+        zmag = False
+        if img.name[:3] == 'foc':
+            ra = round(float(fits.getval(img, 'RA')[:2]))
+            if fil in ('g', 'r', 'i') and ra in sloan_ra:
+            zmag = True
 
-    if isCalibrated(img):
+        # send this single image to calib_images
+        calib_images(
+            camera_type=CAMERA_TYPE,
+            calib_dir=CALIB_DIR,
+            image_dir=None,
+            fnames=[img],
+            raw_archive_dir=img.parent / 'raw_archive'
+            in_place=True,
+            wcs=False,
+            zmag=zmag,
+            verbose=False,
+        )
+
         # calculate fwhm assuming we're still doing this..
         if fil not in ('lrg', 'hrg'):
             runcmd(f'fwhm -ow {img}')
 
+    if isSuccessfullyCalibrated(img):
         temp = img.parent / 'reduced'
         if not temp.exists(): temp.mkdir(mode=0o775)
         shutil.copy(img, temp)
-        
         groupdir = groups.get(img.name[0], 'other')
-        if store_image(img, STORAGE_ROOT / groupdir / isodate):
-            img.unlink()
+        store_image(img, STORAGE_ROOT / groupdir / img_isodate)
 
-    else:
+    elif isCalibrated(img):
         failed = img.parent / 'failed'
         if not failed.exists(): failed.mkdir(mode=0o775)
         shutil.copy(img, failed)
         logger.warning(f"Calibration failed on {img}")
+
+    img.unlink()
 
 
 if __name__ == "__main__":
@@ -191,15 +191,18 @@ if __name__ == "__main__":
     else:
         while True:
             fresh = []
-            old = []
+            done = []
             for ext in (".fts", ".fits", ".fit"):            
                 fresh.extend(LANDING_DIR.glob(f'*{ext}'))
                 for d in ('raw_archive', 'reduced', 'failed'):
-                    old.extend((LANDING_DIR / d).rglob(f'*{ext}')
+                    done.extend((LANDING_DIR / d).rglob(f'*{ext}')
+
             time.sleep(5)
+
             for img in fresh:
                 process_image(img)
-            for img in old:
+                
+            for img in done:
                 if img.exists() and time.time() - img.stat().st_mtime > MAXAGE:
                     img.unlink()
                     logger.info(f"Deleted {img}")
