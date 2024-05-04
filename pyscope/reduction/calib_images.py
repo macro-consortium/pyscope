@@ -2,7 +2,7 @@ import datetime
 import glob
 import logging
 import os
-import pathlib
+from pathlib import Path
 import shutil
 
 # i will be working on this
@@ -126,7 +126,7 @@ def calib_images_cli(
     appropriate flat, dark, and bias frame and then calling
     ccd_calib to do the actual calibration.
 
-    Notes: Vaving an example set up of this function would be helpful.
+    Notes: Having an example set up of this function would be helpful.
     This would allow for me to know what the environment looks like when
     calling this function.
 
@@ -209,7 +209,7 @@ def calib_images_cli(
             ybin = hdr["YBIN"]
 
         observatory_home = os.getenv("observatory_home")
-        masters_dir = pathlib.Path(observatory_home + "/images/masters")
+        masters_dir = Path(observatory_home + "/images/masters")
         flat_frame = None
         dark_frame = None
         bias_frame = None
@@ -229,7 +229,7 @@ def calib_images_cli(
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
-                    flat_frame = pathlib.Path(filename)
+                    flat_frame = Path(filename)
                 elif (
                     "master_dark" in filename
                     and hdrf["READOUTM"] == readout
@@ -237,14 +237,14 @@ def calib_images_cli(
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
-                    dark_frame = pathlib.Path(filename)
+                    dark_frame = Path(filename)
                 elif (
                     "master_bias" in filename
                     and hdrf["READOUTM"] == readout
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
-                    bias_frame = pathlib.Path(filename)
+                    bias_frame = Path(filename)
                 elif (
                     "master_flat_dark" in filename
                     and hdrf["READOUTM"] == readout
@@ -252,7 +252,7 @@ def calib_images_cli(
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
-                    flat_dark_frame = pathlib.Path(filename)
+                    flat_dark_frame = Path(filename)
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
@@ -261,20 +261,20 @@ def calib_images_cli(
                 flat_dark_frame = flat_dark_frame
 
         else:  # use the calib_dir passed by the user
-            flat_frame = pathlib.Path(
+            flat_frame = Path(
                 f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
             )
-            dark_frame = pathlib.Path(
+            dark_frame = Path(
                 f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
             )
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
-                bias_frame = pathlib.Path(
+                bias_frame = Path(
                     f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
                 )
             elif camera_type == "cmos":
-                flat_dark_frame = pathlib.Path(
+                flat_dark_frame = Path(
                     f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
                 )
 
