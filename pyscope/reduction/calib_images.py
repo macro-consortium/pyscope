@@ -113,7 +113,7 @@ def calib_images_cli(
     camera_type="ccd",
     image_dir="./images/",
     calib_dir=None,
-    raw_archive_dir="./images/raw/",
+    raw_archive_dir="./images/raw_archive/",
     in_place=False,
     astro_scrappy=(1, 3),
     bad_columns="",
