@@ -936,7 +936,12 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     fig, ax = plt.subplots(1, 1, figsize=(12, len(obscodes) * 0.75))
     mdates.set_epoch(t0.strftime("%Y-%m-%dT%H:%M:%S"))
 
+    # Create list for all y-axis labels
+    y_labels = obscodes.copy()
+    y_labels.append("All")
+
     for i in range(len(obscodes)):
+        print(f"Plotting observer {obscodes[i]}")
         plot_blocks = [
             block for block in schedule_table if block["code"] == obscodes[i]
         ]
@@ -964,7 +969,7 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
                 c=airmass,
                 cmap=ccm.batlow,
                 vmin=1,
-                vmax=3,
+                vmax=2.3,
             )
 
             scatter = ax.scatter(
@@ -975,10 +980,10 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
                 c=airmass,
                 cmap=ccm.batlow,
                 vmin=1,
-                vmax=3,
+                vmax=2.3,
             )
 
-    obscodes.append("All")
+    # obscodes.append("All")
 
     twilight_times = [
         t0,
@@ -1038,15 +1043,24 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     ax1.xaxis.set_tick_params(rotation=45)
     ax1.set_xlabel("Observatory Local Time (%s)" % tz)
 
+    # Original y-axis labels
+    # ax.set_ylabel("Observer Code")
+    # ax.set_ylim([len(obscodes) - 0.5, 0.5])
+    # ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(obscodes))))
+    # ax.yaxis.set_major_formatter(ticker.FixedFormatter(obscodes))
+    # ax.yaxis.set_minor_locator(ticker.NullLocator())
+    # ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+
+    # Use the y_labels list for setting the y-axis labels
     ax.set_ylabel("Observer Code")
-    ax.set_ylim([len(obscodes) - 0.5, 0.5])
-    ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(obscodes))))
-    ax.yaxis.set_major_formatter(ticker.FixedFormatter(obscodes))
+    ax.set_ylim([len(y_labels) - 0.5, -1 + 0.5])
+    ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(y_labels))))
+    ax.yaxis.set_major_formatter(ticker.FixedFormatter(y_labels))
     ax.yaxis.set_minor_locator(ticker.NullLocator())
     ax.yaxis.set_minor_formatter(ticker.NullFormatter())
 
     cbar = fig.colorbar(scatter, ax=ax)
-    cbar.set_ticks([1, 1.5, 2, 2.5, 3])
+    cbar.set_ticks([1, 1.5, 2, 2.3])
     cbar.set_label("Airmass", rotation=270, labelpad=20)
 
     """ax.set_title(

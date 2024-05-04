@@ -757,11 +757,13 @@ def read(
         # Get exposures
         exposures = []
         if "exposures" in line.keys():
+            #print("This is line keys")
             exposures = [float(e) for e in line["exposures"].split(",")]
             prior_exposures = exposures
         elif prior_exposures is not None:
             exposures = prior_exposures
         else:
+            #print("This is line 766")
             exposures = []
             prior_exposures = None
 
@@ -770,6 +772,8 @@ def read(
             exposures = exposures * len(filters)
         elif len(filters) == 1 and len(exposures) > 1:
             filters = filters * len(exposures)
+
+        #print(f"Exposures: {exposures}")
 
         # Sanity Check 1: matching number of filters and exposures
         if len(filters) != len(exposures) and len(filters) != 0:
@@ -788,11 +792,11 @@ def read(
         # Sanity Check 3: if cadence is specified, verify it exceeds exposure time
         # times number of exposures times number of filters
         if cadence is not None:
-            if cadence.to(u.second).value < np.sum(exposures) * nexp * len(filters):
+            if cadence.to(u.second).value < np.sum(exposures):
                 logger.warning(
-                    f"Cadence ({cadence}) is less than total exposure time ({np.sum(exposures) * nexp * len(filters)}) on line {line_number}, setting cadence to total exposure time: {line}"
+                    f"Cadence ({cadence}, {cadence.to(u.second).value} sec) is less than total exposure time ({np.sum(exposures)}) on line {line_number}, setting cadence to total exposure time: {line}"
                 )
-                cadence = np.sum(exposures) * nexp * len(filters)
+                cadence = np.sum(exposures)
 
         for i in range(len(filters)):
             filt = filters[i]
