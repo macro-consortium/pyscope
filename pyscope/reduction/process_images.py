@@ -101,7 +101,7 @@ def store_image(img, dest):
     check that the target doesn't exist or is older
     log errors
     """
-    if not dest.is_dir(): dest.mkdir(mode=0o775)
+    if not dest.exists(): dest.mkdir(mode=0o775)
     target = dest / img.name
     if not target.exists() or target.stat().st_mtime < img.stat().st_mtime:
         try:
@@ -159,7 +159,7 @@ def process_image(img):
             runcmd(f'fwhm -ow {img}')
 
         temp = img.parent / 'reduced'
-        if not temp.is_dir(): temp.mkdir(mode=0o775)
+        if not temp.exists(): temp.mkdir(mode=0o775)
         shutil.copy(img, temp)
         
         groupdir = groups.get(img.name[0], 'other')
@@ -168,7 +168,7 @@ def process_image(img):
 
     else:
         failed = img.parent / 'failed'
-        if not failed.is_dir(): failed.mkdir(mode=0o775)
+        if not failed.exists(): failed.mkdir(mode=0o775)
         shutil.copy(img, failed)
         logger.warning(f"Calibration failed on {img}")
 
