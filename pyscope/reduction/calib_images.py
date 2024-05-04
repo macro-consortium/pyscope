@@ -218,43 +218,41 @@ def calib_images_cli(
             files = glob.glob(f"{masters_dir}/*", recursive=True)
             for filename in files:
                 # find flat_frame, dark_frame, bias_frame, flat_dark_frame
-                with fits.open(filename) as h:
-                    hdrf = h[0].header
-                    # if the corresponding header values match, then set the appropriate frame
-                    if (
-                        "master_flat" in filename
-                        and "master_flat_dark" not in filename
-                        and hdrf["FILTER"] == filt
-                        and hdrf["READOUTM"] == readout
-                        and hdrf["EXPTIME"] == exptime
-                        and hdrf["XBINNING"] == xbin
-                        and hdrf["YBINNING"] == ybin
-                    ):
-                        flat_frame = pathlib.Path(filename)
-                    elif (
-                        "master_dark" in filename
-                        and hdrf["READOUTM"] == readout
-                        and hdrf["EXPTIME"] == exptime
-                        and hdrf["XBINNING"] == xbin
-                        and hdrf["YBINNING"] == ybin
-                    ):
-                        dark_frame = pathlib.Path(filename)
-                    elif (
-                        "master_bias" in filename
-                        and hdrf["READOUTM"] == readout
-                        and hdrf["XBINNING"] == xbin
-                        and hdrf["YBINNING"] == ybin
-                    ):
-                        bias_frame = pathlib.Path(filename)
-                    elif (
-                        "master_flat_dark" in filename
-                        and hdrf["READOUTM"] == readout
-                        and hdrf["EXPTIME"] == exptime
-                        and hdrf["XBINNING"] == xbin
-                        and hdrf["YBINNING"] == ybin
-                    ):
-                        flat_dark_frame = pathlib.Path(filename)
-                h.close()
+                hdrf = fits.getheader(filename, 0)
+                # if the corresponding header values match, then set the appropriate frame
+                if (
+                    "master_flat" in filename
+                    and "master_flat_dark" not in filename
+                    and hdrf["FILTER"] == filt
+                    and hdrf["READOUTM"] == readout
+                    and hdrf["EXPTIME"] == exptime
+                    and hdrf["XBINNING"] == xbin
+                    and hdrf["YBINNING"] == ybin
+                ):
+                    flat_frame = pathlib.Path(filename)
+                elif (
+                    "master_dark" in filename
+                    and hdrf["READOUTM"] == readout
+                    and hdrf["EXPTIME"] == exptime
+                    and hdrf["XBINNING"] == xbin
+                    and hdrf["YBINNING"] == ybin
+                ):
+                    dark_frame = pathlib.Path(filename)
+                elif (
+                    "master_bias" in filename
+                    and hdrf["READOUTM"] == readout
+                    and hdrf["XBINNING"] == xbin
+                    and hdrf["YBINNING"] == ybin
+                ):
+                    bias_frame = pathlib.Path(filename)
+                elif (
+                    "master_flat_dark" in filename
+                    and hdrf["READOUTM"] == readout
+                    and hdrf["EXPTIME"] == exptime
+                    and hdrf["XBINNING"] == xbin
+                    and hdrf["YBINNING"] == ybin
+                ):
+                    flat_dark_frame = pathlib.Path(filename)
 
             # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
