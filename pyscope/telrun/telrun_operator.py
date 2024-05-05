@@ -1799,7 +1799,8 @@ class TelrunOperator:
                 time.sleep(0.1)
             # Settle time
             logger.info(
-                "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
+                "Waiting for settle time of %.1f seconds..."
+                % self.observatory.settle_time
             )
             self._telescope_status = "Settling"
             time.sleep(self.observatory.settle_time)

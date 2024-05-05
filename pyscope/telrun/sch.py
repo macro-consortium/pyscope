@@ -757,13 +757,13 @@ def read(
         # Get exposures
         exposures = []
         if "exposures" in line.keys():
-            #print("This is line keys")
+            # print("This is line keys")
             exposures = [float(e) for e in line["exposures"].split(",")]
             prior_exposures = exposures
         elif prior_exposures is not None:
             exposures = prior_exposures
         else:
-            #print("This is line 766")
+            # print("This is line 766")
             exposures = []
             prior_exposures = None
 
@@ -773,7 +773,7 @@ def read(
         elif len(filters) == 1 and len(exposures) > 1:
             filters = filters * len(exposures)
 
-        #print(f"Exposures: {exposures}")
+        # print(f"Exposures: {exposures}")
 
         # Sanity Check 1: matching number of filters and exposures
         if len(filters) != len(exposures) and len(filters) != 0:
