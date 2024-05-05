@@ -265,9 +265,7 @@ def calib_images_cli(
         else:  # use the calib_dir passed by the user
             # TODO parse readoutmode to a number?
             gain = f"gain{gain.strip()}_" if gain else ""
-            readout_gain = readout.replace(" ", "")
-            else:
-                readout_gain = f'_read1_{gain}'
+            readout = readout.replace(" ", "")
             flat_frame = Path(
                 f"{calib_dir}/master_flat_{filt}_{readout}_{gain}{xbin}x{ybin}.fts"
             )
