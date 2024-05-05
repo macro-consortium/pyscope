@@ -1562,13 +1562,21 @@ class TelrunOperator:
             self._rotator_status = (
                 "Slewing" if self.observatory.rotator is not None else ""
             )
-            self.observatory.slew_to_coordinates(
+            slewed = self.observatory.slew_to_coordinates(
                 obj=block["target"],
                 control_dome=(self.observatory.dome is not None),
                 control_rotator=(self.observatory.rotator is not None),
                 wait_for_slew=False,
                 track=False,
             )
+            if not slewed:
+                # Skip block if slew failed
+                logger.info("Slew failed, skipping...")
+                self.observatory.telescope.Tracking = False
+                self._current_block = None
+                logger.removeHandler(str_handler)
+                return ("", "", block)
+
             self._status_event.set()
             t.join()
             self._status_event.clear()
@@ -1786,16 +1794,26 @@ class TelrunOperator:
 
         # Wait for any motion to complete
         logger.info("Waiting for telescope motion to complete...")
-        while self.observatory.telescope.Slewing:
-            time.sleep(0.1)
-
-        # Settle time
-        logger.info(
-            "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
-        )
-        self._telescope_status = "Settling"
-        time.sleep(self.observatory.settle_time)
+        if self.observatory.telescope.Slewing:
+            while self.observatory.telescope.Slewing:
+                time.sleep(0.1)
+            # Settle time
+            logger.info(
+                "Waiting for settle time of %.1f seconds..."
+                % self.observatory.settle_time
+            )
+            self._telescope_status = "Settling"
+            time.sleep(self.observatory.settle_time)
         self._telescope_status = "Tracking"
+
+        # Moved above so it doesn't settle every time
+        # # Settle time
+        # logger.info(
+        #     "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
+        # )
+        # self._telescope_status = "Settling"
+        # time.sleep(self.observatory.settle_time)
+        # self._telescope_status = "Tracking"
 
         # Wait for focuser, dome motion to complete
         if self.observatory.focuser is not None and self.observatory.dome is not None:
