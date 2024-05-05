@@ -230,7 +230,7 @@ def calib_images_cli(
                     and "master_flat_dark" not in filename
                     and hdrf["FILTER"] == filt
                     and hdrf["READOUTM"] == readout
-                    and gain = "" or hdrf["GAIN"] == gain
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -238,7 +238,7 @@ def calib_images_cli(
                 elif (
                     "master_dark" in filename
                     and hdrf["READOUTM"] == readout
-                    and gain = "" or hdrf["GAIN"] == gain
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                     and hdrf["EXPTIME"] == exptime or camera_type == "ccd"
@@ -247,7 +247,7 @@ def calib_images_cli(
                 elif (
                     "master_bias" in filename
                     and hdrf["READOUTM"] == readout
-                    and gain = "" or hdrf["GAIN"] == gain
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -255,7 +255,7 @@ def calib_images_cli(
                 elif (
                     "master_flat_dark" in filename
                     and hdrf["READOUTM"] == readout
-                    and gain = "" or hdrf["GAIN"] == gain
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["EXPTIME"] == exptime
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
