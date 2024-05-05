@@ -2,8 +2,8 @@ import datetime
 import glob
 import logging
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 # i will be working on this
 import click
@@ -171,7 +171,7 @@ def calib_images_cli(
 
         if raw_archive_dir is not None:
             raw_archive_dir_date = os.path.join(
-                raw_archive_dir, hdr.get('DATE-OBS')[:10]
+                raw_archive_dir, hdr.get("DATE-OBS")[:10]
             )
             if not os.path.exists(raw_archive_dir_date):
                 logger.info(f"Creating raw archive directory: {raw_archive_dir_date}")
