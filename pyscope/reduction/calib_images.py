@@ -189,14 +189,19 @@ def calib_images_cli(
             filt = ""
 
         try:
-            readout = hdr["READOUTM"].replace(" ", "")
+            readout = hdr["READOUTM"]
         except KeyError:
-            readout = hdr["READOUT"].replace(" ", "")
+            readout = hdr["READOUT"]
 
         try:
             exptime = round(hdr["EXPTIME"], 3)
         except KeyError:
             exptime = round(hdr["EXPOSURE"], 3)
+
+        try:
+            gain = hdr["GAIN"]
+        except KeyError:
+            gain = ""
 
         try:
             xbin = hdr["XBINNING"]
@@ -225,7 +230,7 @@ def calib_images_cli(
                     and "master_flat_dark" not in filename
                     and hdrf["FILTER"] == filt
                     and hdrf["READOUTM"] == readout
-                    and hdrf["EXPTIME"] == exptime
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -233,14 +238,16 @@ def calib_images_cli(
                 elif (
                     "master_dark" in filename
                     and hdrf["READOUTM"] == readout
-                    and hdrf["EXPTIME"] == exptime
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
+                    and hdrf["EXPTIME"] == exptime or camera_type == "ccd"
                 ):
                     dark_frame = Path(filename)
                 elif (
                     "master_bias" in filename
                     and hdrf["READOUTM"] == readout
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -248,34 +255,33 @@ def calib_images_cli(
                 elif (
                     "master_flat_dark" in filename
                     and hdrf["READOUTM"] == readout
+                    and hdrf["GAIN"] == gain or gain == ""
                     and hdrf["EXPTIME"] == exptime
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
                     flat_dark_frame = Path(filename)
 
-            # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
-            if camera_type == "ccd":
-                bias_frame = bias_frame
-            elif camera_type == "cmos":
-                flat_dark_frame = flat_dark_frame
-
         else:  # use the calib_dir passed by the user
+            # TODO parse readoutmode to a number?
+            gain = f"gain{gain.strip()}_" if gain else ""
+            readout = readout.replace(" ", "")
             flat_frame = Path(
-                f"{calib_dir}/master_flat_{filt}_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                f"{calib_dir}/master_flat_{filt}_{readout}_{gain}{xbin}x{ybin}.fts"
             )
-            dark_frame = Path(
-                f"{calib_dir}/master_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
-            )
-
-            # given a camera type, set the appropriate frame; bias for CCD, flat dark for CMOS
             if camera_type == "ccd":
                 bias_frame = Path(
-                    f"{calib_dir}/master_bias_{readout}_{xbin}x{ybin}.fts"
+                    f"{calib_dir}/master_bias_{readout}_{gain}{xbin}x{ybin}.fts"
+                )
+                dark_frame = Path(
+                    f"{calib_dir}/master_dark_{readout}_{gain}{xbin}x{ybin}.fts"
                 )
             elif camera_type == "cmos":
+                dark_frame = Path(
+                    f"{calib_dir}/master_dark_{readout}_{gain}{exptime}_{xbin}x{ybin}.fts"
+                )
                 flat_dark_frame = Path(
-                    f"{calib_dir}/master_flat_dark_{readout}_{exptime}_{xbin}x{ybin}.fts"
+                    f"{calib_dir}/master_flat_dark_{readout}_{gain}{exptime}_{xbin}x{ybin}.fts"
                 )
 
         # for each image, print out the calibration frames being used
