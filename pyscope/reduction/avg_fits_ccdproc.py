@@ -21,37 +21,30 @@ TODO: fix click options
                 information."""
 )
 @click.option(
-    "-m",
-    "--mode",
-    type=click.Choice(["0", "1"]),
-    default="0",
-    show_choices=True,
+    "-m" "--method",
+    type=click.Choice(["average", "median", "sum"]),
+    default="median",
     show_default=True,
-    help="Mode to use for averaging FITS files (0 = median, 1 = mean).",
+    help="Method to use for averaging images.",
 )
 @click.option(
     "-o",
     "--outfile",
     type=click.Path(),
     required=True,
-    help="Path to save averaged FITS file.",
+    help="Path to save averaged image.",
 )
 @click.option(
     "-d",
     "--datatype",
     type=click.Choice(
         [
-            "int_",
-            "int8",
             "int16",
             "int32",
             "int64",
-            "uint",
-            "uint8",
             "uint16",
             "uint32",
             "uint64",
-            "float_",
             "float32",
             "float64",
         ]
@@ -59,7 +52,7 @@ TODO: fix click options
     default=np.uint16,
     show_choices=True,
     show_default=True,
-    help="Data type to use for averaged FITS file.",
+    help="Data type to use for averaged image.",
 )
 @click.option(
     "-u",
@@ -212,6 +205,7 @@ def avg_fits_ccdproc_cli(
     mode,
     outfile,
     fnames,
+    method="median",
     datatype="uint16",
     weights=None,
     scale=None,
@@ -232,18 +226,18 @@ def avg_fits_ccdproc_cli(
     unit="adu",
     verbose=False,
 ):
-    """Advanced version of avg_fits. Averages fits files using ccdproc.combine method.
+    """Combines images using ccdproc.combine method.
 
     Parameters
     ----------
-    mode : str
-        mode to use for averaging FITS files (0 = median, 1 = mean).
-
     outfile : str
-        path to save averaged FITS file.
+        path to save combined image.
 
     fnames : list
-        list of FITS file paths to average.
+        list of image paths to combine.
+
+    method="median" : str, optional
+        method to use for averaging images. Options are "median", "average", "sum"
 
     datatype : np.datatype, optional
         intermediate and resulting dtype for combined CCDs, by default np.uint16
@@ -314,76 +308,50 @@ def avg_fits_ccdproc_cli(
 
     logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
 
-    logger.info("Loading FITS files...")
+    logger.info("Loading images...")
 
     images = np.array([fits.open(fname)[0].data for fname in fnames])
 
     images = images.astype(datatype)
 
-    logger.info(f"Loaded {len(images)} FITS files")
+    logger.info(f"Loaded {len(images)} images")
 
-    logger.info("Averaging FITS files...")
+    logger.info("Averaging images...")
 
-    if str(mode) == "0":
-        logger.debug("Calculating median...")
-        image_avg = ccdproc.combine(
-            img_list=fnames,
-            method="median",
-            dtype=datatype,
-            weights=weights,
-            scale=scale,
-            mem_limit=mem_limit,
-            clip_extrema=clip_extrema,
-            nlow=nlow,
-            nhigh=nhigh,
-            minmax_clip=minmax_clip,
-            minmax_clip_min=minmax_clip_min,
-            minmax_clip_max=minmax_clip_max,
-            sigma_clip=sigma_clip,
-            sigma_clip_low_thresh=sigma_clip_low_thresh,
-            sigma_clip_high_thresh=sigma_clip_high_thresh,
-            sigma_clip_func=sigma_clip_func,
-            sigma_clip_dev_func=sigma_clip_dev_func,
-            combine_uncertainty_function=combine_uncertainty_function,
-            overwrite_output=overwrite_output,
-            format="fits",
-            unit=unit,
-        )
-    elif str(mode) == "1":
-        logger.debug("Calculating mean...")
-        image_avg = ccdproc.combine(
-            fnames,
-            method="average",
-            dtype=datatype,
-            weights=weights,
-            scale=scale,
-            mem_limit=mem_limit,
-            clip_extrema=clip_extrema,
-            nlow=nlow,
-            nhigh=nhigh,
-            minmax_clip=minmax_clip,
-            minmax_clip_min=minmax_clip_min,
-            minmax_clip_max=minmax_clip_max,
-            sigma_clip=sigma_clip,
-            sigma_clip_low_thresh=sigma_clip_low_thresh,
-            sigma_clip_high_thresh=sigma_clip_high_thresh,
-            sigma_clip_func=sigma_clip_func,
-            sigma_clip_dev_func=sigma_clip_dev_func,
-            combine_uncertainty_function=combine_uncertainty_function,
-            overwrite_output=overwrite_output,
-            format="fits",
-            unit=unit,
-        )
+    logger.debug("Calculating combined image...")
+    image_avg = ccdproc.combine(
+        img_list=fnames,
+        method=method,
+        dtype=datatype,
+        weights=weights,
+        scale=scale,
+        mem_limit=mem_limit,
+        clip_extrema=clip_extrema,
+        nlow=nlow,
+        nhigh=nhigh,
+        minmax_clip=minmax_clip,
+        minmax_clip_min=minmax_clip_min,
+        minmax_clip_max=minmax_clip_max,
+        sigma_clip=sigma_clip,
+        sigma_clip_low_thresh=sigma_clip_low_thresh,
+        sigma_clip_high_thresh=sigma_clip_high_thresh,
+        sigma_clip_func=sigma_clip_func,
+        sigma_clip_dev_func=sigma_clip_dev_func,
+        combine_uncertainty_function=combine_uncertainty_function,
+        overwrite_output=overwrite_output,
+        format="fits",
+        unit=unit,
+    )
 
     logger.debug(f"Image mean: {np.mean(image_avg.data)}")
     logger.debug(f"Image median: {np.median(image_avg.data)}")
 
-    logger.info(f"Saving averaged FITS file to {outfile}")
+    logger.info(f"Saving averaged image to {outfile}")
 
     with fits.open(fnames[-1]) as hdul:
         hdr = hdul[0].header
 
-    hdr.add_comment(f"Averaged {len(images)} FITS files using pyscope")
+    hdr.add_comment(f"Averaged {len(images)} images using pyscope")
     hdr.add_comment(f"Average mode: {mode}")
     hdr.add_comment(f"Unit: {unit}")
     hdr.add_comment(f"Data type: {datatype}")
