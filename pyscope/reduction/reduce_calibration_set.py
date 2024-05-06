@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import click
 
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "-cm" "--combine-method",
-    "combine_method",
+    "mode",
     type=click.Choice(["median", "average"]),
     default="median",
     show_default=True,
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 def reduce_calibration_set_cli(
     calibration_set,
     camera="ccd",
-    combine_method="median",
+    mode="0",
     pre_normalize=True,
     verbose=0,
 ):
@@ -59,22 +60,17 @@ def reduce_calibration_set_cli(
     Reduce a calibration set to master frames.\b
     """
 
-    if verbose == 0:
-        logger.setLevel(logging.INFO)
-    elif verbose >= 1:
-        logger.setLevel(logging.DEBUG)
-
     calibration_set = Path(calibration_set).resolve()
 
-    bias_sets = Path(calibration_set.glob("biases*/"))
-    dark_sets = Path(calibration_set.glob("darks*/"))
-    flat_sets = Path(calibration_set.glob("flats*/"))
+    bias_sets = calibration_set.glob("biases*")
+    dark_sets = calibration_set.glob("darks*")
+    flat_sets = calibration_set.glob("flats*")
 
     for bias_set in bias_sets:
         logger.info(f"Reducing bias set: {bias_set}")
         avg_fits(
             bias_set,
-            mode=combine_method,
+            mode=mode,
             outfile=calibration_set
             / (str(bias_set.name).replace("biases", "master_bias") + ".fts"),
         )
@@ -83,7 +79,7 @@ def reduce_calibration_set_cli(
         logger.info(f"Reducing dark set: {dark_set}")
         avg_fits(
             dark_set,
-            mode=combine_method,
+            mode=mode,
             outfile=calibration_set
             / (str(dark_set.name).replace("darks", "master_dark") + ".fts"),
         )
@@ -95,12 +91,14 @@ def reduce_calibration_set_cli(
             # flats _ filt _ binxbin _ Readout1 _ texp
             name_str = str(flat_set.name).split("_")
 
-            matching_dark = calibration_set.glob(
-                f"master_dark_{name_str[2]}x{name_str[3]}_{name_str[4]}*.fts"
-            )[0]
-            matching_bias = calibration_set.glob(
-                f"master_bias_{name_str[2]}x{name_str[3]}_{name_str[4]}*.fts"
-            )[0]
+            matching_dark = list(
+                calibration_set.glob(f"master_dark_{name_str[2]}_{name_str[3]}*.fts")
+            )
+            matching_dark = matching_dark[0] if matching_dark else None
+            matching_bias = list(
+                calibration_set.glob(f"master_bias_{name_str[2]}_{name_str[3]}*.fts")
+            )
+            matching_bias = matching_bias[0] if matching_bias else None
 
             ccd_calib(
                 flat_set,
@@ -109,10 +107,10 @@ def reduce_calibration_set_cli(
                 camera_type=camera,
             )
 
-            cal_flat_set = flat_set.glob("*_cal.fts")
+            cal_flat_set = flat_set / "*_cal.fts"
             avg_fits(
                 cal_flat_set,
-                mode=combine_method,
+                mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
                 / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),
@@ -122,9 +120,12 @@ def reduce_calibration_set_cli(
             # flats _ filt _ binxbin _ Readout1 _ texp
             name_str = str(flat_set.name).split("_")
 
-            matching_dark = calibration_set.glob(
-                f"master_dark_{name_str[2]}x{name_str[3]}_{name_str[4]}_{name_str[5]}*.fts"
-            )[0]
+            matching_dark = list(
+                calibration_set.glob(
+                    f"master_dark_{name_str[2]}_{name_str[3]}_{name_str[4]}*.fts"
+                )
+            )
+            matching_dark = matching_dark[0] if matching_dark else None
 
             ccd_calib(
                 flat_set,
@@ -135,7 +136,7 @@ def reduce_calibration_set_cli(
             cal_flat_set = flat_set.glob("*_cal.fts")
             avg_fits(
                 cal_flat_set,
-                mode=combine_method,
+                mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
                 / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),

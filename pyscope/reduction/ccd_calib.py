@@ -269,15 +269,27 @@ def ccd_calib_cli(
         logger.debug(f"Flat frame Y binning: {flat_ybin}")
         logger.debug(f"Flat pedestal: {flat_pedestal}")
 
+    if fnames.is_dir():
+        fnames = fnames / "*.fts"
+    fnames = glob.glob(str(fnames))
+    logger.debug(f"Found {len(fnames)} images")
+    logger.debug(f"images: {fnames}")
+
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
         image, hdr = fits.getdata(fname).astype(np.float64), fits.getheader(fname)
+
+        if "CALSTAT" in hdr.keys():
+            if hdr["CALSTAT"]:
+                logger.warning("Image already calibrated. Skipping...")
+                continue
 
         try:
             image_frametyp = hdr["FRAMETYP"]
         except KeyError:
             image_frametyp = ""
-        if image_frametyp.lower() != "light" or image_frametyp.lower() != "flat":
+        image_frametyp = str(image_frametyp).lower()
+        if image_frametyp != "light" or image_frametyp != "flat":
             logger.warning(
                 f"Image frametype ({image_frametyp}) does not match 'light' or 'flat'"
             )

@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import click
 
@@ -235,7 +236,7 @@ def collect_calibration_set_cli(
             readouts=readouts,
             binnings=binnings,
             repeat=repeat,
-            save_path=save_path.replace("darks", "biases"),
+            save_path=save_path,
             frametyp="Bias",
         )
         if not success:

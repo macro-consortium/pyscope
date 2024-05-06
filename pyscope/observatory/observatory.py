@@ -11,8 +11,10 @@ import threading
 import time
 from ast import literal_eval
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+import tqdm
 from astropy import coordinates as coord
 from astropy import time as astrotime
 from astropy import units as u
@@ -1986,12 +1988,12 @@ class Observatory:
 
         random_state = np.random.RandomState(seed)
         random_angle = random_state.uniform(0, 2 * np.pi)
-        random_radius = random_state.uniform(0, radius)
+        random_radius = random_state.uniform(0, radius) * u.arcsec
 
         new_ra = center_pos.ra + random_radius * np.cos(random_angle)
         new_dec = center_pos.dec + random_radius * np.sin(random_angle)
-
-        self.slew_to_coordinates(ra=new_ra, dec=new_dec)
+        obj = coord.SkyCoord(ra=new_ra, dec=new_dec)
+        self.slew_to_coordinates(obj=obj)
 
     def recenter(
         self,
@@ -2320,11 +2322,10 @@ class Observatory:
 
         logger.info("Slewing to point at cover calibrator or specified sky location")
 
-        if tracking:
-            logger.info("Turning on tracking")
-            if self.telescope.CanSetTracking:
-                self.telescope.Tracking = True
-            logger.info("Tracking on")
+        logger.info("Turning off tracking for slew")
+        if self.telescope.CanSetTracking:
+            self.telescope.Tracking = False
+        logger.info("Tracking off")
 
         if self.telescope.CanSlewAltAzAsync:
             self.telescope.SlewToAltAzAsync(
@@ -2337,8 +2338,8 @@ class Observatory:
         elif self.telescope.CanSlew:
             obj = self.get_object_slew(
                 obj=coord.AltAz(
-                    alt=self.cover_calibrator_alt,
-                    az=self.cover_calibrator_az,
+                    alt=self.cover_calibrator_alt * u.deg,
+                    az=self.cover_calibrator_az * u.deg,
                     obstime=self.observatory_time,
                     location=self.observatory_location,
                 )
@@ -2348,7 +2349,12 @@ class Observatory:
             time.sleep(0.1)
         logger.info("Slew complete")
 
-        if not tracking:
+        if tracking:
+            logger.info("Turning on tracking")
+            if self.telescope.CanSetTracking:
+                self.telescope.Tracking = True
+            logger.info("Tracking on")
+        else:
             logger.info("Turning off tracking")
             if self.telescope.CanSetTracking:
                 self.telescope.Tracking = False
@@ -2431,13 +2437,21 @@ class Observatory:
 
                         if dither_radius > 0:
                             logger.info("Dithering by %i arcseconds" % dither_radius)
-                            self.dither_mount(dither_radius, center_pos=obj)
+                            self.dither_mount(
+                                dither_radius,
+                                center_pos=coord.AltAz(
+                                    alt=self.cover_calibrator_alt * u.deg,
+                                    az=self.cover_calibrator_az * u.deg,
+                                    obstime=self.observatory_time,
+                                    location=self.observatory_location,
+                                ).transform_to(coord.ICRS()),
+                            )
 
                         logger.info("Starting %s exposure" % real_exp)
                         self.camera.StartExposure(real_exp, False)
 
                         iter_save_name = iter_save_path / (
-                            f"flat_{filters[i]}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            f"flat_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
                             + f"_{real_exp}s"
                         ).replace(".", "p").replace(" ", "")
                         if type(filter_brightness) is list:
@@ -2446,15 +2460,9 @@ class Observatory:
                                     str(iter_save_name)
                                     + (f"_Bright{filter_brightness[i]}" + "_{j}.fts")
                                 )
-                                .replace(".", "p")
-                                .replace(" ", "")
                             )
                         else:
-                            iter_save_name = (
-                                Path((str(iter_save_name) + f"_{j}.fts"))
-                                .replace(".", "p")
-                                .replace(" ", "")
-                            )
+                            iter_save_name = Path((str(iter_save_name) + f"_{j}.fts"))
                         while not self.camera.ImageReady:
                             time.sleep(1)
 
@@ -2540,6 +2548,11 @@ class Observatory:
                         f"darks_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
                         + f"_{exposure}s"
                     ).replace(".", "p").replace(" ", "")
+                    if exposure == 0:
+                        iter_save_path = save_path / (
+                            f"biases_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{exposure}s"
+                        ).replace(".", "p").replace(" ", "")
                     if not iter_save_path.exists():
                         iter_save_path.mkdir()
                     for j in tqdm.tqdm(range(repeat)):
@@ -2554,13 +2567,28 @@ class Observatory:
                         logger.info("Starting %4.4gs dark exposure" % exposure)
                         self.camera.StartExposure(exposure, False)
                         iter_save_name = iter_save_path / (
-                            f"dark_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
-                            + f"_{exposure}s_{j}.fts"
-                        ).replace(".", "p").replace(" ", "")
+                            (
+                                f"dark_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                                + f"_{exposure}s_{j}"
+                            )
+                            .replace(".", "p")
+                            .replace(" ", "")
+                            + ".fts"
+                        )
+                        if exposure == 0:
+                            iter_save_name = iter_save_path / (
+                                (
+                                    f"bias_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                                    + f"_{exposure}s_{j}"
+                                )
+                                .replace(".", "p")
+                                .replace(" ", "")
+                                + ".fts"
+                            )
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
                         self.save_last_image(iter_save_name, frametyp=frametyp)
-                        logger.info("Dark %i of %i complete" % (j, repeat))
+                        logger.info("%i of %i complete" % (j, repeat))
                         logger.info("Saved dark frame to %s" % iter_save_name)
 
         logger.info("Darks complete")

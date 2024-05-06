@@ -114,14 +114,15 @@ def avg_fits_cli(
         f"Called avg_fits_cli(fname={fnames}, mode={mode}, datatype={datatype}, outfile={outfile}, verbose={verbose})"
     )
 
-    fnames = Path(fnames).resolve()
-    fnames = glob.glob(str(fnames), recursive=True)
+    if fnames.is_dir():
+        fnames = fnames / "*.fts"
+    fnames = glob.glob(str(fnames))
     logger.debug(f"Found {len(fnames)} images")
     logger.debug(f"images: {fnames}")
 
     first_hdr = fits.getheader(fnames[0])
     frametyp = first_hdr["FRAMETYP"]
-    logger.debug(f"FRAMETYP: {frametype}")
+    logger.debug(f"FRAMETYP: {frametyp}")
     binx = first_hdr["XBINNING"]
     biny = first_hdr["YBINNING"]
     logger.debug(f"XBINNING: {binx}, YBINNING: {biny}")
@@ -142,9 +143,9 @@ def avg_fits_cli(
         # check for matches in header
         if hdr["FRAMETYP"] != frametyp:
             logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
-        if hdr["BINX"] != binx:
+        if hdr["XBINNING"] != binx:
             logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
-        if hdr["BINY"] != biny:
+        if hdr["YBINNING"] != biny:
             logger.warning(f"BINY mismatch: {hdr['BINY']} != {biny}")
         if hdr["READOUTM"] != readout:
             logger.warning(f"READOUTM mismatch: {hdr['READOUTM']} != {readout}")
