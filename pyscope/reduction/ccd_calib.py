@@ -119,10 +119,18 @@ def ccd_calib_cli(
     if camera_type == "ccd":
         if bias_frame is not None:
             logger.info(f"Loading bias frame: {bias_frame}")
-            with fits.open(bias_frame) as hdul:
-                bias = hdul[0].data
-                bias_hdr = hdul[0].header
-            bias = bias.astype(np.float64)
+            bias, bias_hdr = fits.getdata(bias_frame).astype(
+                np.float64
+            ), fits.getheader(bias_frame)
+
+            try:
+                bias_frametyp = bias_hdr["FRAMETYP"]
+            except KeyError:
+                bias_frametyp = ""
+            if bias_frametyp.lower() != "bias":
+                logger.warning(
+                    f"Bias frame frametype ({bias_frametyp}) does not match 'bias'"
+                )
 
             try:
                 bias_readout_mode = bias_hdr["READOUTM"]
@@ -144,17 +152,32 @@ def ccd_calib_cli(
             except:
                 bias_ybin = bias_hdr["YBIN"]
 
+            try:
+                bias_gain = bias_hdr["GAIN"]
+            except:
+                bias_gain = ""
+
+            logger.debug(f"Bias frame frametype: {bias_frametyp}")
             logger.debug(f"Bias frame readout mode: {bias_readout_mode}")
+            logger.debug(f"Bias gain: {bias_gain}")
             logger.debug(f"Bias frame exposure time: {bias_exptime}")
             logger.debug(f"Bias frame X binning: {bias_xbin}")
             logger.debug(f"Bias frame Y binning: {bias_ybin}")
 
     if dark_frame is not None:
         logger.info(f"Loading dark frame: {dark_frame}")
-        with fits.open(dark_frame) as hdul:
-            dark = hdul[0].data
-            dark_hdr = hdul[0].header
-        dark = dark.astype(np.float64)
+        dark, dark_hdr = fits.getdata(dark_frame).astype(np.float64), fits.getheader(
+            dark_frame
+        )
+
+        try:
+            dark_frametyp = dark_hdr["FRAMETYP"]
+        except KeyError:
+            dark_frametyp = ""
+        if dark_frametyp.lower() != "dark":
+            logger.warning(
+                f"Dark frame frametype ({dark_frametyp}) does not match 'dark'"
+            )
 
         try:
             dark_readout_mode = dark_hdr["READOUTM"]
@@ -176,18 +199,32 @@ def ccd_calib_cli(
         except:
             dark_ybin = dark_hdr["YBIN"]
 
+        try:
+            dark_gain = dark_hdr["GAIN"]
+        except:
+            dark_gain = ""
+
+        logger.debug(f"Dark frame frametype: {dark_frametyp}")
         logger.debug(f"Dark frame readout mode: {dark_readout_mode}")
+        logger.debug(f"Dark gain: {dark_gain}")
         logger.debug(f"Dark frame exposure time: {dark_exptime}")
         logger.debug(f"Dark frame X binning: {dark_xbin}")
         logger.debug(f"Dark frame Y binning: {dark_ybin}")
 
     if flat_frame is not None:
         logger.info(f"Loading flat frame: {flat_frame}")
-        with fits.open(flat_frame) as hdul:
-            flat = hdul[0].data
-            flat_hdr = hdul[0].header
+        flat, flat_hdr = fits.getdata(flat_frame).astype(np.float64), fits.getheader(
+            flat_frame
+        )
 
-        flat = flat.astype(np.float64)
+        try:
+            flat_frametyp = flat_hdr["FRAMETYP"]
+        except KeyError:
+            flat_frametyp = ""
+        if flat_frametyp.lower() != "flat":
+            logger.warning(
+                f"Flat frame frametype ({flat_frametyp}) does not match 'flat'"
+            )
 
         try:
             flat_filter = flat_hdr["FILTER"]
@@ -214,16 +251,36 @@ def ccd_calib_cli(
         except:
             flat_ybin = flat_hdr["YBIN"]
 
+        try:
+            flat_gain = flat_hdr["GAIN"]
+        except:
+            flat_gain = ""
+
+        try:
+            flat_pedestal = flat_hdr["PEDESTAL"]
+        except:
+            flat_pedestal = 0
+
+        logger.debug(f"Flat frame frametype: {flat_frametyp}")
         logger.debug(f"Flat frame readout mode: {flat_readout_mode}")
+        logger.debug(f"Flat gain: {flat_gain}")
         logger.debug(f"Flat frame exposure time: {flat_exptime}")
         logger.debug(f"Flat frame X binning: {flat_xbin}")
         logger.debug(f"Flat frame Y binning: {flat_ybin}")
+        logger.debug(f"Flat pedestal: {flat_pedestal}")
 
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
-        image, hdr = fits.getdata(fname, header=True)
+        image, hdr = fits.getdata(fname).astype(np.float64), fits.getheader(fname)
 
-        image = image.astype(np.float64)
+        try:
+            image_frametyp = hdr["FRAMETYP"]
+        except KeyError:
+            image_frametyp = ""
+        if image_frametyp.lower() != "light" or image_frametyp.lower() != "flat":
+            logger.warning(
+                f"Image frametype ({image_frametyp}) does not match 'light' or 'flat'"
+            )
 
         try:
             image_filter = hdr["FILTER"]
@@ -250,7 +307,13 @@ def ccd_calib_cli(
         except:
             image_ybin = hdr["YBIN"]
 
+        try:
+            image_gain = hdr["GAIN"]
+        except:
+            image_gain = ""
+
         logger.debug(f"Image readout mode: {image_readout_mode}")
+        logger.debug(f"Image gain: {image_gain}")
         logger.debug(f"Image exposure time: {image_exptime}")
         logger.debug(f"Image X binning: {image_xbin}")
         logger.debug(f"Image Y binning: {image_ybin}")
@@ -269,6 +332,11 @@ def ccd_calib_cli(
             if image_ybin != dark_ybin:
                 logger.warning(
                     f"Image Y binning ({image_ybin}) does not match dark Y binning ({dark_ybin})"
+                )
+
+            if image_gain != dark_gain:
+                logger.warning(
+                    f"Image gain ({image_gain}) does not match dark gain ({dark_gain})"
                 )
 
         if flat_frame is not None:
@@ -292,16 +360,37 @@ def ccd_calib_cli(
                     f"Image filter ({image_filter}) does not match flat filter ({flat_filter})"
                 )
 
+            if image_gain != flat_gain:
+                logger.warning(
+                    f"Image gain ({image_gain}) does not match flat gain ({flat_gain})"
+                )
+
         if camera_type == "cmos":
             if image_exptime != dark_exptime:
                 logger.warning(
                     f"""Image exposure time ({image_exptime}) does not match dark exposure time ({dark_exptime}),
                     recommended for a CMOS camera"""
                 )
-            if flat_exptime != flat_dark_exptime:
+
+        elif camera_type == "ccd":
+            if image_readout_mode != bias_readout_mode:
                 logger.warning(
-                    f"""Flat exposure time ({flat_exptime}) does not match flat-dark exposure time ({flat_dark_exptime}),
-                    recommended for a CMOS camera"""
+                    f"Image readout mode ({image_readout_mode}) does not match bias readout mode ({bias_readout_mode})"
+                )
+
+            if image_xbin != bias_xbin:
+                logger.warning(
+                    f"Image X binning ({image_xbin}) does not match bias X binning ({bias_xbin})"
+                )
+
+            if image_ybin != bias_ybin:
+                logger.warning(
+                    f"Image Y binning ({image_ybin}) does not match bias Y binning ({bias_ybin})"
+                )
+
+            if image_gain != bias_gain:
+                logger.warning(
+                    f"Image gain ({image_gain}) does not match bias gain ({bias_gain})"
                 )
 
         hdr.add_comment(f"Calibrated using pyscope")
@@ -313,11 +402,10 @@ def ccd_calib_cli(
         hdr.add_comment(f"Calibration bad columns: {bad_columns}")
 
         cal_image = image.copy()
-
         if camera_type == "ccd":
             if bias_frame is not None:
                 logger.info("Applying bias frame (CCD selected)...")
-                cal_image -= bias
+                cal_image = np.subtract(cal_image, bias)
 
             if dark_frame is not None:
                 logger.info(
@@ -326,7 +414,9 @@ def ccd_calib_cli(
                             the dark exposure time then subtracted from the image."""
                 )
 
-                cal_image -= (dark - bias) * (image_exptime / dark_exptime)
+                cal_image = np.subtract(
+                    cal_image, (dark - bias) * (image_exptime / dark_exptime)
+                )
 
         elif camera_type == "cmos":
             if dark_frame is not None:
@@ -334,7 +424,7 @@ def ccd_calib_cli(
                     """Applying the dark frame. CMOS selected so a dark
                             is subtracted from the image with no bias and no exposure time scaling."""
                 )
-                cal_image -= dark
+                cal_image = np.subtract(cal_image, dark)
 
         if flat_frame is not None:
             logger.info("Checking if flat frame has a pedestal...")
@@ -342,7 +432,7 @@ def ccd_calib_cli(
                 logger.info(f"Pedestal keyword found, value: {flat_hdr['PEDESTAL']}")
                 flat_pedestal = flat_hdr["PEDESTAL"]
                 logger.info(f"Subtracting pedestal of {flat_pedestal} from flat frame.")
-                flat -= flat_pedestal
+                flat = np.subtract(flat, flat_pedestal)
 
             logger.info("Normalizing the flat frame by the mean of the entire image.")
             flat_mean = np.mean(flat)

@@ -119,24 +119,50 @@ def avg_fits_cli(
     logger.debug(f"Found {len(fnames)} images")
     logger.debug(f"images: {fnames}")
 
+    first_hdr = fits.getheader(fnames[0])
+    frametyp = first_hdr["FRAMETYP"]
+    logger.debug(f"FRAMETYP: {frametype}")
+    binx = first_hdr["XBINNING"]
+    biny = first_hdr["YBINNING"]
+    logger.debug(f"XBINNING: {binx}, YBINNING: {biny}")
+    readout = first_hdr["READOUTM"]
+    logger.debug(f"READOUTM: {readout}")
+    exptime = first_hdr["EXPTIME"]
+    logger.debug(f"EXPTIME: {exptime}")
+    gain = first_hdr["GAIN"]
+    logger.debug(f"GAIN: {gain}")
+
     # TODO: don't require all images to be in memory at once
     logger.info("Loading images...")
     images = []
-    for fname in tqdm.tqdm(fnames):
-        with fits.open(fname) as hdul:
-            image = hdul[0].data.astype(np.float64)
-            hdr = hdul[0].header
-            # check for pedestal
-            if "PEDESTAL" in hdr:
-                logger.info(
-                    f"Found pedestal of {hdr['PEDESTAL']}. Subtracting pedestal."
-                )
-                image -= hdr["PEDESTAL"]
-            images.append(image)
+    for fname in fnames:
+        image = fits.getdata(fname).astype(np.float64)
+        hdr = fits.getheader(fname)
+
+        # check for matches in header
+        if hdr["FRAMETYP"] != frametyp:
+            logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
+        if hdr["BINX"] != binx:
+            logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
+        if hdr["BINY"] != biny:
+            logger.warning(f"BINY mismatch: {hdr['BINY']} != {biny}")
+        if hdr["READOUTM"] != readout:
+            logger.warning(f"READOUTM mismatch: {hdr['READOUTM']} != {readout}")
+        if hdr["EXPTIME"] != exptime and not pre_normalize:
+            logger.warning(f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime}")
+        elif hdr["EXPTIME"] != exptime and pre_normalize:
+            logger.info(f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime}")
+            logger.info("pre_normalize is True so ignoring EXPTIME mismatch.")
+        if hdr["GAIN"] != gain:
+            logger.warning(f"GAIN mismatch: {hdr['GAIN']} != {gain}")
+
+        # check for pedestal
+        if "PEDESTAL" in hdr.keys():
+            logger.info(f"Found pedestal of {hdr['PEDESTAL']}. Subtracting pedestal.")
+            image -= hdr["PEDESTAL"]
+        images.append(image)
     images = np.array(images)
     logger.info(f"Loaded {images.shape} images")
-
-    hdr = fits.getheader(fnames[0])
 
     if pre_normalize:
         logger.info(
@@ -148,10 +174,10 @@ def avg_fits_cli(
         logger.info("pre_normalize is True so setting datatype to float64")
         datatype = np.float64
 
-        logger.info("pre-normalized is True, removing pedestal from header.")
-        if "PEDESTAL" in hdr:
-            logger.info("Removing PEDESTAL from header.")
-            del hdr["PEDESTAL"]
+        logger.info("pre-normalized is True, removing pedestal keyword from header.")
+        if "PEDESTAL" in first_hdr:
+            logger.info("Removing PEDESTAL keyword rom header.")
+            del first_hdr["PEDESTAL"]
 
     logger.info(f"Averaging images with mode = {mode}...")
     if str(mode) == "0":
@@ -172,9 +198,9 @@ def avg_fits_cli(
         outfile = f"{fnames[0]}_avg.fts"
 
     logger.info(f"Saving averaged image to {outfile}")
-    hdr.add_comment(f"Averaged {len(images)} images using pyscope")
-    hdr.add_comment(f"Average mode: {mode}")
-    fits.writeto(outfile, image_avg, hdr, overwrite=True)
+    first_hdr.add_comment(f"Averaged {len(images)} images using pyscope")
+    first_hdr.add_comment(f"Average mode: {mode}")
+    fits.writeto(outfile, image_avg, first_hdr, overwrite=True)
 
     logger.info("Done!")
 
