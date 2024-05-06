@@ -2217,9 +2217,9 @@ class TelrunOperator:
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory._wcs) is WCS:
-            logger.info("Using solver %s" % self.observatory._wcs)
-            solution = self.observatory._wcs.Solve(
+        if type(self.observatory._wcs[1]) is WCS:
+            logger.info("Using solver %s" % self.observatory._wcs[1])
+            solution = self.observatory._wcs[1].Solve(
                 image_path,
                 ra_key="TARGRA",
                 dec_key="TARGDEC",
@@ -2232,7 +2232,7 @@ class TelrunOperator:
                 parity=2,
                 crpix_center=True,
             )
-        else:
+        """else:
             for idx, wcs in enumerate(self.observatory._wcs):
                 logger.info("Using solver %s" % (idx + 1))
                 solution = wcs.Solve(
@@ -2243,13 +2243,13 @@ class TelrunOperator:
                     solve_timeout=self.wcs_timeout,
                     scale_units="arcsecperpix",
                     scale_type="ev",
-                    scale_est=0.8,  # self.observatory.pixel_scale[0],
-                    scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.1,
+                    scale_est=self.observatory.pixel_scale[0],
+                    scale_err=self.observatory.pixel_scale[0] * 0.1,
                     parity=2,
                     crpix_center=True,
                 )
                 if solution:
-                    break
+                    break"""
 
         if not solution:
             logger.warning("WCS solution not found.")
