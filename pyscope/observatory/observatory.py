@@ -817,8 +817,12 @@ class Observatory:
             logger.warning("Telescope failed to connect")
 
         logger.info("Unparking telescope...")
-        self.telescope.Unpark()
-        logger.info("Telescope unparked")
+        try:
+            self.telescope.Unpark()
+            logger.info("Telescope unparked")
+        except:
+            self.telescope.Unpark
+            logger.info("Telescope unparked")
 
         return True
 
