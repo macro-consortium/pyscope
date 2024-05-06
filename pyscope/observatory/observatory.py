@@ -455,7 +455,7 @@ class Observatory:
                     else:
                         self._wcs_kwargs.append(None)
                     for i in range(len(self._wcs_driver)):
-                        self._wcs_driver[i] = self._wcs_driver[i].lower()
+                        self._wcs_driver[i] = self._wcs_driver[i]
                     if (
                         self._wcs_driver[-1] == "maxim"
                         or self._wcs_driver[-1] == "maximdl"
@@ -682,7 +682,7 @@ class Observatory:
         # WCS
         kwarg = kwargs.get("wcs", self._wcs)
         if kwarg is None:
-            self._wcs = _import_driver("WCSAstrometryNet")
+            self._wcs = _import_driver("AstrometryNetWCS")
 
         if type(kwarg) not in (iter, list, tuple):
             self._wcs = kwarg
@@ -815,6 +815,10 @@ class Observatory:
             logger.info("Telescope connected")
         else:
             logger.warning("Telescope failed to connect")
+
+        logger.info("Unparking telescope...")
+        self.telescope.Unpark()
+        logger.info("Telescope unparked")
 
         return True
 
@@ -1280,6 +1284,12 @@ class Observatory:
         # remove values = () from the dictionary
         hdr_dict = {k: v for k, v in hdr_dict.items() if v != ()}
 
+        # remove any keys that are not strings
+        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) == str}
+
+        # remove any keys with a ? in them
+        hdr_dict = {k: v for k, v in hdr_dict.items() if "?" not in k}
+
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -1426,7 +1436,7 @@ class Observatory:
                     scale_type="ev",
                     scale_est=self.pixel_scale[0],
                     scale_err=self.pixel_scale[0] * 0.1,
-                    parity=1,
+                    parity=2,
                     crpix_center=True,
                 )
             else:
@@ -1442,7 +1452,7 @@ class Observatory:
                         scale_type="ev",
                         scale_est=self.pixel_scale[0],
                         scale_err=self.pixel_scale[0] * 0.1,
-                        parity=1,
+                        parity=2,
                         crpix_center=True,
                     )
                     if solution:
@@ -2164,7 +2174,7 @@ class Observatory:
                     scale_type="ev",
                     scale_est=self.pixel_scale[0],
                     scale_err=self.pixel_scale[0] * 0.1,
-                    parity=1,
+                    parity=2,
                     crpix_center=True,
                 )
             else:
@@ -2179,7 +2189,7 @@ class Observatory:
                         scale_type="ev",
                         scale_est=self.pixel_scale[0],
                         scale_err=self.pixel_scale[0] * 0.1,
-                        parity=1,
+                        parity=2,
                         crpix_center=True,
                     )
                     if solution_found:

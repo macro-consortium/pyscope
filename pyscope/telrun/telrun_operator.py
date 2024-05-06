@@ -22,7 +22,7 @@ from astropy import time as astrotime
 from astropy import units as u
 from astroquery import mpc
 
-from ..observatory import Observatory
+from ..observatory import WCS, Observatory
 from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
@@ -2217,10 +2217,10 @@ class TelrunOperator:
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory.wcs) not in (iter, list, tuple):
-            logger.info("Using solver %s" % self.wcs_driver)
-            solution = self.wcs.Solve(
-                filename,
+        if type(self.observatory._wcs) is WCS:
+            logger.info("Using solver %s" % self.observatory._wcs)
+            solution = self.observatory._wcs.Solve(
+                image_path,
                 ra_key="TARGRA",
                 dec_key="TARGDEC",
                 ra_dec_units=("hour", "deg"),
@@ -2229,23 +2229,23 @@ class TelrunOperator:
                 scale_type="ev",
                 scale_est=self.observatory.pixel_scale[0],
                 scale_err=self.observatory.pixel_scale[0] * 0.1,
-                parity=1,
+                parity=2,
                 crpix_center=True,
             )
         else:
-            for wcs, i in enumerate(self.wcs):
-                logger.info("Using solver %s" % self.wcs_driver[i])
+            for idx, wcs in enumerate(self.observatory._wcs):
+                logger.info("Using solver %s" % (idx + 1))
                 solution = wcs.Solve(
-                    filename,
+                    image_path,
                     ra_key="TARGRA",
                     dec_key="TARGDEC",
-                    ra_dec_units=("hour", "deg"),
+                    ra_dec_units=("hourangle", "deg"),
                     solve_timeout=self.wcs_timeout,
                     scale_units="arcsecperpix",
                     scale_type="ev",
-                    scale_est=self.observatory.pixel_scale[0],
-                    scale_err=self.observatory.pixel_scale[0] * 0.1,
-                    parity=1,
+                    scale_est=0.8,  # self.observatory.pixel_scale[0],
+                    scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.1,
+                    parity=2,
                     crpix_center=True,
                 )
                 if solution:
