@@ -31,17 +31,13 @@ from pathlib import Path
 
 from astropy.io import fits
 
-from .calib_images import calib_images
+from pyscope.reduction.calib_images import calib_images
 
 # observatory home - get this from the environment instead?
 OBSERVATORY_HOME = Path("/usr/local/telescope/rlmt")
 
 # directory where raw images arrive
-# LANDING_DIR = Path(OBSERVATORY_HOME, 'images')
-LANDING_DIR = Path("/mnt/ExtraImages")
-
-# calibration files directory
-CALIB_DIR = Path(OBSERVATORY_HOME, "images", "calibrations", "masters")
+LANDING_DIR = Path(OBSERVATORY_HOME, "images")
 
 # long term storage
 STORAGE_ROOT = Path("/mnt/imagesbucket")
@@ -151,15 +147,15 @@ def process_image(img):
 
         # send this single image to calib_images
         calib_images(
-            camera_type=CAMERA_TYPE,
-            calib_dir=CALIB_DIR,
+            camera_type="ccd",
             image_dir=None,
-            fnames=[img],
+            calib_dir=None,
             raw_archive_dir=img.parent / "raw_archive",
             in_place=True,
             wcs=False,
             zmag=zmag,
             verbose=False,
+            fnames=(img,),
         )
 
         # calculate fwhm assuming we're still doing this..
