@@ -231,9 +231,9 @@ def ccd_calib_cli(
             image_filter = ""
 
         try:
-            image_readout_mode = hdr["READOUTM"].replace(" ", "")
+            image_readout_mode = hdr["READOUTM"]
         except KeyError:
-            image_readout_mode = hdr["READOUT"].replace(" ", "")
+            image_readout_mode = hdr["READOUT"]
 
         try:
             image_exptime = round(hdr["EXPTIME"], 3)
