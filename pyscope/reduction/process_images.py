@@ -137,14 +137,6 @@ def process_image(img):
         # store a copy of the raw image in long-term storage
         store_image(img, STORAGE_ROOT / "rawimage" / img_isodate)
 
-        # Calculate zero-point magnitudes for foc images that are have Sloan filters and are in Sloan catalog
-        # NB overwrite switch on to override ZAG solution from Pinpoint
-        zmag = False
-        if img.name[:3] == "foc":
-            ra = round(float(fits.getval(img, "RA")[:2]))
-            if fil in ("g", "r", "i") and ra in sloan_ra:
-                zmag = True
-
         # send this single image to calib_images
         calib_images(
             camera_type="ccd",
@@ -153,7 +145,7 @@ def process_image(img):
             raw_archive_dir=img.parent / "raw_archive",
             in_place=True,
             wcs=False,
-            zmag=zmag,
+            zmag=True,
             verbose=False,
             fnames=(img,),
         )
