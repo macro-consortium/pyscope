@@ -269,11 +269,7 @@ def ccd_calib_cli(
         logger.debug(f"Flat frame Y binning: {flat_ybin}")
         logger.debug(f"Flat pedestal: {flat_pedestal}")
 
-    if fnames.is_dir():
-        fnames = fnames / "*.fts"
-    fnames = glob.glob(str(fnames))
-    logger.debug(f"Found {len(fnames)} images")
-    logger.debug(f"images: {fnames}")
+    logger.debug(f"Calibrating {len(fnames)} image(s): {fnames}")
 
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
