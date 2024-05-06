@@ -270,7 +270,7 @@ def ccd_calib_cli(
         logger.debug(f"Flat pedestal: {flat_pedestal}")
 
     logger.debug(f"Calibrating {len(fnames)} image(s): {fnames}")
-    
+
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
         image, hdr = fits.getdata(fname).astype(np.float64), fits.getheader(fname)
