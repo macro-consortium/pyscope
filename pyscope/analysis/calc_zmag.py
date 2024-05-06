@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
     "--background-params",
     "background_params",
     nargs=2,
-    type=(float, float),
+    type=(int, int),
     default=(50, 3),
     show_default=True,
     help="""Background2D box_size and filter_size
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
     "-g",
     "--gaussian-params",
     nargs=2,
-    type=(float, float),
+    type=(float, int),
     default=(5, 3),
     show_default=True,
     help="Gaussian2D sigma [pixels] and size parameters.",
@@ -293,6 +293,10 @@ def calc_zmag_cli(
             hdul[0].header["ZMAGERR"] = mean_zmag_err
             hdul.writeto(im, overwrite=True)
 
+        fig = None
+        ax0 = None
+        ax1 = None
+        ax2 = None
         if plot:
             fig = plt.figure(figsize=(16, 16), dpi=400)
             ax0 = fig.add_subplot(3, 2, (1, 4), projection=w)
