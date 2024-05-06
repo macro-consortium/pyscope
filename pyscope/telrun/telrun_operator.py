@@ -141,6 +141,7 @@ class TelrunOperator:
         self._schedules_path = self._telhome / "schedules"
         self._images_path = self._telhome / "images"
         self._logs_path = self._telhome / "logs"
+        self._temp_path = self._telhome / "tmp"
 
         save_at_end = False
         if not self._config_path.exists():
@@ -152,7 +153,7 @@ class TelrunOperator:
         self._best_focus_result = None
         self._do_periodic_autofocus = True
         self._last_autofocus_time = astrotime.Time("2000-01-01T00:00:00", format="isot")
-        self._skipped_block_count = 0
+        self._bad_block_count = 0
         self._current_block_index = None
         self._current_block = None
         self._previous_block = None
@@ -833,25 +834,38 @@ class TelrunOperator:
                 )
                 logger.info(block)
 
-                if block_index != 0:
-                    self._previous_block_index = block_index - 1
-                    self._previous_block = self._schedule[self._previous_block_index]
-                else:
-                    self._previous_block_index = None
-                    self._previous_block = None
+                while self._previous_block["status"] != "S":
+                    if block_index != 0:
+                        self._previous_block_index = block_index - 1
+                        self._previous_block = self._schedule[
+                            self._previous_block_index
+                        ]
+                    else:
+                        self._previous_block_index = None
+                        self._previous_block = None
+                        break
 
-                if block_index != len(self._schedule) - 1:
-                    self._next_block_index = block_index + 1
-                    self._next_block = self._schedule[self._next_block_index]
-                else:
-                    self._next_block_index = None
-                    self._next_block = None
+                while self._next_block["status"] != "S":
+                    if block_index != len(self._schedule) - 1:
+                        self._next_block_index = block_index + 1
+                        self._next_block = self._schedule[self._next_block_index]
+                    else:
+                        self._next_block_index = None
+                        self._next_block = None
+                        break
 
                 self._current_block_index = block_index
-                status, message, block = self.execute_block(block)
+                try:
+                    status, message, block = self.execute_block(block)
+                except Exception as e:
+                    logger.exception(e)
+                    status = "F"
+                    message = str(e)
+                    block["status"] = status
+                    block["message"] = message
 
                 if status != "C":
-                    self._skipped_block_count += 1
+                    self._bad_block_count += 1
 
                 # Update block status
                 if self.update_block_status:
@@ -892,7 +906,7 @@ class TelrunOperator:
             self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')"""
 
         logger.info("Resetting status variables...")
-        self._skipped_block_count = 0
+        self._bad_block_count = 0
         self._previous_block = None
         self._next_block = None
         self._schedule_fname = None
@@ -1888,21 +1902,28 @@ class TelrunOperator:
 
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
-                if self.observatory.filter_wheel.Position in self.wcs_filters:
+                if (
+                    self.observatory.filters[self.observatory.filter_wheel.Position]
+                    in self.wcs_filters
+                ):
                     logger.info(
                         "Current filter in wcs filters, attempting WCS solve..."
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        str(self._images_path / fname) + ".fts.tmp",
+                        str(self._temp_path / fname) + ".fts.tmp",
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
+                        overwrite=True,
                     )
                     self._wcs_threads.append(
                         threading.Thread(
                             target=self._async_wcs_solver,
-                            args=(str(self._images_path / fname) + ".fts.tmp",),
+                            args=(
+                                str(self._temp_path / fname) + ".fts.tmp",
+                                str(self._images_path / fname) + ".fts",
+                            ),
                             daemon=True,
                             name="wcs_threads",
                         )
@@ -1924,15 +1945,19 @@ class TelrunOperator:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    str(self._images_path / fname) + ".fts.tmp",
+                    str(self._temp_path / fname) + ".fts.tmp",
                     frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
+                    overwrite=True,
                 )
                 self._wcs_threads.append(
                     threading.Thread(
                         target=self._async_wcs_solver,
-                        args=(str(self._images_path / fname) + ".fts.tmp",),
+                        args=(
+                            str(self._temp_path / fname) + ".fts.tmp",
+                            str(self._images_path / fname) + ".fts",
+                        ),
                         daemon=True,
                         name="wcs_threads",
                     )
@@ -1962,16 +1987,18 @@ class TelrunOperator:
         current_block_info = {}
         if self.current_block is not None:
             current_block_info = self.block_info(self.current_block)
+
         previous_block_info = {}
         if self.previous_block is not None:
-            previous_block_info = self.block_info(self.previous_block)
-            for key in previous_block_info:
-                previous_block_info["P" + key] = previous_block_info.pop(key)
+            previous_block_info_tmp = self.block_info(self.previous_block)
+            for key in previous_block_info_tmp:
+                previous_block_info["P" + key] = previous_block_info_tmp[key]
+
         next_block_info = {}
         if self._next_block is not None:
-            next_block_info = self.block_info(self.next_block)
-            for key in next_block_info:
-                next_block_info["N" + key] = next_block_info.pop(key)
+            next_block_info_tmp = self.block_info(self._next_block)
+            for key in next_block_info_tmp:
+                next_block_info["N" + key] = next_block_info_tmp[key]
 
         status_log = self.telrun_info
         status_log.update(previous_block_info)
@@ -2127,7 +2154,7 @@ class TelrunOperator:
                 if self.current_block_index is not None
                 else (0, "Current block index")
             ),
-            "SKIPPED": (self.skipped_block_count, "Number of skipped blocks"),
+            "SKIPPED": (self.bad_block_count, "Number of skipped blocks"),
             "TOTALBLK": (
                 len(self._schedule) if self._schedule is not None else 1,
                 "Total number of blocks",
@@ -2186,7 +2213,7 @@ class TelrunOperator:
 
         return info
 
-    def _async_wcs_solver(self, image_path):
+    def _async_wcs_solver(self, image_path, target_path=None):
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
@@ -2194,8 +2221,8 @@ class TelrunOperator:
             logger.info("Using solver %s" % self.wcs_driver)
             solution = self.wcs.Solve(
                 filename,
-                ra_key="TELRAIC",
-                dec_key="TELDECIC",
+                ra_key="TARGRA",
+                dec_key="TARGDEC",
                 ra_dec_units=("hour", "deg"),
                 solve_timeout=self.wcs_timeout,
                 scale_units="arcsecperpix",
@@ -2210,8 +2237,8 @@ class TelrunOperator:
                 logger.info("Using solver %s" % self.wcs_driver[i])
                 solution = wcs.Solve(
                     filename,
-                    ra_key="TELRAIC",
-                    dec_key="TELDECIC",
+                    ra_key="TARGRA",
+                    dec_key="TARGDEC",
                     ra_dec_units=("hour", "deg"),
                     solve_timeout=self.wcs_timeout,
                     scale_units="arcsecperpix",
@@ -2229,9 +2256,12 @@ class TelrunOperator:
         else:
             logger.info("WCS solution found.")
 
-        logger.info("Removing tmp extension...")
-        shutil.move(image_path, image_path.replace(".tmp", ""))
-        logger.info("File %s complete" % image_path.replace(".tmp", ""))
+        logger.info("Removing tmp extension and moving file to images directory...")
+        if target_path is None:
+            target_path = image_path.replace(".tmp", "")
+        shutil.move(image_path, target_path)
+        logger.info("File %s to %s" % (image_path, target_path))
+        logger.info("WCS solve complete.")
         self._wcs_status = "Idle"
 
     def _is_process_complete(self, timeout, event):
@@ -2296,8 +2326,8 @@ class TelrunOperator:
         return self._last_autofocus_time
 
     @property
-    def skipped_block_count(self):
-        return self._skipped_block_count
+    def bad_block_count(self):
+        return self._bad_block_count
 
     @property
     def current_block_index(self):
@@ -2935,7 +2965,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.last_autofocus_time = rows0.add_row("Last AF:")
         self.time_until_next_autofocus = rows0.add_row("Next AF:")
         self.current_block_index = rows0.add_row("Block Idx:")
-        self.skipped_block_count = rows0.add_row("Skipped:")
+        self.bad_block_count = rows0.add_row("Skipped:")
         self.total_block_count = rows0.add_row("Total:")
         self.sched_fname = rows0.add_row("Sched File:")
 
@@ -2966,7 +2996,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.last_autofocus_time.set(info_dict["LASTAUTO"][0])
         self.time_until_next_autofocus.set(info_dict["NEXTAUTO"][0])
         self.current_block_index.set(info_dict["CURRIDX"][0])
-        self.skipped_block_count.set(info_dict["SKIPPED"][0])
+        self.bad_block_count.set(info_dict["SKIPPED"][0])
         self.total_block_count.set(info_dict["TOTALBLK"][0])
         self.sched_fname.set(info_dict["SCHEDFN"][0])
 
