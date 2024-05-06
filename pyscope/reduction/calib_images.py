@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
     "-i",
     "--image-dir",
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    default="./images/",
+    default=None,
     show_default=True,
     help="""Directory containing images to be calibrated. If passed, then
                     the fnames argument is ignored.""",
@@ -43,9 +43,8 @@ logger = logging.getLogger(__name__)
     "-c",
     "--calib-dir",
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    default="./images/",
+    default=None,
     show_default=True,
-    required=True,
     help="Location of all calibration files.",
 )
 @click.option(
@@ -111,16 +110,16 @@ logger = logging.getLogger(__name__)
 @click.version_option()
 def calib_images_cli(
     camera_type="ccd",
-    image_dir="./images/",
+    image_dir=None,
     calib_dir=None,
-    raw_archive_dir="./images/raw_archive/",
+    raw_archive_dir="./raw_archive/",
     in_place=False,
     astro_scrappy=(1, 3),
     bad_columns="",
     wcs=False,
     zmag=False,
     verbose=False,
-    fnames=[],
+    fnames=(),
 ):
     """Calibrate a set of images by recursively selecting the
     appropriate flat, dark, and bias frame and then calling
@@ -213,8 +212,7 @@ def calib_images_cli(
         except KeyError:
             ybin = hdr["YBIN"]
 
-        observatory_home = os.getenv("observatory_home")
-        masters_dir = Path(observatory_home + "/images/masters")
+        masters_dir = Path("./calibrations/masters")
         flat_frame = None
         dark_frame = None
         bias_frame = None
@@ -230,7 +228,7 @@ def calib_images_cli(
                     and "master_flat_dark" not in filename
                     and hdrf["FILTER"] == filt
                     and hdrf["READOUTM"] == readout
-                    and hdrf["GAIN"] == gain or gain == ""
+                    and (gain == "" or hdrf["GAIN"] == gain)
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -238,16 +236,16 @@ def calib_images_cli(
                 elif (
                     "master_dark" in filename
                     and hdrf["READOUTM"] == readout
-                    and hdrf["GAIN"] == gain or gain == ""
+                    and (gain == "" or hdrf["GAIN"] == gain)
+                    and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
-                    and hdrf["EXPTIME"] == exptime or camera_type == "ccd"
                 ):
                     dark_frame = Path(filename)
                 elif (
                     "master_bias" in filename
                     and hdrf["READOUTM"] == readout
-                    and hdrf["GAIN"] == gain or gain == ""
+                    and (gain == "" or hdrf["GAIN"] == gain)
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
                 ):
@@ -255,7 +253,7 @@ def calib_images_cli(
                 elif (
                     "master_flat_dark" in filename
                     and hdrf["READOUTM"] == readout
-                    and hdrf["GAIN"] == gain or gain == ""
+                    and (gain == "" or hdrf["GAIN"] == gain)
                     and hdrf["EXPTIME"] == exptime
                     and hdrf["XBINNING"] == xbin
                     and hdrf["YBINNING"] == ybin
@@ -296,16 +294,15 @@ def calib_images_cli(
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
         ccd_calib(
-            camera_type=camera_type,
-            flat_frame=flat_frame,
+            (fname,),
             dark_frame=dark_frame,
             bias_frame=bias_frame,
-            flat_dark_frame=flat_dark_frame,
+            flat_frame=flat_frame,
+            camera_type=camera_type,
             astro_scrappy=astro_scrappy,
             bad_columns=bad_columns,
             in_place=in_place,
             verbose=verbose,
-            fnames=[fname],
         )
 
         # world coordinate system
