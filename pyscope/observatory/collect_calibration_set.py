@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import click
@@ -179,8 +180,8 @@ def collect_calibration_set_cli(
 
     if new_dir:
         save_path = Path(save_path) / obs.observatory_time.strftime("%Y-%m-%d_%H-%M-%S")
-    if not save_path.exists():
-        save_path.mkdir(parents=True)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
     logger.info(f"Saving calibration set to {save_path}")
 
     if len(filter_exposures) > 0:

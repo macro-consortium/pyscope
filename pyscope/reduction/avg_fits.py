@@ -1,5 +1,6 @@
 import glob
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -114,8 +115,8 @@ def avg_fits_cli(
         f"Called avg_fits_cli(fname={fnames}, mode={mode}, datatype={datatype}, outfile={outfile}, verbose={verbose})"
     )
 
-    if fnames.is_dir():
-        fnames = fnames / "*.fts"
+    if os.path.isdir(fnames):
+        fnames = Path(str(fnames) + "/*.fts")
     fnames = glob.glob(str(fnames))
     logger.debug(f"Found {len(fnames)} images")
     logger.debug(f"images: {fnames}")

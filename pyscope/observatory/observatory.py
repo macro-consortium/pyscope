@@ -1277,6 +1277,9 @@ class Observatory:
             if type(value[0]) == list:
                 hdr_dict[key] = (str(value[0]), value[1])
 
+        # remove values = () from the dictionary
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != ()}
+
         hdr.update(hdr_dict)
 
     def save_last_image(
@@ -2705,7 +2708,9 @@ class Observatory:
             self.instrument_reconfig_times,
         )
         self.instrument_reconfig_times = (
-            json.loads(t) if t is not None and t != "" and t != {} else "{}"
+            json.loads(t)
+            if t is not None and t != "" and t != '"{}"' and t != "{}"
+            else None
         )
 
     @property
@@ -4232,9 +4237,7 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = (
-                max(float(value), -273.15) if value is not None or value != "" else None
-            )
+            self._cooler_setpoint = value if value is not None or value != "" else None
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )
@@ -4686,7 +4689,7 @@ class Observatory:
         self._config["scheduling"]["instrument_reconfig_times"] = (
             json.dumps(self._instrument_reconfig_times)
             if self._instrument_reconfig_times is not None
-            else ""
+            else "{}"
         )
 
     @property

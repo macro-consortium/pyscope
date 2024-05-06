@@ -11,9 +11,10 @@ def test_observatory(tmp_path):
     logger.setLevel("INFO")
     logger.addHandler(logging.StreamHandler())
 
-    obs = Observatory(config_path="tests/reference/simulator_observatory.cfg")
-    obs.save_config("tests/reference/saved_observatory.cfg")
-    new_obs = Observatory(config_path="tests/reference/saved_observatory.cfg")
+    obs = Observatory(config_path="tests/bin/simulator_observatory.cfg")
+    obs.save_config("tests/bin/saved_observatory.cfg")
+    new_obs = Observatory(config_path="tests/bin/saved_observatory.cfg")
+
     obs.connect_all()
     obs.dome.CloseShutter()
     obs.dome.OpenShutter()
@@ -76,4 +77,4 @@ def test_observatory(tmp_path):
 
 
 """if __name__ == "__main__":
-    test_observatory(tmp_path='tests/reference/')"""
+    test_observatory(tmp_path='tests/bin/')"""
