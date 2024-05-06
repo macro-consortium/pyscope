@@ -85,7 +85,7 @@ logger = logging.getLogger(__name__)
 @click.version_option()
 def ccd_calib_cli(
     fnames,
-    dark_frame,
+    dark_frame=None,
     bias_frame=None,
     flat_frame=None,
     camera_type="ccd",
@@ -218,12 +218,6 @@ def ccd_calib_cli(
         logger.debug(f"Flat frame exposure time: {flat_exptime}")
         logger.debug(f"Flat frame X binning: {flat_xbin}")
         logger.debug(f"Flat frame Y binning: {flat_ybin}")
-
-    logger.info("Looping through images...")
-
-    fnames = Path(fnames).resolve()
-    fnames = glob.glob(str(fnames), recursive=True)
-    logger.info(f"Found {len(fnames)} images")
 
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
