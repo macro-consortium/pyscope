@@ -1277,6 +1277,9 @@ class Observatory:
             if type(value[0]) == list:
                 hdr_dict[key] = (str(value[0]), value[1])
 
+        # remove values = () from the dictionary
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != ()}
+
         hdr.update(hdr_dict)
 
     def save_last_image(
