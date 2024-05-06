@@ -355,7 +355,7 @@ class _MaximCamera(Camera):
     @property
     def Gains(self):
         logger.debug("_MaximCameraGains called")
-        return self._com_object.Speeds.replace("(", "").replace(")", "")
+        return self._com_object.Speeds
 
     @property
     def HasFilterWheel(self):

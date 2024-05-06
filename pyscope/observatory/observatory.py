@@ -1957,6 +1957,42 @@ class Observatory:
                 "There is no focuser or autofocus driver present."
             )
 
+    def dither_mount(
+        self,
+        radius=1,
+        center_pos=None,
+        seed=None,
+    ):
+        """Dithers the telescope randomly within a region of a given radius around a center position.
+
+        Parameters
+        ----------
+        radius : float, optional (default = 1)
+            The radius in arcseconds to dither the telescope.
+
+        center_pos : `~astropy.coordinates.SkyCoord`, optional
+            The center position to dither around. If None, the current pointing of the mount will be used.
+
+        seed : int, optional
+            The seed to use for the random number generator. If None, the seed will be randomly generated.
+
+        Returns
+        -------
+        None
+        """
+
+        if center_pos is None:
+            center_pos = self.get_current_object()
+
+        random_state = np.random.RandomState(seed)
+        random_angle = random_state.uniform(0, 2 * np.pi)
+        random_radius = random_state.uniform(0, radius)
+
+        new_ra = center_pos.ra + random_radius * np.cos(random_angle)
+        new_dec = center_pos.dec + random_radius * np.sin(random_angle)
+
+        self.slew_to_coordinates(ra=new_ra, dec=new_dec)
+
     def recenter(
         self,
         obj=None,
@@ -2179,7 +2215,7 @@ class Observatory:
                 target_pixel_dec = target_coord.dec.deg
                 logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
-                pixels = w.world_to_pixel(obj)
+                pixels = w.world_to_pixel(slew_obj)
                 obj_x_pixel = pixels[0]
                 obj_y_pixel = pixels[1]
                 logger.debug(
@@ -2237,58 +2273,59 @@ class Observatory:
 
     def take_flats(
         self,
-        filter_exposure,
+        filters,
+        filter_exposures,
         filter_brightness=None,
-        readouts=None,
-        binnings=["1x1"],
-        repeat=10,
-        save_path=None,
-        new_folder=None,
+        target_counts=None,
+        gain=None,
+        readouts=[None],
+        binnings=[None],
+        repeat=1,
+        save_path="./",
         home_telescope=False,
+        check_cooler=True,
+        tracking=True,
+        dither_radius=0,  # arcseconds
         final_telescope_position="no change",
     ):
         """Takes a sequence of flat frames"""
 
         logger.info("Taking flat frames")
 
-        if self.filter_wheel is None or self.cover_calibrator is None:
-            logger.warning("Filter wheel or cover calibrator is not available, exiting")
+        if self.filter_wheel is None:
+            logger.warning("Filter wheel is not available, exiting")
             return False
 
-        if len(filter_exposure) != len(self.filters):
+        if len(filter_exposures) != len(filters):
             logger.warn(
                 "Number of filter exposures does not match the number of filters, exiting"
             )
+            logger.warning(
+                "Expected %i, got %i" % (len(filters), len(filter_exposures))
+            )
+            logger.warning("Filters: %s" % filters)
+            logger.warning("Exposures: %s" % filter_exposures)
+            logger.warning("Exiting")
+            logger.warning(
+                "Note: filters that should be skipped should have an exposure time of 0"
+            )
             return False
 
-        if save_path is None:
-            save_path = os.getcwd()
-            logger.debug(
-                "Setting save path to current working directory: %s" % save_path
-            )
-
-        if type(new_folder) is bool:
-            if new_folder:
-                save_path = os.path.join(
-                    save_path,
-                    datetime.datetime.now().strftime("Flats_%Y-%m-%d_%H-%M-%S"),
-                )
-                os.makedirs(save_path)
-                logger.info("Created new directory: %s" % save_path)
-        elif type(new_folder) is str:
-            save_path = os.path.join(save_path, new_folder)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
+        save_path = Path(save_path)
 
         if home_telescope and self.telescope.CanFindHome:
             logger.info("Homing the telescope")
             self.telescope.FindHome()
             logger.info("Homing complete")
 
-        logger.info("Slewing to point at cover calibrator")
-        if self.telescope.CanSetTracking:
-            self.telescope.Tracking = False
+        logger.info("Slewing to point at cover calibrator or specified sky location")
+
+        if tracking:
+            logger.info("Turning on tracking")
+            if self.telescope.CanSetTracking:
+                self.telescope.Tracking = True
+            logger.info("Tracking on")
+
         if self.telescope.CanSlewAltAzAsync:
             self.telescope.SlewToAltAzAsync(
                 self.cover_calibrator_az, self.cover_calibrator_alt
@@ -2311,23 +2348,70 @@ class Observatory:
             time.sleep(0.1)
         logger.info("Slew complete")
 
-        if self.cover_calibrator.CoverState != "NotPresent":
-            logger.info("Opening the cover calibrator")
-            self.cover_calibrator.OpenCover()
-            logger.info("Cover open")
+        if not tracking:
+            logger.info("Turning off tracking")
+            if self.telescope.CanSetTracking:
+                self.telescope.Tracking = False
+            logger.info("Tracking off")
 
-        for i in range(len(self.filters)):
-            if filter_exposure[i] == 0:
+        if self.cover_calibrator is not None:
+            if self.cover_calibrator.CoverState != "NotPresent":
+                logger.info("Opening the cover calibrator")
+                self.cover_calibrator.OpenCover()
+                logger.info("Cover open")
+
+        if gain is not None:
+            logger.info("Setting the camera gain to %i" % gain)
+            self.camera.Gain = gain
+            logger.info("Camera gain set")
+
+        for filt, filt_exp in zip(filters, filter_exposures):
+
+            # skip filters with 0 exposure time
+            if filt_exp == 0:
                 continue
+
+            # set filter wheel position
+            logger.info("Setting the filter wheel to %s" % filt)
+            self.filter_wheel.Position = self.filters.index(filt)
+            while self.filter_wheel.Position != self.filters.index(filt):
+                time.sleep(0.1)
+            logger.info("Filter wheel in position")
+
+            # set cover calibrator brightness
+            if self.cover_calibrator is not None:
+                if type(filter_brightness) is list:
+                    logger.info(
+                        "Setting the cover calibrator brightness to %i"
+                        % filter_brightness[i]
+                    )
+                    self.cover_calibrator.CalibratorOn(filter_brightness[i])
+                    logger.info("Cover calibrator on")
+            else:
+                logger.warning("Cover calibrator not available, assuming sky flats")
+
+            # loop through options
             for readout in readouts:
-                self.camera.ReadoutMode = readout
+                if readout is not None:
+                    self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    self.camera.BinX = binning.split("x")[0]
-                    self.camera.BinY = binning.split("x")[1]
-                    for j in range(repeat):
+                    if binning is not None:
+                        self.camera.BinX = binning.split("x")[0]
+                        self.camera.BinY = binning.split("x")[1]
+
+                    iter_save_path = save_path / (
+                        f"flats_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{filt_exp}s"
+                    ).replace(".", "p").replace(" ", "")
+                    if not iter_save_path.exists():
+                        iter_save_path.mkdir()
+
+                    real_exp = filt_exp
+                    for j in tqdm.tqdm(range(repeat)):
                         if (
                             self.camera.CanSetCCDTemperature
                             and self.cooler_setpoint is not None
+                            and check_cooler
                         ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
@@ -2336,51 +2420,67 @@ class Observatory:
                                     "Cooler is not at setpoint, waiting 10 seconds..."
                                 )
                                 time.sleep(10)
-                        self.filter_wheel.Position = i
-                        if (
-                            self.cover_calibrator.CalibratorState != "NotPresent"
-                            or filter_brightness is not None
-                        ):
-                            logger.info(
-                                "Setting the cover calibrator brightness to %i"
-                                % filter_brightness[i]
-                            )
-                            self.cover_calibrator.CalibratorOn(filter_brightness[i])
-                            logger.info("Cover calibrator on")
-                        while self.filter_wheel.Position != i:
-                            time.sleep(0.1)
-                        logger.info("Starting %s exposure" % self.filters[i])
-                        self.camera.StartExposure(filter_exposure[i], False)
-                        save_string = save_path + (
-                            "/flat_%s_%ix%i_%ss_%s__%i.fts"
-                            % (
-                                self.filters[i],
-                                self.camera.BinX,
-                                self.camera.BinY,
-                                ("%4.4g" % filter_exposure[i])
-                                .replace(".", "-")
-                                .replace(" ", ""),
-                                # self.camera.ReadoutModes[
-                                #     self.camera.ReadoutMode
-                                # ].replace(" ", ""),
-                                self.camera.ReadoutMode,
-                                j,
-                            )
-                        )
+                        if self.filter_wheel.Position != self.filters.index(filt):
+                            logger.info("Setting the filter wheel to %s" % filt)
+                            self.filter_wheel.Position = self.filters.index(filt)
+                            while self.filter_wheel.Position != self.filters.index(
+                                filt
+                            ):
+                                time.sleep(0.1)
+                            logger.info("Filter wheel in position")
 
-                        print("-------------------")
-                        print()
-                        print(save_string)
-                        print(self.camera.ReadoutModes)
-                        print(type(self.camera.ReadoutMode))
-                        print(self.camera.ReadoutModes[self.camera.ReadoutMode])
-                        print()
-                        print("-------------------")
+                        if dither_radius > 0:
+                            logger.info("Dithering by %i arcseconds" % dither_radius)
+                            self.dither_mount(dither_radius, center_pos=obj)
+
+                        logger.info("Starting %s exposure" % real_exp)
+                        self.camera.StartExposure(real_exp, False)
+
+                        iter_save_name = iter_save_path / (
+                            f"flat_{filters[i]}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{real_exp}s"
+                        ).replace(".", "p").replace(" ", "")
+                        if type(filter_brightness) is list:
+                            iter_save_name = Path(
+                                (
+                                    str(iter_save_name)
+                                    + (f"_Bright{filter_brightness[i]}" + "_{j}.fts")
+                                )
+                                .replace(".", "p")
+                                .replace(" ", "")
+                            )
+                        else:
+                            iter_save_name = (
+                                Path((str(iter_save_name) + f"_{j}.fts"))
+                                .replace(".", "p")
+                                .replace(" ", "")
+                            )
                         while not self.camera.ImageReady:
-                            time.sleep(0.1)
-                        self.save_last_image(save_string, frametyp="Flat")
+                            time.sleep(1)
+
+                        self.save_last_image(iter_save_name, frametyp="Flat")
                         logger.info("Flat %i of %i complete" % (j + 1, repeat))
-                        logger.info("Saved flat frame to %s" % save_string)
+                        logger.info("Saved flat frame to %s" % iter_save_name)
+
+                        if target_counts is not None:
+                            logger.info(
+                                "Adjusting exposure time to match mean counts to target"
+                            )
+
+                            # get the mean counts
+                            mean_counts = np.mean(self.camera.ImageArray)
+                            logger.info("Mean counts: %i" % mean_counts)
+
+                            # calculate the new exposure time
+                            m_ratio = target_counts / mean_counts
+                            logger.info(
+                                "Ratio of desired brightness to mean counts: %.2f"
+                                % m_ratio
+                            )
+                            real_exp = real_exp * m_ratio
+                            logger.info("New exposure time: %.2f" % real_exp)
+                        else:
+                            real_exp = filt_exp
 
         if self.cover_calibrator.CalibratorState != "NotPresent":
             logger.info("Turning off the cover calibrator")
@@ -2409,40 +2509,40 @@ class Observatory:
 
     def take_darks(
         self,
-        exposures,
-        readouts=[0],
-        binnings=["1x1"],
-        repeat=10,
-        save_path=None,
+        exposures=[1],
+        gain=None,
+        readouts=[None],
+        binnings=[None],
+        repeat=1,
+        save_path="./",
+        frametyp="Dark",
     ):
         """Takes a sequence of dark frames"""
 
+        save_path = Path(save_path)
+
         logger.info("Taking dark frames")
 
-        if save_path is None:
-            save_path = os.getcwd()
-            logger.info(
-                "Setting save path to current working directory: %s" % save_path
-            )
-
-        if type(new_folder) is bool:
-            save_path = os.path.join(
-                save_path, datetime.datetime.now().strftime("Flats_%Y-%m-%d_%H-%M-%S")
-            )
-            os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
-        elif type(new_folder) is str:
-            save_path = os.path.join(save_path, new_folder)
-            os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
+        if gain is not None:
+            logger.info("Setting the camera gain to %i" % gain)
+            self.camera.Gain = gain
+            logger.info("Camera gain set")
 
         for exposure in exposures:
             for readout in readouts:
-                self.camera.ReadoutMode = readout
+                if readout is not None:
+                    self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    self.camera.BinX = binning.split("x")[0]
-                    self.camera.BinY = binning.split("x")[1]
-                    for j in range(repeat):
+                    if binning is not None:
+                        self.camera.BinX = binning.split("x")[0]
+                        self.camera.BinY = binning.split("x")[1]
+                    iter_save_path = save_path / (
+                        f"darks_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{exposure}s"
+                    ).replace(".", "p").replace(" ", "")
+                    if not iter_save_path.exists():
+                        iter_save_path.mkdir()
+                    for j in tqdm.tqdm(range(repeat)):
                         if self.camera.CanSetCCDTemperature:
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
@@ -2453,24 +2553,15 @@ class Observatory:
                                 time.sleep(10)
                         logger.info("Starting %4.4gs dark exposure" % exposure)
                         self.camera.StartExposure(exposure, False)
-                        save_string = save_path + (
-                            "/dark_%ix%i_%ss_%s__%i.fts"
-                            % (
-                                self.camera.BinX,
-                                self.camera.BinY,
-                                ("%4.4g" % exposure).replace(".", "-").replace(" ", ""),
-                                # self.camera.ReadoutModes[
-                                #     self.camera.ReadoutMode
-                                # ].replace(" ", ""),
-                                self.camera.ReadoutMode,
-                                j,
-                            )
-                        )
+                        iter_save_name = iter_save_path / (
+                            f"dark_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{exposure}s_{j}.fts"
+                        ).replace(".", "p").replace(" ", "")
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
-                        self.save_last_image(save_string, frametyp="Dark")
+                        self.save_last_image(iter_save_name, frametyp=frametyp)
                         logger.info("Dark %i of %i complete" % (j, repeat))
-                        logger.info("Saved dark frame to %s" % save_string)
+                        logger.info("Saved dark frame to %s" % iter_save_name)
 
         logger.info("Darks complete")
 
