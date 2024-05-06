@@ -2,7 +2,7 @@ alpyca == 2.0.4
 astroplan == 0.10
 astropy == 6.1.0
 astroquery == 0.4.7
-astroscrappy == 1.1.0
+astroscrappy == 1.2.0
 ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
