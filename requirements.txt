@@ -19,4 +19,4 @@ scipy == 1.13.0
 smplotlib == 0.0.9
 timezonefinder == 6.5.0
 tksheet == 7.1.9
-tqdm == 4.66.3
+tqdm == 4.66.4
