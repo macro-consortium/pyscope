@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
             "float64",
         ]
     ),
-    default="uint16",
+    default="float32",
     show_choices=True,
     show_default=True,
     help="Data type to use for averaged image.",
@@ -73,7 +73,7 @@ def avg_fits_cli(
     fnames,
     pre_normalize=False,
     mode="0",
-    datatype=np.uint16,
+    datatype=np.float32,
     outfile=None,
     verbose=0,
 ):
@@ -90,7 +90,7 @@ def avg_fits_cli(
     mode : str, default="0"
         Mode to use for averaging images (0 = median, 1 = mean).
 
-    datatype : str, default="uint16"
+    datatype : str, default="float32"
         Data type to save out the averaged image. If pre_normalize is True, the data type will be float64.
 
     outfile : path
