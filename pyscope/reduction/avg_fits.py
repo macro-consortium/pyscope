@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
             "float64",
         ]
     ),
-    default="uint16",
+    default="float32",
     show_choices=True,
     show_default=True,
     help="Data type to use for averaged image.",
@@ -73,7 +73,7 @@ def avg_fits_cli(
     fnames,
     pre_normalize=False,
     mode="0",
-    datatype=np.uint16,
+    datatype=np.float32,
     outfile=None,
     verbose=0,
 ):
@@ -90,7 +90,7 @@ def avg_fits_cli(
     mode : str, default="0"
         Mode to use for averaging images (0 = median, 1 = mean).
 
-    datatype : str, default="uint16"
+    datatype : str, default="float32"
         Data type to save out the averaged image. If pre_normalize is True, the data type will be float64.
 
     outfile : path
@@ -122,8 +122,13 @@ def avg_fits_cli(
     logger.debug(f"images: {fnames}")
 
     first_hdr = fits.getheader(fnames[0])
-    frametyp = first_hdr["FRAMETYP"]
-    logger.debug(f"FRAMETYP: {frametyp}")
+    try:
+        frametyp = first_hdr["FRAMETYP"]
+        logger.debug(f"FRAMETYP: {frametyp}")
+    except KeyError:
+        logger.error("FRAMETYP keyword not found in header. Trying image type.")
+        frametyp = first_hdr["IMAGETYP"]
+        logger.debug(f"IMAGETYP: {frametyp}")
     binx = first_hdr["XBINNING"]
     biny = first_hdr["YBINNING"]
     logger.debug(f"XBINNING: {binx}, YBINNING: {biny}")
@@ -142,8 +147,13 @@ def avg_fits_cli(
         hdr = fits.getheader(fname)
 
         # check for matches in header
-        if hdr["FRAMETYP"] != frametyp:
-            logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
+        try:
+            if hdr["FRAMETYP"] != frametyp:
+                logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
+        except KeyError:
+            logger.error("FRAMETYP keyword not found in header. Trying image type.")
+            if hdr["IMAGETYP"] != frametyp:
+                logger.warning(f"IMAGETYP mismatch: {hdr['IMAGETYP']} != {frametyp}")
         if hdr["XBINNING"] != binx:
             logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
         if hdr["YBINNING"] != biny:
@@ -151,9 +161,13 @@ def avg_fits_cli(
         if hdr["READOUTM"] != readout:
             logger.warning(f"READOUTM mismatch: {hdr['READOUTM']} != {readout}")
         if hdr["EXPTIME"] != exptime and not pre_normalize:
-            logger.warning(f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime}")
+            logger.warning(
+                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
         elif hdr["EXPTIME"] != exptime and pre_normalize:
-            logger.info(f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime}")
+            logger.info(
+                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
             logger.info("pre_normalize is True so ignoring EXPTIME mismatch.")
         if hdr["GAIN"] != gain:
             logger.warning(f"GAIN mismatch: {hdr['GAIN']} != {gain}")
