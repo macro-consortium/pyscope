@@ -33,23 +33,20 @@ from astropy.io import fits
 
 from pyscope.reduction.calib_images import calib_images
 
-# observatory home - get this from the environment instead?
+# observatory home - TODO get from environment?
 OBSERVATORY_HOME = Path("/usr/local/telescope/rlmt")
 
 # directory where raw images arrive
 LANDING_DIR = Path(OBSERVATORY_HOME, "images")
+
+# calibration images
+CALIB_DIR = Path(LANDING_DIR, "calibrations", "masters")
 
 # long term storage
 STORAGE_ROOT = Path("/mnt/imagesbucket")
 
 # maximum age in seconds
 MAXAGE = 7 * 3600 * 24
-
-# image prefixes and group names
-groups = dict(m="macalester", a="augustana", c="coe", k="knox", i="iowa", x="external")
-
-# RA's in Sloan catalog at 30 deg Dec
-sloan_ra = [22, 23, 0, 1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
 # configure the logger - >INFO to log, >DEBUG to console
 logger = logging.getLogger(__name__)
@@ -141,8 +138,8 @@ def process_image(img):
         calib_images(
             camera_type="ccd",
             image_dir=None,
-            calib_dir=None,
-            raw_archive_dir=img.parent / "raw_archive",
+            calib_dir=CALIB_DIR,
+            raw_archive_dir=LANDING_DIR / "raw_archive",
             in_place=True,
             wcs=False,
             zmag=True,
@@ -159,8 +156,7 @@ def process_image(img):
         if not temp.exists():
             temp.mkdir(mode=0o775)
         shutil.copy(img, temp)
-        groupdir = groups.get(img.name[0], "other")
-        store_image(img, STORAGE_ROOT / groupdir / img_isodate)
+        store_image(img, STORAGE_ROOT / "reduced" / img_isodate)
 
     elif isCalibrated(img):
         failed = img.parent / "failed"
