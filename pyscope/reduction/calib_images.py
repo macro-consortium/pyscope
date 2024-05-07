@@ -1,5 +1,3 @@
-import datetime
-import glob
 import logging
 import os
 import shutil
@@ -43,7 +41,7 @@ logger = logging.getLogger(__name__)
     "-c",
     "--calib-dir",
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    default=None,
+    default="./calibrations/masters",
     show_default=True,
     help="Location of all calibration files.",
 )
@@ -51,6 +49,8 @@ logger = logging.getLogger(__name__)
     "-r",
     "--raw-archive-dir",
     type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    default=None,
+    show_default=True,
     help="""Directory to archive raw images. If none given, no archiving is done,
                 however, the '--in-place' option is not allowed.""",
 )
@@ -111,8 +111,8 @@ logger = logging.getLogger(__name__)
 def calib_images_cli(
     camera_type="ccd",
     image_dir=None,
-    calib_dir=None,
-    raw_archive_dir="./raw_archive/",
+    calib_dir="./calibrations/masters",
+    raw_archive_dir=None,
     in_place=False,
     astro_scrappy=(1, 3),
     bad_columns="",
@@ -159,7 +159,7 @@ def calib_images_cli(
         )
         fnames = []
         for ext in (".fts", ".fits", ".fit"):
-            fnames.extend(glob.glob(f"{image_dir}/*{ext}"))
+            fnames.extend(Path(image_dir).glob(f"*{ext}")
         logger.debug(f"fnames = {fnames}")
 
     logger.info(f"Calibrating {len(fnames)} images.")
@@ -212,75 +212,54 @@ def calib_images_cli(
         except KeyError:
             ybin = hdr["YBIN"]
 
-        masters_dir = Path("./calibrations/masters")
         flat_frame = None
         dark_frame = None
         bias_frame = None
         flat_dark_frame = None
-        if calib_dir is None:
-            files = glob.glob(f"{masters_dir}/*", recursive=True)
-            for filename in files:
-                # find flat_frame, dark_frame, bias_frame, flat_dark_frame
-                hdrf = fits.getheader(filename, 0)
-                # if the corresponding header values match, then set the appropriate frame
-                if (
-                    "master_flat" in filename
-                    and "master_flat_dark" not in filename
-                    and hdrf["FILTER"] == filt
-                    and hdrf["READOUTM"] == readout
-                    and (gain == "" or hdrf["GAIN"] == gain)
-                    and hdrf["XBINNING"] == xbin
-                    and hdrf["YBINNING"] == ybin
-                ):
-                    flat_frame = Path(filename)
-                elif (
-                    "master_dark" in filename
-                    and hdrf["READOUTM"] == readout
-                    and (gain == "" or hdrf["GAIN"] == gain)
-                    and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
-                    and hdrf["XBINNING"] == xbin
-                    and hdrf["YBINNING"] == ybin
-                ):
-                    dark_frame = Path(filename)
-                elif (
-                    "master_bias" in filename
-                    and hdrf["READOUTM"] == readout
-                    and (gain == "" or hdrf["GAIN"] == gain)
-                    and hdrf["XBINNING"] == xbin
-                    and hdrf["YBINNING"] == ybin
-                ):
-                    bias_frame = Path(filename)
-                elif (
-                    "master_flat_dark" in filename
-                    and hdrf["READOUTM"] == readout
-                    and (gain == "" or hdrf["GAIN"] == gain)
-                    and hdrf["EXPTIME"] == exptime
-                    and hdrf["XBINNING"] == xbin
-                    and hdrf["YBINNING"] == ybin
-                ):
-                    flat_dark_frame = Path(filename)
+        files = []
+        for ext in (".fts", ".fits", ".fit"):
+            files.extend(Path(image_dir).rglob(f"*{ext}")
 
-        else:  # use the calib_dir passed by the user
-            # TODO parse readoutmode to a number?
-            gain = f"gain{gain.strip()}_" if gain else ""
-            readout = readout.replace(" ", "")
-            flat_frame = Path(
-                f"{calib_dir}/master_flat_{filt}_{readout}_{gain}{xbin}x{ybin}.fts"
-            )
-            if camera_type == "ccd":
-                bias_frame = Path(
-                    f"{calib_dir}/master_bias_{readout}_{gain}{xbin}x{ybin}.fts"
-                )
-                dark_frame = Path(
-                    f"{calib_dir}/master_dark_{readout}_{gain}{xbin}x{ybin}.fts"
-                )
-            elif camera_type == "cmos":
-                dark_frame = Path(
-                    f"{calib_dir}/master_dark_{readout}_{gain}{exptime}_{xbin}x{ybin}.fts"
-                )
-                flat_dark_frame = Path(
-                    f"{calib_dir}/master_flat_dark_{readout}_{gain}{exptime}_{xbin}x{ybin}.fts"
-                )
+        for filename in files:
+            # find flat_frame, dark_frame, bias_frame, flat_dark_frame
+            hdrf = fits.getheader(filename, 0)
+            # if the corresponding header values match, then set the appropriate frame
+            if (
+                "master_flat" in filename
+                and "master_flat_dark" not in filename
+                and hdrf["FILTER"] == filt
+                and hdrf["READOUTM"] == readout
+                and (gain == "" or hdrf["GAIN"] == gain)
+                and hdrf["XBINNING"] == xbin
+                and hdrf["YBINNING"] == ybin
+            ):
+                flat_frame = Path(filename)
+            elif (
+                "master_dark" in filename
+                and hdrf["READOUTM"] == readout
+                and (gain == "" or hdrf["GAIN"] == gain)
+                and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
+                and hdrf["XBINNING"] == xbin
+                and hdrf["YBINNING"] == ybin
+            ):
+                dark_frame = Path(filename)
+            elif (
+                "master_bias" in filename
+                and hdrf["READOUTM"] == readout
+                and (gain == "" or hdrf["GAIN"] == gain)
+                and hdrf["XBINNING"] == xbin
+                and hdrf["YBINNING"] == ybin
+            ):
+                bias_frame = Path(filename)
+            elif (
+                "master_flat_dark" in filename
+                and hdrf["READOUTM"] == readout
+                and (gain == "" or hdrf["GAIN"] == gain)
+                and hdrf["EXPTIME"] == exptime
+                and hdrf["XBINNING"] == xbin
+                and hdrf["YBINNING"] == ybin
+            ):
+                flat_dark_frame = Path(filename)
 
         # for each image, print out the calibration frames being used
         logger.debug("Using calibration frames:")
