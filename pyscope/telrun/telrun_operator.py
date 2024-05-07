@@ -792,14 +792,15 @@ class TelrunOperator:
         if self.wait_for_cooldown:
             while (
                 self.observatory.camera.CCDTemperature
-                > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
+                > float(self.observatory.cooler_setpoint)
+                + self.observatory.cooler_tolerance
                 and self.wait_for_cooldown
             ):
                 logger.info(
                     "CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance), waiting for 10 seconds"
                     % (
                         self.observatory.camera.CCDTemperature,
-                        self.observatory.cooler_setpoint,
+                        float(self.observatory.cooler_setpoint),
                         self.observatory.cooler_tolerance,
                     )
                 )
@@ -809,7 +810,7 @@ class TelrunOperator:
                 "CCD temperature: %.3f degs (below limit of %.3f with %.3f tolerance), continuing..."
                 % (
                     self.observatory.camera.CCDTemperature,
-                    self.observatory.cooler_setpoint,
+                    float(self.observatory.cooler_setpoint),
                     self.observatory.cooler_tolerance,
                 )
             )
@@ -833,26 +834,33 @@ class TelrunOperator:
                     "Processing block %i of %i" % (block_index + 1, len(self._schedule))
                 )
                 logger.info(block)
+                if (
+                    self._previous_block is not None
+                    and self._previous_block["status"] != "S"
+                ):
+                    while self._previous_block["status"] != "S":
+                        if block_index != 0:
+                            self._previous_block_index = block_index - 1
+                            self._previous_block = self._schedule[
+                                self._previous_block_index
+                            ]
+                        else:
+                            self._previous_block_index = None
+                            self._previous_block = None
+                            break
 
-                while self._previous_block["status"] != "S":
-                    if block_index != 0:
-                        self._previous_block_index = block_index - 1
-                        self._previous_block = self._schedule[
-                            self._previous_block_index
-                        ]
-                    else:
-                        self._previous_block_index = None
-                        self._previous_block = None
-                        break
-
-                while self._next_block["status"] != "S":
-                    if block_index != len(self._schedule) - 1:
-                        self._next_block_index = block_index + 1
-                        self._next_block = self._schedule[self._next_block_index]
-                    else:
-                        self._next_block_index = None
-                        self._next_block = None
-                        break
+                if (
+                    self._next_block is not None
+                    and self._previous_block["status"] != "S"
+                ):
+                    while self._next_block["status"] != "S":
+                        if block_index != len(self._schedule) - 1:
+                            self._next_block_index = block_index + 1
+                            self._next_block = self._schedule[self._next_block_index]
+                        else:
+                            self._next_block_index = None
+                            self._next_block = None
+                            break
 
                 self._current_block_index = block_index
                 try:
@@ -1340,13 +1348,14 @@ class TelrunOperator:
         if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
-                > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
+                > float(self.observatory.cooler_setpoint)
+                + self.observatory.cooler_tolerance
             ):
                 logger.info(
                     "CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance)"
                     % (
                         self.observatory.camera.CCDTemperature,
-                        self.observatory.cooler_setpoint,
+                        float(self.observatory.cooler_setpoint),
                         self.observatory.cooler_tolerance,
                     )
                 )
@@ -1356,7 +1365,7 @@ class TelrunOperator:
             "CCD temperature: '%s' degs (below limit of '%s' with '%s' tolerance), continuing..."
             % (
                 self.observatory.camera.CCDTemperature,
-                self.observatory.cooler_setpoint,
+                float(self.observatory.cooler_setpoint),
                 self.observatory.cooler_tolerance,
             )
         )

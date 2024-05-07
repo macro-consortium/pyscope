@@ -1091,23 +1091,59 @@ class Observatory:
         )
         return (1.0 + np.cos(phase_angle.value)) / 2.0
 
+    # def get_object_altaz(
+    #     self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
+    # ):
+    #     """Returns the altitude and azimuth of the requested object at the requested time"""
+
+    #     logger.debug(
+    #         f"Observatory.get_object_altaz({obj}, {ra}, {dec}, {unit}, {frame}, {t}) called"
+    #     )
+
+    #     obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+    #     if t is None:
+    #         t = self.observatory_time
+    #     t = astrotime.Time(t)
+
+    #     return obj.transform_to(
+    #         coord.AltAz(obstime=t, location=self.observatory_location)
+    #     )
     def get_object_altaz(
         self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
     ):
-        """Returns the altitude and azimuth of the requested object at the requested time"""
-
         logger.debug(
-            f"Observatory.get_object_altaz({obj}, {ra}, {dec}, {unit}, {frame}, {t}) called"
+            f"Called with obj={obj}, ra={ra}, dec={dec}, unit={unit}, frame={frame}, time={t}"
         )
 
-        obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+        if obj is None and (ra is None or dec is None):
+            logger.error("Either obj or both ra and dec must be provided.")
+            return None
+
+        if obj is None:
+            try:
+                ra_unit, dec_unit = (u.hourangle if unit[0] == "hr" else u.deg, u.deg)
+                obj = SkyCoord(ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame)
+            except ValueError as e:
+                logger.error(f"Invalid coordinate values or units: {e}")
+                return None
+
         if t is None:
             t = self.observatory_time
-        t = astrotime.Time(t)
+        if not isinstance(t, astrotime.Time):
+            try:
+                t = astrotime.Time(t)
+            except ValueError as e:
+                logger.error(f"Invalid time value: {e}")
+                return None
 
-        return obj.transform_to(
-            coord.AltAz(obstime=t, location=self.observatory_location)
-        )
+        altaz_frame = coord.AltAz(obstime=t, location=self.observatory_location)
+        try:
+            altaz = obj.transform_to(altaz_frame)
+        except Exception as e:
+            logger.error(f"Error transforming coordinates: {e}")
+            return None
+
+        return altaz
 
     def get_object_slew(
         self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
@@ -1294,7 +1330,11 @@ class Observatory:
         # remove any keys with a ? in them
         hdr_dict = {k: v for k, v in hdr_dict.items() if "?" not in k}
 
-        hdr.update(hdr_dict)
+        # hdr.update(hdr_dict)
+        try:
+            hdr.update(hdr_dict)
+        except Exception as e:
+            logger.error(f"Failed to update FITS header: {e}")
 
     def save_last_image(
         self,
@@ -2118,10 +2158,10 @@ class Observatory:
             if attempt == 0:
                 # JW EDIT
                 if do_initial_slew:
-                    ra_hours = Angle(slew_obj.ra.hour, unit=u.hour)
-                    dec_degrees = Angle(slew_obj.dec.deg, unit=u.deg) + Angle(
-                        initial_offset_dec, unit=u.arcsec
-                    ).to(u.deg)
+                    ra_hours = coord.Angle(slew_obj.ra.hour, unit=u.hour)
+                    dec_degrees = coord.Angle(
+                        slew_obj.dec.deg, unit=u.deg
+                    ) + coord.Angle(initial_offset_dec, unit=u.arcsec).to(u.deg)
                     self.slew_to_coordinates(
                         ra=ra_hours.hour,
                         dec=dec_degrees.deg,
@@ -2678,13 +2718,15 @@ class Observatory:
         )
         self.latitude = dictionary.get("latitude", self.latitude)
         self.longitude = dictionary.get("longitude", self.longitude)
-        self.elevation = dictionary.get("elevation", self.elevation)
-        self.diameter = dictionary.get("diameter", self.diameter)
-        self.focal_length = dictionary.get("focal_length", self.focal_length)
+        self.elevation = float(dictionary.get("elevation", self.elevation))
+        self.diameter = float(dictionary.get("diameter", self.diameter))
+        self.focal_length = float(dictionary.get("focal_length", self.focal_length))
 
-        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
-        self.cooler_tolerance = dictionary.get(
-            "cooler_tolerance", self.cooler_tolerance
+        self.cooler_setpoint = float(
+            dictionary.get("cooler_setpoint", self.cooler_setpoint)
+        )
+        self.cooler_tolerance = float(
+            dictionary.get("cooler_tolerance", self.cooler_tolerance)
         )
         self.max_dimension = dictionary.get("max_dimension", self.max_dimension)
 
