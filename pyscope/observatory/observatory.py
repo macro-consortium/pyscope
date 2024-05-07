@@ -2274,7 +2274,7 @@ class Observatory:
                 target_pixel_dec = target_coord.dec.deg
                 logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
-                pixels = w.world_to_pixel(slew_obj)
+                pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
                 obj_y_pixel = pixels[1]
                 logger.debug(
@@ -2287,8 +2287,8 @@ class Observatory:
                 )
                 continue
 
-            error_ra = slew_obj.ra.hour - target_pixel_ra
-            error_dec = slew_obj.dec.deg - target_pixel_dec
+            error_ra = obj.ra.hour - target_pixel_ra
+            error_dec = obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel
             error_y_pixels = obj_y_pixel - target_y_pixel
             logger.info("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))
