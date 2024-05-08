@@ -1665,7 +1665,7 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterStatus != "Open" and self.dome.CanSetShutter:
+            if self.dome.ShutterStatus == "Closed" and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
@@ -1861,7 +1861,7 @@ class Observatory:
 
         return True
 
-    def _update_rotator(self, obj, wait_time=0.1):
+    def _update_rotator(self, obj, wait_time=1):
         """Updates the rotator"""
         # mean sidereal rate (at J2000) in radians per second
         SR = 7.292115855306589e-5
@@ -2048,7 +2048,7 @@ class Observatory:
 
         new_ra = center_pos.ra + random_radius * np.cos(random_angle)
         new_dec = center_pos.dec + random_radius * np.sin(random_angle)
-        obj = coord.SkyCoord(ra=new_ra, dec=new_dec)
+        obj = coord.SkyCoord(ra=new_ra, dec=new_dec, frame=center_pos.frame)
         self.slew_to_coordinates(obj=obj)
 
     def recenter(
@@ -2405,6 +2405,8 @@ class Observatory:
             time.sleep(0.1)
         logger.info("Slew complete")
 
+        dither_center = self.get_current_object()
+
         if tracking:
             logger.info("Turning on tracking")
             if self.telescope.CanSetTracking:
@@ -2495,12 +2497,7 @@ class Observatory:
                             logger.info("Dithering by %i arcseconds" % dither_radius)
                             self.dither_mount(
                                 dither_radius,
-                                center_pos=coord.AltAz(
-                                    alt=self.cover_calibrator_alt * u.deg,
-                                    az=self.cover_calibrator_az * u.deg,
-                                    obstime=self.observatory_time,
-                                    location=self.observatory_location,
-                                ).transform_to(coord.ICRS()),
+                                center_pos=dither_center,
                             )
 
                         logger.info("Starting %s exposure" % real_exp)
@@ -2724,9 +2721,8 @@ class Observatory:
         self.diameter = float(dictionary.get("diameter", self.diameter))
         self.focal_length = float(dictionary.get("focal_length", self.focal_length))
 
-        self.cooler_setpoint = float(
-            dictionary.get("cooler_setpoint", self.cooler_setpoint)
-        )
+        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
+
         self.cooler_tolerance = float(
             dictionary.get("cooler_tolerance", self.cooler_tolerance)
         )

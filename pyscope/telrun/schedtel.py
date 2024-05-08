@@ -349,7 +349,7 @@ def schedtel_cli(
         obs_lon = observatory.observatory_location.lon
         obs_lat = observatory.observatory_location.lat
         slew_rate = observatory.slew_rate * u.deg / u.second
-        instrument_reconfig_times = observatory.instrument_reconfiguration_times
+        instrument_reconfig_times = observatory.instrument_reconfig_times
         observatory = astroplan.Observer(
             location=coord.EarthLocation(lon=obs_lon, lat=obs_lat)
         )
