@@ -172,12 +172,9 @@ def calib_images_cli(
         hdr = fits.getheader(fname, 0)
 
         if raw_archive_dir is not None:
-            raw_archive_dir_date = os.path.join(
-                raw_archive_dir, hdr.get("DATE-OBS")[:10]
-            )
-            if not os.path.exists(raw_archive_dir_date):
-                logger.info(f"Creating raw archive directory: {raw_archive_dir_date}")
-                os.makedirs(raw_archive_dir_date)
+            raw_archive_dir_date = Path(raw_archive_dir) / hdr.get("DATE-OBS")[:10]
+            if not raw_archive_dir_date.exists():
+                raw_archive_dir_date.mkdir(mode=0o775, parents=True)
             logger.info(f"Archiving {fname} to {raw_archive_dir_date}")
             shutil.copy(fname, raw_archive_dir_date)
 

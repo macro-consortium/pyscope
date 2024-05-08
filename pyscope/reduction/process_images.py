@@ -56,7 +56,7 @@ fh = logging.FileHandler(OBSERVATORY_HOME / "logs/process-images.log")
 fh.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-fmt = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
+fmt = logging.Formatter("Process-images: %(asctime)s:%(levelname)s:%(message)s")
 fh.setFormatter(fmt)
 ch.setFormatter(fmt)
 logger.addHandler(fh)
@@ -126,6 +126,7 @@ def process_image(img):
         logger.exception(f"Corrupt FITS file {img}")
         return
 
+    logger.info(f"Processing {img}...")
     img_isodate = fits.getval(img, "DATE-OBS")[:10]
 
     if not isCalibrated(img):
