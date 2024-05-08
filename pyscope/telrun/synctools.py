@@ -107,6 +107,7 @@ def sync_directory_cli(
                 sftp.mkdir(str(remote_dir))
             else:
                 raise e
+        curr_dir = sftp._cwd
         sftp.chdir(str(remote_dir))
         if local_dir.is_file():
             iterdir = [local_dir]
@@ -141,9 +142,10 @@ def sync_directory_cli(
                     str(remote_dir / f.name),
                     (int(f.stat().st_atime), int(f.stat().st_mtime)),
                 )
+        sftp.chdir(curr_dir)
 
     if mode in ["receive", "both"]:
-
+        curr_dir = sftp._cwd
         sftp.chdir(str(remote_dir))
         if not local_dir.is_dir():
             logger.info("Creating local directory %s" % local_dir)
@@ -182,6 +184,7 @@ def sync_directory_cli(
                 os.utime(
                     local_dir / fname, (int(f_attr.st_atime), int(f_attr.st_mtime))
                 )
+        sftp.chdir(curr_dir)
 
     if close_ssh_at_exit:
         ssh.close()

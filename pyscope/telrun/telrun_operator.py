@@ -789,18 +789,17 @@ class TelrunOperator:
                         logger.info("Found.")
 
         # Wait for cooler?
-        if self.wait_for_cooldown:
+        if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
-                > float(self.observatory.cooler_setpoint)
-                + self.observatory.cooler_tolerance
+                > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
                 and self.wait_for_cooldown
             ):
                 logger.info(
                     "CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance), waiting for 10 seconds"
                     % (
                         self.observatory.camera.CCDTemperature,
-                        float(self.observatory.cooler_setpoint),
+                        self.observatory.cooler_setpoint,
                         self.observatory.cooler_tolerance,
                     )
                 )
@@ -810,7 +809,7 @@ class TelrunOperator:
                 "CCD temperature: %.3f degs (below limit of %.3f with %.3f tolerance), continuing..."
                 % (
                     self.observatory.camera.CCDTemperature,
-                    float(self.observatory.cooler_setpoint),
+                    self.observatory.cooler_setpoint,
                     self.observatory.cooler_tolerance,
                 )
             )
@@ -1348,14 +1347,13 @@ class TelrunOperator:
         if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
-                > float(self.observatory.cooler_setpoint)
-                + self.observatory.cooler_tolerance
+                > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
             ):
                 logger.info(
                     "CCD temperature: %.3f degs (above limit of %.3f with %.3f tolerance)"
                     % (
                         self.observatory.camera.CCDTemperature,
-                        float(self.observatory.cooler_setpoint),
+                        self.observatory.cooler_setpoint,
                         self.observatory.cooler_tolerance,
                     )
                 )
@@ -1365,7 +1363,7 @@ class TelrunOperator:
             "CCD temperature: '%s' degs (below limit of '%s' with '%s' tolerance), continuing..."
             % (
                 self.observatory.camera.CCDTemperature,
-                float(self.observatory.cooler_setpoint),
+                self.observatory.cooler_setpoint,
                 self.observatory.cooler_tolerance,
             )
         )
@@ -2014,6 +2012,10 @@ class TelrunOperator:
         status_log.update(current_block_info)
         status_log.update(next_block_info)
 
+        for k, v in status_log.items():
+            if type(v[0]) is not str:
+                status_log[k] = (str(v[0]), v[1])
+
         json.dump(
             status_log,
             open(self._logs_path / "telrun_status.json", "w"),
@@ -2226,7 +2228,7 @@ class TelrunOperator:
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory._wcs[1]) is WCS:
+        if type(self.observatory._wcs) is WCS:
             logger.info("Using solver %s" % self.observatory._wcs[1])
             solution = self.observatory._wcs[1].Solve(
                 image_path,
@@ -2241,7 +2243,8 @@ class TelrunOperator:
                 parity=2,
                 crpix_center=True,
             )
-        """else:
+        else:
+            self.observatory._wcs = self.observatory._wcs[::-1]
             for idx, wcs in enumerate(self.observatory._wcs):
                 logger.info("Using solver %s" % (idx + 1))
                 solution = wcs.Solve(
@@ -2258,7 +2261,7 @@ class TelrunOperator:
                     crpix_center=True,
                 )
                 if solution:
-                    break"""
+                    break
 
         if not solution:
             logger.warning("WCS solution not found.")
@@ -2284,7 +2287,7 @@ class TelrunOperator:
             logger.warning("Process timed out after %.1f seconds" % timeout)
             # TODO: Add auto-recovery capability for the affected hardware
 
-    def start_status_log_thread(self, interval=60):
+    def start_status_log_thread(self, interval=5):
         self._status_log_update_event.clear()
         self._write_to_status_log = True
         if interval is not None:

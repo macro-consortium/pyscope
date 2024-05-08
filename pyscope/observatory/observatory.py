@@ -745,9 +745,8 @@ class Observatory:
             logger.info("Camera connected")
         else:
             logger.warning("Camera failed to connect")
-        if self.camera.CanSetCCDTemperature:
-            self.cooler_setpoint = self._cooler_setpoint
-            print("Turning cooler on")
+        if self.camera.CanSetCCDTemperature and self.cooler_setpoint is not None:
+            logger.info("Turning cooler on")
             self.camera.CoolerOn = True
 
         if self.cover_calibrator is not None:
@@ -1322,10 +1321,10 @@ class Observatory:
                 hdr_dict[key] = (str(value[0]), value[1])
 
         # remove values = () from the dictionary
-        hdr_dict = {k: v for k, v in hdr_dict.items() if v != ()}
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != () and v[0] != ()}
 
         # remove any keys that are not strings
-        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) == str}
+        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) is str}
 
         # remove any keys with a ? in them
         hdr_dict = {k: v for k, v in hdr_dict.items() if "?" not in k}
@@ -1335,6 +1334,7 @@ class Observatory:
             hdr.update(hdr_dict)
         except Exception as e:
             logger.error(f"Failed to update FITS header: {e}")
+            logger.error(f"hdr_dict: {hdr_dict}")
 
     def save_last_image(
         self,
@@ -1666,7 +1666,7 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterStatus != "Open" and self.dome.CanSetShutter:
+            if self.dome.ShutterStatus == "Closed" and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
@@ -1862,7 +1862,7 @@ class Observatory:
 
         return True
 
-    def _update_rotator(self, obj, wait_time=0.1):
+    def _update_rotator(self, obj, wait_time=1):
         """Updates the rotator"""
         # mean sidereal rate (at J2000) in radians per second
         SR = 7.292115855306589e-5
@@ -2049,7 +2049,7 @@ class Observatory:
 
         new_ra = center_pos.ra + random_radius * np.cos(random_angle)
         new_dec = center_pos.dec + random_radius * np.sin(random_angle)
-        obj = coord.SkyCoord(ra=new_ra, dec=new_dec)
+        obj = coord.SkyCoord(ra=new_ra, dec=new_dec, frame=center_pos.frame)
         self.slew_to_coordinates(obj=obj)
 
     def recenter(
@@ -2274,7 +2274,7 @@ class Observatory:
                 target_pixel_dec = target_coord.dec.deg
                 logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
-                pixels = w.world_to_pixel(slew_obj)
+                pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
                 obj_y_pixel = pixels[1]
                 logger.debug(
@@ -2287,8 +2287,8 @@ class Observatory:
                 )
                 continue
 
-            error_ra = slew_obj.ra.hour - target_pixel_ra
-            error_dec = slew_obj.dec.deg - target_pixel_dec
+            error_ra = obj.ra.hour - target_pixel_ra
+            error_dec = obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel
             error_y_pixels = obj_y_pixel - target_y_pixel
             logger.info("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))
@@ -2406,6 +2406,8 @@ class Observatory:
             time.sleep(0.1)
         logger.info("Slew complete")
 
+        dither_center = self.get_current_object()
+
         if tracking:
             logger.info("Turning on tracking")
             if self.telescope.CanSetTracking:
@@ -2496,16 +2498,11 @@ class Observatory:
                             logger.info("Dithering by %i arcseconds" % dither_radius)
                             self.dither_mount(
                                 dither_radius,
-                                center_pos=coord.AltAz(
-                                    alt=self.cover_calibrator_alt * u.deg,
-                                    az=self.cover_calibrator_az * u.deg,
-                                    obstime=self.observatory_time,
-                                    location=self.observatory_location,
-                                ).transform_to(coord.ICRS()),
+                                center_pos=dither_center,
                             )
 
                         logger.info("Starting %s exposure" % real_exp)
-                        self.camera.StartExposure(real_exp, False)
+                        self.camera.StartExposure(real_exp, True)
 
                         iter_save_name = iter_save_path / (
                             f"flat_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
@@ -2523,7 +2520,9 @@ class Observatory:
                         while not self.camera.ImageReady:
                             time.sleep(1)
 
-                        self.save_last_image(iter_save_name, frametyp="Flat")
+                        self.save_last_image(
+                            iter_save_name, frametyp="Flat", overwrite=True
+                        )
                         logger.info("Flat %i of %i complete" % (j + 1, repeat))
                         logger.info("Saved flat frame to %s" % iter_save_name)
 
@@ -2613,7 +2612,10 @@ class Observatory:
                     if not iter_save_path.exists():
                         iter_save_path.mkdir()
                     for j in tqdm.tqdm(range(repeat)):
-                        if self.camera.CanSetCCDTemperature:
+                        if (
+                            self.camera.CanSetCCDTemperature
+                            and self.cooler_setpoint is not None
+                        ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
                             ):
@@ -2644,7 +2646,9 @@ class Observatory:
                             )
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
-                        self.save_last_image(iter_save_name, frametyp=frametyp)
+                        self.save_last_image(
+                            iter_save_name, frametyp=frametyp, overwrite=True
+                        )
                         logger.info("%i of %i complete" % (j, repeat))
                         logger.info("Saved dark frame to %s" % iter_save_name)
 
@@ -2722,9 +2726,8 @@ class Observatory:
         self.diameter = float(dictionary.get("diameter", self.diameter))
         self.focal_length = float(dictionary.get("focal_length", self.focal_length))
 
-        self.cooler_setpoint = float(
-            dictionary.get("cooler_setpoint", self.cooler_setpoint)
-        )
+        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
+
         self.cooler_tolerance = float(
             dictionary.get("cooler_tolerance", self.cooler_tolerance)
         )
@@ -4293,7 +4296,9 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = value if value is not None or value != "" else None
+            self._cooler_setpoint = (
+                float(value) if value is not None or value != "" else None
+            )
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )

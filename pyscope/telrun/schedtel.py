@@ -275,7 +275,7 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
-    name_format="{code}_{sch}_{target}_{filter}_{exposure}s_{start_time}",
+    name_format="{code}_{target}_{filter}_{exposure}s_{start_time}",
     filename=None,
     telrun=False,
     plot=None,
@@ -349,7 +349,7 @@ def schedtel_cli(
         obs_lon = observatory.observatory_location.lon
         obs_lat = observatory.observatory_location.lat
         slew_rate = observatory.slew_rate * u.deg / u.second
-        instrument_reconfig_times = observatory.instrument_reconfiguration_times
+        instrument_reconfig_times = observatory.instrument_reconfig_times
         observatory = astroplan.Observer(
             location=coord.EarthLocation(lon=obs_lon, lat=obs_lat)
         )

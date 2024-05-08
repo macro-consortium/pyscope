@@ -1,4 +1,6 @@
+import glob
 import logging
+import os
 from pathlib import Path
 
 import click
@@ -69,7 +71,7 @@ def reduce_calibration_set_cli(
     for bias_set in bias_sets:
         logger.info(f"Reducing bias set: {bias_set}")
         avg_fits(
-            bias_set,
+            glob.glob(str(bias_set) + "/*.fts"),
             mode=mode,
             outfile=calibration_set
             / (str(bias_set.name).replace("biases", "master_bias") + ".fts"),
@@ -78,7 +80,7 @@ def reduce_calibration_set_cli(
     for dark_set in dark_sets:
         logger.info(f"Reducing dark set: {dark_set}")
         avg_fits(
-            dark_set,
+            glob.glob(str(dark_set) + "/*.fts"),
             mode=mode,
             outfile=calibration_set
             / (str(dark_set.name).replace("darks", "master_dark") + ".fts"),
@@ -100,16 +102,19 @@ def reduce_calibration_set_cli(
             )
             matching_bias = matching_bias[0] if matching_bias else None
 
+            if os.path.isdir(flat_set):
+                flat_set_list = glob.glob(str(flat_set) + "/*.fts")
+
             ccd_calib(
-                flat_set,
+                flat_set_list,
                 matching_dark,
                 bias_frame=matching_bias,
                 camera_type=camera,
             )
 
-            cal_flat_set = flat_set / "*_cal.fts"
+            cal_flat_set = str(flat_set) + "/*_cal.fts"
             avg_fits(
-                cal_flat_set,
+                glob.glob(str(cal_flat_set)),
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
@@ -133,9 +138,9 @@ def reduce_calibration_set_cli(
                 camera_type=camera,
             )
 
-            cal_flat_set = flat_set.glob("*_cal.fts")
+            cal_flat_set = str(flat_set) + "/*_cal.fts"
             avg_fits(
-                cal_flat_set,
+                glob.glob(str(cal_flat_set)),
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
