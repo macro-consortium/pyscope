@@ -102,7 +102,7 @@ def store_image(img, dest, update_db=False):
     future: update_db=True adds image info to database
     """
     if not dest.exists():
-        dest.mkdir(mode=0o775)
+        dest.mkdir(mode=0o775, parents=True)
     target = dest / img.name
     if not target.exists() or target.stat().st_mtime < img.stat().st_mtime:
         try:

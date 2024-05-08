@@ -216,50 +216,50 @@ def calib_images_cli(
         dark_frame = None
         bias_frame = None
         flat_dark_frame = None
-        files = []
+        calimages = []
         for ext in (".fts", ".fits", ".fit"):
-            files.extend(Path(image_dir).rglob(f"*{ext}"))
+            calimages.extend(Path(calib_dir).rglob(f"*{ext}"))
 
-        for filename in files:
+        for calimg in calimages:
             # find flat_frame, dark_frame, bias_frame, flat_dark_frame
-            hdrf = fits.getheader(filename, 0)
+            hdrf = fits.getheader(calimg, 0)
             # if the corresponding header values match, then set the appropriate frame
             if (
-                "master_flat" in filename
-                and "master_flat_dark" not in filename
+                "master_flat" in calimg.name
+                and "master_flat_dark" not in calimg.name
                 and hdrf["FILTER"] == filt
                 and hdrf["READOUTM"] == readout
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
             ):
-                flat_frame = Path(filename)
+                flat_frame = Path(calimg)
             elif (
-                "master_dark" in filename
+                "master_dark" in calimg.name
                 and hdrf["READOUTM"] == readout
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
             ):
-                dark_frame = Path(filename)
+                dark_frame = Path(calimg)
             elif (
-                "master_bias" in filename
+                "master_bias" in calimg.name
                 and hdrf["READOUTM"] == readout
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
             ):
-                bias_frame = Path(filename)
+                bias_frame = Path(calimg)
             elif (
-                "master_flat_dark" in filename
+                "master_flat_dark" in calimg.name
                 and hdrf["READOUTM"] == readout
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
             ):
-                flat_dark_frame = Path(filename)
+                flat_dark_frame = Path(calimg)
 
         # for each image, print out the calibration frames being used
         logger.debug("Using calibration frames:")
@@ -295,7 +295,7 @@ def calib_images_cli(
     # outside for loop
     if zmag:
         logger.info("Calculating zero-point magnitudes...")
-        calc_zmag(fnames=fnames)
+        calc_zmag(images=fnames)
 
     logger.info("Done!")
 
