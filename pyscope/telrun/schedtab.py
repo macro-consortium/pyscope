@@ -650,11 +650,18 @@ def validate(schedule_table, observatory=None):
                 logger.info(f"Skipping validation of {row['name']}")
                 continue
 
+            # Logging to debug and verify the input values
+            logger.info(f"Target object: {row['target']}, Type: {type(row['target'])}")
+            logger.info(
+                f"Start time: {row['start_time']}, Type: {type(row['start_time'])}"
+            )
+
             # Check if target is observable at start time
             altaz_obj = observatory.get_object_altaz(
                 obj=row["target"],
                 t=row["start_time"],
             )
+            logger.info(f"AltAz Object: {altaz_obj}")
             if altaz_obj.alt < observatory.min_altitude:
                 logger.error("Target is not observable at start time")
                 row["status"] = "I"  # Invalid

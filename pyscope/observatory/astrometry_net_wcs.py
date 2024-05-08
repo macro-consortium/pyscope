@@ -1,7 +1,7 @@
 import logging
 import os
 
-import astropy.io.fits as pyfits
+from astropy.io import fits
 
 from .wcs import WCS
 
@@ -26,20 +26,35 @@ class AstrometryNetWCS(WCS):
             try:
                 if not submission_id:
                     wcs_header = self._solver.solve_from_image(
-                        filepath, submission_id=submission_id, **kwargs
+                        filepath,
+                        submission_id=submission_id,
+                        verbose=True,
+                        return_submission_id=True,
+                        force_image_upload=True,
+                        solve_timeout=300,
+                        # **kwargs
                     )
                 else:
                     wcs_header = self._solver.monitor_submission(
-                        submission_id, solve_timeout=kwargs.get("solve_timeout", 120)
+                        submission_id,
+                        solve_timeout=300,
+                        verbose=True,
+                        return_submission_id=True,
                     )
             except TimeoutError as e:
                 submission_id = e.args[1]
             else:
                 try_again = False
 
-        if wcs_header:
-            with pyfits.open(filepath, mode="update") as hdul:
-                hdul[0].header.update(wcs_header)
-                return True
+        logger.info("Submission ID = %s" % wcs_header[1])
+
+        if wcs_header is not None:
+            if wcs_header[0] != {}:
+                with fits.open(filepath, mode="update") as hdul:
+                    hdul[0].header.update(wcs_header[0])
+                    del hdul[0].header["COMMENT"]
+                    return True
+            else:
+                return False
         else:
             return False
