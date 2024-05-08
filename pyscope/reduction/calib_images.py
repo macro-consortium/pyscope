@@ -159,7 +159,7 @@ def calib_images_cli(
         )
         fnames = []
         for ext in (".fts", ".fits", ".fit"):
-            fnames.extend(Path(image_dir).glob(f"*{ext}")
+            fnames.extend(Path(image_dir).glob(f"*{ext}"))
         logger.debug(f"fnames = {fnames}")
 
     logger.info(f"Calibrating {len(fnames)} images.")
@@ -218,7 +218,7 @@ def calib_images_cli(
         flat_dark_frame = None
         files = []
         for ext in (".fts", ".fits", ".fit"):
-            files.extend(Path(image_dir).rglob(f"*{ext}")
+            files.extend(Path(image_dir).rglob(f"*{ext}"))
 
         for filename in files:
             # find flat_frame, dark_frame, bias_frame, flat_dark_frame
