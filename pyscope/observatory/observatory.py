@@ -745,9 +745,8 @@ class Observatory:
             logger.info("Camera connected")
         else:
             logger.warning("Camera failed to connect")
-        if self.camera.CanSetCCDTemperature:
-            self.cooler_setpoint = self._cooler_setpoint
-            print("Turning cooler on")
+        if self.camera.CanSetCCDTemperature and self.cooler_setpoint is not None:
+            logger.info("Turning cooler on")
             self.camera.CoolerOn = True
 
         if self.cover_calibrator is not None:
@@ -2613,7 +2612,10 @@ class Observatory:
                     if not iter_save_path.exists():
                         iter_save_path.mkdir()
                     for j in tqdm.tqdm(range(repeat)):
-                        if self.camera.CanSetCCDTemperature:
+                        if (
+                            self.camera.CanSetCCDTemperature
+                            and self.cooler_setpoint is not None
+                        ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
                             ):
@@ -4293,7 +4295,9 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = value if value is not None or value != "" else None
+            self._cooler_setpoint = (
+                float(value) if value is not None or value != "" else None
+            )
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )
