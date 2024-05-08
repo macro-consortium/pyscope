@@ -275,7 +275,7 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
-    name_format="{code}_{sch}_{target}_{filter}_{exposure}s_{start_time}",
+    name_format="{code}_{target}_{filter}_{exposure}s_{start_time}",
     filename=None,
     telrun=False,
     plot=None,
