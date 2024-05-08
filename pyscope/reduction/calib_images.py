@@ -99,10 +99,9 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-v",
     "--verbose",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="Verbose output.",
+    count=True,
+    default=0,
+    help="Print verbose output. 1=verbose. 2=more verbose.",
 )
 @click.argument(
     "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
@@ -118,7 +117,7 @@ def calib_images_cli(
     bad_columns="",
     wcs=False,
     zmag=False,
-    verbose=False,
+    verbose=0,
     fnames=(),
 ):
     """Calibrate a set of images by recursively selecting the
@@ -145,8 +144,12 @@ def calib_images_cli(
     Raises:
         click.BadParameter: _description_
     """
-    if verbose:
-        logger.setLevel(logging.DEBUG)
+    if verbose == 2:
+        logging.basicConfig(level=logging.DEBUG)
+    elif verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     if raw_archive_dir is None and in_place:
         raise click.BadParameter(
