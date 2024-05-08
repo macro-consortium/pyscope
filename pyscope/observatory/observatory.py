@@ -1321,10 +1321,10 @@ class Observatory:
                 hdr_dict[key] = (str(value[0]), value[1])
 
         # remove values = () from the dictionary
-        hdr_dict = {k: v for k, v in hdr_dict.items() if v != ()}
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v is not () and v[0] is not ()}
 
         # remove any keys that are not strings
-        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) == str}
+        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) is str}
 
         # remove any keys with a ? in them
         hdr_dict = {k: v for k, v in hdr_dict.items() if "?" not in k}
@@ -1334,6 +1334,7 @@ class Observatory:
             hdr.update(hdr_dict)
         except Exception as e:
             logger.error(f"Failed to update FITS header: {e}")
+            logger.error(f"hdr_dict: {hdr_dict}")
 
     def save_last_image(
         self,
