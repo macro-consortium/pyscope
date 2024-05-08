@@ -115,12 +115,6 @@ def avg_fits_cli(
         f"Called avg_fits_cli(fname={fnames}, mode={mode}, datatype={datatype}, outfile={outfile}, verbose={verbose})"
     )
 
-    if os.path.isdir(fnames):
-        fnames = Path(str(fnames) + "/*.fts")
-    fnames = glob.glob(str(fnames))
-    logger.debug(f"Found {len(fnames)} images")
-    logger.debug(f"images: {fnames}")
-
     first_hdr = fits.getheader(fnames[0])
     try:
         frametyp = first_hdr["FRAMETYP"]

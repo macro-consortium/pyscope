@@ -1321,7 +1321,7 @@ class Observatory:
                 hdr_dict[key] = (str(value[0]), value[1])
 
         # remove values = () from the dictionary
-        hdr_dict = {k: v for k, v in hdr_dict.items() if v is not () and v[0] is not ()}
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != () and v[0] != ()}
 
         # remove any keys that are not strings
         hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) is str}
@@ -2502,7 +2502,7 @@ class Observatory:
                             )
 
                         logger.info("Starting %s exposure" % real_exp)
-                        self.camera.StartExposure(real_exp, False)
+                        self.camera.StartExposure(real_exp, True)
 
                         iter_save_name = iter_save_path / (
                             f"flat_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
@@ -2520,7 +2520,9 @@ class Observatory:
                         while not self.camera.ImageReady:
                             time.sleep(1)
 
-                        self.save_last_image(iter_save_name, frametyp="Flat")
+                        self.save_last_image(
+                            iter_save_name, frametyp="Flat", overwrite=True
+                        )
                         logger.info("Flat %i of %i complete" % (j + 1, repeat))
                         logger.info("Saved flat frame to %s" % iter_save_name)
 
@@ -2644,7 +2646,9 @@ class Observatory:
                             )
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
-                        self.save_last_image(iter_save_name, frametyp=frametyp)
+                        self.save_last_image(
+                            iter_save_name, frametyp=frametyp, overwrite=True
+                        )
                         logger.info("%i of %i complete" % (j, repeat))
                         logger.info("Saved dark frame to %s" % iter_save_name)
 
