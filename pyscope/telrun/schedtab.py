@@ -634,14 +634,19 @@ def validate(schedule_table, observatory=None):
     # Check ID column
     for row in schedule_table:
         if (
-            row["ID"] is None
+            type(row["ID"]) is not float
             and row["name"] != "TransitionBlock"
             and row["name"] != "EmptyBlock"
         ):
             row["ID"] = astrotime.Time.now().mjd
             logger.info(f"Assigned {row['ID']} to row {row.index}")
 
-    if observatory is not None:
+    # Obs-specific validation
+    if (
+        observatory is not None
+        and row["name"] != "TransitionBlock"
+        and row["name"] != "EmptyBlock"
+    ):
         logger.info("Performing observatory-specific validation")
         for row in schedule_table:
             logger.info(f"Validating row {row.index}")
