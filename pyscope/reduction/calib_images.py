@@ -268,12 +268,16 @@ def calib_images_cli(
         if camera_type == "ccd":
             logger.debug(f"Bias: {bias_frame}")
             if not (flat_frame and dark_frame and bias_frame):
-                logger.warning(f"Could not find appropriate calibration images for {fname}, skipping")
+                logger.warning(
+                    f"Could not find appropriate calibration images for {fname}, skipping"
+                )
                 continue
         elif camera_type == "cmos":
             logger.debug(f"Flat dark: {flat_dark_frame}")
             if not (flat_frame and dark_frame and flat_dark_frame):
-                logger.warning(f"Could not find appropriate calibration images for {fname}, skipping")
+                logger.warning(
+                    f"Could not find appropriate calibration images for {fname}, skipping"
+                )
                 continue
 
         # After gethering all the required parameters, run ccd_calib
