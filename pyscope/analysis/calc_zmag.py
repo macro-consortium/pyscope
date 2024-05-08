@@ -163,10 +163,34 @@ def calc_zmag_cli(
 
     zmags = []
     zmags_err = []
+    fig = None
+    ax0 = None
+    ax1 = None
+    ax2 = None
 
     for im in images:
         os.path.abspath(im)
         logger.info("Processing %s" % im)
+
+        with fits.open(im) as hdul:
+            data = hdul[0].data
+            try:
+                exp = hdul[0].header["EXPTIME"]
+            except:
+                exp = hdul[0].header["EXPOSURE"]
+            im_filt = hdul[0].header["FILTER"]
+
+        w = wcs.WCS(hdul[0].header)
+
+        # Get header filter or override with CLI option
+        if filt is None:
+            filt = im_filt
+        filt = filt.lower()
+        logger.info("Filter: %s" % filt)
+
+        if filt not in ["u", "b", "g", "r", "i", "z"]:
+            logger.error("Invalid filter, continuing to next image...")
+            continue
 
         # Check if WCS solution exists already, if not, try one
         try:
@@ -209,26 +233,6 @@ def calc_zmag_cli(
         )
 
         logger.info("Found %d sources." % len(catalog))
-
-        with fits.open(im) as hdul:
-            data = hdul[0].data
-            try:
-                exp = hdul[0].header["EXPTIME"]
-            except:
-                exp = hdul[0].header["EXPOSURE"]
-            im_filt = hdul[0].header["FILTER"]
-
-        w = wcs.WCS(hdul[0].header)
-
-        # Get header filter or override with CLI option
-        if filt is None:
-            filt = im_filt
-        filt = filt.lower()
-        logger.info("Filter: %s" % filt)
-
-        if filt not in ["u", "b", "g", "r", "i", "z"]:
-            logger.error("Invalid filter, continuing to next image...")
-            continue
 
         catalog["SDSS"] = [None for i in range(len(catalog))]
 
