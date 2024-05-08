@@ -301,10 +301,12 @@ def calib_images_cli(
 
         logger.debug("Done!")
 
-    # outside for loop
-    if zmag:
-        logger.info("Calculating zero-point magnitudes...")
-        calc_zmag(images=fnames)
+        if zmag:
+            logger.info("Calculating zero-point magnitudes...")
+            try:
+                calc_zmag(images=(fname,))
+            except:
+                logger.warning(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")
 
