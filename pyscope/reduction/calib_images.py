@@ -99,10 +99,9 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-v",
     "--verbose",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="Verbose output.",
+    count=True,
+    default=0,
+    help="Print verbose output. 1=verbose. 2=more verbose.",
 )
 @click.argument(
     "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
@@ -118,7 +117,7 @@ def calib_images_cli(
     bad_columns="",
     wcs=False,
     zmag=False,
-    verbose=False,
+    verbose=0,
     fnames=(),
 ):
     """Calibrate a set of images by recursively selecting the
@@ -145,8 +144,12 @@ def calib_images_cli(
     Raises:
         click.BadParameter: _description_
     """
-    if verbose:
-        logger.setLevel(logging.DEBUG)
+    if verbose == 2:
+        logging.basicConfig(level=logging.DEBUG)
+    elif verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     if raw_archive_dir is None and in_place:
         raise click.BadParameter(
@@ -267,8 +270,14 @@ def calib_images_cli(
         logger.debug(f"Dark: {dark_frame}")
         if camera_type == "ccd":
             logger.debug(f"Bias: {bias_frame}")
+            if not (flat_frame and dark_frame and bias_frame):
+                logger.warning(f"Could not find appropriate calibration images for {fname}, skipping")
+                continue
         elif camera_type == "cmos":
             logger.debug(f"Flat dark: {flat_dark_frame}")
+            if not (flat_frame and dark_frame and flat_dark_frame):
+                logger.warning(f"Could not find appropriate calibration images for {fname}, skipping")
+                continue
 
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
@@ -292,10 +301,12 @@ def calib_images_cli(
 
         logger.debug("Done!")
 
-    # outside for loop
-    if zmag:
-        logger.info("Calculating zero-point magnitudes...")
-        calc_zmag(images=fnames)
+        if zmag:
+            logger.info("Calculating zero-point magnitudes...")
+            try:
+                calc_zmag(images=(fname,))
+            except:
+                logger.warning(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")
 

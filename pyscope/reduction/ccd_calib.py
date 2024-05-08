@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
     "--verbose",
     count=True,
     default=0,
-    help="Print verbose output. Use multiple times for more verbosity.",
+    help="Print verbose output. 1=verbose. 2=more verbose.",
 )
 @click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()

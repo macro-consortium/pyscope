@@ -143,7 +143,7 @@ def process_image(img):
             in_place=True,
             wcs=False,
             zmag=True,
-            verbose=False,
+            verbose=0,
             fnames=(img,),
         )
 
