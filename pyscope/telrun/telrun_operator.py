@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 import tkinter.ttk as ttk
 from io import StringIO
-from pathlib import Path
+from pathlib import Path, WindowsPath
 from tkinter import font
 
 import astroplan
@@ -22,7 +22,7 @@ from astropy import time as astrotime
 from astropy import units as u
 from astroquery import mpc
 
-from ..observatory import Observatory
+from ..observatory import WCS, Observatory
 from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
@@ -141,6 +141,7 @@ class TelrunOperator:
         self._schedules_path = self._telhome / "schedules"
         self._images_path = self._telhome / "images"
         self._logs_path = self._telhome / "logs"
+        self._temp_path = self._telhome / "tmp"
 
         save_at_end = False
         if not self._config_path.exists():
@@ -152,7 +153,7 @@ class TelrunOperator:
         self._best_focus_result = None
         self._do_periodic_autofocus = True
         self._last_autofocus_time = astrotime.Time("2000-01-01T00:00:00", format="isot")
-        self._skipped_block_count = 0
+        self._bad_block_count = 0
         self._current_block_index = None
         self._current_block = None
         self._previous_block = None
@@ -358,10 +359,12 @@ class TelrunOperator:
         # Parse observatory
         self._observatory = self._config_path / "observatory.cfg"
         self._observatory = kwargs.get("observatory", self._observatory)
-        if type(self._observatory) is Path:
+        # TODO: Fix, this path on a windows machine is a pathlib.WindowsPath, not a path...
+        if type(self._observatory) is Path or type(self._observatory) is WindowsPath:
             logger.info(
                 "Observatory is string, loading from config file and saving to config path"
             )
+            print(f"Starting observatory with config file: {self._observatory}")
             self._observatory = Observatory(config_path=self._observatory)
             self.observatory.save_config(
                 self._config_path / "observatory.cfg", overwrite=True
@@ -373,7 +376,7 @@ class TelrunOperator:
             )
         else:
             raise TelrunException(
-                "observatory must be a string representing an observatory config file path or an Observatory object"
+                f"observatory must be a string representing an observatory config file path or an Observatory object, currently {self._observatory}, {type(self._observatory)}"
             )
 
         # Load kwargs
@@ -682,7 +685,8 @@ class TelrunOperator:
         # Schedule validation
         logger.info("Validating schedule...")
         try:
-            schedtab.validate(schedule, self.observatory)
+            pass
+            # schedtab.validate(schedule, self.observatory)
         except Exception as e:
             logger.exception(e)
             logger.exception("Schedule failed validation, exiting...")
@@ -785,7 +789,7 @@ class TelrunOperator:
                         logger.info("Found.")
 
         # Wait for cooler?
-        if self.wait_for_cooldown:
+        if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
                 > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
@@ -819,6 +823,8 @@ class TelrunOperator:
             self._last_autofocus_time = (
                 astrotime.Time.now() - self.autofocus_interval * u.second - 1 * u.second
             )
+        elif not self.autofocus_initial:
+            self._last_autofocus_time = astrotime.Time.now()
 
         # Process blocks
         for block_index, block in enumerate(self._schedule):
@@ -827,26 +833,46 @@ class TelrunOperator:
                     "Processing block %i of %i" % (block_index + 1, len(self._schedule))
                 )
                 logger.info(block)
+                if (
+                    self._previous_block is not None
+                    and self._previous_block["status"] != "S"
+                ):
+                    while self._previous_block["status"] != "S":
+                        if block_index != 0:
+                            self._previous_block_index = block_index - 1
+                            self._previous_block = self._schedule[
+                                self._previous_block_index
+                            ]
+                        else:
+                            self._previous_block_index = None
+                            self._previous_block = None
+                            break
 
-                if block_index != 0:
-                    self._previous_block_index = block_index - 1
-                    self._previous_block = self._schedule[self._previous_block_index]
-                else:
-                    self._previous_block_index = None
-                    self._previous_block = None
-
-                if block_index != len(self._schedule) - 1:
-                    self._next_block_index = block_index + 1
-                    self._next_block = self._schedule[self._next_block_index]
-                else:
-                    self._next_block_index = None
-                    self._next_block = None
+                if (
+                    self._next_block is not None
+                    and self._previous_block["status"] != "S"
+                ):
+                    while self._next_block["status"] != "S":
+                        if block_index != len(self._schedule) - 1:
+                            self._next_block_index = block_index + 1
+                            self._next_block = self._schedule[self._next_block_index]
+                        else:
+                            self._next_block_index = None
+                            self._next_block = None
+                            break
 
                 self._current_block_index = block_index
-                status, message, block = self.execute_block(block)
+                try:
+                    status, message, block = self.execute_block(block)
+                except Exception as e:
+                    logger.exception(e)
+                    status = "F"
+                    message = str(e)
+                    block["status"] = status
+                    block["message"] = message
 
                 if status != "C":
-                    self._skipped_block_count += 1
+                    self._bad_block_count += 1
 
                 # Update block status
                 if self.update_block_status:
@@ -887,7 +913,7 @@ class TelrunOperator:
             self._schedule[0].start_time.datetime.strftime('%m-%d-%Y')+'_telrun-report.txt')"""
 
         logger.info("Resetting status variables...")
-        self._skipped_block_count = 0
+        self._bad_block_count = 0
         self._previous_block = None
         self._next_block = None
         self._schedule_fname = None
@@ -1285,7 +1311,8 @@ class TelrunOperator:
             logger.info("Setting camera readout mode to %s" % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
-            logger.info("Starting autofocus...")
+            logger.info("Starting autofocus, ensuring tracking is on...")
+            self.observatory.telescope.Tracking = True
             t = threading.Thread(
                 target=self._is_process_complete,
                 args=(self.autofocus_timeout, self._status_event),
@@ -1317,10 +1344,7 @@ class TelrunOperator:
                 )
 
         # Check 8: Camera temperature
-        if (
-            self.wait_for_cooldown
-            and self.observatory.camera.cooler_setpoint is not None
-        ):
+        if self.wait_for_cooldown and self.observatory.cooler_setpoint is not None:
             while (
                 self.observatory.camera.CCDTemperature
                 > self.observatory.cooler_setpoint + self.observatory.cooler_tolerance
@@ -1518,8 +1542,8 @@ class TelrunOperator:
             )
             centered = self.observatory.recenter(
                 obj=block["target"],
-                target_x_pixel=block["respositioning"][0],
-                target_y_pixel=block["respositioning"][1],
+                target_x_pixel=1024,  # Hardcoded fix this
+                target_y_pixel=1024,  # Hardcoded fix this
                 initial_offset_dec=self.recenter_initial_offset_dec,
                 check_and_refine=self.recenter_check_and_refine,
                 max_attempts=self.recenter_max_attempts + add_attempt,
@@ -1529,10 +1553,11 @@ class TelrunOperator:
                 save_path=self.recenter_save_path,
                 sync_mount=self.recenter_sync_mount,
                 do_initial_slew=slew,
+                readout=self.default_readout,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
-            self._wcs_status = "Idle" if self.observatory.wcs is not None else ""
+            self._wcs_status = "Idle" if self.observatory._wcs is not None else ""
             self._dome_status = "Idle" if self.observatory.dome is not None else ""
             self._rotator_status = (
                 "Idle" if self.observatory.rotator is not None else ""
@@ -1558,13 +1583,21 @@ class TelrunOperator:
             self._rotator_status = (
                 "Slewing" if self.observatory.rotator is not None else ""
             )
-            self.observatory.slew_to_coordinates(
+            slewed = self.observatory.slew_to_coordinates(
                 obj=block["target"],
                 control_dome=(self.observatory.dome is not None),
                 control_rotator=(self.observatory.rotator is not None),
                 wait_for_slew=False,
                 track=False,
             )
+            if not slewed:
+                # Skip block if slew failed
+                logger.info("Slew failed, skipping...")
+                self.observatory.telescope.Tracking = False
+                self._current_block = None
+                logger.removeHandler(str_handler)
+                return ("", "", block)
+
             self._status_event.set()
             t.join()
             self._status_event.clear()
@@ -1782,30 +1815,41 @@ class TelrunOperator:
 
         # Wait for any motion to complete
         logger.info("Waiting for telescope motion to complete...")
-        while self.observatory.telescope.Slewing:
-            time.sleep(0.1)
-
-        # Settle time
-        logger.info(
-            "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
-        )
-        self._telescope_status = "Settling"
-        time.sleep(self.observatory.settle_time)
+        if self.observatory.telescope.Slewing:
+            while self.observatory.telescope.Slewing:
+                time.sleep(0.1)
+            # Settle time
+            logger.info(
+                "Waiting for settle time of %.1f seconds..."
+                % self.observatory.settle_time
+            )
+            self._telescope_status = "Settling"
+            time.sleep(self.observatory.settle_time)
         self._telescope_status = "Tracking"
 
+        # Moved above so it doesn't settle every time
+        # # Settle time
+        # logger.info(
+        #     "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
+        # )
+        # self._telescope_status = "Settling"
+        # time.sleep(self.observatory.settle_time)
+        # self._telescope_status = "Tracking"
+
         # Wait for focuser, dome motion to complete
-        condition = True
-        logger.info("Waiting for focuser or dome motion to complete...")
-        while condition:
-            if self.observatory.focuser is not None:
-                condition = self.observatory.focuser.IsMoving
-                if not condition:
-                    self._focuser_status = "Idle"
-            if self.observatory.dome is not None:
-                if not self.observatory.dome.Slewing:
-                    self._dome_status = "Idle"
-                condition = condition or self.observatory.dome.Slewing
-            time.sleep(0.1)
+        if self.observatory.focuser is not None and self.observatory.dome is not None:
+            condition = True
+            logger.info("Waiting for focuser or dome motion to complete...")
+            while condition:
+                if self.observatory.focuser is not None:
+                    condition = self.observatory.focuser.IsMoving
+                    if not condition:
+                        self._focuser_status = "Idle"
+                if self.observatory.dome is not None:
+                    if not self.observatory.dome.Slewing:
+                        self._dome_status = "Idle"
+                    condition = condition or self.observatory.dome.Slewing
+                time.sleep(0.1)
 
         # Get previous, current, next block info and add to custom header
         custom_header = self.block_info(block)
@@ -1865,21 +1909,28 @@ class TelrunOperator:
 
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
-                if self.observatory.filter_wheel.Position in self.wcs_filters:
+                if (
+                    self.observatory.filters[self.observatory.filter_wheel.Position]
+                    in self.wcs_filters
+                ):
                     logger.info(
                         "Current filter in wcs filters, attempting WCS solve..."
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self.images_path / fname + ".tmp",
+                        str(self._temp_path / fname) + ".fts.tmp",
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
+                        overwrite=True,
                     )
                     self._wcs_threads.append(
                         threading.Thread(
                             target=self._async_wcs_solver,
-                            args=(self.images_path + fname + ".tmp",),
+                            args=(
+                                str(self._temp_path / fname) + ".fts.tmp",
+                                str(self._images_path / fname) + ".fts",
+                            ),
                             daemon=True,
                             name="wcs_threads",
                         )
@@ -1891,24 +1942,29 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        self._images_path / fname,
+                        str(self._images_path / fname) + ".fts",
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
+                        overwrite=True,  # Added during initial pyscope telrun debugging 4-27-2024 PEG
                     )
             else:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    self.images_path + fname + ".tmp",
+                    str(self._temp_path / fname) + ".fts.tmp",
                     frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
+                    overwrite=True,
                 )
                 self._wcs_threads.append(
                     threading.Thread(
                         target=self._async_wcs_solver,
-                        args=(self.images_path + fname + ".tmp",),
+                        args=(
+                            str(self._temp_path / fname) + ".fts.tmp",
+                            str(self._images_path / fname) + ".fts",
+                        ),
                         daemon=True,
                         name="wcs_threads",
                     )
@@ -1938,21 +1994,27 @@ class TelrunOperator:
         current_block_info = {}
         if self.current_block is not None:
             current_block_info = self.block_info(self.current_block)
+
         previous_block_info = {}
         if self.previous_block is not None:
-            previous_block_info = self.block_info(self.previous_block)
-            for key in previous_block_info:
-                previous_block_info["P" + key] = previous_block_info.pop(key)
+            previous_block_info_tmp = self.block_info(self.previous_block)
+            for key in previous_block_info_tmp:
+                previous_block_info["P" + key] = previous_block_info_tmp[key]
+
         next_block_info = {}
         if self._next_block is not None:
-            next_block_info = self.block_info(self.next_block)
-            for key in next_block_info:
-                next_block_info["N" + key] = next_block_info.pop(key)
+            next_block_info_tmp = self.block_info(self._next_block)
+            for key in next_block_info_tmp:
+                next_block_info["N" + key] = next_block_info_tmp[key]
 
         status_log = self.telrun_info
         status_log.update(previous_block_info)
         status_log.update(current_block_info)
         status_log.update(next_block_info)
+
+        for k, v in status_log.items():
+            if type(v[0]) is not str:
+                status_log[k] = (str(v[0]), v[1])
 
         json.dump(
             status_log,
@@ -2103,7 +2165,7 @@ class TelrunOperator:
                 if self.current_block_index is not None
                 else (0, "Current block index")
             ),
-            "SKIPPED": (self.skipped_block_count, "Number of skipped blocks"),
+            "SKIPPED": (self.bad_block_count, "Number of skipped blocks"),
             "TOTALBLK": (
                 len(self._schedule) if self._schedule is not None else 1,
                 "Total number of blocks",
@@ -2162,39 +2224,40 @@ class TelrunOperator:
 
         return info
 
-    def _async_wcs_solver(self, image_path):
+    def _async_wcs_solver(self, image_path, target_path=None):
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory.wcs) not in (iter, list, tuple):
-            logger.info("Using solver %s" % self.wcs_driver)
-            solution = self.wcs.Solve(
-                filename,
-                ra_key="TELRAIC",
-                dec_key="TELDECIC",
+        if type(self.observatory._wcs) is WCS:
+            logger.info("Using solver %s" % self.observatory._wcs[1])
+            solution = self.observatory._wcs[1].Solve(
+                image_path,
+                ra_key="TARGRA",
+                dec_key="TARGDEC",
                 ra_dec_units=("hour", "deg"),
                 solve_timeout=self.wcs_timeout,
                 scale_units="arcsecperpix",
                 scale_type="ev",
                 scale_est=self.observatory.pixel_scale[0],
                 scale_err=self.observatory.pixel_scale[0] * 0.1,
-                parity=1,
+                parity=2,
                 crpix_center=True,
             )
         else:
-            for wcs, i in enumerate(self.wcs):
-                logger.info("Using solver %s" % self.wcs_driver[i])
+            self.observatory._wcs = self.observatory._wcs[::-1]
+            for idx, wcs in enumerate(self.observatory._wcs):
+                logger.info("Using solver %s" % (idx + 1))
                 solution = wcs.Solve(
-                    filename,
-                    ra_key="TELRAIC",
-                    dec_key="TELDECIC",
-                    ra_dec_units=("hour", "deg"),
+                    image_path,
+                    ra_key="TARGRA",
+                    dec_key="TARGDEC",
+                    ra_dec_units=("hourangle", "deg"),
                     solve_timeout=self.wcs_timeout,
                     scale_units="arcsecperpix",
                     scale_type="ev",
                     scale_est=self.observatory.pixel_scale[0],
                     scale_err=self.observatory.pixel_scale[0] * 0.1,
-                    parity=1,
+                    parity=2,
                     crpix_center=True,
                 )
                 if solution:
@@ -2205,9 +2268,12 @@ class TelrunOperator:
         else:
             logger.info("WCS solution found.")
 
-        logger.info("Removing tmp extension...")
-        shutil.move(image_path, image_path.replace(".tmp", ""))
-        logger.info("File %s complete" % image_path.replace(".tmp", ""))
+        logger.info("Removing tmp extension and moving file to images directory...")
+        if target_path is None:
+            target_path = image_path.replace(".tmp", "")
+        shutil.move(image_path, target_path)
+        logger.info("File %s to %s" % (image_path, target_path))
+        logger.info("WCS solve complete.")
         self._wcs_status = "Idle"
 
     def _is_process_complete(self, timeout, event):
@@ -2221,7 +2287,7 @@ class TelrunOperator:
             logger.warning("Process timed out after %.1f seconds" % timeout)
             # TODO: Add auto-recovery capability for the affected hardware
 
-    def start_status_log_thread(self, interval=60):
+    def start_status_log_thread(self, interval=5):
         self._status_log_update_event.clear()
         self._write_to_status_log = True
         if interval is not None:
@@ -2272,8 +2338,8 @@ class TelrunOperator:
         return self._last_autofocus_time
 
     @property
-    def skipped_block_count(self):
-        return self._skipped_block_count
+    def bad_block_count(self):
+        return self._bad_block_count
 
     @property
     def current_block_index(self):
@@ -2911,7 +2977,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.last_autofocus_time = rows0.add_row("Last AF:")
         self.time_until_next_autofocus = rows0.add_row("Next AF:")
         self.current_block_index = rows0.add_row("Block Idx:")
-        self.skipped_block_count = rows0.add_row("Skipped:")
+        self.bad_block_count = rows0.add_row("Skipped:")
         self.total_block_count = rows0.add_row("Total:")
         self.sched_fname = rows0.add_row("Sched File:")
 
@@ -2942,7 +3008,7 @@ class _SystemStatusWidget(ttk.Frame):
         self.last_autofocus_time.set(info_dict["LASTAUTO"][0])
         self.time_until_next_autofocus.set(info_dict["NEXTAUTO"][0])
         self.current_block_index.set(info_dict["CURRIDX"][0])
-        self.skipped_block_count.set(info_dict["SKIPPED"][0])
+        self.bad_block_count.set(info_dict["SKIPPED"][0])
         self.total_block_count.set(info_dict["TOTALBLK"][0])
         self.sched_fname.set(info_dict["SCHEDFN"][0])
 

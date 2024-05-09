@@ -1,17 +1,12 @@
 import logging
 import os
+from pathlib import Path
 
 import click
-import numpy as np
 
-from .. import reduction
 from .observatory import Observatory
 
 logger = logging.getLogger(__name__)
-
-"""
-TODO: incorporate ccd_proc into this, if possible
-"""
 
 
 @click.command(
@@ -63,17 +58,13 @@ TODO: incorporate ccd_proc into this, if possible
     "--readouts",
     type=int,
     multiple=True,
-    default=[0],
-    show_default=True,
-    help="Readout modes to iterate through.",
+    help="Indices of readout modes to iterate through.",
 )
 @click.option(
     "-b",
     "--binnings",
     type=str,
     multiple=True,
-    default=["1x1"],
-    show_default=True,
     help="Binnings to iterate through.",
 )
 @click.option(
@@ -88,45 +79,50 @@ TODO: incorporate ccd_proc into this, if possible
     "-s",
     "--save-path",
     type=click.Path(exists=True),
-    default="./images/",
+    default="./temp/",
     show_default=True,
     help="Path to save calibration set.",
 )
 @click.option(
-    "-m",
-    "--mode",
-    type=click.Choice(["0", "1"]),
-    default=0,
-    show_default=True,
-    help="Mode to use for averaging FITS files (0 = median, 1 = mean).",
-)
-@click.option(
-    "-M",
-    "--master",
+    "-nd",
+    "--new-dir",
+    "new_dir",
     type=bool,
     default=True,
     show_default=True,
-    help="Create master calibration files.",
+    help="Create a new directory for the calibration set.",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Increase verbosity of output.",
 )
 @click.version_option()
 def collect_calibration_set_cli(
-    observatory,
-    camera,
-    dark_exposures,
-    filter_exposures,
-    filter_brightness,
-    readouts=[0],
+    observatory="./config/observatory.cfg",
+    camera="ccd",
+    readouts=[2],
     binnings=["1x1"],
     repeat=10,
-    save_path="./",
-    mode=0,
-    master=True,
+    dark_exposures=[300],
+    filters=[],
+    filter_exposures=[],
+    filter_brightness=None,
+    target_counts=None,
+    home_telescope=False,
+    check_cooler=True,
+    tracking=True,
+    dither_radius=0,  # arcseconds
+    save_path="./temp/",
+    new_dir=True,
+    verbose=0,
 ):
     """
-    Collects a calibration set for the observatory.
+    Collects a calibration set for the observatory.\b
 
     .. warning::
-        The dark_exposures, filter_exposures, and filter_brightnesses must be of equal length.
+        The filter_exposures and filter_brightnesses must be of equal length.
 
     Parameters
     ----------
@@ -134,227 +130,122 @@ def collect_calibration_set_cli(
 
     camera : str, default="ccd"
 
-    dark_exposures : list, default=[0.1, 1, 10, 100]
+    readouts : list, default=[None]
 
-    filter_exposures : list
+    binnings : list, default=[None]
 
-    filter_brightness : list
+    repeat : int, default=1
 
-    redouts : list, default=[0]
+    dark_exposures : list, default=[]
 
-    binnings : list, default=["1x1"]
+    filters : list, default=[]
 
-    repeat : int, default=10
+    filter_exposures : list, default=[]
 
-    save_path : str, default="./"
-        Location to save the file
+    filter_brightness : list, default=None
 
-    mode : int, default=0
+    home_telescope : bool, default=False
 
-    master : bool, default=True
-        Create master calibration files in process.
+    target_counts : int, default=None
 
-    Returns
-    -------
-    None
+    check_cooler : bool, default=True
+
+    tracking : bool, default=True
+
+    dither_radius : float, default=0
+
+    save_path : str, default="./temp/"
+
+    new_dir : bool, default=True
+
+    verbose : int, default=0
 
     """
+
     if type(observatory) == str:
         logger.info(f"Collecting calibration set for {observatory}")
-        print(f"Collecting calibration set for {observatory}")
         obs = Observatory(observatory)
     elif type(observatory) == Observatory:
         logger.info(f"Collecting calibration set for {observatory.site_name}")
-        print(f"Collecting calibration set for {observatory}")
         obs = observatory
     else:
         logger.exception(f"Invalid observatory type: {type(observatory)}")
-        print(f"Invalid observatory type: {type(observatory)}")
-        return False
+        return
 
     obs.connect_all()
 
-    save_folder = os.path.join(
-        save_path,
-        "calibration_set_%s" % obs.observatory_time.strftime("%Y-%m-%d_%H-%M-%S"),
-    )
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-    logger.info(f"Saving calibration set to {save_folder}")
-    print(f"Saving calibration set to {save_folder}")
+    if len(filter_exposures) != len(filters):
+        logger.error("The number of filter exposures must match the number of filters.")
+        return
 
-    logger.info("Collecting flats")
-    print("Collecting flats")
-    success = obs.take_flats(
-        filter_exposures,
-        filter_brightness=filter_brightness,
-        readouts=readouts,
-        binnings=binnings,
-        repeat=repeat,
-        save_path=save_folder,
-        new_folder="flats",
-    )
-    if not success:
-        logger.error("Failed to collect flats")
-        print("failed to collect flats")
-        return False
+    if new_dir:
+        save_path = Path(save_path) / obs.observatory_time.strftime("%Y-%m-%d_%H-%M-%S")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    logger.info(f"Saving calibration set to {save_path}")
 
-    if camera == "cmos":
-        logger.info("Collecting flat-darks")
-        print("Collecting flat-darks")
-        success = obs.take_darks(
-            np.unique(filter_exposures),
+    if len(filter_exposures) > 0:
+        logger.info("Collecting flats")
+        success = obs.take_flats(
+            filters,
+            filter_exposures,
+            filter_brightness=filter_brightness,
             readouts=readouts,
             binnings=binnings,
             repeat=repeat,
-            save_path=save_folder,
-            new_folder="flat_darks",
+            save_path=save_path,
+            home_telescope=home_telescope,
+            target_counts=target_counts,
+            check_cooler=check_cooler,
+            tracking=tracking,
+            dither_radius=dither_radius,
+            final_telescope_position="no change",
         )
         if not success:
-            logger.error("Failed to collect flat-darks")
-            print("failed to collect flat-darks")
-            return False
+            logger.error("Failed to collect flats")
 
-    logger.info("Collecting darks")
-    print("Collecting darks")
-    success = obs.take_darks(
-        dark_exposures,
-        readouts=readouts,
-        binnings=binnings,
-        repeat=repeat,
-        save_path=save_folder,
-        new_folder="darks",
-    )
-    if not success:
-        logger.error("Failed to collect darks")
-        print("failed to collect darks")
-        return False
+        if camera == "cmos":
+            logger.info("Collecting flat-darks")
+            success = obs.take_darks(
+                exposures=list(set(filter_exposures)),
+                readouts=readouts,
+                binnings=binnings,
+                repeat=repeat,
+                save_path=save_path,
+            )
+            if not success:
+                logger.error("Failed to collect flat-darks")
+        else:
+            logger.warning("Skipping flat-dark collection for non-CMOS camera")
+
+    if len(dark_exposures) > 0:
+        logger.info("Collecting darks")
+        success = obs.take_darks(
+            exposures=dark_exposures,
+            readouts=readouts,
+            binnings=binnings,
+            repeat=repeat,
+            save_path=save_path,
+        )
+        if not success:
+            logger.error("Failed to collect darks")
 
     if camera == "ccd":
         logger.info("Collecting biases")
-        print("Collecting biases")
         success = obs.take_darks(
-            [0],
+            exposures=[0],
             readouts=readouts,
             binnings=binnings,
             repeat=repeat,
-            save_path=save_folder,
-            new_folder="biases",
+            save_path=save_path,
+            frametyp="Bias",
         )
         if not success:
             logger.error("Failed to collect biases")
-            print("failed to collect biases")
-            return False
-    elif camera == "cmos":
-        logger.warning("Skipping bias collection for CMOS camera")
-        print("Skipping bias collection for CMOS camera")
+    else:
+        logger.warning("Skipping bias collection for non-CCD camera")
 
     logger.info("Collection complete.")
-    print("Collection complete.")
-
-    if master == True:
-        logger.info("Creating master directory...")
-        print("Creating master directory...")
-        os.makedirs(os.path.join(save_folder, "masters"))
-        for readout in readouts:
-            logger.debug("Readout: %s" % readout)
-            for binning in binnings:
-                logger.debug("Binning: %ix%i" % (int(binning[0]), int(binning[2])))
-                print(f"Binning: {int(binning[0])}x{int(binning[2])}")
-                logger.info("Creating master darks...")
-                print("Creating master darks...")
-                for exposure in dark_exposures:
-                    dark_paths = []
-                    for i in range(repeat):
-                        dark_paths.append(
-                            save_folder
-                            + "/darks/"
-                            + f"dark_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
-                        )
-
-                    reduction.avg_fits(
-                        mode=mode,
-                        outfile=os.path.join(
-                            os.path.join(save_folder, "masters"),
-                            (
-                                f"master_dark_{readout}_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
-                            ),
-                        ),
-                        fnames=dark_paths,
-                    )
-
-                if camera == "ccd":
-                    logger.info("Creating master biases...")
-                    print("Creating master biases...")
-                    bias_paths = []
-                    for i in range(repeat):
-                        bias_paths.append(
-                            save_folder
-                            + "/biases/"
-                            + f"dark_{int(binning[0])}x{int(binning[2])}_0s_{readout}__{i}.fts"
-                        )
-
-                    reduction.avg_fits(
-                        mode=mode,
-                        outfile=os.path.join(
-                            os.path.join(save_folder, "masters"),
-                            (
-                                f"master_bias_{int(binning[0])}x{int(binning[2])}_{readout}.fts"
-                            ),
-                        ),
-                        fnames=bias_paths,
-                    )
-
-                logger.info("Creating master flats...")
-                print("Creating master flats...")
-                for filt, exposure in zip(obs.filters, filter_exposures):
-                    flat_paths = []
-                    for i in range(repeat):
-                        flat_paths.append(
-                            save_folder
-                            + "/flats/"
-                            + f"flat_{filt}_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
-                        )
-
-                    reduction.avg_fits(
-                        mode=mode,
-                        outfile=os.path.join(
-                            os.path.join(save_folder, "masters"),
-                            (
-                                f"master_flat_{filt}_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
-                            ),
-                        ),
-                        fnames=flat_paths,
-                    )
-
-                    if camera == "cmos":
-                        logger.info(
-                            "CMOS camera selected, creating master flat-dark..."
-                        )
-                        print("CMOS camera selected, creating master flat-dark...")
-                        flat_dark_paths = []
-                        for i in range(repeat):
-                            flat_dark_paths.append(
-                                save_folder
-                                + "/flat_darks/"
-                                + f"dark_{int(binning[0])}x{int(binning[2])}_{exposure}s_{readout}__{i}.fts"
-                            )
-
-                        reduction.avg_fits(
-                            mode=mode,
-                            outfile=os.path.join(
-                                os.path.join(save_folder, "masters"),
-                                (
-                                    f"master_flat_dark_{int(binning[0])}x{int(binning[2])}_{exposure}s.fts"
-                                ),
-                            ),
-                            fnames=flat_dark_paths,
-                        )
-    else:
-        logger.info("Skipping master creation")
-        print("Skipping master creation")
-    logger.info("Calibration set complete.")
-    print("Calibration set complete.")
 
 
 collect_calibration_set = collect_calibration_set_cli.callback

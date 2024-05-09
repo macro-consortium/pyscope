@@ -11,8 +11,10 @@ import threading
 import time
 from ast import literal_eval
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+import tqdm
 from astropy import coordinates as coord
 from astropy import time as astrotime
 from astropy import units as u
@@ -124,7 +126,7 @@ class Observatory:
         self._wcs_kwargs = []
 
         self._slew_rate = None
-        self._instrument_reconfiguration_times = None
+        self._instrument_reconfig_times = None
 
         self._maxim = None
 
@@ -155,7 +157,7 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            if self.camera_driver.lower() in ("maxim", "maximdl"):
+            if self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera"):
                 logger.info("Using MaxIm DL as the camera driver")
                 self._maxim = _import_driver("Maxim")
                 self._camera = self._maxim.camera
@@ -231,7 +233,11 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            if self.filter_wheel_driver.lower() in ("maxim", "maximdl"):
+            if self.filter_wheel_driver.lower() in (
+                "maxim",
+                "maximdl",
+                "_maximfilterwheel",
+            ):
                 if self._maxim is None:
                     raise ObservatoryException(
                         "MaxIm DL must be used as the camera driver when using MaxIm DL as the filter wheel driver."
@@ -449,7 +455,7 @@ class Observatory:
                     else:
                         self._wcs_kwargs.append(None)
                     for i in range(len(self._wcs_driver)):
-                        self._wcs_driver[i] = self._wcs_driver[i].lower()
+                        self._wcs_driver[i] = self._wcs_driver[i]
                     if (
                         self._wcs_driver[-1] == "maxim"
                         or self._wcs_driver[-1] == "maximdl"
@@ -676,7 +682,7 @@ class Observatory:
         # WCS
         kwarg = kwargs.get("wcs", self._wcs)
         if kwarg is None:
-            self._wcs = _import_driver("WCSAstrometryNet")
+            self._wcs = _import_driver("AstrometryNetWCS")
 
         if type(kwarg) not in (iter, list, tuple):
             self._wcs = kwarg
@@ -739,9 +745,8 @@ class Observatory:
             logger.info("Camera connected")
         else:
             logger.warning("Camera failed to connect")
-        if self.camera.CanSetCCDTemperature:
-            self.cooler_setpoint = self._cooler_setpoint
-            print("Turning cooler on")
+        if self.camera.CanSetCCDTemperature and self.cooler_setpoint is not None:
+            logger.info("Turning cooler on")
             self.camera.CoolerOn = True
 
         if self.cover_calibrator is not None:
@@ -809,6 +814,14 @@ class Observatory:
             logger.info("Telescope connected")
         else:
             logger.warning("Telescope failed to connect")
+
+        logger.info("Unparking telescope...")
+        try:
+            self.telescope.Unpark()
+            logger.info("Telescope unparked")
+        except:
+            self.telescope.Unpark
+            logger.info("Telescope unparked")
 
         return True
 
@@ -1077,23 +1090,59 @@ class Observatory:
         )
         return (1.0 + np.cos(phase_angle.value)) / 2.0
 
+    # def get_object_altaz(
+    #     self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
+    # ):
+    #     """Returns the altitude and azimuth of the requested object at the requested time"""
+
+    #     logger.debug(
+    #         f"Observatory.get_object_altaz({obj}, {ra}, {dec}, {unit}, {frame}, {t}) called"
+    #     )
+
+    #     obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+    #     if t is None:
+    #         t = self.observatory_time
+    #     t = astrotime.Time(t)
+
+    #     return obj.transform_to(
+    #         coord.AltAz(obstime=t, location=self.observatory_location)
+    #     )
     def get_object_altaz(
         self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
     ):
-        """Returns the altitude and azimuth of the requested object at the requested time"""
-
         logger.debug(
-            f"Observatory.get_object_altaz({obj}, {ra}, {dec}, {unit}, {frame}, {t}) called"
+            f"Called with obj={obj}, ra={ra}, dec={dec}, unit={unit}, frame={frame}, time={t}"
         )
 
-        obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
+        if obj is None and (ra is None or dec is None):
+            logger.error("Either obj or both ra and dec must be provided.")
+            return None
+
+        if obj is None:
+            try:
+                ra_unit, dec_unit = (u.hourangle if unit[0] == "hr" else u.deg, u.deg)
+                obj = SkyCoord(ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame)
+            except ValueError as e:
+                logger.error(f"Invalid coordinate values or units: {e}")
+                return None
+
         if t is None:
             t = self.observatory_time
-        t = astrotime.Time(t)
+        if not isinstance(t, astrotime.Time):
+            try:
+                t = astrotime.Time(t)
+            except ValueError as e:
+                logger.error(f"Invalid time value: {e}")
+                return None
 
-        return obj.transform_to(
-            coord.AltAz(obstime=t, location=self.observatory_location)
-        )
+        altaz_frame = coord.AltAz(obstime=t, location=self.observatory_location)
+        try:
+            altaz = obj.transform_to(altaz_frame)
+        except Exception as e:
+            logger.error(f"Error transforming coordinates: {e}")
+            return None
+
+        return altaz
 
     def get_object_slew(
         self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
@@ -1271,7 +1320,21 @@ class Observatory:
             if type(value[0]) == list:
                 hdr_dict[key] = (str(value[0]), value[1])
 
-        hdr.update(hdr_dict)
+        # remove values = () from the dictionary
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != () and v[0] != ()}
+
+        # remove any keys that are not strings
+        hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) is str}
+
+        # remove any keys with a ? in them
+        hdr_dict = {k: v for k, v in hdr_dict.items() if "?" not in k}
+
+        # hdr.update(hdr_dict)
+        try:
+            hdr.update(hdr_dict)
+        except Exception as e:
+            logger.error(f"Failed to update FITS header: {e}")
+            logger.error(f"hdr_dict: {hdr_dict}")
 
     def save_last_image(
         self,
@@ -1417,7 +1480,7 @@ class Observatory:
                     scale_type="ev",
                     scale_est=self.pixel_scale[0],
                     scale_err=self.pixel_scale[0] * 0.1,
-                    parity=1,
+                    parity=2,
                     crpix_center=True,
                 )
             else:
@@ -1433,7 +1496,7 @@ class Observatory:
                         scale_type="ev",
                         scale_est=self.pixel_scale[0],
                         scale_err=self.pixel_scale[0] * 0.1,
-                        parity=1,
+                        parity=2,
                         crpix_center=True,
                     )
                     if solution:
@@ -1480,43 +1543,39 @@ class Observatory:
                 self._current_focus_offset = (
                     self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
-
-                if self.current_focus_offset < self.focuser.MaxIncrement:
-                    if self.focuser.Absolute:
-                        if (
-                            self.focuser.Position + self.current_focus_offset > 0
-                            and self.focuser.Position + self.current_focus_offset
-                            < self.focuser.MaxStep
-                        ):
-                            logger.info(
-                                "Focuser moving to position %i"
-                                % (self.focuser.Position + self.current_focus_offset)
-                            )
-                            self.focuser.Move(
-                                int(self.focuser.Position + self.current_focus_offset)
-                            )
-                            while self.focuser.IsMoving:
-                                time.sleep(0.1)
-                            logger.info("Focuser moved")
-                            return True
-                        else:
-                            raise ObservatoryException(
-                                "Focuser cannot move to the requested position."
-                            )
-                    else:
+                # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
+                if self.focuser.Absolute:
+                    if (
+                        self.focuser.Position + self.current_focus_offset
+                        > 0
+                        # and self.focuser.Position + self.current_focus_offset
+                        # < self.focuser.MaxStep
+                    ):
                         logger.info(
-                            "Focuser moving to relative position %i"
-                            % self.current_focus_offset
+                            "Focuser moving to position %i"
+                            % (self.focuser.Position + self.current_focus_offset)
                         )
-                        self.focuser.Move(int(self.current_focus_offset))
+                        self.focuser.Move(
+                            int(self.focuser.Position + self.current_focus_offset)
+                        )
                         while self.focuser.IsMoving:
                             time.sleep(0.1)
                         logger.info("Focuser moved")
                         return True
+                    else:
+                        raise ObservatoryException(
+                            "Focuser cannot move to the requested position."
+                        )
                 else:
-                    raise ObservatoryException(
-                        "Focuser cannot move to the requested position."
+                    logger.info(
+                        "Focuser moving to relative position %i"
+                        % self.current_focus_offset
                     )
+                    self.focuser.Move(int(self.current_focus_offset))
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
+                    logger.info("Focuser moved")
+                    return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
         else:
@@ -1556,10 +1615,13 @@ class Observatory:
         if not self.telescope.Connected:
             raise ObservatoryException("The telescope is not connected.")
 
+        # if not isinstance(altaz_obj.alt, u.Quantity):
+        #     altaz_obj.alt = altaz_obj.alt * u.deg
+
         if altaz_obj.alt <= self.min_altitude:
             logger.exception(
                 "Target is below the minimum altitude of %.2f degrees"
-                % self.min_altitude
+                % self.min_altitude.to(u.deg).value
             )
             return False
 
@@ -1604,7 +1666,7 @@ class Observatory:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
-            if self.dome.ShutterStatus != "Open" and self.dome.CanSetShutter:
+            if self.dome.ShutterStatus == "Closed" and self.dome.CanSetShutter:
                 if self.dome.CanFindHome:
                     logger.info("Finding the dome home...")
                     self.dome.FindHome()
@@ -1800,7 +1862,7 @@ class Observatory:
 
         return True
 
-    def _update_rotator(self, obj, wait_time=0.1):
+    def _update_rotator(self, obj, wait_time=1):
         """Updates the rotator"""
         # mean sidereal rate (at J2000) in radians per second
         SR = 7.292115855306589e-5
@@ -1954,6 +2016,42 @@ class Observatory:
                 "There is no focuser or autofocus driver present."
             )
 
+    def dither_mount(
+        self,
+        radius=1,
+        center_pos=None,
+        seed=None,
+    ):
+        """Dithers the telescope randomly within a region of a given radius around a center position.
+
+        Parameters
+        ----------
+        radius : float, optional (default = 1)
+            The radius in arcseconds to dither the telescope.
+
+        center_pos : `~astropy.coordinates.SkyCoord`, optional
+            The center position to dither around. If None, the current pointing of the mount will be used.
+
+        seed : int, optional
+            The seed to use for the random number generator. If None, the seed will be randomly generated.
+
+        Returns
+        -------
+        None
+        """
+
+        if center_pos is None:
+            center_pos = self.get_current_object()
+
+        random_state = np.random.RandomState(seed)
+        random_angle = random_state.uniform(0, 2 * np.pi)
+        random_radius = random_state.uniform(0, radius) * u.arcsec
+
+        new_ra = center_pos.ra + random_radius * np.cos(random_angle)
+        new_dec = center_pos.dec + random_radius * np.sin(random_angle)
+        obj = coord.SkyCoord(ra=new_ra, dec=new_dec, frame=center_pos.frame)
+        self.slew_to_coordinates(obj=obj)
+
     def recenter(
         self,
         obj=None,
@@ -2033,23 +2131,19 @@ class Observatory:
         success : bool
             True if the target was successfully centered, False otherwise.
         """
+        logger.info(
+            f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
+        )
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
-        # TODO: fix
-        """logger.info(
-            "Attempting to put %s RA %i:%i:%.2f and Dec %i:%i:%.2f on pixel (%.2f, %.2f)"
+        logger.info(
+            "Attempting to put %s on pixel (%.2f, %.2f)"
             % (
-                obj,
-                obj.ra.hms[0],
-                obj.ra.hms[1],
-                obj.ra.hms[2],
-                obj.dec.dms[0],
-                obj.dec.dms[1],
-                obj.dec.dms[2],
+                slew_obj.to_string("hmsdms"),
                 target_x_pixel,
                 target_y_pixel,
             )
-        )"""
+        )
 
         if initial_offset_dec != 0 and do_initial_slew:
             logger.info(
@@ -2058,20 +2152,29 @@ class Observatory:
             )
 
         for attempt in range(max_attempts):
-            # logger.info("Getting object slew once.")
-            # slew_obj = self.get_object_slew(slew_obj) # removed this line since it was being performed twice
-
             if check_and_refine:
                 logger.info("Attempt %i of %i" % (attempt + 1, max_attempts))
 
             if attempt == 0:
+                # JW EDIT
                 if do_initial_slew:
+                    ra_hours = coord.Angle(slew_obj.ra.hour, unit=u.hour)
+                    dec_degrees = coord.Angle(
+                        slew_obj.dec.deg, unit=u.deg
+                    ) + coord.Angle(initial_offset_dec, unit=u.arcsec).to(u.deg)
                     self.slew_to_coordinates(
-                        ra=slew_obj.ra.hour,
-                        dec=slew_obj.dec.deg + initial_offset_dec / 3600,
+                        ra=ra_hours.hour,
+                        dec=dec_degrees.deg,
                         control_dome=(self.dome is not None),
                         control_rotator=(self.rotator is not None),
                     )
+                # if do_initial_slew:
+                #     self.slew_to_coordinates(
+                #         ra=slew_obj.ra.hour,
+                #         dec=slew_obj.dec.deg + initial_offset_dec / 3600,
+                #         control_dome=(self.dome is not None),
+                #         control_rotator=(self.rotator is not None),
+                #     )
             else:
                 self.slew_to_coordinates(
                     ra=slew_obj.ra.hour,
@@ -2115,7 +2218,7 @@ class Observatory:
                     scale_type="ev",
                     scale_est=self.pixel_scale[0],
                     scale_err=self.pixel_scale[0] * 0.1,
-                    parity=1,
+                    parity=2,
                     crpix_center=True,
                 )
             else:
@@ -2130,7 +2233,7 @@ class Observatory:
                         scale_type="ev",
                         scale_est=self.pixel_scale[0],
                         scale_err=self.pixel_scale[0] * 0.1,
-                        parity=1,
+                        parity=2,
                         crpix_center=True,
                     )
                     if solution_found:
@@ -2162,34 +2265,14 @@ class Observatory:
                 center_coord = w.pixel_to_world(
                     int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
                 )
-                center_ra = center_coord.ra.hour
-                center_dec = center_coord.dec.deg
-                """logger.debug(
-                    "Center of the image is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
-                    % (
-                        center_coord.ra.hms[0],
-                        center_coord.ra.hms[1],
-                        center_coord.ra.hms[2],
-                        center_coord.dec.dms[0],
-                        center_coord.dec.dms[1],
-                        center_coord.dec.dms[2],
-                    )
-                )"""
+                logger.debug(
+                    "Center of the image is at %s" % center_coord.to_string("hmsdms")
+                )
 
                 target_coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
                 target_pixel_ra = target_coord.ra.hour
                 target_pixel_dec = target_coord.dec.deg
-                """logger.debug(
-                    "Target is at RA %i:%i:%.2f and Dec %i:%i:%.2f"
-                    % (
-                        coord.ra.hms[0],
-                        coord.ra.hms[1],
-                        coord.ra.hms[2],
-                        coord.dec.dms[0],
-                        coord.dec.dms[1],
-                        coord.dec.dms[2],
-                    )
-                )"""
+                logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
@@ -2213,7 +2296,7 @@ class Observatory:
             logger.info("Error in x pixels is %.2f" % error_x_pixels)
             logger.info("Error in y pixels is %.2f" % error_y_pixels)
 
-            if max(error_x_pixels, error_y_pixels) <= tolerance:
+            if np.sqrt(error_x_pixels**2 + error_y_pixels**2) <= tolerance:
                 break
 
             logger.info("Offsetting next slew coordinates")
@@ -2249,58 +2332,58 @@ class Observatory:
 
     def take_flats(
         self,
-        filter_exposure,
+        filters,
+        filter_exposures,
         filter_brightness=None,
-        readouts=None,
-        binnings=["1x1"],
-        repeat=10,
-        save_path=None,
-        new_folder=None,
+        target_counts=None,
+        gain=None,
+        readouts=[None],
+        binnings=[None],
+        repeat=1,
+        save_path="./",
         home_telescope=False,
+        check_cooler=True,
+        tracking=True,
+        dither_radius=0,  # arcseconds
         final_telescope_position="no change",
     ):
         """Takes a sequence of flat frames"""
 
         logger.info("Taking flat frames")
 
-        if self.filter_wheel is None or self.cover_calibrator is None:
-            logger.warning("Filter wheel or cover calibrator is not available, exiting")
+        if self.filter_wheel is None:
+            logger.warning("Filter wheel is not available, exiting")
             return False
 
-        if len(filter_exposure) != len(self.filters):
+        if len(filter_exposures) != len(filters):
             logger.warn(
                 "Number of filter exposures does not match the number of filters, exiting"
             )
+            logger.warning(
+                "Expected %i, got %i" % (len(filters), len(filter_exposures))
+            )
+            logger.warning("Filters: %s" % filters)
+            logger.warning("Exposures: %s" % filter_exposures)
+            logger.warning("Exiting")
+            logger.warning(
+                "Note: filters that should be skipped should have an exposure time of 0"
+            )
             return False
 
-        if save_path is None:
-            save_path = os.getcwd()
-            logger.debug(
-                "Setting save path to current working directory: %s" % save_path
-            )
-
-        if type(new_folder) is bool:
-            if new_folder:
-                save_path = os.path.join(
-                    save_path,
-                    datetime.datetime.now().strftime("Flats_%Y-%m-%d_%H-%M-%S"),
-                )
-                os.makedirs(save_path)
-                logger.info("Created new directory: %s" % save_path)
-        elif type(new_folder) is str:
-            save_path = os.path.join(save_path, new_folder)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
+        save_path = Path(save_path)
 
         if home_telescope and self.telescope.CanFindHome:
             logger.info("Homing the telescope")
             self.telescope.FindHome()
             logger.info("Homing complete")
 
-        logger.info("Slewing to point at cover calibrator")
+        logger.info("Slewing to point at cover calibrator or specified sky location")
+
+        logger.info("Turning off tracking for slew")
         if self.telescope.CanSetTracking:
             self.telescope.Tracking = False
+        logger.info("Tracking off")
+
         if self.telescope.CanSlewAltAzAsync:
             self.telescope.SlewToAltAzAsync(
                 self.cover_calibrator_az, self.cover_calibrator_alt
@@ -2312,8 +2395,8 @@ class Observatory:
         elif self.telescope.CanSlew:
             obj = self.get_object_slew(
                 obj=coord.AltAz(
-                    alt=self.cover_calibrator_alt,
-                    az=self.cover_calibrator_az,
+                    alt=self.cover_calibrator_alt * u.deg,
+                    az=self.cover_calibrator_az * u.deg,
                     obstime=self.observatory_time,
                     location=self.observatory_location,
                 )
@@ -2323,23 +2406,77 @@ class Observatory:
             time.sleep(0.1)
         logger.info("Slew complete")
 
-        if self.cover_calibrator.CoverState != "NotPresent":
-            logger.info("Opening the cover calibrator")
-            self.cover_calibrator.OpenCover()
-            logger.info("Cover open")
+        dither_center = self.get_current_object()
 
-        for i in range(len(self.filters)):
-            if filter_exposure[i] == 0:
+        if tracking:
+            logger.info("Turning on tracking")
+            if self.telescope.CanSetTracking:
+                self.telescope.Tracking = True
+            logger.info("Tracking on")
+        else:
+            logger.info("Turning off tracking")
+            if self.telescope.CanSetTracking:
+                self.telescope.Tracking = False
+            logger.info("Tracking off")
+
+        if self.cover_calibrator is not None:
+            if self.cover_calibrator.CoverState != "NotPresent":
+                logger.info("Opening the cover calibrator")
+                self.cover_calibrator.OpenCover()
+                logger.info("Cover open")
+
+        if gain is not None:
+            logger.info("Setting the camera gain to %i" % gain)
+            self.camera.Gain = gain
+            logger.info("Camera gain set")
+
+        for filt, filt_exp in zip(filters, filter_exposures):
+
+            # skip filters with 0 exposure time
+            if filt_exp == 0:
                 continue
+
+            # set filter wheel position
+            logger.info("Setting the filter wheel to %s" % filt)
+            self.filter_wheel.Position = self.filters.index(filt)
+            while self.filter_wheel.Position != self.filters.index(filt):
+                time.sleep(0.1)
+            logger.info("Filter wheel in position")
+
+            # set cover calibrator brightness
+            if self.cover_calibrator is not None:
+                if type(filter_brightness) is list:
+                    logger.info(
+                        "Setting the cover calibrator brightness to %i"
+                        % filter_brightness[i]
+                    )
+                    self.cover_calibrator.CalibratorOn(filter_brightness[i])
+                    logger.info("Cover calibrator on")
+            else:
+                logger.warning("Cover calibrator not available, assuming sky flats")
+
+            # loop through options
             for readout in readouts:
-                self.camera.ReadoutMode = readout
+                if readout is not None:
+                    self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    self.camera.BinX = binning.split("x")[0]
-                    self.camera.BinY = binning.split("x")[1]
-                    for j in range(repeat):
+                    if binning is not None:
+                        self.camera.BinX = binning.split("x")[0]
+                        self.camera.BinY = binning.split("x")[1]
+
+                    iter_save_path = save_path / (
+                        f"flats_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{filt_exp}s"
+                    ).replace(".", "p").replace(" ", "")
+                    if not iter_save_path.exists():
+                        iter_save_path.mkdir()
+
+                    real_exp = filt_exp
+                    for j in tqdm.tqdm(range(repeat)):
                         if (
                             self.camera.CanSetCCDTemperature
                             and self.cooler_setpoint is not None
+                            and check_cooler
                         ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
@@ -2348,51 +2485,66 @@ class Observatory:
                                     "Cooler is not at setpoint, waiting 10 seconds..."
                                 )
                                 time.sleep(10)
-                        self.filter_wheel.Position = i
-                        if (
-                            self.cover_calibrator.CalibratorState != "NotPresent"
-                            or filter_brightness is not None
-                        ):
-                            logger.info(
-                                "Setting the cover calibrator brightness to %i"
-                                % filter_brightness[i]
-                            )
-                            self.cover_calibrator.CalibratorOn(filter_brightness[i])
-                            logger.info("Cover calibrator on")
-                        while self.filter_wheel.Position != i:
-                            time.sleep(0.1)
-                        logger.info("Starting %s exposure" % self.filters[i])
-                        self.camera.StartExposure(filter_exposure[i], False)
-                        save_string = save_path + (
-                            "/flat_%s_%ix%i_%ss_%s__%i.fts"
-                            % (
-                                self.filters[i],
-                                self.camera.BinX,
-                                self.camera.BinY,
-                                ("%4.4g" % filter_exposure[i])
-                                .replace(".", "-")
-                                .replace(" ", ""),
-                                # self.camera.ReadoutModes[
-                                #     self.camera.ReadoutMode
-                                # ].replace(" ", ""),
-                                self.camera.ReadoutMode,
-                                j,
-                            )
-                        )
+                        if self.filter_wheel.Position != self.filters.index(filt):
+                            logger.info("Setting the filter wheel to %s" % filt)
+                            self.filter_wheel.Position = self.filters.index(filt)
+                            while self.filter_wheel.Position != self.filters.index(
+                                filt
+                            ):
+                                time.sleep(0.1)
+                            logger.info("Filter wheel in position")
 
-                        print("-------------------")
-                        print()
-                        print(save_string)
-                        print(self.camera.ReadoutModes)
-                        print(type(self.camera.ReadoutMode))
-                        print(self.camera.ReadoutModes[self.camera.ReadoutMode])
-                        print()
-                        print("-------------------")
+                        if dither_radius > 0:
+                            logger.info("Dithering by %i arcseconds" % dither_radius)
+                            self.dither_mount(
+                                dither_radius,
+                                center_pos=dither_center,
+                            )
+
+                        logger.info("Starting %s exposure" % real_exp)
+                        self.camera.StartExposure(real_exp, True)
+
+                        iter_save_name = iter_save_path / (
+                            f"flat_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{real_exp}s"
+                        ).replace(".", "p").replace(" ", "")
+                        if type(filter_brightness) is list:
+                            iter_save_name = Path(
+                                (
+                                    str(iter_save_name)
+                                    + (f"_Bright{filter_brightness[i]}" + "_{j}.fts")
+                                )
+                            )
+                        else:
+                            iter_save_name = Path((str(iter_save_name) + f"_{j}.fts"))
                         while not self.camera.ImageReady:
-                            time.sleep(0.1)
-                        self.save_last_image(save_string, frametyp="Flat")
+                            time.sleep(1)
+
+                        self.save_last_image(
+                            iter_save_name, frametyp="Flat", overwrite=True
+                        )
                         logger.info("Flat %i of %i complete" % (j + 1, repeat))
-                        logger.info("Saved flat frame to %s" % save_string)
+                        logger.info("Saved flat frame to %s" % iter_save_name)
+
+                        if target_counts is not None:
+                            logger.info(
+                                "Adjusting exposure time to match mean counts to target"
+                            )
+
+                            # get the mean counts
+                            mean_counts = np.mean(self.camera.ImageArray)
+                            logger.info("Mean counts: %i" % mean_counts)
+
+                            # calculate the new exposure time
+                            m_ratio = target_counts / mean_counts
+                            logger.info(
+                                "Ratio of desired brightness to mean counts: %.2f"
+                                % m_ratio
+                            )
+                            real_exp = real_exp * m_ratio
+                            logger.info("New exposure time: %.2f" % real_exp)
+                        else:
+                            real_exp = filt_exp
 
         if self.cover_calibrator.CalibratorState != "NotPresent":
             logger.info("Turning off the cover calibrator")
@@ -2420,37 +2572,50 @@ class Observatory:
         return True
 
     def take_darks(
-        self, exposures, readouts, binnings, repeat=10, save_path=None, new_folder=None
+        self,
+        exposures=[1],
+        gain=None,
+        readouts=[None],
+        binnings=[None],
+        repeat=1,
+        save_path="./",
+        frametyp="Dark",
     ):
         """Takes a sequence of dark frames"""
 
+        save_path = Path(save_path)
+
         logger.info("Taking dark frames")
 
-        if save_path is None:
-            save_path = os.getcwd()
-            logger.info(
-                "Setting save path to current working directory: %s" % save_path
-            )
-
-        if type(new_folder) is bool:
-            save_path = os.path.join(
-                save_path, datetime.datetime.now().strftime("Flats_%Y-%m-%d_%H-%M-%S")
-            )
-            os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
-        elif type(new_folder) is str:
-            save_path = os.path.join(save_path, new_folder)
-            os.makedirs(save_path)
-            logger.info("Created new directory: %s" % save_path)
+        if gain is not None:
+            logger.info("Setting the camera gain to %i" % gain)
+            self.camera.Gain = gain
+            logger.info("Camera gain set")
 
         for exposure in exposures:
             for readout in readouts:
-                self.camera.ReadoutMode = readout
+                if readout is not None:
+                    self.camera.ReadoutMode = readout
                 for binning in binnings:
-                    self.camera.BinX = binning.split("x")[0]
-                    self.camera.BinY = binning.split("x")[1]
-                    for j in range(repeat):
-                        if self.camera.CanSetCCDTemperature:
+                    if binning is not None:
+                        self.camera.BinX = binning.split("x")[0]
+                        self.camera.BinY = binning.split("x")[1]
+                    iter_save_path = save_path / (
+                        f"darks_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{exposure}s"
+                    ).replace(".", "p").replace(" ", "")
+                    if exposure == 0:
+                        iter_save_path = save_path / (
+                            f"biases_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{exposure}s"
+                        ).replace(".", "p").replace(" ", "")
+                    if not iter_save_path.exists():
+                        iter_save_path.mkdir()
+                    for j in tqdm.tqdm(range(repeat)):
+                        if (
+                            self.camera.CanSetCCDTemperature
+                            and self.cooler_setpoint is not None
+                        ):
                             while self.camera.CCDTemperature > (
                                 self.cooler_setpoint + self.cooler_tolerance
                             ):
@@ -2460,24 +2625,32 @@ class Observatory:
                                 time.sleep(10)
                         logger.info("Starting %4.4gs dark exposure" % exposure)
                         self.camera.StartExposure(exposure, False)
-                        save_string = save_path + (
-                            "/dark_%ix%i_%ss_%s__%i.fts"
-                            % (
-                                self.camera.BinX,
-                                self.camera.BinY,
-                                ("%4.4g" % exposure).replace(".", "-").replace(" ", ""),
-                                # self.camera.ReadoutModes[
-                                #     self.camera.ReadoutMode
-                                # ].replace(" ", ""),
-                                self.camera.ReadoutMode,
-                                j,
+                        iter_save_name = iter_save_path / (
+                            (
+                                f"dark_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                                + f"_{exposure}s_{j}"
                             )
+                            .replace(".", "p")
+                            .replace(" ", "")
+                            + ".fts"
                         )
+                        if exposure == 0:
+                            iter_save_name = iter_save_path / (
+                                (
+                                    f"bias_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                                    + f"_{exposure}s_{j}"
+                                )
+                                .replace(".", "p")
+                                .replace(" ", "")
+                                + ".fts"
+                            )
                         while not self.camera.ImageReady:
                             time.sleep(0.1)
-                        self.save_last_image(save_string, frametyp="Dark")
-                        logger.info("Dark %i of %i complete" % (j, repeat))
-                        logger.info("Saved dark frame to %s" % save_string)
+                        self.save_last_image(
+                            iter_save_name, frametyp=frametyp, overwrite=True
+                        )
+                        logger.info("%i of %i complete" % (j, repeat))
+                        logger.info("Saved dark frame to %s" % iter_save_name)
 
         logger.info("Darks complete")
 
@@ -2549,13 +2722,14 @@ class Observatory:
         )
         self.latitude = dictionary.get("latitude", self.latitude)
         self.longitude = dictionary.get("longitude", self.longitude)
-        self.elevation = dictionary.get("elevation", self.elevation)
-        self.diameter = dictionary.get("diameter", self.diameter)
-        self.focal_length = dictionary.get("focal_length", self.focal_length)
+        self.elevation = float(dictionary.get("elevation", self.elevation))
+        self.diameter = float(dictionary.get("diameter", self.diameter))
+        self.focal_length = float(dictionary.get("focal_length", self.focal_length))
 
         self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
-        self.cooler_tolerance = dictionary.get(
-            "cooler_tolerance", self.cooler_tolerance
+
+        self.cooler_tolerance = float(
+            dictionary.get("cooler_tolerance", self.cooler_tolerance)
         )
         self.max_dimension = dictionary.get("max_dimension", self.max_dimension)
 
@@ -2589,11 +2763,13 @@ class Observatory:
         self.slew_rate = dictionary.get("slew_rate", self.slew_rate)
 
         t = dictionary.get(
-            "instrument_reconfiguration_times",
-            self.instrument_reconfiguration_times,
+            "instrument_reconfig_times",
+            self.instrument_reconfig_times,
         )
-        self.instrument_reconfiguration_times = (
-            json.loads(t) if t is not None and t != "" and t != {} else "{}"
+        self.instrument_reconfig_times = (
+            json.loads(t)
+            if t is not None and t != "" and t != '"{}"' and t != "{}"
+            else None
         )
 
     @property
@@ -3078,13 +3254,21 @@ class Observatory:
                     self.focuser.Absolute,
                     "Can focuser move to absolute position",
                 ),
-                "FOCMAXIN": (self.focuser.MaxIncrement, "Focuser maximum increment"),
-                "FOCMAXST": (self.focuser.MaxStep, "Focuser maximum step"),
+                "FOCMAXIN": (None, "Focuser maximum increment"),
+                "FOCMAXST": (None, "Focuser maximum step"),
                 "FOCTEMPC": (
-                    self.focuser.TempCompAvailable,
+                    None,
                     "Focuser temperature compensation available",
                 ),
             }
+            try:
+                info["FOCMAXIN"] = (self.focuser.MaxIncrement, info["FOCMAXIN"][1])
+            except:
+                pass
+            try:
+                info["FOCMAXST"] = (self.focuser.MaxStep, info["FOCMAXST"][1])
+            except:
+                pass
             try:
                 info["FOCPOS"] = (self.focuser.Position, info["FOCPOS"][1])
             except:
@@ -4113,7 +4297,7 @@ class Observatory:
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
             self._cooler_setpoint = (
-                max(float(value), -273.15) if value is not None or value != "" else None
+                float(value) if value is not None or value != "" else None
             )
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
@@ -4272,7 +4456,7 @@ class Observatory:
             )
         else:
             self._filters[position] = (
-                chr(value) if value is not None or value != "" else None
+                str(value) if value is not None or value != "" else None
             )
         self._config["filter_wheel"]["filters"] = (
             ", ".join(self._filters) if self._filters is not None else ""
@@ -4458,22 +4642,46 @@ class Observatory:
         logger.debug("Observatory.min_altitude property called")
         return self._min_altitude
 
+    # JW EDIT
+
     @min_altitude.setter
     def min_altitude(self, value):
-        logger.debug(f"Observatory.min_altitude = {value} called")
-        if type(value) is u.Quantity:
+        logger.debug(f"Setting min_altitude = {value}")
+        try:
+            # Check if the value is already a Quantity with unit of degrees
+            if isinstance(value, u.Quantity):
+                value = value.to(u.deg)
+            else:
+                # Assume the value is numeric and needs degree units
+                value = float(value) * u.deg
+            # Ensure value is within physical limits [0, 90] degrees
+            value = max(0 * u.deg, min(90 * u.deg, value))
             self._min_altitude = value
-        else:
-            self._min_altitude = (
-                min(max(float(value), 0), 90)
-                if value is not None or value != ""
-                else None
-            ) * u.deg
-        self._config["telescope"]["min_altitude"] = (
-            str(self._min_altitude.to(u.deg).value)
-            if self._min_altitude is not None
-            else ""
-        )
+            self._config["telescope"]["min_altitude"] = str(
+                value.value
+            )  # save the numeric part
+        except ValueError:
+            logger.error(f"Invalid type for min_altitude: {value}")
+            raise ValueError(
+                "min_altitude must be a number or an astropy Quantity with angle units."
+            )
+
+    # @min_altitude.setter
+    # def min_altitude(self, value):
+    #     logger.debug(f"Observatory.min_altitude = {value} called")
+    #     if type(value) is u.Quantity:
+    #         self._min_altitude = value
+    #     else:
+    #         self._min_altitude = (
+    #             min(max(float(value), 0), 90)
+    #             if value is not None or value != ""
+    #             else None
+    #         ) * u.deg
+    #     self._config["telescope"]["min_altitude"] = (
+    #         str(self._min_altitude.to(u.deg).value)
+    #         if self._min_altitude is not None
+    #         else ""
+    #     )
 
     @property
     def settle_time(self):
@@ -4529,20 +4737,20 @@ class Observatory:
         )
 
     @property
-    def instrument_reconfiguration_times(self):
-        logger.debug("Observatory.instrument_reconfiguration_times property called")
-        return self._instrument_reconfiguration_times
+    def instrument_reconfig_times(self):
+        logger.debug("Observatory.instrument_reconfig_times property called")
+        return self._instrument_reconfig_times
 
-    @instrument_reconfiguration_times.setter
-    def instrument_reconfiguration_times(self, value):
-        logger.debug(f"Observatory.instrument_reconfiguration_times = {value} called")
-        self._instrument_reconfiguration_times = (
+    @instrument_reconfig_times.setter
+    def instrument_reconfig_times(self, value):
+        logger.debug(f"Observatory.instrument_reconfig_times = {value} called")
+        self._instrument_reconfig_times = (
             value if value is not None or value != "" else {}
         )
-        self._config["scheduling"]["instrument_reconfiguration_times"] = (
-            json.dumps(self._instrument_reconfiguration_times)
-            if self._instrument_reconfiguration_times is not None
-            else ""
+        self._config["scheduling"]["instrument_reconfig_times"] = (
+            json.dumps(self._instrument_reconfig_times)
+            if self._instrument_reconfig_times is not None
+            else "{}"
         )
 
     @property

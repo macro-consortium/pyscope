@@ -1,4 +1,6 @@
+import logging
 import os
+from pathlib import Path
 
 import click
 
@@ -28,12 +30,23 @@ def start_telrun_operator_cli(path="./", gui=True):
                https://pyscope.readthedocs.io/en/latest/
                for more information."""
 )
+@click.option(
+    "-a",
+    "--do-async",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Run the sync manager in async mode",
+)
 @click.argument(
     "path", type=click.Path(resolve_path=True), default="./", required=False
 )
 @click.version_option()
 def start_sync_manager_cli(path="./", do_async=False):
-    sync_manager(config=path / "config/sync_manager.cfg", do_async=do_async)
+    logger = logging.getLogger("pyscope")
+    logging.basicConfig(level=logging.INFO)
+
+    sync_manager(config=Path(path) / "config/sync.cfg", do_async=do_async)
 
 
 start_telrun_operator = start_telrun_operator_cli.callback

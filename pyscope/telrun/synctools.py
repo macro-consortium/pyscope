@@ -6,7 +6,7 @@ import os
 import stat
 import threading
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import click
 import paramiko
@@ -81,7 +81,7 @@ def sync_directory_cli(
     )
 
     local_dir = Path(local_dir)
-    remote_dir = Path(remote_dir)
+    remote_dir = PurePosixPath(remote_dir)
 
     close_ssh_at_exit = False
     if sftp is None:
@@ -98,7 +98,7 @@ def sync_directory_cli(
 
     if mode in ["send", "both"]:
         if remote_dir.name != local_dir.name:
-            remote_dir = remote_dir / local_dir.name
+            remote_dir = PurePosixPath(remote_dir / local_dir.name)
         try:
             sftp.stat(str(remote_dir))
         except Exception as e:
@@ -107,6 +107,7 @@ def sync_directory_cli(
                 sftp.mkdir(str(remote_dir))
             else:
                 raise e
+        curr_dir = sftp._cwd
         sftp.chdir(str(remote_dir))
         if local_dir.is_file():
             iterdir = [local_dir]
@@ -114,6 +115,7 @@ def sync_directory_cli(
             raise NotADirectoryError(f"{local_dir} is not a directory")
         else:
             iterdir = local_dir.iterdir()
+        existing_files = sftp.listdir()
         for f in iterdir:
             if f.is_dir():
                 if f.name in ignore_dir:
@@ -123,8 +125,8 @@ def sync_directory_cli(
                 )
             elif f.suffix in ignore_ext:
                 continue
-            if f.name in sftp.listdir():
-                if int(sftp.stat(f.name).st_mtime) < int(f.stat().st_mtime):
+            elif f.name in existing_files:
+                if int(sftp.stat(f.name).st_mtime) != int(f.stat().st_mtime):
                     logger.info(
                         "Putting local path %s to remote path %s"
                         % (f, remote_dir / f.name)
@@ -136,9 +138,14 @@ def sync_directory_cli(
                     "Putting local path %s to remote path %s" % (f, remote_dir / f.name)
                 )
                 sftp.put(str(f), str(remote_dir / f.name))
-                sftp.utime(f.name, (int(f.stat().st_atime), int(f.stat().st_mtime)))
+                sftp.utime(
+                    str(remote_dir / f.name),
+                    (int(f.stat().st_atime), int(f.stat().st_mtime)),
+                )
+        sftp.chdir(curr_dir)
 
     if mode in ["receive", "both"]:
+        curr_dir = sftp._cwd
         sftp.chdir(str(remote_dir))
         if not local_dir.is_dir():
             logger.info("Creating local directory %s" % local_dir)
@@ -158,7 +165,7 @@ def sync_directory_cli(
             elif Path(fname).suffix in ignore_ext:
                 continue
             elif (local_dir / fname).exists():
-                if int(f_attr.st_mtime) > int((local_dir / fname).stat().st_mtime):
+                if int(f_attr.st_mtime) != int((local_dir / fname).stat().st_mtime):
                     logger.info(
                         "Getting remote path %s to local path %s"
                         % (remote_dir / fname, local_dir / fname)
@@ -177,6 +184,7 @@ def sync_directory_cli(
                 os.utime(
                     local_dir / fname, (int(f_attr.st_atime), int(f_attr.st_mtime))
                 )
+        sftp.chdir(curr_dir)
 
     if close_ssh_at_exit:
         ssh.close()
@@ -380,11 +388,19 @@ def get_client(username, host, port=22, key=None):
 
 
 def _continuous_sync(
-    sftp, ssh, local_dir, remote_dir, mode, ignore_dir, ignore_ext, event
+    sftp,
+    ssh,
+    local_dir,
+    remote_dir,
+    mode,
+    ignore_dir,
+    ignore_ext,
+    event,
+    delay=2,
 ):
     while not event.is_set():
         sync_directory(local_dir, remote_dir, mode, ignore_dir, ignore_ext, sftp=sftp)
-        time.sleep(1)
+        time.sleep(delay)
     else:
         logger.info("Thread %s is exiting" % threading.current_thread().name)
         ssh.close()
