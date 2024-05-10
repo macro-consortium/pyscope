@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 @click.version_option()
 def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verbose=-1):
     """Calculate the rise, set, and transit times for a given source or dusk and
-    dawn times for the observatory.\b
+    dawn times for the observatory.\f
 
     The observatory configuration file is required to calculate the rise, set, and
     transit times for a given source. If no source is given, then the dusk and dawn
@@ -86,7 +86,7 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
         Date of observation. If none is given, the current date at the observatory is used.
 
     observatory : str or `~pyscope.observatory.Observatory`, default='./config/observatory.cfg'
-        Observatory configuration file or :py:class:`~pyscope.observatory.Observatory` object.
+        Observatory configuration file or `~pyscope.observatory.Observatory` object.
 
     verbose : int, {-1, 0, 1}, default=-1
         Verbosity level. 0: no debug messages, 1: debug messages. Default set to -1
@@ -103,10 +103,10 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     See Also
     --------
-    pyscope.telrun.exoplanet_transits
-    pyscope.telrun.schedtel
-    astropy.coordinates.SkyCoord.from_name
-    astroquery.mpc.MPCClass.get_ephemeris
+    `pyscope.telrun.exoplanet_transits`
+    `pyscope.telrun.schedtel`
+    `astropy.coordinates.SkyCoord.from_name`
+    `astroquery.mpc.MPCClass.get_ephemeris`
 
     Examples
     --------
