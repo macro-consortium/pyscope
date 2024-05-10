@@ -103,10 +103,10 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     See Also
     --------
-    `pyscope.telrun.exoplanet_transits`
-    `pyscope.telrun.schedtel`
-    `astropy.coordinates.SkyCoord.from_name`
-    `astroquery.mpc.MPCClass.get_ephemeris`
+    pyscope.telrun.exoplanet_transits
+    pyscope.telrun.schedtel
+    astropy.coordinates.SkyCoord.from_name
+    astroquery.mpc.MPCClass.get_ephemeris
 
     Examples
     --------
