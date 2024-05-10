@@ -100,9 +100,82 @@ def ccd_calib_cli(
     with the suffix '_cal' appended to the original filename. This script may be used to pre-calibrate flats
     before combining them into a master flat frame. \f
 
+    Parameters
+    ----------
+    fnames : str or os.PathLike
+        Path to directory containing images to calibrate or path of specific image.
+    dark_frame : str or os.PathLike, optional
+        Path to master dark frame. If camera type is CMOS, then the exposure time of the dark frame should match the exposure time of the target images. By default None.
+    bias_frame : str or os.PathLike, optional
+        Path to master bias frame. Ignored if camera type is CMOS. By default None.
+    flat_frame : str or os.PathLike, optional
+        Path to master flat frame. The script assumes the master flat frame has already been calibrated. The flat frame is normalized by the mean of the entire image before being applied to the target images. By default None.
+    camera_type : str, optional
+        Camera type, either "ccd" or "cmos". By default "ccd".
+    astro_scrappy : tuple, optional
+        Number of hot pixel removal iterations and estimated camera read noise in root-electrons per pixel per second. By default (1, 3).
+    bad_columns : str, optional
+        Comma-separated list of bad columns to fix by averaging the value of each pixel in the adjacent column. By default "".
+    in_place : bool, optional
+        Overwrite input files, by default False.
+    verbose : int, optional
+        Print verbose output. 1=verbose. 2=more verbose. By default 0.
+    pedestal : int, optional
+        Pedestal value to add to calibrated image, by default 1000.
 
+    Examples
+    --------
+    Calibrating a single ccd or cmos image
+    
+    .. code-block:: shell
 
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts
+        $ ccd-calib image.fts -c cmos -d dark.fts -f flat.fts
+    
+    Calibrating a directory of ccd images
+    
+    .. code-block:: shell
+    
+        $ ccd-calib images/ -d dark.fts -b bias.fts -f flat.fts
+    
+    Overwriting the input file
+    
+    .. code-block:: shell
+        
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts -i
+    
+    or files
+    
+    .. code-block:: shell
+
+        $ ccd-calib images/ -d dark.fts -b bias.fts -f flat.fts -i
+
+    Specifying bad columns to fix
+    
+    .. code-block:: shell
+
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts -c 100,200,300
+
+    Using astroscrappy to remove hot pixels
+    
+    .. code-block:: shell
+
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts -s 5 3
+
+    Adding a pedestal value
+    
+    .. code-block:: shell
+
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts -p 2000
+
+    Verbose output
+    
+    .. code-block:: shell
+
+        $ ccd-calib image.fts -d dark.fts -b bias.fts -f flat.fts -v
+    
     """
+
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)
     elif verbose == 1:
