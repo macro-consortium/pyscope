@@ -98,7 +98,7 @@ def ccd_calib_cli(
     """
     Calibrate CCD or CMOS images using master dark, bias, and flat frames. The calibrated images are saved
     with the suffix '_cal' appended to the original filename. This script may be used to pre-calibrate flats
-    before combining them into a master flat frame. \b
+    before combining them into a master flat frame. \f
 
 
 
