@@ -26,20 +26,11 @@ class AstrometryNetWCS(WCS):
             try:
                 if not submission_id:
                     wcs_header = self._solver.solve_from_image(
-                        filepath,
-                        submission_id=submission_id,
-                        verbose=True,
-                        return_submission_id=True,
-                        force_image_upload=True,
-                        solve_timeout=300,
-                        # **kwargs
+                        filepath, verbose=True, return_submission_id=True, **kwargs
                     )
                 else:
                     wcs_header = self._solver.monitor_submission(
-                        submission_id,
-                        solve_timeout=300,
-                        verbose=True,
-                        return_submission_id=True,
+                        submission_id, verbose=True, return_submission_id=True, **kwargs
                     )
             except TimeoutError as e:
                 submission_id = e.args[1]

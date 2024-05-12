@@ -1929,7 +1929,10 @@ class TelrunOperator:
                             target=self._async_wcs_solver,
                             args=(
                                 str(self._temp_path / fname) + ".fts.tmp",
+                                block["target"].ra.deg,
+                                block["target"].dec.deg,
                                 str(self._images_path / fname) + ".fts",
+                                -1,
                             ),
                             daemon=True,
                             name="wcs_threads",
@@ -1963,7 +1966,10 @@ class TelrunOperator:
                         target=self._async_wcs_solver,
                         args=(
                             str(self._temp_path / fname) + ".fts.tmp",
+                            block["target"].ra.deg,
+                            block["target"].dec.deg,
                             str(self._images_path / fname) + ".fts",
+                            -1,
                         ),
                         daemon=True,
                         name="wcs_threads",
@@ -2224,43 +2230,31 @@ class TelrunOperator:
 
         return info
 
-    def _async_wcs_solver(self, image_path, target_path=None):
+    def _async_wcs_solver(
+        self, image_path, center_ra, center_dec, target_path=None, wcs_idx=-1
+    ):
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory._wcs) is WCS:
-            logger.info("Using solver %s" % self.observatory._wcs)
-            solution = self.observatory._wcs.Solve(
-                image_path,
-                ra_key="TARGRA",
-                dec_key="TARGDEC",
-                ra_dec_units=("hour", "deg"),
-                solve_timeout=self.wcs_timeout,
-                scale_units="arcsecperpix",
-                scale_type="ev",
-                # scale_est=self.observatory.pixel_scale[0],
-                # scale_err=self.observatory.pixel_scale[0] * 0.1,
-                parity=2,
-                crpix_center=True,
-            )
-        else:
-            # for idx, wcs in enumerate(self.observatory._wcs):
-            solution = self.observatory._wcs[-1].Solve(
-                image_path,
-                ra_key="TARGRA",
-                dec_key="TARGDEC",
-                ra_dec_units=("hourangle", "deg"),
-                solve_timeout=self.wcs_timeout,
-                scale_units="arcsecperpix",
-                scale_type="ev",
-                # scale_est=self.observatory.pixel_scale[0],
-                # scale_err=self.observatory.pixel_scale[0] * 0.1,
-                parity=2,
-                crpix_center=True,
-            )
-            logger.info(solution)
+        logger.info("Searching for a WCS solution with solver %i" % wcs_idx)
+        wcs_solver = self.observatory._wcs[wcs_idx]
+        solution_found = wcs_solver.Solve(
+            image_path,
+            center_ra=center_ra,
+            center_dec=center_dec,
+            radius=1.0,
+            scale_units="arcsecperpix",
+            scale_type="ev",
+            scale_est=self.observatory.pixel_scale[0],
+            scale_err=self.observatory.pixel_scale[0] * 0.2,
+            parity=2,
+            tweak_order=9,
+            crpix_center=True,
+            publicly_visible=False,
+            solve_timeout=300,
+        )
 
-        if not solution:
+        if not solution_found:
             logger.warning("WCS solution not found.")
         else:
             logger.info("WCS solution found.")

@@ -2072,6 +2072,7 @@ class Observatory:
         sync_mount=False,
         settle_time=5,
         do_initial_slew=True,
+        wcs_idx=0,
     ):
         """Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector.
@@ -2201,55 +2202,41 @@ class Observatory:
                 time.sleep(0.1)
             logger.info("Exposure complete")
 
-            temp_image = tempfile.gettempdir() + "%s.fts" % astrotime.Time(
-                self.observatory_time, format="fits"
-            ).value.replace(":", "-")
+            temp_image = Path(
+                tempfile.gettempdir()
+                + "%s.fts"
+                % astrotime.Time(self.observatory_time, format="fits").value.replace(
+                    ":", "-"
+                )
+            )
             self.save_last_image(temp_image, overwrite=True)
 
-            logger.info("Searching for a WCS solution...")
-            if type(self._wcs) is WCS:
-                self._wcs.Solve(
-                    temp_image,
-                    ra_key="TARGRA",
-                    dec_key="TARGDEC",
-                    ra_dec_units=("hour", "deg"),
-                    solve_timeout=60,
-                    scale_units="arcsecperpix",
-                    scale_type="ev",
-                    scale_est=self.pixel_scale[0],
-                    scale_err=self.pixel_scale[0] * 0.1,
-                    parity=2,
-                    crpix_center=True,
-                )
-            else:
-                for i, wcs in enumerate(self._wcs):
-                    solution_found = wcs.Solve(
-                        temp_image,
-                        ra_key="TARGRA",
-                        dec_key="TARGDEC",
-                        ra_dec_units=("hour", "deg"),
-                        solve_timeout=60,
-                        scale_units="arcsecperpix",
-                        scale_type="ev",
-                        scale_est=self.pixel_scale[0],
-                        scale_err=self.pixel_scale[0] * 0.1,
-                        parity=2,
-                        crpix_center=True,
-                    )
-                    if solution_found:
-                        break
+            logger.info("Searching for a WCS solution with solver %i" % wcs_idx)
+            wcs_solver = self._wcs[wcs_idx]
+            solution_found = wcs_solver.Solve(
+                temp_image,
+                center_ra=slew_obj.ra.deg,
+                center_dec=slew_obj.dec.deg,
+                radius=1.0,
+                scale_units="arcsecperpix",
+                scale_type="ev",
+                scale_est=self.pixel_scale[0],
+                scale_err=self.pixel_scale[0] * 0.2,
+                parity=2,
+                tweak_order=9,
+                crpix_center=True,
+                publicly_visible=False,
+                solve_timeout=300,
+            )
 
             if save_images:
-                logger.info("Saving the centering image to %s" % save_path)
+                logger.info(
+                    "Saving the centering image to %s" % (save_path / temp_image.name)
+                )
                 self.save_last_image(
-                    save_path + temp_image.split("\\")[-1],
+                    save_path / temp_image.name,
                     overwrite=True,
                 )
-
-            self.save_last_image(
-                temp_image,
-                overwrite=True,
-            )
 
             if not solution_found:
                 logger.warning("No WCS solution found, skipping this attempt")
@@ -2722,9 +2709,9 @@ class Observatory:
         )
         self.latitude = dictionary.get("latitude", self.latitude)
         self.longitude = dictionary.get("longitude", self.longitude)
-        self.elevation = float(dictionary.get("elevation", self.elevation))
-        self.diameter = float(dictionary.get("diameter", self.diameter))
-        self.focal_length = float(dictionary.get("focal_length", self.focal_length))
+        self.elevation = dictionary.get("elevation", self.elevation)
+        self.diameter = dictionary.get("diameter", self.diameter)
+        self.focal_length = dictionary.get("focal_length", self.focal_length)
 
         self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
 
@@ -4296,9 +4283,7 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = (
-                float(value) if value is not None or value != "" else None
-            )
+            self._cooler_setpoint = value if value is not None or value != "" else None
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )
