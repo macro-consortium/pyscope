@@ -3932,8 +3932,9 @@ class Observatory:
             pass
         try:
             info["TELUT"] = (
-                self.telescope.UTCDate.strftime("%Y-%m-%dT%H:%M:%S"),
-                info["TELUT"][1],
+                # self.telescope.UTCDate.strftime("%Y-%m-%dT%H:%M:%S"),
+                self.observatory_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                info["TELUT"][1]
             )
         except:
             pass
