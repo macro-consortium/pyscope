@@ -19,3 +19,4 @@ smplotlib == 0.0.9
 timezonefinder == 6.5.0
 tksheet == 7.1.12
 tqdm == 4.66.4
+# twirl == 0.4.2
