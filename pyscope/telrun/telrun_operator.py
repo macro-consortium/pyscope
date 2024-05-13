@@ -717,8 +717,20 @@ class TelrunOperator:
                 )
                 return
 
+        if sched_fname is None:
+            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
+            sched_fname = str(self._logs_path) + "telrun_" + first_time + ".ecsv"
+        self._schedule_fname = sched_fname
+        self._schedule = schedule
+
+        # if schedule fname already exists, load it in as the schedule
+        if os.path.exists(self._schedule_fname):
+            logger.info("Log of schedule already exists, loading as schedule...")
+            self._schedule = table.Table.read(self._schedule_fname, format="ascii.ecsv")
+            logger.info("Loaded.")
+
         # Schedule validation
-        logger.info("Validating schedule...")
+        # logger.info("Validating schedule...")
         try:
             pass
             # schedtab.validate(schedule, self.observatory)
@@ -727,14 +739,8 @@ class TelrunOperator:
             logger.exception("Schedule failed validation, exiting...")
             return
 
-        if sched_fname is None:
-            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
-            sched_fname = self.schedules_path + "telrun_" + first_time + ".ecsv"
-        self._schedule_fname = sched_fname
-        self._schedule = schedule
-
-        # Save back to file for any invalid blocks
-        self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
+        logger.info("Saving schedule to file: %s" % self._schedule_fname)
+        self._schedule.write(self._schedule_fname, format="ascii.ecsv")
 
         # Sort schedule by start time
         self._schedule.sort("start_time")
