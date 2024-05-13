@@ -29,7 +29,6 @@ from ..utils import _kwargs_to_config, airmass
 from . import ObservatoryException
 from .ascom_device import ASCOMDevice
 from .device import Device
-from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,6 @@ class Observatory:
         self._config["switch"] = {}
         self._config["telescope"] = {}
         self._config["autofocus"] = {}
-        self._config["wcs"] = {}
 
         self._site_name = "pyscope Site"
         self._instrument_name = "pyscope Instrument"
@@ -122,10 +120,6 @@ class Observatory:
         self._autofocus = None
         self._autofocus_driver = None
         self._autofocus_kwargs = None
-
-        self._wcs = []
-        self._wcs_driver = []
-        self._wcs_kwargs = []
 
         self._slew_rate = None
         self._instrument_reconfig_times = None
@@ -439,45 +433,6 @@ class Observatory:
                     kwargs=self.autofocus_kwargs,
                 )
 
-            # WCS
-            for val in self._config["wcs"].values():
-                if val == "":
-                    continue
-                try:
-                    split_val = val.replace(" ", "").split(",") if "," in val else [val]
-                    self._wcs_driver.append(split_val[0])
-                    if len(split_val) > 1:
-                        kw = split_val[1:]
-                        self._wcs_kwargs.append(
-                            dict(
-                                (k, literal_eval(v))
-                                for k, v in (pair.split("=") for pair in kw)
-                            )
-                        )
-                    else:
-                        self._wcs_kwargs.append(None)
-                    for i in range(len(self._wcs_driver)):
-                        self._wcs_driver[i] = self._wcs_driver[i]
-                    if (
-                        self._wcs_driver[-1] == "maxim"
-                        or self._wcs_driver[-1] == "maximdl"
-                    ):
-                        if self._maxim is None:
-                            raise ObservatoryException(
-                                "MaxIm DL must be used as the camera driver when using MaxIm DL as the WCS driver."
-                            )
-                        self._wcs.append(self._maxim._wcs)
-                        logger.info("Using MaxIm DL as the WCS driver")
-                    else:
-                        self._wcs.append(
-                            _import_driver(
-                                self.wcs_driver[-1],
-                                kwargs=self.wcs_kwargs[-1],
-                            )
-                        )
-                except:
-                    logger.warning("Error parsing WCS config: %s" % val)
-
             # Get other keywords from config file
             logger.debug("Reading other keywords from config file")
             master_dict = {
@@ -493,7 +448,6 @@ class Observatory:
                 **self._config["switch"],
                 **self._config["telescope"],
                 **self._config["autofocus"],
-                **self._config["wcs"],
                 **self._config["scheduling"],
             }
             logger.debug("Master dict: %s" % master_dict)
@@ -680,34 +634,6 @@ class Observatory:
             self._config["autofocus"]["autofocus_kwargs"] = _kwargs_to_config(
                 self._autofocus_kwargs
             )
-
-        # WCS
-        kwarg = kwargs.get("wcs", self._wcs)
-        if kwarg is None:
-            self._wcs = _import_driver("AstrometryNetWCS")
-
-        if type(kwarg) not in (iter, list, tuple):
-            self._wcs = kwarg
-            if self._wcs is not None:
-                _check_class_inheritance(type(self._wcs), "WCS")
-                self._wcs_driver = self._wcs.__class__.__name__
-                self._wcs_kwargs = kwargs.get("wcs_kwargs", self._wcs_kwargs)
-                self._config["wcs"]["driver_0"] = (
-                    self._wcs_driver + "," + _kwargs_to_config(self._wcs_kwargs)
-                )
-        else:
-            self._wcs = kwarg
-            self._wcs_driver = [None] * len(self._wcs)
-            self._wcs_kwargs = [None] * len(self._wcs)
-            for i, wcs in enumerate(self._wcs):
-                if wcs is not None:
-                    _check_class_inheritance(type(wcs), "WCS")
-                    self._wcs_driver[i] = wcs.__class__.__name__
-                    self._wcs_kwargs[i] = (
-                        kwargs.get("wcs_kwargs", None)[i]
-                        if kwargs.get("wcs_kwargs", None) is not None
-                        else None
-                    )
 
         logger.debug("Reading out keywords passed as kwargs")
         logger.debug("kwargs: %s" % kwargs)
@@ -1237,7 +1163,6 @@ class Observatory:
         hdr_dict.update(self.switch_info)
         hdr_dict.update(self.threads_info)
         hdr_dict.update(self.autofocus_info)
-        hdr_dict.update(self.wcs_info)
 
         return hdr_dict
 
@@ -1257,16 +1182,6 @@ class Observatory:
             logger.info("Getting header from MaxIm image")
             hdr = fits.getheader(filename)
 
-        # The commented out part is unnecessary, as the fits header is automatically generated
-        # when the image is saved.
-        # hdr["SIMPLE"] = True
-        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
-        # hdr["NAXIS"] = (2, "number of axes")
-        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
-        # hdr["NAXIS2"] = (
-        #     len(img_array[0]),
-        #     "next to fastest changing axis",
-        # )
         hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
         hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
         if maxim:
@@ -2004,7 +1919,7 @@ class Observatory:
         save_path="./",
         settle_time=5,
         do_initial_slew=True,
-        wcs_idx=0,
+        solver="astrometry_net_wcs",  # or "maxim_pinpoint_wcs"
     ):
         """Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector.
@@ -2137,23 +2052,32 @@ class Observatory:
             )
             self.save_last_image(temp_image, overwrite=True)
 
-            logger.info("Searching for a WCS solution with solver %i" % wcs_idx)
-            wcs_solver = self._wcs[wcs_idx]
-            solution_found = wcs_solver.Solve(
-                temp_image,
-                center_ra=slew_obj.ra.deg,
-                center_dec=slew_obj.dec.deg,
-                radius=1.0,
-                scale_units="arcsecperpix",
-                scale_type="ev",
-                scale_est=self.pixel_scale[0],
-                scale_err=self.pixel_scale[0] * 0.2,
-                parity=2,
-                tweak_order=9,
-                crpix_center=True,
-                publicly_visible=False,
-                solve_timeout=300,
-            )
+            logger.info("Searching for a WCS solution")
+            if solver.lower() == "astrometry_net_wcs":
+                from ..reduction import astrometry_net_wcs
+
+                solution_found = astrometry_net_wcs(
+                    temp_image,
+                    center_ra=slew_obj.ra.deg,
+                    center_dec=slew_obj.dec.deg,
+                    radius=1.0,
+                    scale_units="arcsecperpix",
+                    scale_type="ev",
+                    scale_est=self.pixel_scale[0],
+                    scale_err=self.pixel_scale[0] * 0.2,
+                    parity=2,
+                    tweak_order=9,
+                    crpix_center=True,
+                    publicly_visible=False,
+                    solve_timeout=300,
+                )
+            elif solver.lower() == "maxim_pinpoint_wcs":
+                from ..reduction import maxim_pinpoint_wcs
+
+                solution_found = maxim_pinpoint_wcs(temp_image)
+            else:
+                logger.warning("Unknown WCS solver, skipping this attempt")
+                continue
 
             if save_images:
                 logger.info(
@@ -4003,12 +3927,6 @@ class Observatory:
         return info
 
     @property
-    def wcs_info(self):
-        logger.debug("Observatory.wcs_info() called")
-        info = {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
-        return info
-
-    @property
     def observatory_location(self):
         """Returns the EarthLocation object for the observatory"""
         logger.debug("Observatory.observatory_location() called")
@@ -4612,16 +4530,6 @@ class Observatory:
     def autofocus_kwargs(self):
         logger.debug("Observatory.autofocus_kwargs property called")
         return self._autofocus_kwargs
-
-    @property
-    def wcs_driver(self):
-        logger.debug("Observatory.wcs_driver property called")
-        return self._wcs_driver
-
-    @property
-    def wcs_kwargs(self):
-        logger.debug("Observatory.wcs_kwargs property called")
-        return self._wcs_kwargs
 
     @property
     def slew_rate(self):

@@ -8,7 +8,6 @@ import click
 from astropy.io import fits
 
 from ..analysis import calc_zmag
-from ..observatory import AstrometryNetWCS
 from .ccd_calib import ccd_calib
 
 logger = logging.getLogger(__name__)
@@ -79,15 +78,6 @@ logger = logging.getLogger(__name__)
     help="Comma-separated list of bad columns to fix.",
 )
 @click.option(
-    "-w",
-    "--wcs",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="""If given, the WCS is solved for each image. If not given, the WCS is
-                not solved.""",
-)
-@click.option(
     "-z",
     "--zmag",
     is_flag=True,
@@ -115,7 +105,6 @@ def calib_images_cli(
     in_place=False,
     astro_scrappy=(1, 3),
     bad_columns="",
-    wcs=False,
     zmag=False,
     verbose=0,
     fnames=(),
@@ -136,7 +125,6 @@ def calib_images_cli(
         in_place (_type_): _description_
         astro_scrappy (_type_): _description_
         bad_columns (_type_): _description_
-        wcs (_type_): _description_
         zmag (_type_): _description_
         verbose (_type_): _description_
         fnames (_type_): _description_
@@ -293,12 +281,6 @@ def calib_images_cli(
             in_place=in_place,
             verbose=verbose,
         )
-
-        # world coordinate system
-        if wcs:
-            logger.debug("Running Astrometry.net WCS solver...")
-            solver = AstrometryNetWCS()
-            solver.solve(fname)
 
         logger.debug("Done!")
 

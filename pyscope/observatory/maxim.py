@@ -8,7 +8,6 @@ from .autofocus import Autofocus
 from .camera import Camera
 from .device import Device
 from .filter_wheel import FilterWheel
-from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
@@ -587,24 +586,3 @@ class _MaximFilterWheel(FilterWheel):
     def Position(self, value):
         logger.debug(f"Position setter called with value={value}")
         self.maxim_camera._com_object.Filter = value
-
-
-class _MaximPinpointWCS(WCS):
-    def __init__(self, maxim_camera):
-        logger.debug("_MaximPinpointWCS __init__ called")
-        self.maxim_camera = maxim_camera._com_object
-
-    def Solve(self, ra=None, dec=None, scale_est=None, *args, **kwargs):
-        logger.debug(
-            f"_MaximPinpointWCS.Solve called with ra={ra}, dec={dec}, and scale_est={scale_est}"
-        )
-        # TODO: support arguments
-        self.maxim_camera.document.PinpointSolve()
-
-        while self.maxim_camera.document.PinpointStatus == 3:
-            time.sleep(1)
-
-        if self.maxim_camera.document.PinpointStatus == 2:
-            return True
-        else:
-            return False

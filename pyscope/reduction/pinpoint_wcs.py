@@ -3,12 +3,10 @@ import platform
 import time
 
 import astropy.coordinates as coord
-import astropy.io.fits as pyfits
 
 logger = logging.getLogger(__name__)
 
 from ..utils import _force_async
-from .wcs import WCS
 
 
 class PinpointWCS(WCS):

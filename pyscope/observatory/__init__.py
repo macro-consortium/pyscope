@@ -20,7 +20,6 @@ from .rotator import Rotator
 from .safety_monitor import SafetyMonitor
 from .switch import Switch
 from .telescope import Telescope
-from .wcs import WCS
 
 from .ascom_device import ASCOMDevice
 from .ascom_camera import ASCOMCamera
@@ -34,12 +33,10 @@ from .ascom_safety_monitor import ASCOMSafetyMonitor
 from .ascom_switch import ASCOMSwitch
 from .ascom_telescope import ASCOMTelescope
 
-from .astrometry_net_wcs import AstrometryNetWCS
 from .html_observing_conditions import HTMLObservingConditions
 from .html_safety_monitor import HTMLSafetyMonitor
 from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
-from .pinpoint_wcs import PinpointWCS
 from .pwi4_autofocus import PWI4Autofocus
 from .pwi4_focuser import PWI4Focuser
 
@@ -49,8 +46,6 @@ from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
 
-# from .platesolve2_wcs import Platesolve2WCS
-# from .platesolve3_wcs import Platesolve3WCS
 from .pwi_autofocus import PWIAutofocus
 
 # from .skyx import SkyX
@@ -91,7 +86,6 @@ __all__ = [
     "SafetyMonitor",
     "Switch",
     "Telescope",
-    "WCS",
     "collect_calibration_set",
     "SimulatorServer",
 ]
