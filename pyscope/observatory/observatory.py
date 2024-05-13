@@ -21,9 +21,11 @@ from astropy import units as u
 from astropy import wcs as astropywcs
 from astropy.io import fits
 from astroquery.mpc import MPC
+from scipy.optimize import curve_fit
 
 from .. import __version__, observatory
-from ..utils import _get_image_source_catalog, _kwargs_to_config, airmass
+from ..analysis import detect_sources_photutils
+from ..utils import _kwargs_to_config, airmass
 from . import ObservatoryException
 from .ascom_device import ASCOMDevice
 from .device import Device
@@ -1340,18 +1342,16 @@ class Observatory:
         self,
         filename,
         frametyp=None,
-        do_wcs=False,
-        do_fwhm=False,
         overwrite=False,
         custom_header=None,
         history=None,
         allowed_overwrite=[],
-        **kwargs,
+        # **kwargs,
     ):
         """Saves the current image"""
 
         logger.debug(
-            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {history}, {kwargs}) called"
+            f"Observatory.save_last_image({filename}, {frametyp}, {overwrite}, {custom_header}, {history}) called"
         )
 
         if not self.camera.ImageReady:
@@ -1388,121 +1388,12 @@ class Observatory:
             self.camera.SaveImageAsFits(filepath)
             img_array = fits.getdata(filename)
 
-        # Moved below to separate function
-        # hdr = fits.Header()
-
-        # hdr["SIMPLE"] = True
-        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
-        # hdr["NAXIS"] = (2, "number of axes")
-        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
-        # hdr["NAXIS2"] = (
-        #     len(img_array[0]),
-        #     "next to fastest changing axis",
-        # )
-        # hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
-        # hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
-        # hdr["SWCREATE"] = ("pyscope", "Software used to create file")
-        # hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
-        # hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
-
-        # if frametyp is not None:
-        #     hdr["FRAMETYP"] = (frametyp, "Frame type")
-        # elif self.last_camera_shutter_status:
-        #     hdr["FRAMETYP"] = ("Light", "Frame type")
-        # elif not self.last_camera_shutter_status:
-        #     hdr["FRAMETYP"] = ("Dark", "Frame type")
-
-        # hdr.update(self.observatory_info)
-        # hdr.update(self.camera_info)
-        # hdr.update(self.telescope_info)
-        # hdr.update(self.cover_calibrator_info)
-        # hdr.update(self.dome_info)
-        # hdr.update(self.filter_wheel_info)
-        # hdr.update(self.focuser_info)
-        # hdr.update(self.observing_conditions_info)
-        # hdr.update(self.rotator_info)
-        # hdr.update(self.safety_monitor_info)
-        # hdr.update(self.switch_info)
-        # hdr.update(self.threads_info)
-        # hdr.update(self.autofocus_info)
-        # hdr.update(self.wcs_info)
-
-        # if custom_header is not None:
-        #     hdr.update(custom_header)
-
-        # if history is not None:
-        #     if type(history) is str:
-        #         history = [history]
-        #     for hist in history:
-        #         hdr["HISTORY"] = hist
-
         hdr = self.generate_header_info(
             filename, frametyp, custom_header, history, maxim, allowed_overwrite
         )
 
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
-
-        if do_fwhm:
-            logger.info("Attempting to measure FWHM")
-            cat = _get_image_source_catalog(filename)
-
-            hdr["FWHMH"] = (
-                np.median(np.sqrt(cat.covar_sigx2)).value,
-                "Median FWHM in horizontal direction",
-            )
-            hdr["FWHMHS"] = (
-                np.std(np.sqrt(cat.covar_sigx2)).value,
-                "Std. dev. of FWHM in horizontal direction",
-            )
-            hdr["FWHMV"] = (
-                np.median(np.sqrt(cat.covar_sigy2)).value,
-                "Median FWHM in vertical direction",
-            )
-            hdr["FWHMVS"] = (
-                np.std(np.sqrt(cat.covar_sigy2)).value,
-                "Std. dev. of FWHM in vertical direction",
-            )
-            logger.info("FWHMH: %.2f +/- %.2f" % (hdr["FWHMH"], hdr["FWHMHS"]))
-            logger.info("FWHMV: %.2f +/- %.2f" % (hdr["FWHMV"], hdr["FWHMVS"]))
-
-        if do_wcs:
-            logger.info("Attempting to solve image for WCS")
-            if type(self._wcs) is WCS:
-                logger.info("Using solver %s" % self.wcs_driver)
-                self._wcs.Solve(
-                    filename,
-                    ra_key="TELRAIC",
-                    dec_key="TELDECIC",
-                    ra_dec_units=("hour", "deg"),
-                    solve_timeout=60,
-                    scale_units="arcsecperpix",
-                    scale_type="ev",
-                    scale_est=self.pixel_scale[0],
-                    scale_err=self.pixel_scale[0] * 0.1,
-                    parity=2,
-                    crpix_center=True,
-                )
-            else:
-                for i, wcs in enumerate(self._wcs):
-                    logger.info("Using solver %s" % self.wcs_driver[i])
-                    solution = wcs.Solve(
-                        filename,
-                        ra_key="TELRAIC",
-                        dec_key="TELDECIC",
-                        ra_dec_units=("hour", "deg"),
-                        solve_timeout=60,
-                        scale_units="arcsecperpix",
-                        scale_type="ev",
-                        scale_est=self.pixel_scale[0],
-                        scale_err=self.pixel_scale[0] * 0.1,
-                        parity=2,
-                        crpix_center=True,
-                    )
-                    if solution:
-                        break
-                if not solution:
-                    logger.warning("WCS solution not found.")
 
         return True
 
@@ -1927,6 +1818,8 @@ class Observatory:
         nsteps=5,
         step_size=500,
         use_current_pointing=False,
+        save_images=False,
+        save_path=None,
     ):
         """Runs the autofocus routine"""
 
@@ -1988,15 +1881,50 @@ class Observatory:
                 logger.info("Exposure complete.")
 
                 logger.info("Calculating mean star fwhm...")
-                filename = tempfile.gettempdir() + "autofocus.fts"
-                self.save_last_image(filename, overwrite=True, do_fwhm=True)
-                cat = _get_image_source_catalog(filename)
+                if save_images:
+                    if save_path is None:
+                        save_path = Path(self._images_path / "autofocus").resolve()
+                else:
+                    save_path = Path(tempfile.gettempdir()).resolve()
+                if not save_path.exists():
+                    save_path.mkdir(parents=True)
+                fname = (
+                    save_path
+                    / f"autofocus_{self.observatory_time.isot.replace(':', '-')}.fts"
+                )
+
+                self.save_last_image(fname, frametyp="Focus")
+                cat = detect_sources_photutils(
+                    fname,
+                    threshold=100,
+                    deblend=False,
+                    tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
+                )
                 focus_values.append(np.mean(cat.fwhm.value))
                 logger.info("FWHM = %.1f pixels" % focus_values[-1])
 
-            fit = np.polyfit(test_positions, focus_values, 2)
-            result = np.round(-fit[1] / (2 * fit[0]), 0)
-            logger.info("Best focus position is %i" % result)
+            # fit hyperbola to focus values
+            popt, pcov = curve_fit(
+                lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
+                test_positions,
+                focus_values,
+                p0=[midpoint, 1, 1, 0],
+                bounds=(
+                    [midpoint - n_steps * step_size, 0, 0, -1e6],
+                    [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
+                ),
+            )
+
+            result = popt[0]
+            result_err = np.sqrt(np.diag(pcov))[0]
+            logger.info("Best focus position is %i +/- %i" % (result, result_err))
+
+            if result < test_positions[0] or result > test_positions[-1]:
+                logger.warning("Best focus position is outside the test range.")
+                logger.warning(
+                    "Using the midpoint of the test range as the best focus position."
+                )
+                result = midpoint
 
             logger.info("Moving focuser to best focus position...")
             if self.focuser.Absolute:
@@ -2052,7 +1980,7 @@ class Observatory:
         obj = coord.SkyCoord(ra=new_ra, dec=new_dec, frame=center_pos.frame)
         self.slew_to_coordinates(obj=obj)
 
-    def recenter(
+    def repositioning(
         self,
         obj=None,
         ra=None,
@@ -2069,7 +1997,6 @@ class Observatory:
         readout=0,
         save_images=False,
         save_path="./",
-        sync_mount=False,
         settle_time=5,
         do_initial_slew=True,
         wcs_idx=0,
@@ -2117,10 +2044,6 @@ class Observatory:
         save_path : str, optional
             The path to save the centering images to. Default is the current directory. Ignored if
             save_images is False.
-        sync_mount : bool, optional
-            Whether or not to sync the mount after the target is centered. Default is False. Note that
-            if the target pixel location is not the center of the detector, the mount will be synced
-            to this offset for all future slews.
         settle_time : float, optional
             The time in seconds to wait after the slew before checking the offset. Default is 5.
         do_initial_slew : bool, optional
@@ -2133,7 +2056,7 @@ class Observatory:
             True if the target was successfully centered, False otherwise.
         """
         logger.info(
-            f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
+            f"repositioning called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
         )
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
@@ -2189,14 +2112,12 @@ class Observatory:
 
             if not check_and_refine and attempt > 0:
                 logger.info(
-                    "Check and recenter is off, single-shot recentering complete"
+                    "Check and repositioning is off, single-shot repositioning complete"
                 )
                 return True
 
             logger.info("Taking %.2f second exposure" % exposure)
-            self.camera.ReadoutMode = (
-                readout  # self.camera.ReadoutModes[readout] <== This breaks maxim
-            )
+            self.camera.ReadoutMode = readout
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
@@ -2300,18 +2221,6 @@ class Observatory:
                 "Target could not be centered after %d attempts" % max_attempts
             )
             return False
-
-        if sync_mount:
-            logger.info(
-                "Syncing the mount to the center ra and dec transformed to J-Now..."
-            )
-
-            sync_obj = self._parse_obj_ra_dec(
-                ra=center_ra, dec=center_dec, unit=("hour", "deg"), frame="icrs"
-            )
-            sync_obj = self.get_object_slew(sync_obj)
-            self.telescope.SyncToCoordinates(sync_obj.ra.hour, sync_obj.dec.deg)
-            logger.info("Sync complete")
 
         logger.info("Target is now in position after %d attempts" % (attempt + 1))
 
