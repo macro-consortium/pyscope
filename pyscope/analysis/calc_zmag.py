@@ -11,7 +11,7 @@ from astropy.io import fits
 from astroquery import sdss
 
 from ..analysis import detect_sources_photutils
-from .reduction import astrometry_net_wcs
+from ..reduction import astrometry_net_wcs
 
 logger = logging.getLogger(__name__)
 
