@@ -1392,6 +1392,11 @@ class Observatory:
             filename, frametyp, custom_header, history, maxim, allowed_overwrite
         )
 
+        # update RADECSYS key to RADECSYSa
+        if "RADECSYS" in hdr:
+            hdr["RADECSYSa"] = hdr["RADECSYS"]
+            hdr.pop("RADECSYS", None)
+
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
@@ -3934,7 +3939,7 @@ class Observatory:
             info["TELUT"] = (
                 # self.telescope.UTCDate.strftime("%Y-%m-%dT%H:%M:%S"),
                 self.observatory_time.strftime("%Y-%m-%dT%H:%M:%S"),
-                info["TELUT"][1]
+                info["TELUT"][1],
             )
         except:
             pass

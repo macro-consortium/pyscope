@@ -16,13 +16,149 @@ logger = logging.getLogger(__name__)
                 https://pyscope.readthedocs.io/ for more
                 information."""
 )
-@click.argument("fnames", type=click.Path(exists=True), nargs=-1)
+@click.argument("fname", type=click.Path(exists=True), nargs=-1)
 @click.option(
-    "-v", "--verbose", is_flag=True, default=False, help="""Print verbose output."""
+    "--clip-sigma",
+    default=3,
+    help="""See documentation for astropy.stats.SigmaClip""",
 )
+@click.option(
+    "--clip-maxiters",
+    default=5,
+    help="""See documentation for astropy.stats.SigmaClip""",
+)
+@click.option(
+    "--clip-cenfunc",
+    default="median",
+    help="""See documentation for astropy.stats.SigmaClip""",
+)
+@click.option(
+    "--clip-stdfunc",
+    default="std",
+    help="""See documentation for astropy.stats.SigmaClip""",
+)
+@click.option(
+    "--bkg-estimator",
+    type=click.Choice(
+        [
+            "MeanBackground",
+            "MedianBackground",
+            "ModeEstimatorBackground",
+            "MMMBackground",
+            "SExtractorBackground",
+            "BiweightLocationBackground",
+        ]
+    ),
+    default="SExtractorBackground",
+    help="""Background estimator to use""",
+)
+@click.option(
+    "--bkgrms-estimator",
+    type=click.Choice(
+        ["StdBackgroundRMS", "MADStdBackgroundRMS", "BiweightScaleBackgroundRMS"]
+    ),
+    default="StdBackgroundRMS",
+    help="""Background RMS estimator to use""",
+)
+@click.option(
+    "--box-size",
+    default=50,
+    help="""Size of the box used to estimate the background""",
+)
+@click.option(
+    "--filter-size",
+    default=3,
+    help="""Size of the filter used to smooth the background""",
+)
+@click.option(
+    "--kernel-fwhm",
+    default=3,
+    help="""Full width at half maximum of the Gaussian kernel used to convolve the image""",
+)
+@click.option(
+    "--kernel-size",
+    default=5,
+    help="""Size of the kernel used to convolve the image""",
+)
+@click.option(
+    "--effective-gain",
+    default=1,
+    help="""Effective gain of the image""",
+)
+@click.option(
+    "--detect-threshold",
+    default=3,
+    help="""Threshold used to detect sources in multiples of the background RMS""",
+)
+@click.option(
+    "--connectivity",
+    type=click.Choice([4, 8]),
+    default=8,
+    help="""Connectivity of the sources""",
+)
+@click.option(
+    "--npixels",
+    default=5,
+    help="""Minimum number of pixels required for a source""",
+)
+@click.option(
+    "--localbkg-width",
+    default=10,
+    help="""Width in pixels used to compute the local background""",
+)
+@click.option(
+    "--apermask-method",
+    type=click.Choice(["correct", "mask", "none"]),
+    default="correct",
+    help="""Method used to mask out the aperture""",
+)
+@click.option(
+    "--kron-params",
+    nargs=3,
+    type=float,
+    default=(2.5, 1.4, 0.0),
+    help="""Parameters used to compute the Kron radius""",
+)
+@click.option(
+    "--deblend/--no-deblend",
+    default=True,
+    help="""Whether to deblend sources""",
+)
+@click.option(
+    "--nlevels",
+    default=32,
+    help="""Number of levels used in the deblending""",
+)
+@click.option(
+    "--contrast",
+    default=0.001,
+    help="""Contrast used in the deblending""",
+)
+@click.option(
+    "--mode",
+    type=click.Choice(["exponential", "linear"]),
+    default="exponential",
+    help="""Mode used in the deblending""",
+)
+@click.option(
+    "--nproc",
+    default=1,
+    help="""Number of processes to use for deblending""",
+)
+@click.option(
+    "--tbl-save-path",
+    type=click.Path(),
+    help="""Path to save the source catalog""",
+)
+@click.option(
+    "--progress-bar/--no-progress-bar",
+    default=True,
+    help="""Whether to show a progress bar for certain time-consuming operations""",
+)
+@click.option("-v", "--verbose", count=True, help="""Verbosity level""")
 @click.version_option()
 def detect_sources_photutils_cli(
-    fnames,
+    fname,
     clip_sigma=3,
     clip_maxiters=5,
     clip_cenfunc="median",
@@ -36,7 +172,7 @@ def detect_sources_photutils_cli(
     effective_gain=1,
     detect_threshold=3,
     connectivity=8,
-    npixels=10,
+    npixels=5,
     localbkg_width=10,
     apermask_method="correct",
     kron_params=(2.5, 1.4, 0.0),
@@ -50,9 +186,11 @@ def detect_sources_photutils_cli(
     verbose=0,
 ):
     """Finds sources in an image and returns a catalog of their positions
-    along with other properties"""
+    along with other properties. See https://photutils.readthedocs.io/en/stable/api/photutils.segmentation.SourceCatalog.html for more information.
+    """
 
-    image, hdr = fits.getdata(fnames, header=True)
+    fname = str(fname[0])
+    image, hdr = fits.getdata(fname, header=True)
     image = image.astype("float64")
 
     # Set up sigma clipping
@@ -151,6 +289,7 @@ def detect_sources_photutils_cli(
 
     if tbl_save_path is not None:
         logger.info(f"Saving source catalog to {tbl_save_path}...")
+
         tbl = cat.to_table(
             columns=[
                 "area",
@@ -158,14 +297,14 @@ def detect_sources_photutils_cli(
                 "background_centroid",
                 "background_mean",
                 "background_sum",
-                "bbox",
+                # "bbox",
                 "bbox_xmax",
                 "bbox_xmin",
                 "bbox_ymax",
                 "bbox_ymin",
                 "centroid",
                 "centroid_quad",
-                "centrroid_win",
+                "centroid_win",
                 "convdata",
                 "covar_sigx2",
                 "covar_sigxy",
@@ -186,44 +325,44 @@ def detect_sources_photutils_cli(
                 "elongation",
                 "equivalent_radius",
                 "error",
-                "extra_properties",
+                # "extra_properties",
                 "fwhm",
                 "gini",
                 "inertia_tensor",
-                "isscalar",
-                "kron_aperture",
+                # "isscalar",
+                # "kron_aperture",
                 "kron_flux",
                 "kron_fluxerr",
                 "kron_radius",
                 "label",
                 "labels",
                 "local_background",
-                "local_background_aperture",
+                # "local_background_aperture",
                 "max_value",
                 "maxval_index",
                 "min_value",
                 "minval_index",
                 "moments",
                 "moments_central",
-                "nlabels",
+                # "nlabels",
                 "orientation",
                 "perimeter",
-                "properties",
+                # "properties",
                 "segment",
                 "segment_area",
                 "segment_flux",
                 "segment_fluxerr",
                 "semimajor_sigma",
                 "semiminor_sigma",
-                "sky_bbbox_ll",
-                "sky_bbbox_lr",
-                "sky_bbbox_ul",
-                "sky_bbbox_ur",
+                "sky_bbox_ll",
+                "sky_bbox_lr",
+                "sky_bbox_ul",
+                "sky_bbox_ur",
                 "sky_centroid",
                 "sky_centroid_icrs",
                 "sky_centroid_quad",
                 "sky_centroid_win",
-                "slices",
+                # "slices",
                 "xcentroid",
                 "xcentroid_quad",
                 "xcentroid_win",
@@ -238,4 +377,4 @@ def detect_sources_photutils_cli(
     return cat
 
 
-detct_sources_photutils = detect_sources_photutils_cli.callback
+detect_sources_photutils = detect_sources_photutils_cli.callback

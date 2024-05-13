@@ -42,9 +42,9 @@ def _get_number_from_line(line, expected_keyword, expected_units, is_numeric):
     else:
         line_units = ""
 
-    if line_keyword != bytes(expected_keyword,'utf-8'):
+    if line_keyword != bytes(expected_keyword, "utf-8"):
         return None
-    if expected_units is not None and line_units != bytes(expected_units,'utf-8'):
+    if expected_units is not None and line_units != bytes(expected_units, "utf-8"):
         return None
     if is_numeric:
         try:
