@@ -21,13 +21,14 @@ from astropy import units as u
 from astropy import wcs as astropywcs
 from astropy.io import fits
 from astroquery.mpc import MPC
+from scipy.optimize import curve_fit
 
 from .. import __version__, observatory
-from ..utils import _get_image_source_catalog, _kwargs_to_config, airmass
+from ..analysis import detect_sources_photutils
+from ..utils import _kwargs_to_config, airmass
 from . import ObservatoryException
 from .ascom_device import ASCOMDevice
 from .device import Device
-from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,6 @@ class Observatory:
         self._config["switch"] = {}
         self._config["telescope"] = {}
         self._config["autofocus"] = {}
-        self._config["wcs"] = {}
 
         self._site_name = "pyscope Site"
         self._instrument_name = "pyscope Instrument"
@@ -120,10 +120,6 @@ class Observatory:
         self._autofocus = None
         self._autofocus_driver = None
         self._autofocus_kwargs = None
-
-        self._wcs = []
-        self._wcs_driver = []
-        self._wcs_kwargs = []
 
         self._slew_rate = None
         self._instrument_reconfig_times = None
@@ -437,45 +433,6 @@ class Observatory:
                     kwargs=self.autofocus_kwargs,
                 )
 
-            # WCS
-            for val in self._config["wcs"].values():
-                if val == "":
-                    continue
-                try:
-                    split_val = val.replace(" ", "").split(",") if "," in val else [val]
-                    self._wcs_driver.append(split_val[0])
-                    if len(split_val) > 1:
-                        kw = split_val[1:]
-                        self._wcs_kwargs.append(
-                            dict(
-                                (k, literal_eval(v))
-                                for k, v in (pair.split("=") for pair in kw)
-                            )
-                        )
-                    else:
-                        self._wcs_kwargs.append(None)
-                    for i in range(len(self._wcs_driver)):
-                        self._wcs_driver[i] = self._wcs_driver[i]
-                    if (
-                        self._wcs_driver[-1] == "maxim"
-                        or self._wcs_driver[-1] == "maximdl"
-                    ):
-                        if self._maxim is None:
-                            raise ObservatoryException(
-                                "MaxIm DL must be used as the camera driver when using MaxIm DL as the WCS driver."
-                            )
-                        self._wcs.append(self._maxim._wcs)
-                        logger.info("Using MaxIm DL as the WCS driver")
-                    else:
-                        self._wcs.append(
-                            _import_driver(
-                                self.wcs_driver[-1],
-                                kwargs=self.wcs_kwargs[-1],
-                            )
-                        )
-                except:
-                    logger.warning("Error parsing WCS config: %s" % val)
-
             # Get other keywords from config file
             logger.debug("Reading other keywords from config file")
             master_dict = {
@@ -491,7 +448,6 @@ class Observatory:
                 **self._config["switch"],
                 **self._config["telescope"],
                 **self._config["autofocus"],
-                **self._config["wcs"],
                 **self._config["scheduling"],
             }
             logger.debug("Master dict: %s" % master_dict)
@@ -678,34 +634,6 @@ class Observatory:
             self._config["autofocus"]["autofocus_kwargs"] = _kwargs_to_config(
                 self._autofocus_kwargs
             )
-
-        # WCS
-        kwarg = kwargs.get("wcs", self._wcs)
-        if kwarg is None:
-            self._wcs = _import_driver("AstrometryNetWCS")
-
-        if type(kwarg) not in (iter, list, tuple):
-            self._wcs = kwarg
-            if self._wcs is not None:
-                _check_class_inheritance(type(self._wcs), "WCS")
-                self._wcs_driver = self._wcs.__class__.__name__
-                self._wcs_kwargs = kwargs.get("wcs_kwargs", self._wcs_kwargs)
-                self._config["wcs"]["driver_0"] = (
-                    self._wcs_driver + "," + _kwargs_to_config(self._wcs_kwargs)
-                )
-        else:
-            self._wcs = kwarg
-            self._wcs_driver = [None] * len(self._wcs)
-            self._wcs_kwargs = [None] * len(self._wcs)
-            for i, wcs in enumerate(self._wcs):
-                if wcs is not None:
-                    _check_class_inheritance(type(wcs), "WCS")
-                    self._wcs_driver[i] = wcs.__class__.__name__
-                    self._wcs_kwargs[i] = (
-                        kwargs.get("wcs_kwargs", None)[i]
-                        if kwargs.get("wcs_kwargs", None) is not None
-                        else None
-                    )
 
         logger.debug("Reading out keywords passed as kwargs")
         logger.debug("kwargs: %s" % kwargs)
@@ -1235,7 +1163,6 @@ class Observatory:
         hdr_dict.update(self.switch_info)
         hdr_dict.update(self.threads_info)
         hdr_dict.update(self.autofocus_info)
-        hdr_dict.update(self.wcs_info)
 
         return hdr_dict
 
@@ -1255,16 +1182,6 @@ class Observatory:
             logger.info("Getting header from MaxIm image")
             hdr = fits.getheader(filename)
 
-        # The commented out part is unnecessary, as the fits header is automatically generated
-        # when the image is saved.
-        # hdr["SIMPLE"] = True
-        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
-        # hdr["NAXIS"] = (2, "number of axes")
-        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
-        # hdr["NAXIS2"] = (
-        #     len(img_array[0]),
-        #     "next to fastest changing axis",
-        # )
         hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
         hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
         if maxim:
@@ -1340,18 +1257,16 @@ class Observatory:
         self,
         filename,
         frametyp=None,
-        do_wcs=False,
-        do_fwhm=False,
         overwrite=False,
         custom_header=None,
         history=None,
         allowed_overwrite=[],
-        **kwargs,
+        # **kwargs,
     ):
         """Saves the current image"""
 
         logger.debug(
-            f"Observatory.save_last_image({filename}, {frametyp}, {do_wcs}, {do_fwhm}, {overwrite}, {custom_header}, {history}, {kwargs}) called"
+            f"Observatory.save_last_image({filename}, {frametyp}, {overwrite}, {custom_header}, {history}) called"
         )
 
         if not self.camera.ImageReady:
@@ -1388,121 +1303,17 @@ class Observatory:
             self.camera.SaveImageAsFits(filepath)
             img_array = fits.getdata(filename)
 
-        # Moved below to separate function
-        # hdr = fits.Header()
-
-        # hdr["SIMPLE"] = True
-        # hdr["BITPIX"] = (16, "8 unsigned int, 16 & 32 int, -32 & -64 real")
-        # hdr["NAXIS"] = (2, "number of axes")
-        # hdr["NAXIS1"] = (len(img_array), "fastest changing axis")
-        # hdr["NAXIS2"] = (
-        #     len(img_array[0]),
-        #     "next to fastest changing axis",
-        # )
-        # hdr["BSCALE"] = (1, "physical=BZERO + BSCALE*array_value")
-        # hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
-        # hdr["SWCREATE"] = ("pyscope", "Software used to create file")
-        # hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
-        # hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
-
-        # if frametyp is not None:
-        #     hdr["FRAMETYP"] = (frametyp, "Frame type")
-        # elif self.last_camera_shutter_status:
-        #     hdr["FRAMETYP"] = ("Light", "Frame type")
-        # elif not self.last_camera_shutter_status:
-        #     hdr["FRAMETYP"] = ("Dark", "Frame type")
-
-        # hdr.update(self.observatory_info)
-        # hdr.update(self.camera_info)
-        # hdr.update(self.telescope_info)
-        # hdr.update(self.cover_calibrator_info)
-        # hdr.update(self.dome_info)
-        # hdr.update(self.filter_wheel_info)
-        # hdr.update(self.focuser_info)
-        # hdr.update(self.observing_conditions_info)
-        # hdr.update(self.rotator_info)
-        # hdr.update(self.safety_monitor_info)
-        # hdr.update(self.switch_info)
-        # hdr.update(self.threads_info)
-        # hdr.update(self.autofocus_info)
-        # hdr.update(self.wcs_info)
-
-        # if custom_header is not None:
-        #     hdr.update(custom_header)
-
-        # if history is not None:
-        #     if type(history) is str:
-        #         history = [history]
-        #     for hist in history:
-        #         hdr["HISTORY"] = hist
-
         hdr = self.generate_header_info(
             filename, frametyp, custom_header, history, maxim, allowed_overwrite
         )
 
+        # update RADECSYS key to RADECSYSa
+        if "RADECSYS" in hdr:
+            hdr["RADECSYSa"] = hdr["RADECSYS"]
+            hdr.pop("RADECSYS", None)
+
         hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
-
-        if do_fwhm:
-            logger.info("Attempting to measure FWHM")
-            cat = _get_image_source_catalog(filename)
-
-            hdr["FWHMH"] = (
-                np.median(np.sqrt(cat.covar_sigx2)).value,
-                "Median FWHM in horizontal direction",
-            )
-            hdr["FWHMHS"] = (
-                np.std(np.sqrt(cat.covar_sigx2)).value,
-                "Std. dev. of FWHM in horizontal direction",
-            )
-            hdr["FWHMV"] = (
-                np.median(np.sqrt(cat.covar_sigy2)).value,
-                "Median FWHM in vertical direction",
-            )
-            hdr["FWHMVS"] = (
-                np.std(np.sqrt(cat.covar_sigy2)).value,
-                "Std. dev. of FWHM in vertical direction",
-            )
-            logger.info("FWHMH: %.2f +/- %.2f" % (hdr["FWHMH"], hdr["FWHMHS"]))
-            logger.info("FWHMV: %.2f +/- %.2f" % (hdr["FWHMV"], hdr["FWHMVS"]))
-
-        if do_wcs:
-            logger.info("Attempting to solve image for WCS")
-            if type(self._wcs) is WCS:
-                logger.info("Using solver %s" % self.wcs_driver)
-                self._wcs.Solve(
-                    filename,
-                    ra_key="TELRAIC",
-                    dec_key="TELDECIC",
-                    ra_dec_units=("hour", "deg"),
-                    solve_timeout=60,
-                    scale_units="arcsecperpix",
-                    scale_type="ev",
-                    scale_est=self.pixel_scale[0],
-                    scale_err=self.pixel_scale[0] * 0.1,
-                    parity=2,
-                    crpix_center=True,
-                )
-            else:
-                for i, wcs in enumerate(self._wcs):
-                    logger.info("Using solver %s" % self.wcs_driver[i])
-                    solution = wcs.Solve(
-                        filename,
-                        ra_key="TELRAIC",
-                        dec_key="TELDECIC",
-                        ra_dec_units=("hour", "deg"),
-                        solve_timeout=60,
-                        scale_units="arcsecperpix",
-                        scale_type="ev",
-                        scale_est=self.pixel_scale[0],
-                        scale_err=self.pixel_scale[0] * 0.1,
-                        parity=2,
-                        crpix_center=True,
-                    )
-                    if solution:
-                        break
-                if not solution:
-                    logger.warning("WCS solution not found.")
 
         return True
 
@@ -1927,6 +1738,8 @@ class Observatory:
         nsteps=5,
         step_size=500,
         use_current_pointing=False,
+        save_images=False,
+        save_path=None,
     ):
         """Runs the autofocus routine"""
 
@@ -1988,15 +1801,50 @@ class Observatory:
                 logger.info("Exposure complete.")
 
                 logger.info("Calculating mean star fwhm...")
-                filename = tempfile.gettempdir() + "autofocus.fts"
-                self.save_last_image(filename, overwrite=True, do_fwhm=True)
-                cat = _get_image_source_catalog(filename)
+                if save_images:
+                    if save_path is None:
+                        save_path = Path(self._images_path / "autofocus").resolve()
+                else:
+                    save_path = Path(tempfile.gettempdir()).resolve()
+                if not save_path.exists():
+                    save_path.mkdir(parents=True)
+                fname = (
+                    save_path
+                    / f"autofocus_{self.observatory_time.isot.replace(':', '-')}.fts"
+                )
+
+                self.save_last_image(fname, frametyp="Focus")
+                cat = detect_sources_photutils(
+                    fname,
+                    threshold=100,
+                    deblend=False,
+                    tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
+                )
                 focus_values.append(np.mean(cat.fwhm.value))
                 logger.info("FWHM = %.1f pixels" % focus_values[-1])
 
-            fit = np.polyfit(test_positions, focus_values, 2)
-            result = np.round(-fit[1] / (2 * fit[0]), 0)
-            logger.info("Best focus position is %i" % result)
+            # fit hyperbola to focus values
+            popt, pcov = curve_fit(
+                lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
+                test_positions,
+                focus_values,
+                p0=[midpoint, 1, 1, 0],
+                bounds=(
+                    [midpoint - n_steps * step_size, 0, 0, -1e6],
+                    [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
+                ),
+            )
+
+            result = popt[0]
+            result_err = np.sqrt(np.diag(pcov))[0]
+            logger.info("Best focus position is %i +/- %i" % (result, result_err))
+
+            if result < test_positions[0] or result > test_positions[-1]:
+                logger.warning("Best focus position is outside the test range.")
+                logger.warning(
+                    "Using the midpoint of the test range as the best focus position."
+                )
+                result = midpoint
 
             logger.info("Moving focuser to best focus position...")
             if self.focuser.Absolute:
@@ -2052,7 +1900,7 @@ class Observatory:
         obj = coord.SkyCoord(ra=new_ra, dec=new_dec, frame=center_pos.frame)
         self.slew_to_coordinates(obj=obj)
 
-    def recenter(
+    def repositioning(
         self,
         obj=None,
         ra=None,
@@ -2069,9 +1917,9 @@ class Observatory:
         readout=0,
         save_images=False,
         save_path="./",
-        sync_mount=False,
         settle_time=5,
         do_initial_slew=True,
+        solver="astrometry_net_wcs",  # or "maxim_pinpoint_wcs"
     ):
         """Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector.
@@ -2116,10 +1964,6 @@ class Observatory:
         save_path : str, optional
             The path to save the centering images to. Default is the current directory. Ignored if
             save_images is False.
-        sync_mount : bool, optional
-            Whether or not to sync the mount after the target is centered. Default is False. Note that
-            if the target pixel location is not the center of the detector, the mount will be synced
-            to this offset for all future slews.
         settle_time : float, optional
             The time in seconds to wait after the slew before checking the offset. Default is 5.
         do_initial_slew : bool, optional
@@ -2132,7 +1976,7 @@ class Observatory:
             True if the target was successfully centered, False otherwise.
         """
         logger.info(
-            f"Recentering called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
+            f"repositioning called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
         )
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
@@ -2188,68 +2032,61 @@ class Observatory:
 
             if not check_and_refine and attempt > 0:
                 logger.info(
-                    "Check and recenter is off, single-shot recentering complete"
+                    "Check and repositioning is off, single-shot repositioning complete"
                 )
                 return True
 
             logger.info("Taking %.2f second exposure" % exposure)
-            self.camera.ReadoutMode = (
-                readout  # self.camera.ReadoutModes[readout] <== This breaks maxim
-            )
+            self.camera.ReadoutMode = readout
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
             logger.info("Exposure complete")
 
-            temp_image = tempfile.gettempdir() + "%s.fts" % astrotime.Time(
-                self.observatory_time, format="fits"
-            ).value.replace(":", "-")
+            temp_image = Path(
+                tempfile.gettempdir()
+                + "%s.fts"
+                % astrotime.Time(self.observatory_time, format="fits").value.replace(
+                    ":", "-"
+                )
+            )
             self.save_last_image(temp_image, overwrite=True)
 
-            logger.info("Searching for a WCS solution...")
-            if type(self._wcs) is WCS:
-                self._wcs.Solve(
+            logger.info("Searching for a WCS solution")
+            if solver.lower() == "astrometry_net_wcs":
+                from ..reduction import astrometry_net_wcs
+
+                solution_found = astrometry_net_wcs(
                     temp_image,
-                    ra_key="TARGRA",
-                    dec_key="TARGDEC",
-                    ra_dec_units=("hour", "deg"),
-                    solve_timeout=60,
+                    center_ra=slew_obj.ra.deg,
+                    center_dec=slew_obj.dec.deg,
+                    radius=1.0,
                     scale_units="arcsecperpix",
                     scale_type="ev",
                     scale_est=self.pixel_scale[0],
-                    scale_err=self.pixel_scale[0] * 0.1,
+                    scale_err=self.pixel_scale[0] * 0.2,
                     parity=2,
+                    tweak_order=9,
                     crpix_center=True,
+                    publicly_visible=False,
+                    solve_timeout=300,
                 )
+            elif solver.lower() == "maxim_pinpoint_wcs":
+                from ..reduction import maxim_pinpoint_wcs
+
+                solution_found = maxim_pinpoint_wcs(temp_image)
             else:
-                for i, wcs in enumerate(self._wcs):
-                    solution_found = wcs.Solve(
-                        temp_image,
-                        ra_key="TARGRA",
-                        dec_key="TARGDEC",
-                        ra_dec_units=("hour", "deg"),
-                        solve_timeout=60,
-                        scale_units="arcsecperpix",
-                        scale_type="ev",
-                        scale_est=self.pixel_scale[0],
-                        scale_err=self.pixel_scale[0] * 0.1,
-                        parity=2,
-                        crpix_center=True,
-                    )
-                    if solution_found:
-                        break
+                logger.warning("Unknown WCS solver, skipping this attempt")
+                continue
 
             if save_images:
-                logger.info("Saving the centering image to %s" % save_path)
+                logger.info(
+                    "Saving the centering image to %s" % (save_path / temp_image.name)
+                )
                 self.save_last_image(
-                    save_path + temp_image.split("\\")[-1],
+                    save_path / temp_image.name,
                     overwrite=True,
                 )
-
-            self.save_last_image(
-                temp_image,
-                overwrite=True,
-            )
 
             if not solution_found:
                 logger.warning("No WCS solution found, skipping this attempt")
@@ -2313,18 +2150,6 @@ class Observatory:
                 "Target could not be centered after %d attempts" % max_attempts
             )
             return False
-
-        if sync_mount:
-            logger.info(
-                "Syncing the mount to the center ra and dec transformed to J-Now..."
-            )
-
-            sync_obj = self._parse_obj_ra_dec(
-                ra=center_ra, dec=center_dec, unit=("hour", "deg"), frame="icrs"
-            )
-            sync_obj = self.get_object_slew(sync_obj)
-            self.telescope.SyncToCoordinates(sync_obj.ra.hour, sync_obj.dec.deg)
-            logger.info("Sync complete")
 
         logger.info("Target is now in position after %d attempts" % (attempt + 1))
 
@@ -2722,9 +2547,9 @@ class Observatory:
         )
         self.latitude = dictionary.get("latitude", self.latitude)
         self.longitude = dictionary.get("longitude", self.longitude)
-        self.elevation = float(dictionary.get("elevation", self.elevation))
-        self.diameter = float(dictionary.get("diameter", self.diameter))
-        self.focal_length = float(dictionary.get("focal_length", self.focal_length))
+        self.elevation = dictionary.get("elevation", self.elevation)
+        self.diameter = dictionary.get("diameter", self.diameter)
+        self.focal_length = dictionary.get("focal_length", self.focal_length)
 
         self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
 
@@ -4036,7 +3861,8 @@ class Observatory:
             pass
         try:
             info["TELUT"] = (
-                self.telescope.UTCDate.strftime("%Y-%m-%dT%H:%M:%S"),
+                # self.telescope.UTCDate.strftime("%Y-%m-%dT%H:%M:%S"),
+                self.observatory_time.strftime("%Y-%m-%dT%H:%M:%S"),
                 info["TELUT"][1],
             )
         except:
@@ -4098,12 +3924,6 @@ class Observatory:
                 "Is status monitor thread active",
             ),
         }
-        return info
-
-    @property
-    def wcs_info(self):
-        logger.debug("Observatory.wcs_info() called")
-        info = {"WCSDRV": (str(self.wcs_driver), "WCS driver")}
         return info
 
     @property
@@ -4296,9 +4116,7 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = (
-                float(value) if value is not None or value != "" else None
-            )
+            self._cooler_setpoint = value if value is not None or value != "" else None
             self._config["camera"]["cooler_setpoint"] = (
                 str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )
@@ -4712,16 +4530,6 @@ class Observatory:
     def autofocus_kwargs(self):
         logger.debug("Observatory.autofocus_kwargs property called")
         return self._autofocus_kwargs
-
-    @property
-    def wcs_driver(self):
-        logger.debug("Observatory.wcs_driver property called")
-        return self._wcs_driver
-
-    @property
-    def wcs_kwargs(self):
-        logger.debug("Observatory.wcs_kwargs property called")
-        return self._wcs_kwargs
 
     @property
     def slew_rate(self):

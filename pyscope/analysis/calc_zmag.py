@@ -10,8 +10,8 @@ from astropy import wcs
 from astropy.io import fits
 from astroquery import sdss
 
-from ..observatory import AstrometryNetWCS
-from ..utils import _get_image_source_catalog
+from ..analysis import detect_sources_photutils
+from ..reduction import astrometry_net_wcs
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,7 @@ def calc_zmag_cli(
         filt = filt.lower()
         logger.info("Filter: %s" % filt)
 
-        if filt not in ["u", "b", "g", "r", "i", "z"]:
+        if filt not in ["u", "g", "r", "i", "z"]:
             logger.error("Invalid filter, continuing to next image...")
             continue
 
@@ -199,9 +199,10 @@ def calc_zmag_cli(
             w = wcs.WCS(header)
             sky = w.pixel_to_world(0, 0)
         except:
-            logger.info("No WCS solution found. Attempting to solve.")
-            solver = AstrometryNetWCS()
-            success = solver.Solve(im)
+            logger.info(
+                "No WCS solution found. Attempting to solve with Astrometry.net..."
+            )
+            success = astrometry_net_wcs(im)
             if success:
                 logger.info("Solved.")
             else:
@@ -210,7 +211,7 @@ def calc_zmag_cli(
 
         # Get the source catalog
         logger.info("Detecting sources...")
-        catalog = _get_image_source_catalog(
+        catalog = detect_sources_photutils(
             im,
             box_size=background_params[0],
             filter_size=background_params[1],
