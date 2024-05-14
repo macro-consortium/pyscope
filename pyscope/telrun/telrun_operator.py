@@ -927,7 +927,7 @@ class TelrunOperator:
                 # If prev_block is not None, check coordinates to see if we need to slew
                 slew = True
                 repositioning = None
-                no_slew_condition = True
+                no_slew_condition = False
                 logger.info("Previous block: %s" % self._previous_block)
                 if self._previous_block is not None:
 
@@ -936,7 +936,7 @@ class TelrunOperator:
                     logger.info(
                         "Previous block status: %s" % self._previous_block["status"]
                     )
-                    no_slew_condition = no_slew_condition and cond
+                    no_slew_condition = cond
 
                     # previous block and current block have the same target
                     prev_target = self._previous_block["target"]
@@ -1000,7 +1000,6 @@ class TelrunOperator:
 
                 try:
                     logger.info("Executing block...")
-                    logger.info("Block: %s" % block)
                     logger.info("Slew: %s" % slew)
                     logger.info("Repositioning: %s" % repositioning)
                     status, message, block = self.execute_block(
@@ -1191,9 +1190,7 @@ class TelrunOperator:
         seconds_until_start_time = (
             block["start_time"] - self.observatory.observatory_time
         ).sec
-        if (
-            not self.wait_for_block_start_time
-        ):
+        if not self.wait_for_block_start_time:
             logger.info("Ignoring block start time, continuing...")
         elif (
             not self.wait_for_block_start_time
@@ -1690,9 +1687,7 @@ class TelrunOperator:
             t.start()
             self._camera_status = "repositioning"
             self._telescope_status = "repositioning"
-            self._wcs_status = (
-                "repositioning"
-            )
+            self._wcs_status = "repositioning"
             self._dome_status = (
                 "repositioning" if self.observatory.dome is not None else ""
             )
@@ -2444,8 +2439,8 @@ class TelrunOperator:
                 radius=1.0,
                 scale_units="arcsecperpix",
                 scale_type="ev",
-                scale_est=0.8, # self.observatory.pixel_scale[0],
-                scale_err=0.1, # self.observatory.pixel_scale[0] * 0.2,
+                scale_est=0.8,  # self.observatory.pixel_scale[0],
+                scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.2,
                 parity=2,
                 tweak_order=5,
                 crpix_center=True,
@@ -2859,11 +2854,13 @@ class TelrunOperator:
     @property
     def repositioning_wcs_solver(self):
         return self._repositioning_wcs_solver
-    
+
     @repositioning_wcs_solver.setter
     def repositioning_wcs_solver(self, value):
         self._repositioning_wcs_solver = value
-        self._config["repositioning"]["repositioning_wcs_solver"] = str(self._repositioning_wcs_solver)
+        self._config["repositioning"]["repositioning_wcs_solver"] = str(
+            self._repositioning_wcs_solver
+        )
 
     @property
     def repositioning_max_stability_time(self):
