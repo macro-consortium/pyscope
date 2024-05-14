@@ -94,8 +94,17 @@ def isSuccessfullyCalibrated(img):
         return True
 
 
+def sort_image(img, dest):
+    """copy image to a directory, create it if needed
+    """
+    if not dest.exists():
+        dest.mkdir(mode=0o775, parents=True)
+    target = dest / img.name
+    shutil.copy(img, target)        
+
+
 def store_image(img, dest, update_db=False):
-    """store image in long-term archive directory :dest
+    """store copy of image in long-term archive directory :dest
     check that the target is older or doesn't exist
     log errors
     future: use s3cmd library to interact with object storage more efficiently
@@ -120,13 +129,15 @@ def process_image(img):
     calibrate if needed
     move to reduced or failed depending on status
     """
+    logger.info(f"Processing {img}...")
     try:
-        header = fits.getheader(img, 0)
-    except OSError:
+        data, hdr = fits.getdata(img), fits.getheader(img, 0)
+    except:
+        sort_image(img, img.parent / "failed")
         logger.exception(f"Corrupt FITS file {img}")
+        img.unlink()
         return
 
-    logger.info(f"Processing {img}...")
     img_isodate = fits.getval(img, "DATE-OBS")[:10]
 
     if not isCalibrated(img):
@@ -153,17 +164,11 @@ def process_image(img):
             runcmd(f"fwhm -ow {img}")
 
     if isSuccessfullyCalibrated(img):
-        temp = img.parent / "reduced"
-        if not temp.exists():
-            temp.mkdir(mode=0o775)
-        shutil.copy(img, temp)
+        sort_image(img, img.parent / "reduced")
         store_image(img, STORAGE_ROOT / "reduced" / img_isodate)
 
-    elif isCalibrated(img):
-        failed = img.parent / "failed"
-        if not failed.exists():
-            failed.mkdir(mode=0o775)
-        shutil.copy(img, failed)
+    else:
+        sort_image(img, img.parent / "failed")
         logger.warning(f"Calibration failed on {img}")
 
     img.unlink()
@@ -202,3 +207,4 @@ if __name__ == "__main__":
                 if img.exists() and time.time() - img.stat().st_mtime > MAXAGE:
                     img.unlink()
                     logger.info(f"Deleted {img}")
+
