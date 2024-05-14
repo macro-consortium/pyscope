@@ -33,8 +33,6 @@ class Maxim(Device):
             if self._app.FocuserConnected:
                 self._autofocus = _MaximAutofocus(self.app)
 
-            self._wcs = _MaximPinpointWCS(self.camera)
-
     @property
     def Connected(self):
         logger.debug("Maxim.Connected called")

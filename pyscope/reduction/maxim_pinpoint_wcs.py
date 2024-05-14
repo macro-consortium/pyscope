@@ -35,6 +35,9 @@ def maxim_pinpoint_wcs_cli(filepath):
     None
     """
 
+    if type(filepath) is not str:
+        filepath = str(filepath.resolve())
+
     if platform.system() != "Windows":
         raise Exception("MaxIm DL PinPoint is only available on Windows.")
     else:

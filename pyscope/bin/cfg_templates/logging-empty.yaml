@@ -8,22 +8,21 @@ handlers:
   console:
     class: logging.StreamHandler
     formatter: default
-    level: DEBUG
+    level: INFO
     stream: ext://sys.stdout
 
   file:
     class: logging.FileHandler
     formatter: default
-    level: DEBUG
+    level: INFO
     filename: logs/pyscope.log
 
 loggers:
   pyscope:
     handlers: [console, file]
-    level: DEBUG
+    level: INFO
     propogate: yes
 
 root:
-  handlers: [console, file]
-  level: DEBUG
-  propogate: yes
+  handlers: [file]
+  level: WARNING

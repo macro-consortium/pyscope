@@ -119,8 +119,8 @@ def init_telrun_dir_cli(path="./telhome/"):
 
     if not (path / "config/logging.cfg").exists():
         shutil.copyfile(
-            cfg_templates / "logging-empty.cfg",
-            path / "config/logging.cfg",
+            cfg_templates / "logging-empty.yaml",
+            path / "config/logging.yaml",
         )
     else:
         logger.warning("logging.cfg already exists, skipping")

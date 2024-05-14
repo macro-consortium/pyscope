@@ -184,7 +184,7 @@ class TelrunOperator:
         self._write_to_status_log = True
         self._status_log_update_interval = 5  # seconds
         self._wait_for_block_start_time = True
-        self._max_block_late_time = 60
+        self._max_block_late_time = -600
         self._preslew_time = 60
         self._hardware_timeout = 120
         self._autofocus_filters = None
@@ -307,6 +307,11 @@ class TelrunOperator:
             )
             self._autofocus_timeout = self._config.getfloat(
                 "autofocus", "autofocus_timeout", fallback=self._autofocus_timeout
+            )
+            self._repositioning_wcs_solver = self._config.get(
+                "repositioning",
+                "repositioning_wcs_solver",
+                fallback=self._repositioning_wcs_solver,
             )
             self._repositioning_max_stability_time = self._config.getfloat(
                 "repositioning",
@@ -496,6 +501,9 @@ class TelrunOperator:
         self.autofocus_timeout = kwargs.get(
             "autofocus_timeout", self._autofocus_timeout
         )
+        self.repositioning_wcs_solver = kwargs.get(
+            "repositioning_wcs_solver", self._repositioning_wcs_solver
+        )
         self.repositioning_max_stability_time = kwargs.get(
             "repositioning_max_stability_time", self._repositioning_max_stability_time
         )
@@ -605,8 +613,6 @@ class TelrunOperator:
         if self.observatory.switch is not None:
             self._switch_status = "Idle"
         self._telescope_status = "Idle"
-        if self.observatory._wcs is not None:
-            self._wcs_status = "Idle"
 
         if self.write_to_status_log:
             self.start_status_log_thread(interval=self.status_log_update_interval)
@@ -706,9 +712,7 @@ class TelrunOperator:
 
     def execute_schedule(self, schedule):
         logger.info("Executing schedule: %s" % schedule)
-        sched_fname = None
         try:
-            sched_fname = schedule
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         except:
             if type(schedule) is not table.Table:
@@ -717,10 +721,8 @@ class TelrunOperator:
                 )
                 return
 
-        if sched_fname is None:
-            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
-            sched_fname = str(self._logs_path) + "telrun_" + first_time + ".ecsv"
-        self._schedule_fname = sched_fname
+        first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
+        self._schedule_fname = str(self._logs_path / ("telrun_" + first_time + ".ecsv"))
         self._schedule = schedule
 
         # if schedule fname already exists, load it in as the schedule
@@ -740,7 +742,7 @@ class TelrunOperator:
             return
 
         logger.info("Saving schedule to file: %s" % self._schedule_fname)
-        self._schedule.write(self._schedule_fname, format="ascii.ecsv")
+        self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
 
         # Sort schedule by start time
         self._schedule.sort("start_time")
@@ -1191,12 +1193,11 @@ class TelrunOperator:
         ).sec
         if (
             not self.wait_for_block_start_time
-            and seconds_until_start_time < self.max_block_late_time
         ):
             logger.info("Ignoring block start time, continuing...")
         elif (
             not self.wait_for_block_start_time
-            and seconds_until_start_time > self.max_block_late_time
+            and seconds_until_start_time < self.max_block_late_time
         ):
             logger.info(
                 "Ignoring block start time, however \
@@ -1215,7 +1216,7 @@ class TelrunOperator:
             return (new_status, "Exceeded max_block_late_time, non-fatal skip", block)
         elif (
             self.wait_for_block_start_time
-            and seconds_until_start_time > self.max_block_late_time
+            and seconds_until_start_time < self.max_block_late_time
         ):
             logger.info(
                 "Block start time exceeded max_block_late_time of %i seconds, skipping..."
@@ -1578,7 +1579,7 @@ class TelrunOperator:
         kw_repositioning = kwargs.get("repositioning", None)
         if kw_repositioning is not None:
             block["repositioning"] = kw_repositioning
-        if bl_repositioning != (0, 0) and block["repositioning"] == (0, 0):
+        if bl_repositioning.all() != 0 and block["repositioning"].all() == 0:
             centered = True
 
         # Perform centering if requested
@@ -1690,7 +1691,7 @@ class TelrunOperator:
             self._camera_status = "repositioning"
             self._telescope_status = "repositioning"
             self._wcs_status = (
-                "repositioning" if self.observatory._wcs is not None else ""
+                "repositioning"
             )
             self._dome_status = (
                 "repositioning" if self.observatory.dome is not None else ""
@@ -1711,10 +1712,11 @@ class TelrunOperator:
                 save_path=self.repositioning_save_path,
                 do_initial_slew=slew,
                 readout=self.default_readout,
+                solver=self.repositioning_wcs_solver,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
-            self._wcs_status = "Idle" if self.observatory._wcs is not None else ""
+            self._wcs_status = "Idle"
             self._dome_status = "Idle" if self.observatory.dome is not None else ""
             self._rotator_status = (
                 "Idle" if self.observatory.rotator is not None else ""
@@ -1730,8 +1732,8 @@ class TelrunOperator:
                 logger.info(
                     "Previous repositioning time: %s" % self.last_repositioning_time
                 )
-                self.last_repositioning_coords = block["target"]
-                self.last_repositioning_time = astrotime.Time.now()
+                self._last_repositioning_coords = block["target"]
+                self._last_repositioning_time = astrotime.Time.now()
                 logger.info(
                     "Last repositioning coords: %s" % self.last_repositioning_coords
                 )
@@ -2043,7 +2045,7 @@ class TelrunOperator:
         custom_header.update(self.telrun_info)
 
         # add centered flag to custom header
-        custom_header["CENTERED"] = centered
+        custom_header["CENTERED"] = (centered, "Telescope was centered")
 
         # Start exposures
         for i in range(block["nexp"]):
@@ -2098,7 +2100,6 @@ class TelrunOperator:
                                 block["target"].ra.deg,
                                 block["target"].dec.deg,
                                 str(self._images_path / fname) + ".fts",
-                                -1,
                             ),
                             daemon=True,
                             name="wcs_threads",
@@ -2135,7 +2136,6 @@ class TelrunOperator:
                             block["target"].ra.deg,
                             block["target"].dec.deg,
                             str(self._images_path / fname) + ".fts",
-                            -1,
                         ),
                         daemon=True,
                         name="wcs_threads",
@@ -2392,6 +2392,7 @@ class TelrunOperator:
                 "Autofocus use current pointing",
             ),
             "AUTOTIME": (self.autofocus_timeout, "Autofocus timeout"),
+            "REPOWCS": (self.repositioning_wcs_solver, "Repositioning WCS solver"),
             "RECMST": (
                 self.repositioning_max_stability_time,
                 "repositioning max stability time",
@@ -2437,24 +2438,23 @@ class TelrunOperator:
             from ..reduction import astrometry_net_wcs
 
             solution_found = astrometry_net_wcs(
-                temp_image,
+                image_path,
                 center_ra=center_ra,
                 center_dec=center_dec,
                 radius=1.0,
                 scale_units="arcsecperpix",
                 scale_type="ev",
-                scale_est=self.observatory.pixel_scale[0],
-                scale_err=self.observatory.pixel_scale[0] * 0.2,
+                scale_est=0.8, # self.observatory.pixel_scale[0],
+                scale_err=0.1, # self.observatory.pixel_scale[0] * 0.2,
                 parity=2,
-                tweak_order=9,
+                tweak_order=5,
                 crpix_center=True,
-                publicly_visible=False,
                 solve_timeout=self.wcs_timeout,
             )
         elif self.wcs_solver.lower() == "maxim_pinpoint_wcs":
             from ..reduction import maxim_pinpoint_wcs
 
-            solution_found = maxim_pinpoint_wcs(temp_image)
+            solution_found = maxim_pinpoint_wcs(image_path)
         else:
             solution_found = False
             logger.error("Unknown WCS solver, skipping...")
@@ -2737,8 +2737,6 @@ class TelrunOperator:
 
     @max_block_late_time.setter
     def max_block_late_time(self, value):
-        if value < 0:
-            value = 1e99
         self._max_block_late_time = float(value)
         self._config["telrun"]["max_block_late_time"] = str(self._max_block_late_time)
 
@@ -2857,6 +2855,15 @@ class TelrunOperator:
     def autofocus_timeout(self, value):
         self._autofocus_timeout = float(value)
         self._config["autofocus"]["autofocus_timeout"] = str(self._autofocus_timeout)
+
+    @property
+    def repositioning_wcs_solver(self):
+        return self._repositioning_wcs_solver
+    
+    @repositioning_wcs_solver.setter
+    def repositioning_wcs_solver(self, value):
+        self._repositioning_wcs_solver = value
+        self._config["repositioning"]["repositioning_wcs_solver"] = str(self._repositioning_wcs_solver)
 
     @property
     def repositioning_max_stability_time(self):

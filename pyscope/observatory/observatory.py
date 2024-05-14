@@ -1975,9 +1975,9 @@ class Observatory:
         success : bool
             True if the target was successfully centered, False otherwise.
         """
-        logger.info(
+        '''logger.info(
             f"repositioning called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
-        )
+        )'''
         slew_obj = self._parse_obj_ra_dec(obj, ra, dec, unit, frame)
 
         logger.info(
@@ -2053,6 +2053,7 @@ class Observatory:
             self.save_last_image(temp_image, overwrite=True)
 
             logger.info("Searching for a WCS solution")
+            logger.info("Pixel scale is %.2f arcseconds per pixel" % self.pixel_scale[0])
             if solver.lower() == "astrometry_net_wcs":
                 from ..reduction import astrometry_net_wcs
 
@@ -2068,7 +2069,6 @@ class Observatory:
                     parity=2,
                     tweak_order=9,
                     crpix_center=True,
-                    publicly_visible=False,
                     solve_timeout=300,
                 )
             elif solver.lower() == "maxim_pinpoint_wcs":
@@ -2080,11 +2080,12 @@ class Observatory:
                 continue
 
             if save_images:
+                save_name = str(Path(save_path) / temp_image.name)
                 logger.info(
-                    "Saving the centering image to %s" % (save_path / temp_image.name)
+                    "Saving the centering image to %s" % save_name
                 )
                 self.save_last_image(
-                    save_path / temp_image.name,
+                    save_name,
                     overwrite=True,
                 )
 
@@ -2551,7 +2552,7 @@ class Observatory:
         self.diameter = dictionary.get("diameter", self.diameter)
         self.focal_length = dictionary.get("focal_length", self.focal_length)
 
-        self.cooler_setpoint = dictionary.get("cooler_setpoint", self.cooler_setpoint)
+        self.cooler_setpoint = float(dictionary.get("cooler_setpoint", self.cooler_setpoint))
 
         self.cooler_tolerance = float(
             dictionary.get("cooler_tolerance", self.cooler_tolerance)
