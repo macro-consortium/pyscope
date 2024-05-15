@@ -927,7 +927,7 @@ class TelrunOperator:
                 # If prev_block is not None, check coordinates to see if we need to slew
                 slew = True
                 repositioning = None
-                no_slew_condition = True
+                no_slew_condition = False
                 logger.info("Previous block: %s" % self._previous_block)
                 if self._previous_block is not None:
 
@@ -936,7 +936,7 @@ class TelrunOperator:
                     logger.info(
                         "Previous block status: %s" % self._previous_block["status"]
                     )
-                    no_slew_condition = no_slew_condition and cond
+                    no_slew_condition = cond
 
                     # previous block and current block have the same target
                     prev_target = self._previous_block["target"]
@@ -1000,7 +1000,6 @@ class TelrunOperator:
 
                 try:
                     logger.info("Executing block...")
-                    logger.info("Block: %s" % block)
                     logger.info("Slew: %s" % slew)
                     logger.info("Repositioning: %s" % repositioning)
                     status, message, block = self.execute_block(
