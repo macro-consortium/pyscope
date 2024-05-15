@@ -248,24 +248,30 @@ def calib_images_cli(
             ):
                 flat_dark_frame = Path(calimg)
 
-        # for each image, print out the calibration frames being used
-        logger.debug("Using calibration frames:")
-        logger.debug(f"Flat: {flat_frame}")
-        logger.debug(f"Dark: {dark_frame}")
         if camera_type == "ccd":
+            if filt in ('lrg', 'hrg'):
+                found_cals = dark_frame and bias_frame
+            else:
+                found_cals = dark_frame and bias_frame and flat_frame
+        elif camera_type = "cmos":
+            if filt in ('lrg', 'hrg'):
+                found_cals = dark_frame
+            else:
+                found_cals = dark_frame and flat_frame and flat_dark_frame
+        if not found_cals:
+            logger.warning(
+                f"Could not find appropriate calibration images for {fname}, skipping"
+            )
+            continue
+        logger.debug("Found calibration frames:")
+        if dark_frame:
+            logger.debug(f"Dark: {dark_frame}")        
+        if bias_frame:
             logger.debug(f"Bias: {bias_frame}")
-            if not (flat_frame and dark_frame and bias_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
-        elif camera_type == "cmos":
+        if flat_frame:
+            logger.debug(f"Flat: {flat_frame}")
+        if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
-            if not (flat_frame and dark_frame and flat_dark_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
 
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
@@ -288,7 +294,7 @@ def calib_images_cli(
             try:
                 calc_zmag(images=(fname,))
             except:
-                logger.warning(f"calc-zmag failed with exception on {fname}")
+                logger.exception(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")
 
