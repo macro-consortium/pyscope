@@ -95,12 +95,11 @@ def isSuccessfullyCalibrated(img):
 
 
 def sort_image(img, dest):
-    """copy image to a directory, create it if needed
-    """
+    """copy image to a directory, create it if needed"""
     if not dest.exists():
         dest.mkdir(mode=0o775, parents=True)
     target = dest / img.name
-    shutil.copy(img, target)        
+    shutil.copy(img, target)
 
 
 def store_image(img, dest, update_db=False):
@@ -206,4 +205,3 @@ if __name__ == "__main__":
                 if img.exists() and time.time() - img.stat().st_mtime > MAXAGE:
                     img.unlink()
                     logger.info(f"Deleted {img}")
-

@@ -1191,9 +1191,7 @@ class TelrunOperator:
         seconds_until_start_time = (
             block["start_time"] - self.observatory.observatory_time
         ).sec
-        if (
-            not self.wait_for_block_start_time
-        ):
+        if not self.wait_for_block_start_time:
             logger.info("Ignoring block start time, continuing...")
         elif (
             not self.wait_for_block_start_time
@@ -1690,9 +1688,7 @@ class TelrunOperator:
             t.start()
             self._camera_status = "repositioning"
             self._telescope_status = "repositioning"
-            self._wcs_status = (
-                "repositioning"
-            )
+            self._wcs_status = "repositioning"
             self._dome_status = (
                 "repositioning" if self.observatory.dome is not None else ""
             )
@@ -2444,10 +2440,10 @@ class TelrunOperator:
                 radius=1.0,
                 scale_units="arcsecperpix",
                 scale_type="ev",
-                scale_est=0.8, # self.observatory.pixel_scale[0],
-                scale_err=0.1, # self.observatory.pixel_scale[0] * 0.2,
+                scale_est=0.8,  # self.observatory.pixel_scale[0],
+                scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.2,
                 parity=2,
-                tweak_order=5,
+                tweak_order=3,
                 crpix_center=True,
                 solve_timeout=self.wcs_timeout,
             )
@@ -2859,11 +2855,13 @@ class TelrunOperator:
     @property
     def repositioning_wcs_solver(self):
         return self._repositioning_wcs_solver
-    
+
     @repositioning_wcs_solver.setter
     def repositioning_wcs_solver(self, value):
         self._repositioning_wcs_solver = value
-        self._config["repositioning"]["repositioning_wcs_solver"] = str(self._repositioning_wcs_solver)
+        self._config["repositioning"]["repositioning_wcs_solver"] = str(
+            self._repositioning_wcs_solver
+        )
 
     @property
     def repositioning_max_stability_time(self):
