@@ -226,7 +226,7 @@ def avg_fits_ccdproc_cli(
     unit="adu",
     verbose=False,
 ):
-    """Combines images using ccdproc.combine method.
+    """More advanced version of avg-fits. Combines images using ccdproc.combine method and parameters.
 
     Parameters
     ----------

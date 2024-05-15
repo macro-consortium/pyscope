@@ -122,27 +122,36 @@ def calib_images_cli(
 ):
     """Calibrate a set of images by recursively selecting the
     appropriate flat, dark, and bias frame and then calling
-    ccd_calib to do the actual calibration.
+    ccd_calib to do the actual calibration.\f
 
-    Notes: Having an example set up of this function would be helpful.
-    This would allow for me to know what the environment looks like when
-    calling this function.
+    Parameters
+    ----------
+    camera_type : str, optional
+        Camera type. By default "ccd".
+    image_dir : _type_, optional
+        Directory containing images to be calibrated. If passed, then the fnames argument is ignored. By default None.
+    calib_dir : str, optional
+        Location of all calibration files. By default "./calibrations/masters"
+    raw_archive_dir : _type_, optional
+        Directory to archive raw images. If none given, no archiving is done, however, the '--in-place' option is not allowed. By default None.
+    in_place : bool, optional
+        If given, the raw images are overwritten with the calibrated images. If not given, the calibrated images are written to the same directory as the raw images, but with the suffix '_cal' added to the filename prior to the extension. By default False.
+    astro_scrappy : tuple, optional
+        Number of hot pixel removal iterations and estimated camera read noise. By default (1, 3).
+    bad_columns : str, optional
+        Comma-separated list of bad columns to fix. By default "".
+    wcs : bool, optional
+        If given, the WCS is solved for each image. If not given, the WCS is not solved. By default False.
+    zmag : bool, optional
+        If given, the zero-point magnitude is calculated for each image with SDSS filters. If not given, the zero-point magnitude is not calculated. By default False.
+    verbose : int, optional
+        Print verbose output. 1=verbose. 2=more verbose. By default 0
+    fnames : tuple, optional
+        Path of directory of images to calibrate. By default ().
 
-    Args:
-        camera_type (_type_): _description_
-        image_dir (_type_): _description_
-        calib_dir (_type_): _description_
-        raw_archive_dir (_type_): _description_
-        in_place (_type_): _description_
-        astro_scrappy (_type_): _description_
-        bad_columns (_type_): _description_
-        wcs (_type_): _description_
-        zmag (_type_): _description_
-        verbose (_type_): _description_
-        fnames (_type_): _description_
-
-    Raises:
-        click.BadParameter: _description_
+    Returns
+    -------
+    None
     """
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)

@@ -147,24 +147,57 @@ def zp_stats(filter, mode, zp_stats_list):
     "-n", "--fnames", default="./", type=click.Path(exists=True, file_okay=False)
 )  ##need default = "?"
 @click.option("-s", "--save", is_flag=True, help="Save output to a file")
-@click.option("-o", "--offsets", is_flag=True, help="Save output to a file")
-@click.option("-z", "--zp_stats", is_flag=True, help="Save output to a file")
+@click.option("-o", "--offsets", is_flag=True, help="RA, Dec pointing errors [Radians]")
+@click.option("-z", "--zp_stats", is_flag=True, help="Get zero point statistics")
 @click.version_option()
 def fitslist_cli(
-    date,
-    filt,
-    readout,
-    binning,
-    exptime,
-    target,
-    verbose,
-    fnames,
-    save,
-    add_keys,
-    offsets,
-    zp_stats,
-):
-    """List FITS files and their properties."""
+    date="",
+    filt="",
+    readout="",
+    binning="",
+    exptime="",
+    target="",
+    verbose=0,
+    fnames="./",
+    save=False,
+    add_keys="",
+    offsets=False,
+    zp_stats=False,
+): 
+    """List FITS files and their properties.\f
+
+    Parameters
+    ----------
+    date : str, optional
+        Date, by default "".
+    filt : str, optional
+        Filter name, by default "".
+    readout : str, optional
+        Readout mode, by default "".
+    binning : str, optional
+        Binning, by default "".
+    exptime : str, optional
+        Approximate exposure time. Note that an error of up to 1% is permitted to allow for imprecisions in the camera. By default "".
+    target : str, optional
+        Target name, by default "".
+    verbose : int, optional
+        Verbose output [0, 1], by default 0.
+    fnames : str, optional
+        Directory with FITS images to get images stats about. By default "./".
+    save : bool, optional
+        Save output to a file. By default False.
+    add_keys : str, optional
+        Additional header keys to print. By default "".
+    offsets : bool, optional
+        RA, Dec pointing errors [Radians]. By default False.
+    zp_stats : bool, optional
+        Zero point statistics. By default False.
+
+    Returns
+    -------
+    astropy.table.Table
+        Summary statistics table of FITS images in a directory
+    """    
     # Set up logging
     logger.setLevel(int(10 * (1 - verbose)))
     logger.debug(

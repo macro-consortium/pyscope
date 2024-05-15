@@ -58,9 +58,25 @@ def reduce_calibration_set_cli(
     pre_normalize=True,
     verbose=0,
 ):
-    """
-    Reduce a calibration set to master frames.\b
-    """
+    """Reduce a calibration set to master frames.\b
+
+    Parameters
+    ----------
+    calibration_set : str or os.PathLike
+        Path of the calibration set to reduce.
+    camera : str, optional
+        Camera type. By default "ccd".
+    mode : str, optional
+        Method to use for averaging images. By default "0"
+    pre_normalize : bool, optional
+        Pre-normalize flat images before combining. Useful for sky flats. By default True.
+    verbose : int, optional
+        Increase verbosity of output. By default 0.
+
+    Returns
+    -------
+    None
+    """    
 
     calibration_set = Path(calibration_set).resolve()
 

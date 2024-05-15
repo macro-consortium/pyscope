@@ -77,7 +77,7 @@ def avg_fits_cli(
     outfile=None,
     verbose=0,
 ):
-    """Averages over a list of images into a single image. Select pre-normalize to normalize each image by its own mean before combining. This mode is most useful for combining sky flats.\b
+    """Averages over a list of images into a single image. Select pre-normalize to normalize each image by its own mean before combining. This mode is most useful for combining sky flats.\f
 
     Parameters
     ----------
@@ -102,6 +102,46 @@ def avg_fits_cli(
     Returns
     -------
     None
+
+    Examples
+    --------
+    Median averaging a directory of images.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/images/*.fts
+
+    Averaging a directory of skyflats with pre-normalization.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/skyflats/*.fts -p
+
+    Averaging a directory of images with mean mode.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/images/*.fts -m 1
+
+    Averaging a directory of images to a specific output file.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/images/*.fts -o /path/to/output/avg_image.fts
+
+    Averaging a directory with different image types.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/images/*.fts -d int32
+        
+    Averaging with verbose output.
+
+    .. code-block:: shell
+
+        $ avg-fits /path/to/images/*.fts -v 2
+    
+
     """
 
     if verbose == 2:
