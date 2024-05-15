@@ -48,6 +48,9 @@ STORAGE_ROOT = Path("/mnt/imagesbucket")
 # maximum age in seconds
 MAXAGE = 7 * 3600 * 24
 
+# maximum time since modification in seconds
+MAXMTIME = 1 * 3600 * 24
+
 # configure the logger - >INFO to log, >DEBUG to console
 logger = logging.getLogger(__name__)
 
@@ -176,32 +179,28 @@ if __name__ == "__main__":
 
     os.umask(0o002)
 
-    # Can specify file(s) on command line
-    # in which case script exits when specified files are processed
-    # but probably shouldn't -- better to run calib_images directly
-    if len(sys.argv) > 1:
-        if runcmd("id -gn").stdout.strip() != "talon":
-            sys.exit("Must be run as 'talon' user or group")
-        file_list = [Path(x) for x in sys.argv[1:]]
-        for img in file_list:
+    while True:
+        fresh = []
+        done = []
+        for ext in (".fts", ".fits", ".fit"):
+            fresh.extend(LANDING_DIR.glob(f"*{ext}"))
+            for d in ("raw_archive", "reduced", "failed"):
+                done.extend((LANDING_DIR / d).rglob(f"*{ext}"))
+
+        time.sleep(5)
+
+        for img in fresh:
             process_image(img)
 
-    # with no arguments, run continuously
-    else:
-        while True:
-            fresh = []
-            done = []
-            for ext in (".fts", ".fits", ".fit"):
-                fresh.extend(LANDING_DIR.glob(f"*{ext}"))
-                for d in ("raw_archive", "reduced", "failed"):
-                    done.extend((LANDING_DIR / d).rglob(f"*{ext}"))
-
-            time.sleep(5)
-
-            for img in fresh:
-                process_image(img)
-
-            for img in done:
-                if img.exists() and time.time() - img.stat().st_mtime > MAXAGE:
+        for img in done:
+            # if the image has not been modified in MAXTIME seconds and has a date older than MAXAGE, remove it
+            if img.exists() and time.time() - img.stat().st_mtime > MAXMTIME:
+                try:
+                    img_isodate = fits.getval(img, "DATE-OBS")[:10]
+                except:
+                    continue
+                yyyy, mm, dd = [int(s) for s in img_isodate.split('-')]
+                age = time.time() - dt.datetime(yyyy, mm, dd, tzinfo = dt.timezone.utc).timestamp()
+                if age > MAXAGE:
                     img.unlink()
                     logger.info(f"Deleted {img}")
