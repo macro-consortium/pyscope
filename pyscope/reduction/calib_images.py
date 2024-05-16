@@ -3,7 +3,6 @@ import os
 import shutil
 from pathlib import Path
 
-# i will be working on this
 import click
 from astropy.io import fits
 
@@ -219,6 +218,7 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+                and (flat_frame and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"])
             ):
                 flat_frame = Path(calimg)
             elif (
@@ -228,6 +228,7 @@ def calib_images_cli(
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+                and (dark_frame and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"])
             ):
                 dark_frame = Path(calimg)
             elif (
@@ -236,6 +237,7 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+                and (bias_frame and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"])
             ):
                 bias_frame = Path(calimg)
             elif (
@@ -245,24 +247,10 @@ def calib_images_cli(
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+                and (flat_dark_frame and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"])
             ):
                 flat_dark_frame = Path(calimg)
 
-        if camera_type == "ccd":
-            if filt in ('lrg', 'hrg'):
-                found_cals = dark_frame and bias_frame
-            else:
-                found_cals = dark_frame and bias_frame and flat_frame
-        elif camera_type = "cmos":
-            if filt in ('lrg', 'hrg'):
-                found_cals = dark_frame
-            else:
-                found_cals = dark_frame and flat_frame and flat_dark_frame
-        if not found_cals:
-            logger.warning(
-                f"Could not find appropriate calibration images for {fname}, skipping"
-            )
-            continue
         logger.debug("Found calibration frames:")
         if dark_frame:
             logger.debug(f"Dark: {dark_frame}")        
