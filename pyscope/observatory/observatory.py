@@ -2059,17 +2059,17 @@ class Observatory:
 
                 solution_found = astrometry_net_wcs(
                     temp_image,
-                    center_ra=slew_obj.ra.deg,
-                    center_dec=slew_obj.dec.deg,
-                    radius=1.0,
-                    scale_units="arcsecperpix",
-                    scale_type="ev",
-                    scale_est=self.pixel_scale[0],
-                    scale_err=self.pixel_scale[0] * 0.2,
-                    parity=2,
-                    tweak_order=3,
-                    crpix_center=True,
-                    solve_timeout=300,
+                    # center_ra=slew_obj.ra.deg,
+                    # center_dec=slew_obj.dec.deg,
+                    # radius=1.0,
+                    # scale_units="arcsecperpix",
+                    # scale_type="ev",
+                    # scale_est=self.pixel_scale[0],
+                    # scale_err=self.pixel_scale[0] * 0.2,
+                    # parity=2,
+                    # tweak_order=3,
+                    # crpix_center=True,
+                    # solve_timeout=300,
                 )
             elif solver.lower() == "maxim_pinpoint_wcs":
                 from ..reduction import maxim_pinpoint_wcs
