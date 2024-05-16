@@ -2076,12 +2076,14 @@ class TelrunOperator:
                     self.observatory.filters[self.observatory.filter_wheel.Position]
                     in self.wcs_filters
                 ):
+                    tempImageFilePath = str(self._temp_path / fname) + ".fts"
+                    finalImageFilePath = str(self._images_path / fname) + ".fts"
                     logger.info(
-                        "Current filter in wcs filters, attempting WCS solve..."
+                        f"Current selected filter is among WCS filters: attempting WCS solve on image {filename}..."
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        str(self._temp_path / fname) + ".fts",
+                        tempImageFilePath,
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -2091,10 +2093,10 @@ class TelrunOperator:
                         threading.Thread(
                             target=self._async_wcs_solver,
                             args=(
-                                str(self._temp_path / fname) + ".fts",
+                                tempImageFilePath,
                                 block["target"].ra.deg,
                                 block["target"].dec.deg,
-                                str(self._images_path / fname) + ".fts",
+                                finalImageFilePath,
                             ),
                             daemon=True,
                             name="wcs_threads",
@@ -2107,7 +2109,7 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        str(self._images_path / fname) + ".fts",
+                        finalImageFilePath,
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -2117,7 +2119,7 @@ class TelrunOperator:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    str(self._temp_path / fname) + ".fts",
+                    tempImageFilePath,
                     frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
@@ -2127,10 +2129,10 @@ class TelrunOperator:
                     threading.Thread(
                         target=self._async_wcs_solver,
                         args=(
-                            str(self._temp_path / fname) + ".fts",
+                            tempImageFilePath,
                             block["target"].ra.deg,
                             block["target"].dec.deg,
-                            str(self._images_path / fname) + ".fts",
+                            finalImageFilePath,
                         ),
                         daemon=True,
                         name="wcs_threads",
