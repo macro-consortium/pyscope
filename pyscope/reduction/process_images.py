@@ -10,8 +10,8 @@ After=local-fs.target
 [Service]
 Type=simple
 ExecStart=/usr/local/telescope/bin/process-images
-User=talon
-Group=talon
+User=rlmt
+Group=rlmt
 Restart=on-failure
 Environment="PATH=/opt/miniforge3/bin:/usr/local/telescope/bin:/usr/local/bin:/usr/bin"
 
