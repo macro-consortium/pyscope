@@ -2370,26 +2370,29 @@ class Observatory:
                         else:
                             real_exp = filt_exp
 
-        if self.cover_calibrator.CalibratorState != "NotPresent":
-            logger.info("Turning off the cover calibrator")
-            self.cover_calibrator.CalibratorOff()
-            logger.info("Cover calibrator off")
+        if self.cover_calibrator is not None:
+            if self.cover_calibrator.CalibratorState is not None and self.cover_calibrator.CalibratorState != "NotPresent":
+                logger.info("Turning off the cover calibrator")
+                self.cover_calibrator.CalibratorOff()
+                logger.info("Cover calibrator off")
 
-        if self.cover_calibrator.CoverState != "NotPresent":
-            logger.info("Closing the cover calibrator")
-            self.cover_calibrator.CloseCover()
-            logger.info("Cover closed")
+            if self.cover_calibrator.CoverState is not None and self.cover_calibrator.CalibratorState != "NotPresent":
+                logger.info("Closing the cover calibrator")
+                self.cover_calibrator.CloseCover()
+                logger.info("Cover closed")
 
-            if final_telescope_position == "no change":
-                logger.info("No change to telescope position requested, exiting")
-            elif final_telescope_position == "home" and self.telescope.CanFindHome:
-                logger.info("Homing the telescope")
-                self.telescope.FindHome()
-                logger.info("Homing complete")
-            elif final_telescope_position == "park" and self.telescope.CanPark:
-                logger.info("Parking the telescope")
-                self.telescope.Park()
-                logger.info("Parking complete")
+                if final_telescope_position == "no change":
+                    logger.info("No change to telescope position requested, exiting")
+                elif final_telescope_position == "home" and self.telescope.CanFindHome:
+                    logger.info("Homing the telescope")
+                    self.telescope.FindHome()
+                    logger.info("Homing complete")
+                elif final_telescope_position == "park" and self.telescope.CanPark:
+                    logger.info("Parking the telescope")
+                    self.telescope.Park()
+                    logger.info("Parking complete")
+        else:
+            logger.info("Cover calibrator is None in config file, are you doing sky flats?").
 
         logger.info("Flats complete")
 
@@ -2555,8 +2558,8 @@ class Observatory:
         self.settle_time                = dictionary.get( "settle_time",            self.settle_time)
         self.slew_rate                  = dictionary.get( "slew_rate",              self.slew_rate)
 
-        self.cooler_setpoint            = dictionary.get( "cooler_setpoint",  self.cooler_setpoint)
-        self.cooler_tolerance           = dictionary.get( "cooler_tolerance", self.cooler_tolerance)
+        self.cooler_setpoint            = float(dictionary.get( "cooler_setpoint",  self.cooler_setpoint))
+        self.cooler_tolerance           = float(dictionary.get( "cooler_tolerance", self.cooler_tolerance))
 
 
 
