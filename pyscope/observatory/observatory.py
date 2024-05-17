@@ -2392,7 +2392,7 @@ class Observatory:
                     self.telescope.Park()
                     logger.info("Parking complete")
         else:
-            logger.info("Cover calibrator is None in config file, are you doing sky flats?").
+            logger.info("Cover calibrator is None in config file, are you doing sky flats?")
 
         logger.info("Flats complete")
 
