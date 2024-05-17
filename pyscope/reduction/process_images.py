@@ -20,13 +20,13 @@ WantedBy=multi-user.target
 
 """
 
+import datetime as dt
 import logging
 import os
 import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime as dt
 from pathlib import Path
 
 from astropy.io import fits
