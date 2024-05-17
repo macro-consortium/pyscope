@@ -403,9 +403,18 @@ def ccd_calib_cli(
 
         hdr.add_comment(f"Calibrated using pyscope")
         hdr.add_comment(f"Calibration mode: {camera_type}")
-        hdr.add_comment(f"Calibration dark frame: {dark_frame}")
-        hdr.add_comment(f"Calibration flat frame: {flat_frame}")
-        hdr.add_comment(f"Calibration bias frame: {bias_frame}")
+        if dark_frame is not None:
+            hdr.add_comment(f"Calibration dark frame: {dark_frame}")
+        else:
+            hdr.add_comment(f"Calibration dark frame not provided - dark subtraction NOT performed")
+        if flat_frame is not None:
+            hdr.add_comment(f"Calibration flat frame: {flat_frame}")
+        else:
+            hdr.add_comment(f"Calibration flat frame not provided - flat correction NOT performed")
+        if bias_frame is not None:
+            hdr.add_comment(f"Calibration bias frame: {bias_frame}")
+        else:
+            hdr.add_comment(f"Calibration bias frame not provided - bias subtraction NOT performed")
         hdr.add_comment(f"Calibration astro-scrappy: {astro_scrappy}")
         hdr.add_comment(f"Calibration bad columns: {bad_columns}")
 
