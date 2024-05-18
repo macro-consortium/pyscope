@@ -6,8 +6,8 @@ from pathlib import Path
 import click
 from astropy.io import fits
 
-from ..analysis.calc_zmag import calc_zmag
 from .ccd_calib import ccd_calib
+from pyscope.analysis import calc_zmag
 
 logger = logging.getLogger(__name__)
 
