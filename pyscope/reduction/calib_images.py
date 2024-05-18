@@ -6,7 +6,7 @@ from pathlib import Path
 import click
 from astropy.io import fits
 
-from ..analysis import calc_zmag
+from ..analysis.calc_zmag import calc_zmag
 from .ccd_calib import ccd_calib
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-                and (flat_frame and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"])
+#                and (
+#                    flat_frame
+#                    and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_frame = Path(calimg)
             elif (
@@ -228,7 +231,10 @@ def calib_images_cli(
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-                and (dark_frame and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"])
+#                and (
+#                    dark_frame
+#                    and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 dark_frame = Path(calimg)
             elif (
@@ -237,7 +243,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-                and (bias_frame and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"])
+#                and (
+#                    bias_frame
+#                    and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 bias_frame = Path(calimg)
             elif (
@@ -247,7 +256,10 @@ def calib_images_cli(
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-                and (flat_dark_frame and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"])
+#                and (
+#                    flat_dark_frame
+#                    and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_dark_frame = Path(calimg)
 

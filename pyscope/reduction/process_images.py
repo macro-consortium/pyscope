@@ -199,8 +199,11 @@ if __name__ == "__main__":
                     img_isodate = fits.getval(img, "DATE-OBS")[:10]
                 except:
                     continue
-                yyyy, mm, dd = [int(s) for s in img_isodate.split('-')]
-                age = time.time() - dt.datetime(yyyy, mm, dd, tzinfo = dt.timezone.utc).timestamp()
+                yyyy, mm, dd = [int(s) for s in img_isodate.split("-")]
+                age = (
+                    time.time()
+                    - dt.datetime(yyyy, mm, dd, tzinfo = dt.timezone.utc).timestamp()
+                )
                 if age > MAXAGE:
                     img.unlink()
                     logger.info(f"Deleted {img}")
