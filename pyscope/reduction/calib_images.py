@@ -292,7 +292,7 @@ def calib_images_cli(
         if zmag:
             logger.info("Calculating zero-point magnitudes...")
             try:
-                calc_zmag(images=(fname,))
+                calc_zmag.calc_zmag(images=(fname,))
             except:
                 logger.exception(f"calc-zmag failed with exception on {fname}")
 
