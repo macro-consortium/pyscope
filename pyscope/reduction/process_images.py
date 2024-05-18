@@ -149,16 +149,22 @@ def process_image(img):
         store_image(img, STORAGE_ROOT / "rawimage" / img_isodate)
 
         # send this single image to calib_images
-        calib_images(
-            camera_type="ccd",
-            image_dir=None,
-            calib_dir=CALIB_DIR,
-            raw_archive_dir=LANDING_DIR / "raw_archive",
-            in_place=True,
-            zmag=True,
-            verbose=0,
-            fnames=(img,),
-        )
+        try:
+            calib_images(
+                camera_type="ccd",
+                image_dir=None,
+                calib_dir=CALIB_DIR,
+                raw_archive_dir=LANDING_DIR / "raw_archive",
+                in_place=True,
+                zmag=True,
+                verbose=0,
+                fnames=(img,),
+            )
+        except:
+            sort_image(img, img.parent / "failed")
+            logger.exception(f"calib_images failed on image {img}: no matching calibration frames maybe?")
+            img.unlink()
+            return
 
         # calculate fwhm assuming we're still doing this..
         if fil not in ("lrg", "hrg"):
