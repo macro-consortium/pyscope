@@ -3,13 +3,11 @@ import os
 import shutil
 from pathlib import Path
 
-# i will be working on this
 import click
 from astropy.io import fits
 
-from ..analysis import calc_zmag
-from ..observatory import AstrometryNetWCS
 from .ccd_calib import ccd_calib
+from pyscope.analysis import calc_zmag
 
 logger = logging.getLogger(__name__)
 
@@ -79,15 +77,6 @@ logger = logging.getLogger(__name__)
     help="Comma-separated list of bad columns to fix.",
 )
 @click.option(
-    "-w",
-    "--wcs",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="""If given, the WCS is solved for each image. If not given, the WCS is
-                not solved.""",
-)
-@click.option(
     "-z",
     "--zmag",
     is_flag=True,
@@ -115,7 +104,6 @@ def calib_images_cli(
     in_place=False,
     astro_scrappy=(1, 3),
     bad_columns="",
-    wcs=False,
     zmag=False,
     verbose=0,
     fnames=(),
@@ -136,7 +124,6 @@ def calib_images_cli(
         in_place (_type_): _description_
         astro_scrappy (_type_): _description_
         bad_columns (_type_): _description_
-        wcs (_type_): _description_
         zmag (_type_): _description_
         verbose (_type_): _description_
         fnames (_type_): _description_
@@ -172,11 +159,10 @@ def calib_images_cli(
         hdr = fits.getheader(fname, 0)
 
         if raw_archive_dir is not None:
-            raw_archive_dir_date = Path(raw_archive_dir) / hdr.get("DATE-OBS")[:10]
-            if not raw_archive_dir_date.exists():
-                raw_archive_dir_date.mkdir(mode=0o775, parents=True)
-            logger.info(f"Archiving {fname} to {raw_archive_dir_date}")
-            shutil.copy(fname, raw_archive_dir_date)
+            if not raw_archive_dir.exists():
+                raw_archive_dir.mkdir(mode=0o775, parents=True)
+            logger.info(f"Archiving {fname} to {raw_archive_dir}")
+            shutil.copy(fname, raw_archive_dir)
 
         if "CALSTAT" in hdr.keys():
             logger.info(f"{fname} has already been calibrated, skipping.")
@@ -232,6 +218,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    flat_frame
+#                    and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_frame = Path(calimg)
             elif (
@@ -241,6 +231,10 @@ def calib_images_cli(
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    dark_frame
+#                    and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 dark_frame = Path(calimg)
             elif (
@@ -249,6 +243,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    bias_frame
+#                    and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 bias_frame = Path(calimg)
             elif (
@@ -258,27 +256,26 @@ def calib_images_cli(
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    flat_dark_frame
+#                    and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_dark_frame = Path(calimg)
 
-        # for each image, print out the calibration frames being used
-        logger.debug("Using calibration frames:")
-        logger.debug(f"Flat: {flat_frame}")
-        logger.debug(f"Dark: {dark_frame}")
-        if camera_type == "ccd":
+        logger.debug("Found calibration frames:")
+        if dark_frame:
+            logger.debug(f"Dark: {dark_frame}")        
+        if bias_frame:
             logger.debug(f"Bias: {bias_frame}")
-            if not (flat_frame and dark_frame and bias_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
-        elif camera_type == "cmos":
+        if flat_frame:
+            logger.debug(f"Flat: {flat_frame}")
+        if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
-            if not (flat_frame and dark_frame and flat_dark_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
+        
+        if dark_frame is None or bias_frame is None or flat_frame is None:
+            logger.exception("calib-images: No matching calibration frames found.")
+            return 0
 
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
@@ -294,20 +291,14 @@ def calib_images_cli(
             verbose=verbose,
         )
 
-        # world coordinate system
-        if wcs:
-            logger.debug("Running Astrometry.net WCS solver...")
-            solver = AstrometryNetWCS()
-            solver.solve(fname)
-
         logger.debug("Done!")
 
         if zmag:
             logger.info("Calculating zero-point magnitudes...")
             try:
-                calc_zmag(images=(fname,))
+                calc_zmag.calc_zmag(images=(fname,))
             except:
-                logger.warning(f"calc-zmag failed with exception on {fname}")
+                logger.exception(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")
 

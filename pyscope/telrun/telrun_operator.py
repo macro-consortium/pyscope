@@ -22,7 +22,7 @@ from astropy import time as astrotime
 from astropy import units as u
 from astroquery import mpc
 
-from ..observatory import WCS, Observatory
+from ..observatory import Observatory
 from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
@@ -55,18 +55,15 @@ class TelrunOperator:
                 |   |---logging.cfg         # Optional
                 |   |---notifications.cfg   # Optional
                 |   |---observatory.cfg
-                |   |---syncfiles.cfg       # Optional
                 |   |---telrun.cfg
                 |
                 |---images/                 # Images captured by TelrunOperator are saved here
                 |   |---im1.fts
                 |   |---autofocus/
                 |   |---calibrations/
-                |   |   |---masters/        # Master calibration images, created by cal scripts
-                |   |   |   |---YYYY-MM-DD/     # Timestamped calibration sets
-                |   |   |---YYYY-MM-DD/     # Individual calibration images
+                |   |   |---YYYY-MM-DDThh-mm-ss/     # Individual calibration images
                 |   |---raw_archive/        # Optional, but recommended. Backup of raw images
-                |   |---recenter/
+                |   |---repositioning/
                 |   |---reduced/            # Optional. Where reduced images are saved if not done in-place
                 |
                 |---logs/                   # TelrunOperator logs and auto-generated reports are saved here if requested
@@ -153,6 +150,10 @@ class TelrunOperator:
         self._best_focus_result = None
         self._do_periodic_autofocus = True
         self._last_autofocus_time = astrotime.Time("2000-01-01T00:00:00", format="isot")
+        self._last_repositioning_coords = coord.SkyCoord(ra=0, dec=-90, unit="deg")
+        self._last_repositioning_time = astrotime.Time(
+            "2000-01-01T00:00:00", format="isot"
+        )
         self._bad_block_count = 0
         self._current_block_index = None
         self._current_block = None
@@ -183,7 +184,7 @@ class TelrunOperator:
         self._write_to_status_log = True
         self._status_log_update_interval = 5  # seconds
         self._wait_for_block_start_time = True
-        self._max_block_late_time = 60
+        self._max_block_late_time = -600
         self._preslew_time = 60
         self._hardware_timeout = 120
         self._autofocus_filters = None
@@ -195,16 +196,19 @@ class TelrunOperator:
         self._autofocus_step_size = 500
         self._autofocus_use_current_pointing = False
         self._autofocus_timeout = 180
-        self._recenter_filters = None
-        self._recenter_initial_offset_dec = 0
-        self._recenter_check_and_refine = True
-        self._recenter_max_attempts = 5
-        self._recenter_tolerance = 3
-        self._recenter_exposure = 10
-        self._recenter_save_images = False
-        self._recenter_save_path = self._images_path / "recenter"
-        self._recenter_sync_mount = False
-        self._recenter_timeout = 180
+        self._repositioning_wcs_solver = "astrometry_net_wcs"
+        self._repositioning_max_stability_time = 600  # seconds
+        self._repositioning_allowed_filters = None
+        self._repositioning_required_filters = None
+        self._repositioning_initial_offset_dec = 0
+        self._repositioning_check_and_refine = True
+        self._repositioning_max_attempts = 5
+        self._repositioning_tolerance = 3
+        self._repositioning_exposure = 10
+        self._repositioning_save_images = False
+        self._repositioning_save_path = self._images_path / "repositioning"
+        self._repositioning_timeout = 180
+        self._wcs_solver = "astrometry_net_wcs"
         self._wcs_filters = None
         self._wcs_timeout = 30
 
@@ -304,42 +308,70 @@ class TelrunOperator:
             self._autofocus_timeout = self._config.getfloat(
                 "autofocus", "autofocus_timeout", fallback=self._autofocus_timeout
             )
-            self._recenter_filters = [
+            self._repositioning_wcs_solver = self._config.get(
+                "repositioning",
+                "repositioning_wcs_solver",
+                fallback=self._repositioning_wcs_solver,
+            )
+            self._repositioning_max_stability_time = self._config.getfloat(
+                "repositioning",
+                "repositioning_max_stability_time",
+                fallback=self._repositioning_max_stability_time,
+            )
+            self._repositioning_allowed_filters = [
                 f.strip()
-                for f in self._config.get("recenter", "recenter_filters").split(",")
+                for f in self._config.get(
+                    "repositioning", "repositioning_allowed_filters"
+                ).split(",")
             ]
-            self._recenter_initial_offset_dec = self._config.getfloat(
-                "recenter",
-                "recenter_initial_offset_dec",
-                fallback=self._recenter_initial_offset_dec,
+            self._repositioning_required_filters = [
+                f.strip()
+                for f in self._config.get(
+                    "repositioning", "repositioning_required_filters"
+                ).split(",")
+            ]
+            self._repositioning_initial_offset_dec = self._config.getfloat(
+                "repositioning",
+                "repositioning_initial_offset_dec",
+                fallback=self._repositioning_initial_offset_dec,
             )
-            self._recenter_check_and_refine = self._config.getboolean(
-                "recenter",
-                "recenter_check_and_refine",
-                fallback=self._recenter_check_and_refine,
+            self._repositioning_check_and_refine = self._config.getboolean(
+                "repositioning",
+                "repositioning_check_and_refine",
+                fallback=self._repositioning_check_and_refine,
             )
-            self._recenter_max_attempts = self._config.getint(
-                "recenter",
-                "recenter_max_attempts",
-                fallback=self._recenter_max_attempts,
+            self._repositioning_max_attempts = self._config.getint(
+                "repositioning",
+                "repositioning_max_attempts",
+                fallback=self._repositioning_max_attempts,
             )
-            self._recenter_tolerance = self._config.getfloat(
-                "recenter", "recenter_tolerance", fallback=self._recenter_tolerance
+            self._repositioning_tolerance = self._config.getfloat(
+                "repositioning",
+                "repositioning_tolerance",
+                fallback=self._repositioning_tolerance,
             )
-            self._recenter_exposure = self._config.getfloat(
-                "recenter", "recenter_exposure", fallback=self._recenter_exposure
+            self._repositioning_exposure = self._config.getfloat(
+                "repositioning",
+                "repositioning_exposure",
+                fallback=self._repositioning_exposure,
             )
-            self._recenter_save_images = self._config.getboolean(
-                "recenter", "recenter_save_images", fallback=self._recenter_save_images
+            self._repositioning_save_images = self._config.getboolean(
+                "repositioning",
+                "repositioning_save_images",
+                fallback=self._repositioning_save_images,
             )
-            self._recenter_save_path = self._config.get(
-                "recenter", "recenter_save_path", fallback=self._recenter_save_path
+            self._repositioning_save_path = self._config.get(
+                "repositioning",
+                "repositioning_save_path",
+                fallback=self._repositioning_save_path,
             )
-            self._recenter_sync_mount = self._config.getboolean(
-                "recenter", "recenter_sync_mount", fallback=self._recenter_sync_mount
+            self._repositioning_timeout = self._config.getfloat(
+                "repositioning",
+                "repositioning_timeout",
+                fallback=self._repositioning_timeout,
             )
-            self._recenter_timeout = self._config.getfloat(
-                "recenter", "recenter_timeout", fallback=self._recenter_timeout
+            self._wcs_solver = self._config.get(
+                "wcs", "wcs_solver", fallback=self._wcs_solver
             )
             self._wcs_filters = [
                 f.strip() for f in self._config.get("wcs", "wcs_filters").split(",")
@@ -351,7 +383,7 @@ class TelrunOperator:
         else:
             self._config["telrun"] = {}
             self._config["autofocus"] = {}
-            self._config["recenter"] = {}
+            self._config["repositioning"] = {}
             self._config["wcs"] = {}
 
         init_telrun_dir(self.telhome)
@@ -469,40 +501,51 @@ class TelrunOperator:
         self.autofocus_timeout = kwargs.get(
             "autofocus_timeout", self._autofocus_timeout
         )
-        self.recenter_filters = kwargs.get("recenter_filters", self._recenter_filters)
-        self.recenter_initial_offset_dec = kwargs.get(
-            "recenter_initial_offset_dec", self._recenter_initial_offset_dec
+        self.repositioning_wcs_solver = kwargs.get(
+            "repositioning_wcs_solver", self._repositioning_wcs_solver
         )
-        self.recenter_check_and_refine = kwargs.get(
-            "recenter_check_and_refine", self._recenter_check_and_refine
+        self.repositioning_max_stability_time = kwargs.get(
+            "repositioning_max_stability_time", self._repositioning_max_stability_time
         )
-        self.recenter_max_attempts = kwargs.get(
-            "recenter_max_attempts", self._recenter_max_attempts
+        self.repositioning_allowed_filters = kwargs.get(
+            "repositioning_allowed_filters", self._repositioning_allowed_filters
         )
-        self.recenter_tolerance = kwargs.get(
-            "recenter_tolerance", self._recenter_tolerance
+        self.repositioning_required_filters = kwargs.get(
+            "repositioning_required_filters", self._repositioning_required_filters
         )
-        self.recenter_exposure = kwargs.get(
-            "recenter_exposure", self._recenter_exposure
+        self.repositioning_initial_offset_dec = kwargs.get(
+            "repositioning_initial_offset_dec", self._repositioning_initial_offset_dec
         )
-        self.recenter_save_images = kwargs.get(
-            "recenter_save_images", self._recenter_save_images
+        self.repositioning_check_and_refine = kwargs.get(
+            "repositioning_check_and_refine", self._repositioning_check_and_refine
         )
-        self.recenter_save_path = kwargs.get(
-            "recenter_save_path", self._recenter_save_path
+        self.repositioning_max_attempts = kwargs.get(
+            "repositioning_max_attempts", self._repositioning_max_attempts
         )
-        self.recenter_sync_mount = kwargs.get(
-            "recenter_sync_mount", self._recenter_sync_mount
+        self.repositioning_tolerance = kwargs.get(
+            "repositioning_tolerance", self._repositioning_tolerance
         )
-        self.recenter_timeout = kwargs.get("recenter_timeout", self._recenter_timeout)
+        self.repositioning_exposure = kwargs.get(
+            "repositioning_exposure", self._repositioning_exposure
+        )
+        self.repositioning_save_images = kwargs.get(
+            "repositioning_save_images", self._repositioning_save_images
+        )
+        self.repositioning_save_path = kwargs.get(
+            "repositioning_save_path", self._repositioning_save_path
+        )
+        self.repositioning_timeout = kwargs.get(
+            "repositioning_timeout", self._repositioning_timeout
+        )
+        self.wcs_solver = kwargs.get("wcs_solver", self._wcs_solver)
         self.wcs_filters = kwargs.get("wcs_filters", self._wcs_filters)
         self.wcs_timeout = kwargs.get("wcs_timeout", self._wcs_timeout)
 
         # Set filters up if None
         if self.autofocus_filters is None:
             self.autofocus_filters = self.observatory.filters
-        if self.recenter_filters is None:
-            self.recenter_filters = self.observatory.filters
+        if self.repositioning_allowed_filters is None:
+            self.repositioning_allowed_filters = self.observatory.filters
         if self.wcs_filters is None:
             self.wcs_filters = self.observatory.filters
 
@@ -516,12 +559,12 @@ class TelrunOperator:
                     "At least one autofocus filter must be in filter wheel"
                 )
 
-            for filt in self.recenter_filters:
+            for filt in self.repositioning_allowed_filters:
                 if filt in self.observatory.filters:
                     break
             else:
                 raise TelrunException(
-                    "At least one recenter filter must be in filter wheel"
+                    "At least one repositioning filter must be in filter wheel"
                 )
 
             for filt in self.wcs_filters:
@@ -570,8 +613,6 @@ class TelrunOperator:
         if self.observatory.switch is not None:
             self._switch_status = "Idle"
         self._telescope_status = "Idle"
-        if self.observatory._wcs is not None:
-            self._wcs_status = "Idle"
 
         if self.write_to_status_log:
             self.start_status_log_thread(interval=self.status_log_update_interval)
@@ -671,9 +712,7 @@ class TelrunOperator:
 
     def execute_schedule(self, schedule):
         logger.info("Executing schedule: %s" % schedule)
-        sched_fname = None
         try:
-            sched_fname = schedule
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         except:
             if type(schedule) is not table.Table:
@@ -682,8 +721,18 @@ class TelrunOperator:
                 )
                 return
 
+        first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
+        self._schedule_fname = str(self._logs_path / ("telrun_" + first_time + ".ecsv"))
+        self._schedule = schedule
+
+        # if schedule fname already exists, load it in as the schedule
+        if os.path.exists(self._schedule_fname):
+            logger.info("Log of schedule already exists, loading as schedule...")
+            self._schedule = table.Table.read(self._schedule_fname, format="ascii.ecsv")
+            logger.info("Loaded.")
+
         # Schedule validation
-        logger.info("Validating schedule...")
+        # logger.info("Validating schedule...")
         try:
             pass
             # schedtab.validate(schedule, self.observatory)
@@ -692,13 +741,7 @@ class TelrunOperator:
             logger.exception("Schedule failed validation, exiting...")
             return
 
-        if sched_fname is None:
-            first_time = np.min(schedule["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
-            sched_fname = self.schedules_path + "telrun_" + first_time + ".ecsv"
-        self._schedule_fname = sched_fname
-        self._schedule = schedule
-
-        # Save back to file for any invalid blocks
+        logger.info("Saving schedule to file: %s" % self._schedule_fname)
         self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
 
         # Sort schedule by start time
@@ -835,9 +878,13 @@ class TelrunOperator:
                 logger.info(block)
                 if (
                     self._previous_block is not None
-                    and self._previous_block["status"] != "S"
+                    and self._previous_block["name"] != "EmptyBlock"
+                    and self._previous_block["name"] != "TransitionBlock"
                 ):
-                    while self._previous_block["status"] != "S":
+                    while (
+                        self._previous_block["name"] != "EmptyBlock"
+                        and self._previous_block["name"] != "TransitionBlock"
+                    ):
                         if block_index != 0:
                             self._previous_block_index = block_index - 1
                             self._previous_block = self._schedule[
@@ -847,12 +894,19 @@ class TelrunOperator:
                             self._previous_block_index = None
                             self._previous_block = None
                             break
+                    else:
+                        self._previous_block_index = None
+                        self._previous_block = None
 
                 if (
                     self._next_block is not None
-                    and self._previous_block["status"] != "S"
+                    and self._next_block["name"] != "EmptyBlock"
+                    and self._next_block["name"] != "TransitionBlock"
                 ):
-                    while self._next_block["status"] != "S":
+                    while (
+                        self._next_block["name"] != "EmptyBlock"
+                        and self._next_block["name"] != "TransitionBlock"
+                    ):
                         if block_index != len(self._schedule) - 1:
                             self._next_block_index = block_index + 1
                             self._next_block = self._schedule[self._next_block_index]
@@ -860,10 +914,97 @@ class TelrunOperator:
                             self._next_block_index = None
                             self._next_block = None
                             break
+                    else:
+                        self._next_block_index = None
+                        self._next_block = None
 
                 self._current_block_index = block_index
+
+                # If block filter is in required repositioning filters, set repositioning to [-1, -1] to force repositioning to center
+                if block["filter"] in self.repositioning_required_filters:
+                    block["repositioning"] = [-1, -1]
+
+                # If prev_block is not None, check coordinates to see if we need to slew
+                slew = True
+                repositioning = None
+                no_slew_condition = False
+                logger.info("Previous block: %s" % self._previous_block)
+                if self._previous_block is not None:
+
+                    # previous block completed successfully
+                    cond = self._previous_block["status"] == "C"
+                    logger.info(
+                        "Previous block status: %s" % self._previous_block["status"]
+                    )
+                    no_slew_condition = cond
+
+                    # previous block and current block have the same target
+                    prev_target = self._previous_block["target"]
+                    current_target = block["target"]
+                    cond = (
+                        prev_target.ra == current_target.ra
+                        and prev_target.dec == current_target.dec
+                    )
+                    logger.info("Previous block target: %s" % prev_target)
+                    logger.info("Current block target: %s" % current_target)
+                    no_slew_condition = no_slew_condition and cond
+
+                    # previous block and current block have the same target pm
+                    prev_target_pm = (
+                        self._previous_block["pm_ra_cosdec"] == 0
+                        and self._previous_block["pm_dec"] == 0
+                    )
+                    current_target_pm = (
+                        block["pm_ra_cosdec"] == 0 and block["pm_dec"] == 0
+                    )
+                    cond = prev_target_pm and current_target_pm
+                    logger.info("Previous block target pm: %s" % prev_target_pm)
+                    logger.info("Current block target pm: %s" % current_target_pm)
+                    no_slew_condition = no_slew_condition and cond
+
+                # update slew
+                logger.info("Slew: %s" % slew)
+                logger.info("No slew condition: %s" % no_slew_condition)
+                if no_slew_condition:
+                    slew = False
+                logger.info("Slew: %s" % slew)
+
+                # if the last repositioning coordinates are the same as the current block target's coordinates
+                # and the time since the last repositioning is less than repositioning_max_stability_time, and
+                # no_slew_condition is True, then set the repositioning to (0, 0) a.k.a. don't repositioning
+                logger.info(
+                    "Last repositioning coords: %s" % self.last_repositioning_coords
+                )
+                logger.info("Current block target coords: %s" % block["target"])
+                logger.info(
+                    "Last repositioning time: %s" % self.last_repositioning_time
+                )
+                logger.info("Current time: %s" % astrotime.Time.now())
+                logger.info(
+                    "Time since last repositioning: %s"
+                    % (astrotime.Time.now() - self.last_repositioning_time).sec
+                )
+                logger.info(
+                    "repositioning max stability time: %s"
+                    % self.repositioning_max_stability_time
+                )
+                if (
+                    self.last_repositioning_coords.ra == block["target"].ra
+                    and self.last_repositioning_coords.dec == block["target"].dec
+                    and (astrotime.Time.now() - self.last_repositioning_time).sec
+                    < self.repositioning_max_stability_time
+                    and no_slew_condition
+                ):
+                    repositioning = (0, 0)
+                logger.info("repositioning: %s" % repositioning)
+
                 try:
-                    status, message, block = self.execute_block(block)
+                    logger.info("Executing block...")
+                    logger.info("Slew: %s" % slew)
+                    logger.info("Repositioning: %s" % repositioning)
+                    status, message, block = self.execute_block(
+                        block, slew=slew, repositioning=repositioning
+                    )
                 except Exception as e:
                     logger.exception(e)
                     status = "F"
@@ -925,7 +1066,7 @@ class TelrunOperator:
 
         return
 
-    def execute_block(self, *args, **kwargs):
+    def execute_block(self, *args, slew=True, **kwargs):
         # Check for block
         if len(args) > 1:
             logger.exception(
@@ -1016,33 +1157,30 @@ class TelrunOperator:
             logger.removeHandler(str_handler)
             return ("", "", block)
 
-        # Check 2: Is the previous target different?
-        slew = True
-        if self.previous_block is not None:
-            if (
-                self.previous_block["target"].ra.deg == block["target"].ra.deg
-                and self.previous_block["target"].dec.deg == block["target"].dec.deg
-                and self.previous_block["status"] == "C"
-                and self.autofocus_use_current_pointing
-            ):
-                logger.info(
-                    "Previous target is same ra and dec, skipping initial slew..."
-                )
-                slew = False
+        # Check 2: Is slewing requested?
+        if slew:
+            logger.info("Slewing is requested...")
+
+            logger.info("Turning off custom tracking rates...")
+            self.observatory.telescope.DeclinationRate = 0
+            self.observatory.telescope.RightAscensionRate = 0
+            logger.info("Custom tracking rates turned off.")
+
+            logger.info("Turning off tracking...")
+            self.observatory.telescope.Tracking = False
+            self._telescope_status = "Idle"
+            logger.info("Tracking turned off.")
+
+            logger.info("Checking if rotator is connected...")
+            if self.observatory.rotator is not None:
+                logger.info("Rotator is connected")
+                logger.info("Turning off any active derotation threads...")
+                self.observatory.stop_derotation_thread()
+                logger.info("Derotation threads turned off.")
             else:
-                logger.info(
-                    "Previous target is different ra and dec, slewing is requested..."
-                )
-
-                logger.info("Stopping tracking...")
-                self.observatory.telescope.DeclinationRate = 0
-                self.observatory.telescope.RightAscensionRate = 0
-                self.observatory.telescope.Tracking = False
-                self._telescope_status = "Idle"
-
-                if self.observatory.rotator is not None:
-                    logger.info("Turning off derotation...")
-                    self.observatory.stop_derotation_thread()
+                logger.info("Rotator is not connected")
+        else:
+            logger.info("Slewing is not requested...")
 
         # Check 3: Wait for block start time?
         if block["start_time"] is None:
@@ -1052,14 +1190,11 @@ class TelrunOperator:
         seconds_until_start_time = (
             block["start_time"] - self.observatory.observatory_time
         ).sec
-        if (
-            not self.wait_for_block_start_time
-            and seconds_until_start_time < self.max_block_late_time
-        ):
+        if not self.wait_for_block_start_time:
             logger.info("Ignoring block start time, continuing...")
         elif (
             not self.wait_for_block_start_time
-            and seconds_until_start_time > self.max_block_late_time
+            and seconds_until_start_time < self.max_block_late_time
         ):
             logger.info(
                 "Ignoring block start time, however \
@@ -1078,7 +1213,7 @@ class TelrunOperator:
             return (new_status, "Exceeded max_block_late_time, non-fatal skip", block)
         elif (
             self.wait_for_block_start_time
-            and seconds_until_start_time > self.max_block_late_time
+            and seconds_until_start_time < self.max_block_late_time
         ):
             logger.info(
                 "Block start time exceeded max_block_late_time of %i seconds, skipping..."
@@ -1434,32 +1569,40 @@ class TelrunOperator:
         self._telescope_status = "Tracking"
         self.observatory.telescope.Tracking = True
 
+        # Check 9: Check if repositioning was previously set and has now been turned off. if this is the case,
+        # we need to set the centered flag to True
+        centered = False
+        bl_repositioning = block["repositioning"]
+        kw_repositioning = kwargs.get("repositioning", None)
+        if kw_repositioning is not None:
+            block["repositioning"] = kw_repositioning
+        if bl_repositioning.all() != 0 and block["repositioning"].all() == 0:
+            centered = True
+
         # Perform centering if requested
-        centered = None
-        if (
-            block["repositioning"][0] != 0
-            and block["repositioning"][1] != 0
-            and block["target"] is not None
-        ):
+        if block["repositioning"][0] != 0 or block["repositioning"][1] != 0:
             logger.info("Telescope pointing repositioning requested...")
 
             if (
                 self.observatory.filter_wheel is not None
-                and self.recenter_filters is not None
+                and self.repositioning_allowed_filters is not None
             ):
                 if (
                     self.observatory.filters[self.observatory.filter_wheel.Position]
-                    not in self.recenter_filters
+                    not in self.repositioning_allowed_filters
                 ):
                     logger.info(
-                        "Current filter not in recenter filters, switching to the next filter..."
+                        "Current filter not in repositioning filters, switching to the next filter..."
                     )
 
                     for i in range(
                         self.observatory.filter_wheel.Position + 1,
                         len(self.observatory.filters),
                     ):
-                        if self.observatory.filters[i] in self.recenter_filters:
+                        if (
+                            self.observatory.filters[i]
+                            in self.repositioning_allowed_filters
+                        ):
                             t = threading.Thread(
                                 target=self._is_process_complete,
                                 args=(self.hardware_timeout, self._status_event),
@@ -1486,7 +1629,10 @@ class TelrunOperator:
                             break
                     else:
                         for i in range(self.observatory.filter_wheel.Position - 1):
-                            if self.observatory.filters[i] in self.recenter_filters:
+                            if (
+                                self.observatory.filters[i]
+                                in self.repositioning_allowed_filters
+                            ):
                                 t = threading.Thread(
                                     target=self._is_process_complete,
                                     args=(self.hardware_timeout, self._status_event),
@@ -1514,59 +1660,83 @@ class TelrunOperator:
                                 )
                                 break
 
-            logger.info("Setting camera readout mode to default for recentering...")
-            self.observatory.camera.ReadoutMode = self.default_readout
-
             if not slew:
                 add_attempt = 1
             else:
                 add_attempt = 0
 
+            if block["repositioning"][0] == -1:
+                logger.info(
+                    "repositioning x-coord was set to -1, setting to center of camera"
+                )
+                block["repositioning"][0] = self.observatory.camera.CameraXSize / 2
+                logger.info("repositioning x-coord = %i" % block["repositioning"][0])
+            if block["repositioning"][1] == -1:
+                logger.info(
+                    "repositioning y-coord was set to -1, setting to center of camera"
+                )
+                block["repositioning"][1] = self.observatory.camera.CameraYSize / 2
+                logger.info("repositioning y-coord = %i" % block["repositioning"][1])
+
             t = threading.Thread(
                 target=self._is_process_complete,
                 args=(self.hardware_timeout, self._status_event),
                 daemon=True,
-                name="is_recenter_done_thread",
+                name="is_repositioning_done_thread",
             )
             t.start()
-            self._camera_status = "Recentering"
-            self._telescope_status = "Recentering"
-            self._wcs_status = (
-                "Recentering" if self.observatory._wcs is not None else ""
-            )
+            self._camera_status = "repositioning"
+            self._telescope_status = "repositioning"
+            self._wcs_status = "repositioning"
             self._dome_status = (
-                "Recentering" if self.observatory.dome is not None else ""
+                "repositioning" if self.observatory.dome is not None else ""
             )
             self._rotator_status = (
-                "Recentering" if self.observatory.rotator is not None else ""
+                "repositioning" if self.observatory.rotator is not None else ""
             )
-            centered = self.observatory.recenter(
+            centered = self.observatory.repositioning(
                 obj=block["target"],
-                target_x_pixel=1024,  # Hardcoded fix this
-                target_y_pixel=1024,  # Hardcoded fix this
-                initial_offset_dec=self.recenter_initial_offset_dec,
-                check_and_refine=self.recenter_check_and_refine,
-                max_attempts=self.recenter_max_attempts + add_attempt,
-                tolerance=self.recenter_tolerance,
-                exposure=self.recenter_exposure,
-                save_images=self.recenter_save_images,
-                save_path=self.recenter_save_path,
-                sync_mount=self.recenter_sync_mount,
+                target_x_pixel=block["repositioning"][0],
+                target_y_pixel=block["repositioning"][1],
+                initial_offset_dec=self.repositioning_initial_offset_dec,
+                check_and_refine=self.repositioning_check_and_refine,
+                max_attempts=self.repositioning_max_attempts + add_attempt,
+                tolerance=self.repositioning_tolerance,
+                exposure=self.repositioning_exposure,
+                save_images=self.repositioning_save_images,
+                save_path=self.repositioning_save_path,
                 do_initial_slew=slew,
                 readout=self.default_readout,
+                solver=self.repositioning_wcs_solver,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
-            self._wcs_status = "Idle" if self.observatory._wcs is not None else ""
+            self._wcs_status = "Idle"
             self._dome_status = "Idle" if self.observatory.dome is not None else ""
             self._rotator_status = (
                 "Idle" if self.observatory.rotator is not None else ""
             )
 
             if not centered:
-                logger.warning("Recentering failed, continuing anyway...")
+                logger.warning("repositioning failed, continuing anyway...")
             else:
-                logger.info("Recentering succeeded, continuing...")
+                logger.info("repositioning succeeded")
+                logger.info(
+                    "Previous repositioning coords: %s" % self.last_repositioning_coords
+                )
+                logger.info(
+                    "Previous repositioning time: %s" % self.last_repositioning_time
+                )
+                self._last_repositioning_coords = block["target"]
+                self._last_repositioning_time = astrotime.Time.now()
+                logger.info(
+                    "Last repositioning coords: %s" % self.last_repositioning_coords
+                )
+                logger.info(
+                    "Last repositioning time: %s" % self.last_repositioning_time
+                )
+                logger.info("Continuing...")
+
         # If not requested, just slew to the source
         elif slew and block["target"] is not None:
             logger.info("Slewing to source...")
@@ -1588,12 +1758,11 @@ class TelrunOperator:
                 control_dome=(self.observatory.dome is not None),
                 control_rotator=(self.observatory.rotator is not None),
                 wait_for_slew=False,
-                track=False,
+                # track=False,
             )
             if not slewed:
                 # Skip block if slew failed
                 logger.info("Slew failed, skipping...")
-                self.observatory.telescope.Tracking = False
                 self._current_block = None
                 logger.removeHandler(str_handler)
                 return ("", "", block)
@@ -1815,9 +1984,9 @@ class TelrunOperator:
 
         # Wait for any motion to complete
         logger.info("Waiting for telescope motion to complete...")
-        if self.observatory.telescope.Slewing:
-            while self.observatory.telescope.Slewing:
-                time.sleep(0.1)
+        while self.observatory.telescope.Slewing and centered is None:
+            time.sleep(0.1)
+        else:
             # Settle time
             logger.info(
                 "Waiting for settle time of %.1f seconds..."
@@ -1825,16 +1994,7 @@ class TelrunOperator:
             )
             self._telescope_status = "Settling"
             time.sleep(self.observatory.settle_time)
-        self._telescope_status = "Tracking"
-
-        # Moved above so it doesn't settle every time
-        # # Settle time
-        # logger.info(
-        #     "Waiting for settle time of %.1f seconds..." % self.observatory.settle_time
-        # )
-        # self._telescope_status = "Settling"
-        # time.sleep(self.observatory.settle_time)
-        # self._telescope_status = "Tracking"
+            self._telescope_status = "Tracking"
 
         # Wait for focuser, dome motion to complete
         if self.observatory.focuser is not None and self.observatory.dome is not None:
@@ -1879,6 +2039,9 @@ class TelrunOperator:
         # Add telrun status to custom header
         custom_header.update(self.telrun_info)
 
+        # add centered flag to custom header
+        custom_header["CENTERED"] = (centered, "Telescope was centered")
+
         # Start exposures
         for i in range(block["nexp"]):
             logger.info("Beginning exposure %i of %i" % (i + 1, block["nexp"]))
@@ -1913,12 +2076,14 @@ class TelrunOperator:
                     self.observatory.filters[self.observatory.filter_wheel.Position]
                     in self.wcs_filters
                 ):
+                    tempImageFilePath = str(self._temp_path / fname) + ".fts"
+                    finalImageFilePath = str(self._images_path / fname) + ".fts"
                     logger.info(
-                        "Current filter in wcs filters, attempting WCS solve..."
+                        f"Current selected filter is among WCS filters: attempting WCS solve on image {filename}..."
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        str(self._temp_path / fname) + ".fts.tmp",
+                        tempImageFilePath,
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -1928,8 +2093,10 @@ class TelrunOperator:
                         threading.Thread(
                             target=self._async_wcs_solver,
                             args=(
-                                str(self._temp_path / fname) + ".fts.tmp",
-                                str(self._images_path / fname) + ".fts",
+                                tempImageFilePath,
+                                block["target"].ra.deg,
+                                block["target"].dec.deg,
+                                finalImageFilePath,
                             ),
                             daemon=True,
                             name="wcs_threads",
@@ -1942,7 +2109,7 @@ class TelrunOperator:
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
-                        str(self._images_path / fname) + ".fts",
+                        finalImageFilePath,
                         frametyp=block["shutter_state"],
                         custom_header=custom_header,
                         history=hist,
@@ -1952,7 +2119,7 @@ class TelrunOperator:
                 logger.info("No filter wheel, attempting WCS solve...")
                 hist = str_output.getvalue().split("\n")
                 save_success = self.observatory.save_last_image(
-                    str(self._temp_path / fname) + ".fts.tmp",
+                    tempImageFilePath,
                     frametyp=block["shutter_state"],
                     custom_header=custom_header,
                     history=hist,
@@ -1962,8 +2129,10 @@ class TelrunOperator:
                     threading.Thread(
                         target=self._async_wcs_solver,
                         args=(
-                            str(self._temp_path / fname) + ".fts.tmp",
-                            str(self._images_path / fname) + ".fts",
+                            tempImageFilePath,
+                            block["target"].ra.deg,
+                            block["target"].dec.deg,
+                            finalImageFilePath,
                         ),
                         daemon=True,
                         name="wcs_threads",
@@ -1972,11 +2141,9 @@ class TelrunOperator:
                 self._wcs_threads[-1].start()
 
         # If multiple exposures, update filename as a list
-        # TODO: fix this
-        """if block["nexp"] > 1:
-            block["filename"] = [
-                block["filename"] + "_%i" % i for i in range(block["nexp"])
-            ]"""
+        if block["nexp"] > 1:
+            basename = block["filename"]
+            block["filename"] = [basename + "_%i" % i for i in range(block["nexp"])]
 
         # Set block status to done
         self._current_block = None
@@ -2124,6 +2291,20 @@ class TelrunOperator:
                 .value,
                 "Seconds till next autofocus",
             ),
+            "LASTRPR": (
+                self.last_repositioning_coords.ra.to_string(
+                    sep="hms", unit="hourangle"
+                ),
+                "Last repositioning RA",
+            ),
+            "LASTRPD": (
+                self.last_repositioning_coords.dec.to_string(sep="dms"),
+                "Last repositioning Dec",
+            ),
+            "LASTRPT": (
+                self.last_repositioning_time.fits,
+                "Last repositioning time",
+            ),
             "PREVBLKT": (
                 (
                     (
@@ -2208,71 +2389,82 @@ class TelrunOperator:
                 "Autofocus use current pointing",
             ),
             "AUTOTIME": (self.autofocus_timeout, "Autofocus timeout"),
-            "RECFILT": (self.recenter_filters, "Recenter filters"),
-            "RECOFF": (self.recenter_initial_offset_dec, "Recenter initial offset dec"),
-            "RECCHK": (self.recenter_check_and_refine, "Recenter check and refine"),
-            "RECMAX": (self.recenter_max_attempts, "Recenter max attempts"),
-            "RECTOL": (self.recenter_tolerance, "Recenter tolerance"),
-            "RECEXP": (self.recenter_exposure, "Recenter exposure"),
-            "RECSAVE": (self.recenter_save_images, "Recenter save images"),
-            "RECPATH": (self.recenter_save_path, "Recenter save path"),
-            "RECSYNC": (self.recenter_sync_mount, "Recenter sync mount"),
-            "RECTIME": (self.recenter_timeout, "Recenter timeout"),
+            "REPOWCS": (self.repositioning_wcs_solver, "Repositioning WCS solver"),
+            "RECMST": (
+                self.repositioning_max_stability_time,
+                "repositioning max stability time",
+            ),
+            "RECFILT": (self.repositioning_allowed_filters, "repositioning filters"),
+            "RECFILTR": (
+                self.repositioning_required_filters,
+                "repositioning required filters",
+            ),
+            "RECOFF": (
+                self.repositioning_initial_offset_dec,
+                "repositioning initial offset dec",
+            ),
+            "RECCHK": (
+                self.repositioning_check_and_refine,
+                "repositioning check and refine",
+            ),
+            "RECMAX": (self.repositioning_max_attempts, "repositioning max attempts"),
+            "RECTOL": (self.repositioning_tolerance, "repositioning tolerance"),
+            "RECEXP": (self.repositioning_exposure, "repositioning exposure"),
+            "RECSAVE": (self.repositioning_save_images, "repositioning save images"),
+            "RECPATH": (self.repositioning_save_path, "repositioning save path"),
+            "RECTIME": (self.repositioning_timeout, "repositioning timeout"),
+            "WCSSOLV": (self.wcs_solver, "WCS solver"),
             "WCSFILT": (self.wcs_filters, "WCS filters"),
             "WCSTIME": (self.wcs_timeout, "WCS timeout"),
         }
 
         return info
 
-    def _async_wcs_solver(self, image_path, target_path=None):
+    def _async_wcs_solver(
+        self,
+        image_path,
+        center_ra,
+        center_dec,
+        target_path=None,
+    ):
         logger.info("Attempting a plate solution...")
         self._wcs_status = "Solving"
 
-        if type(self.observatory._wcs) is WCS:
-            logger.info("Using solver %s" % self.observatory._wcs[1])
-            solution = self.observatory._wcs[1].Solve(
+        logger.info("Searching for a WCS solution...")
+        if self.wcs_solver.lower() == "astrometry_net_wcs":
+            from ..reduction import astrometry_net_wcs
+
+            solution_found = astrometry_net_wcs(
                 image_path,
-                ra_key="TARGRA",
-                dec_key="TARGDEC",
-                ra_dec_units=("hour", "deg"),
-                solve_timeout=self.wcs_timeout,
+                center_ra=center_ra,
+                center_dec=center_dec,
+                radius=1.0,
                 scale_units="arcsecperpix",
                 scale_type="ev",
-                scale_est=self.observatory.pixel_scale[0],
-                scale_err=self.observatory.pixel_scale[0] * 0.1,
+                scale_est=0.8,  # self.observatory.pixel_scale[0],
+                scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.2,
                 parity=2,
+                tweak_order=3,
                 crpix_center=True,
+                solve_timeout=self.wcs_timeout,
             )
-        else:
-            self.observatory._wcs = self.observatory._wcs[::-1]
-            for idx, wcs in enumerate(self.observatory._wcs):
-                logger.info("Using solver %s" % (idx + 1))
-                solution = wcs.Solve(
-                    image_path,
-                    ra_key="TARGRA",
-                    dec_key="TARGDEC",
-                    ra_dec_units=("hourangle", "deg"),
-                    solve_timeout=self.wcs_timeout,
-                    scale_units="arcsecperpix",
-                    scale_type="ev",
-                    scale_est=self.observatory.pixel_scale[0],
-                    scale_err=self.observatory.pixel_scale[0] * 0.1,
-                    parity=2,
-                    crpix_center=True,
-                )
-                if solution:
-                    break
+        elif self.wcs_solver.lower() == "maxim_pinpoint_wcs":
+            from ..reduction import maxim_pinpoint_wcs
 
-        if not solution:
+            solution_found = maxim_pinpoint_wcs(image_path)
+        else:
+            solution_found = False
+            logger.error("Unknown WCS solver, skipping...")
+
+        if not solution_found:
             logger.warning("WCS solution not found.")
         else:
             logger.info("WCS solution found.")
 
-        logger.info("Removing tmp extension and moving file to images directory...")
-        if target_path is None:
-            target_path = image_path.replace(".tmp", "")
-        shutil.move(image_path, target_path)
-        logger.info("File %s to %s" % (image_path, target_path))
+        if target_path is not None:
+            logger.info("Moving file to images directory...")
+            shutil.move(image_path, target_path)
+            logger.info("File %s to %s" % (image_path, target_path))
         logger.info("WCS solve complete.")
         self._wcs_status = "Idle"
 
@@ -2336,6 +2528,14 @@ class TelrunOperator:
     @property
     def last_autofocus_time(self):
         return self._last_autofocus_time
+
+    @property
+    def last_repositioning_coords(self):
+        return self._last_repositioning_coords
+
+    @property
+    def last_repositioning_time(self):
+        return self._last_repositioning_time
 
     @property
     def bad_block_count(self):
@@ -2534,8 +2734,6 @@ class TelrunOperator:
 
     @max_block_late_time.setter
     def max_block_late_time(self, value):
-        if value < 0:
-            value = 1e99
         self._max_block_late_time = float(value)
         self._config["telrun"]["max_block_late_time"] = str(self._max_block_late_time)
 
@@ -2656,115 +2854,167 @@ class TelrunOperator:
         self._config["autofocus"]["autofocus_timeout"] = str(self._autofocus_timeout)
 
     @property
-    def recenter_filters(self):
-        return self._recenter_filters
+    def repositioning_wcs_solver(self):
+        return self._repositioning_wcs_solver
 
-    @recenter_filters.setter
-    def recenter_filters(self, value):
-        if value is self._recenter_filters:
+    @repositioning_wcs_solver.setter
+    def repositioning_wcs_solver(self, value):
+        self._repositioning_wcs_solver = value
+        self._config["repositioning"]["repositioning_wcs_solver"] = str(
+            self._repositioning_wcs_solver
+        )
+
+    @property
+    def repositioning_max_stability_time(self):
+        return self._repositioning_max_stability_time
+
+    @repositioning_max_stability_time.setter
+    def repositioning_max_stability_time(self, value):
+        self._repositioning_max_stability_time = float(value)
+        self._config["repositioning"]["repositioning_max_stability_time"] = str(
+            self._repositioning_max_stability_time
+        )
+
+    @property
+    def repositioning_allowed_filters(self):
+        return self._repositioning_allowed_filters
+
+    @repositioning_allowed_filters.setter
+    def repositioning_allowed_filters(self, value):
+        if value is self._repositioning_allowed_filters:
             return
         if type(value) is list:
-            self._recenter_filters = value
+            self._repositioning_allowed_filters = value
         else:
-            self._recenter_filters = (
+            self._repositioning_allowed_filters = (
                 [v for v in value.replace(" ", "").split(",")]
                 if value is not None or value != ""
                 else None
             )
-        self._config["recenter"]["recenter_filters"] = (
-            ", ".join(self._recenter_filters)
-            if self._recenter_filters is not None
+        self._config["repositioning"]["repositioning_allowed_filters"] = (
+            ", ".join(self._repositioning_allowed_filters)
+            if self._repositioning_allowed_filters is not None
             else ""
         )
 
     @property
-    def recenter_initial_offset_dec(self):
-        return self._recenter_initial_offset_dec
+    def repositioning_required_filters(self):
+        return self._repositioning_required_filters
 
-    @recenter_initial_offset_dec.setter
-    def recenter_initial_offset_dec(self, value):
-        self._recenter_initial_offset_dec = float(value)
-        self._config["recenter"]["recenter_initial_offset_dec"] = str(
-            self._recenter_initial_offset_dec
+    @repositioning_required_filters.setter
+    def repositioning_required_filters(self, value):
+        if value is self._repositioning_required_filters:
+            return
+        if type(value) is list:
+            self._repositioning_required_filters = value
+        else:
+            self._repositioning_required_filters = (
+                [v for v in value.replace(" ", "").split(",")]
+                if value is not None or value != ""
+                else None
+            )
+        self._config["repositioning"]["repositioning_required_filters"] = (
+            ", ".join(self._repositioning_required_filters)
+            if self._repositioning_required_filters is not None
+            else ""
         )
 
     @property
-    def recenter_check_and_refine(self):
-        return self._recenter_check_and_refine
+    def repositioning_initial_offset_dec(self):
+        return self._repositioning_initial_offset_dec
 
-    @recenter_check_and_refine.setter
-    def recenter_check_and_refine(self, value):
-        self._recenter_check_and_refine = bool(value)
-        self._config["recenter"]["recenter_check_and_refine"] = str(
-            self._recenter_check_and_refine
+    @repositioning_initial_offset_dec.setter
+    def repositioning_initial_offset_dec(self, value):
+        self._repositioning_initial_offset_dec = float(value)
+        self._config["repositioning"]["repositioning_initial_offset_dec"] = str(
+            self._repositioning_initial_offset_dec
         )
 
     @property
-    def recenter_max_attempts(self):
-        return self._recenter_max_attempts
+    def repositioning_check_and_refine(self):
+        return self._repositioning_check_and_refine
 
-    @recenter_max_attempts.setter
-    def recenter_max_attempts(self, value):
-        self._recenter_max_attempts = int(value)
-        self._config["recenter"]["recenter_max_attempts"] = str(
-            self._recenter_max_attempts
+    @repositioning_check_and_refine.setter
+    def repositioning_check_and_refine(self, value):
+        self._repositioning_check_and_refine = bool(value)
+        self._config["repositioning"]["repositioning_check_and_refine"] = str(
+            self._repositioning_check_and_refine
         )
 
     @property
-    def recenter_tolerance(self):
-        return self._recenter_tolerance
+    def repositioning_max_attempts(self):
+        return self._repositioning_max_attempts
 
-    @recenter_tolerance.setter
-    def recenter_tolerance(self, value):
-        self._recenter_tolerance = float(value)
-        self._config["recenter"]["recenter_tolerance"] = str(self._recenter_tolerance)
-
-    @property
-    def recenter_exposure(self):
-        return self._recenter_exposure
-
-    @recenter_exposure.setter
-    def recenter_exposure(self, value):
-        self._recenter_exposure = float(value)
-        self._config["recenter"]["recenter_exposure"] = str(self._recenter_exposure)
-
-    @property
-    def recenter_save_images(self):
-        return self._recenter_save_images
-
-    @recenter_save_images.setter
-    def recenter_save_images(self, value):
-        self._recenter_save_images = bool(value)
-        self._config["recenter"]["recenter_save_images"] = str(
-            self._recenter_save_images
+    @repositioning_max_attempts.setter
+    def repositioning_max_attempts(self, value):
+        self._repositioning_max_attempts = int(value)
+        self._config["repositioning"]["repositioning_max_attempts"] = str(
+            self._repositioning_max_attempts
         )
 
     @property
-    def recenter_save_path(self):
-        return self._recenter_save_path
+    def repositioning_tolerance(self):
+        return self._repositioning_tolerance
 
-    @recenter_save_path.setter
-    def recenter_save_path(self, value):
-        self._recenter_save_path = os.path.abspath(value)
-        self._config["recenter"]["recenter_save_path"] = str(self._recenter_save_path)
-
-    @property
-    def recenter_sync_mount(self):
-        return self._recenter_sync_mount
-
-    @recenter_sync_mount.setter
-    def recenter_sync_mount(self, value):
-        self._recenter_sync_mount = bool(value)
-        self._config["recenter"]["recenter_sync_mount"] = str(self._recenter_sync_mount)
+    @repositioning_tolerance.setter
+    def repositioning_tolerance(self, value):
+        self._repositioning_tolerance = float(value)
+        self._config["repositioning"]["repositioning_tolerance"] = str(
+            self._repositioning_tolerance
+        )
 
     @property
-    def recenter_timeout(self):
-        return self._recenter_timeout
+    def repositioning_exposure(self):
+        return self._repositioning_exposure
 
-    @recenter_timeout.setter
-    def recenter_timeout(self, value):
-        self._recenter_timeout = float(value)
-        self._config["recenter"]["recenter_timeout"] = str(self._recenter_timeout)
+    @repositioning_exposure.setter
+    def repositioning_exposure(self, value):
+        self._repositioning_exposure = float(value)
+        self._config["repositioning"]["repositioning_exposure"] = str(
+            self._repositioning_exposure
+        )
+
+    @property
+    def repositioning_save_images(self):
+        return self._repositioning_save_images
+
+    @repositioning_save_images.setter
+    def repositioning_save_images(self, value):
+        self._repositioning_save_images = bool(value)
+        self._config["repositioning"]["repositioning_save_images"] = str(
+            self._repositioning_save_images
+        )
+
+    @property
+    def repositioning_save_path(self):
+        return self._repositioning_save_path
+
+    @repositioning_save_path.setter
+    def repositioning_save_path(self, value):
+        self._repositioning_save_path = os.path.abspath(value)
+        self._config["repositioning"]["repositioning_save_path"] = str(
+            self._repositioning_save_path
+        )
+
+    @property
+    def repositioning_timeout(self):
+        return self._repositioning_timeout
+
+    @repositioning_timeout.setter
+    def repositioning_timeout(self, value):
+        self._repositioning_timeout = float(value)
+        self._config["repositioning"]["repositioning_timeout"] = str(
+            self._repositioning_timeout
+        )
+
+    @property
+    def wcs_solver(self):
+        return self._wcs_solver
+
+    @wcs_solver.setter
+    def wcs_solver(self, value):
+        self._wcs_solver = value
+        self._config["wcs"]["wcs_solver"] = str(self._wcs_solver)
 
     @property
     def wcs_filters(self):
@@ -2976,6 +3226,8 @@ class _SystemStatusWidget(ttk.Frame):
         self.ut = rows0.add_row("UT:")
         self.last_autofocus_time = rows0.add_row("Last AF:")
         self.time_until_next_autofocus = rows0.add_row("Next AF:")
+        self.last_repositioning_coords = rows0.add_row("Last repositioning:")
+        self.last_repositioning_time = rows0.add_row("Last repositioning Time:")
         self.current_block_index = rows0.add_row("Block Idx:")
         self.bad_block_count = rows0.add_row("Skipped:")
         self.total_block_count = rows0.add_row("Total:")
@@ -3007,6 +3259,8 @@ class _SystemStatusWidget(ttk.Frame):
         self.ut.set(info_dict["UT"][0])
         self.last_autofocus_time.set(info_dict["LASTAUTO"][0])
         self.time_until_next_autofocus.set(info_dict["NEXTAUTO"][0])
+        self.last_repositioning_coords.set(info_dict["LASTREC"][0])
+        self.last_repositioning_time.set(info_dict["LASTRECT"][0])
         self.current_block_index.set(info_dict["CURRIDX"][0])
         self.bad_block_count.set(info_dict["SKIPPED"][0])
         self.total_block_count.set(info_dict["TOTALBLK"][0])

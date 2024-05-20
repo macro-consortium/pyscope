@@ -7,10 +7,9 @@ ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
 markdown == 3.6
-matplotlib == 3.8.4
+matplotlib == 3.9.0
 numpy == 1.26.4
 oschmod == 0.3.12
-paramiko == 3.4.0
 photutils == 1.12.0
 prettytable == 3.10.0
 pywin32 == 306;platform_system=='Windows'
@@ -18,5 +17,6 @@ scikit-image == 0.23.2
 scipy == 1.13.0
 smplotlib == 0.0.9
 timezonefinder == 6.5.0
-tksheet == 7.1.11
+tksheet == 7.1.12
 tqdm == 4.66.4
+# twirl == 0.4.2
