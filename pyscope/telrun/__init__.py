@@ -16,9 +16,8 @@ from .mk_mosaic_schedule import mk_mosaic_schedule
 from .rst import rst
 from . import sch, schedtab, reports
 from .schedtel import schedtel, plot_schedule_gantt, plot_schedule_sky
-from .startup import start_telrun_operator, start_sync_manager
+from .startup import start_telrun_operator
 from .survey_builder import survey_builder
-from . import synctools
 from .telrun_block import TelrunBlock
 from .telrun_operator import TelrunOperator
 
@@ -35,9 +34,7 @@ __all__ = [
     "plot_schedule_gantt",
     "plot_schedule_sky",
     "start_telrun_operator",
-    "start_sync_manager",
     "survey_builder",
-    "synctools",
     "TelrunBlock",
     "TelrunOperator",
     "TelrunException",

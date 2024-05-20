@@ -6,5 +6,5 @@ def _kwargs_to_config(kwargs):
         if ":" in str(value):
             string += str(key) + "='" + str(value) + "',"
         else:
-            string += str(key) + "=" + str(value) + ","
+            string += str(key) + "='" + str(value) + "',"
     return string[:-1]
