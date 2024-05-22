@@ -273,9 +273,15 @@ def calib_images_cli(
         if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
         
-        if dark_frame is None or bias_frame is None or flat_frame is None:
+        print(filt)
+        if filt == "HaGrism" or filt == "OGGrism":
+            if dark_frame is None or bias_frame is None:
+                logger.exception("calib-images: Grism image detected: No matching calibration frames found.")
+                return 0
+        elif dark_frame is None or bias_frame is None or flat_frame is None:
             logger.exception("calib-images: No matching calibration frames found.")
             return 0
+        
 
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
