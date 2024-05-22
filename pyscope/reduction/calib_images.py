@@ -3,12 +3,11 @@ import os
 import shutil
 from pathlib import Path
 
-# i will be working on this
 import click
 from astropy.io import fits
 
-from ..analysis import calc_zmag
 from .ccd_calib import ccd_calib
+from pyscope.analysis import calc_zmag
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +218,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    flat_frame
+#                    and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_frame = Path(calimg)
             elif (
@@ -228,6 +231,10 @@ def calib_images_cli(
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    dark_frame
+#                    and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 dark_frame = Path(calimg)
             elif (
@@ -236,6 +243,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    bias_frame
+#                    and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 bias_frame = Path(calimg)
             elif (
@@ -245,27 +256,32 @@ def calib_images_cli(
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
+#                and (
+#                    flat_dark_frame
+#                    and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+#                )
             ):
                 flat_dark_frame = Path(calimg)
 
-        # for each image, print out the calibration frames being used
-        logger.debug("Using calibration frames:")
-        logger.debug(f"Flat: {flat_frame}")
-        logger.debug(f"Dark: {dark_frame}")
-        if camera_type == "ccd":
+        logger.debug("Found calibration frames:")
+        if dark_frame:
+            logger.debug(f"Dark: {dark_frame}")        
+        if bias_frame:
             logger.debug(f"Bias: {bias_frame}")
-            if not (flat_frame and dark_frame and bias_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
-        elif camera_type == "cmos":
+        if flat_frame:
+            logger.debug(f"Flat: {flat_frame}")
+        if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
-            if not (flat_frame and dark_frame and flat_dark_frame):
-                logger.warning(
-                    f"Could not find appropriate calibration images for {fname}, skipping"
-                )
-                continue
+        
+        print(filt)
+        if filt == "HaGrism" or filt == "OGGrism":
+            if dark_frame is None or bias_frame is None:
+                logger.exception("calib-images: Grism image detected: No matching calibration frames found.")
+                return 0
+        elif dark_frame is None or bias_frame is None or flat_frame is None:
+            logger.exception("calib-images: No matching calibration frames found.")
+            return 0
+        
 
         # After gethering all the required parameters, run ccd_calib
         logger.debug("Running ccd_calib...")
@@ -286,9 +302,9 @@ def calib_images_cli(
         if zmag:
             logger.info("Calculating zero-point magnitudes...")
             try:
-                calc_zmag(images=(fname,))
+                calc_zmag.calc_zmag(images=(fname,))
             except:
-                logger.warning(f"calc-zmag failed with exception on {fname}")
+                logger.exception(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")
 

@@ -124,10 +124,10 @@ def ccd_calib_cli(
             ), fits.getheader(bias_frame)
 
             try:
-                bias_frametyp = bias_hdr["FRAMETYP"]
+                bias_frametyp = bias_hdr["IMAGETYP"]
             except KeyError:
                 bias_frametyp = ""
-            if bias_frametyp.lower() != "bias":
+            if "bias" not in bias_frametyp.lower():
                 logger.warning(
                     f"Bias frame frametype ({bias_frametyp}) does not match 'bias'"
                 )
@@ -171,10 +171,10 @@ def ccd_calib_cli(
         )
 
         try:
-            dark_frametyp = dark_hdr["FRAMETYP"]
+            dark_frametyp = dark_hdr["IMAGETYP"]
         except KeyError:
             dark_frametyp = ""
-        if dark_frametyp.lower() != "dark":
+        if "dark" not in dark_frametyp.lower():
             logger.warning(
                 f"Dark frame frametype ({dark_frametyp}) does not match 'dark'"
             )
@@ -218,10 +218,13 @@ def ccd_calib_cli(
         )
 
         try:
-            flat_frametyp = flat_hdr["FRAMETYP"]
+            flat_frametyp = flat_hdr["IMAGETYP"]
         except KeyError:
             flat_frametyp = ""
-        if flat_frametyp.lower() != "flat":
+        if (
+            "flat" not in flat_frametyp.lower()
+            and "light" not in flat_frametyp.lower()
+        ):
             logger.warning(
                 f"Flat frame frametype ({flat_frametyp}) does not match 'flat'"
             )
@@ -281,11 +284,13 @@ def ccd_calib_cli(
                 continue
 
         try:
-            image_frametyp = hdr["FRAMETYP"]
+            image_frametyp = hdr["IMAGETYP"]
         except KeyError:
             image_frametyp = ""
-        image_frametyp = str(image_frametyp).lower()
-        if image_frametyp != "light" or image_frametyp != "flat":
+        if (
+            "light" not in image_frametyp.lower()
+            and "flat" not in image.frametyp.lower()
+        ):
             logger.warning(
                 f"Image frametype ({image_frametyp}) does not match 'light' or 'flat'"
             )
@@ -403,9 +408,24 @@ def ccd_calib_cli(
 
         hdr.add_comment(f"Calibrated using pyscope")
         hdr.add_comment(f"Calibration mode: {camera_type}")
-        hdr.add_comment(f"Calibration dark frame: {dark_frame}")
-        hdr.add_comment(f"Calibration flat frame: {flat_frame}")
-        hdr.add_comment(f"Calibration bias frame: {bias_frame}")
+        if dark_frame is not None:
+            hdr.add_comment(f"Calibration dark frame: {dark_frame}")
+        else:
+            hdr.add_comment(
+                f"Calibration dark frame not provided - dark subtraction NOT performed"
+            )
+        if flat_frame is not None:
+            hdr.add_comment(f"Calibration flat frame: {flat_frame}")
+        else:
+            hdr.add_comment(
+                f"Calibration flat frame not provided - flat correction NOT performed"
+            )
+        if bias_frame is not None:
+            hdr.add_comment(f"Calibration bias frame: {bias_frame}")
+        else:
+            hdr.add_comment(
+                f"Calibration bias frame not provided - bias subtraction NOT performed"
+            )
         hdr.add_comment(f"Calibration astro-scrappy: {astro_scrappy}")
         hdr.add_comment(f"Calibration bad columns: {bad_columns}")
 

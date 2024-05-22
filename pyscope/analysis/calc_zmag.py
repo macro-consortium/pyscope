@@ -10,7 +10,7 @@ from astropy import wcs
 from astropy.io import fits
 from astroquery import sdss
 
-from ..analysis import detect_sources_photutils
+from pyscope.analysis import detect_sources_photutils
 from ..reduction import astrometry_net_wcs
 
 logger = logging.getLogger(__name__)
@@ -211,11 +211,11 @@ def calc_zmag_cli(
 
         # Get the source catalog
         logger.info("Detecting sources...")
-        catalog = detect_sources_photutils(
-            im,
+        catalog = detect_sources_photutils.detect_sources_photutils(
+            (im,),
             box_size=background_params[0],
             filter_size=background_params[1],
-            threshold=threshold,
+            detect_threshold=threshold,
             kernel_fwhm=gaussian_params[0],
             kernel_size=gaussian_params[1],
             effective_gain=effective_gain,
