@@ -40,92 +40,96 @@ class Observatory:
         logger.debug("kwargs: %s" % kwargs)
 
         # TODO: Add allowed_overwrite keys to config file and parser to check which keys can be overwritten (especially from MaxIm).
-        self._config                            = configparser.ConfigParser()
-        self._config["site"]                    = {}
-        self._config["camera"]                  = {}
-        self._config["cover_calibrator"]        = {}
-        self._config["dome"]                    = {}
-        self._config["filter_wheel"]            = {}
-        self._config["focuser"]                 = {}
-        self._config["observing_conditions"]    = {}
-        self._config["rotator"]                 = {}
-        self._config["safety_monitor"]          = {}
-        self._config["switch"]                  = {}
-        self._config["telescope"]               = {}
-        self._config["autofocus"]               = {}
+        self._config = configparser.ConfigParser()
+        self._config["site"] = {}
+        self._config["camera"] = {}
+        self._config["cover_calibrator"] = {}
+        self._config["dome"] = {}
+        self._config["filter_wheel"] = {}
+        self._config["focuser"] = {}
+        self._config["observing_conditions"] = {}
+        self._config["rotator"] = {}
+        self._config["safety_monitor"] = {}
+        self._config["switch"] = {}
+        self._config["telescope"] = {}
+        self._config["autofocus"] = {}
 
-        self._site_name                         = "pyscope Site"
-        self._instrument_name                   = "pyscope Instrument"
-        self._instrument_description            = "pyscope is a pure-Python telescope control package."
-        self._latitude                          = "00d00m00.00000s"
-        self._longitude                         = "00d00m00.00000s"
-        self._elevation                         = 0.0
-        self._diameter                          = 0.0
-        self._focal_length                      = 0.0
+        self._site_name = "pyscope Site"
+        self._instrument_name = "pyscope Instrument"
+        self._instrument_description = (
+            "pyscope is a pure-Python telescope control package."
+        )
+        self._latitude = "00d00m00.00000s"
+        self._longitude = "00d00m00.00000s"
+        self._elevation = 0.0
+        self._diameter = 0.0
+        self._focal_length = 0.0
 
-        self._camera                            = ""
-        self._camera_driver                     = ""
-        self._camera_kwargs                     = []
-        self._cooler_setpoint                   = 0.0
-        self._cooler_tolerance                  = 0.0
-        self._max_dimension                     = 0
+        self._camera = ""
+        self._camera_driver = ""
+        self._camera_kwargs = []
+        self._cooler_setpoint = 0.0
+        self._cooler_tolerance = 0.0
+        self._max_dimension = 0
 
-        self._cover_calibrator                  = ""
-        self._cover_calibrator_driver           = ""
-        self._cover_calibrator_kwargs           = []
-        self._cover_calibrator_alt              = 0.0
-        self._cover_calibrator_az               = 0.0
+        self._cover_calibrator = ""
+        self._cover_calibrator_driver = ""
+        self._cover_calibrator_kwargs = []
+        self._cover_calibrator_alt = 0.0
+        self._cover_calibrator_az = 0.0
 
-        self._dome                              = ""
-        self._dome_driver                       = ""
-        self._dome_kwargs                       = []
+        self._dome = ""
+        self._dome_driver = ""
+        self._dome_kwargs = []
 
-        self._filter_wheel                      = ""
-        self._filter_wheel_driver               = ""
-        self._filter_wheel_kwargs               = []
-        self._filters                           = []
-        self._filter_focus_offsets              = []
+        self._filter_wheel = ""
+        self._filter_wheel_driver = ""
+        self._filter_wheel_kwargs = []
+        self._filters = []
+        self._filter_focus_offsets = []
 
-        self._focuser                           = None
-        self._focuser_driver                    = None
-        self._focuser_kwargs                    = None
+        self._focuser = None
+        self._focuser_driver = None
+        self._focuser_kwargs = None
 
-        self._observing_conditions              = None
-        self._observing_conditions_driver       = None
-        self._observing_conditions_kwargs       = None
+        self._observing_conditions = None
+        self._observing_conditions_driver = None
+        self._observing_conditions_kwargs = None
 
-        self._rotator                           = None
-        self._rotator_driver                    = None
-        self._rotator_kwargs                    = None
-        self._rotator_reverse                   = False
-        self._rotator_min_angle                 = None
-        self._rotator_max_angle                 = None
+        self._rotator = None
+        self._rotator_driver = None
+        self._rotator_kwargs = None
+        self._rotator_reverse = False
+        self._rotator_min_angle = None
+        self._rotator_max_angle = None
 
-        self._safety_monitor                    = []
-        self._safety_monitor_driver             = []
-        self._safety_monitor_kwargs             = []
+        self._safety_monitor = []
+        self._safety_monitor_driver = []
+        self._safety_monitor_kwargs = []
 
-        self._switch                            = []
-        self._switch_driver                     = []
-        self._switch_kwargs                     = []
+        self._switch = []
+        self._switch_driver = []
+        self._switch_kwargs = []
 
-        self._telescope                         = None
-        self._telescope_driver                  = None
-        self._telescope_kwargs                  = None
-        self._min_altitude                      = 10 * u.deg
-        self._settle_time                       = 5
+        self._telescope = None
+        self._telescope_driver = None
+        self._telescope_kwargs = None
+        self._min_altitude = 10 * u.deg
+        self._settle_time = 5
 
-        self._autofocus                         = None
-        self._autofocus_driver                  = None
-        self._autofocus_kwargs                  = None
+        self._autofocus = None
+        self._autofocus_driver = None
+        self._autofocus_kwargs = None
 
-        self._slew_rate                         = None
-        self._instrument_reconfig_times         = None
+        self._slew_rate = None
+        self._instrument_reconfig_times = None
 
-        self._maxim                             = None
+        self._maxim = None
 
         if config_path is not None:
-            logger.info("Using this config file to initialize the observatory: %s" % config_path)
+            logger.info(
+                "Using this config file to initialize the observatory: %s" % config_path
+            )
             try:
                 self._config.read(config_path)
             except:
@@ -1917,7 +1921,7 @@ class Observatory:
         save_path="./",
         settle_time=5,
         do_initial_slew=True,
-        solver="astrometry_net_wcs" # or "maxim_pinpoint_wcs"
+        solver="astrometry_net_wcs",  # or "maxim_pinpoint_wcs"
     ):
         """Attempts to place the requested right ascension and declination at the requested pixel location
         on the detector.
@@ -2371,12 +2375,18 @@ class Observatory:
                             real_exp = filt_exp
 
         if self.cover_calibrator is not None:
-            if self.cover_calibrator.CalibratorState is not None and self.cover_calibrator.CalibratorState != "NotPresent":
+            if (
+                self.cover_calibrator.CalibratorState is not None
+                and self.cover_calibrator.CalibratorState != "NotPresent"
+            ):
                 logger.info("Turning off the cover calibrator")
                 self.cover_calibrator.CalibratorOff()
                 logger.info("Cover calibrator off")
 
-            if self.cover_calibrator.CoverState is not None and self.cover_calibrator.CalibratorState != "NotPresent":
+            if (
+                self.cover_calibrator.CoverState is not None
+                and self.cover_calibrator.CalibratorState != "NotPresent"
+            ):
                 logger.info("Closing the cover calibrator")
                 self.cover_calibrator.CloseCover()
                 logger.info("Cover closed")
@@ -2392,7 +2402,9 @@ class Observatory:
                     self.telescope.Park()
                     logger.info("Parking complete")
         else:
-            logger.info("Cover calibrator is None in config file, are you doing sky flats?")
+            logger.info(
+                "Cover calibrator is None in config file, are you doing sky flats?"
+            )
 
         logger.info("Flats complete")
 
@@ -2541,27 +2553,37 @@ class Observatory:
 
     def _read_out_kwargs(self, dictionary):
         logger.debug("Observatory._read_out_kwargs() called")
-        self.site_name                  = dictionary.get( "site_name",              self.site_name)
-        self.instrument_name            = dictionary.get( "instrument_name",        self.instrument_name)
-        self.instrument_description     = dictionary.get( "instrument_description", self.instrument_description)
-        self.latitude                   = dictionary.get( "latitude",               self.latitude)
-        self.longitude                  = dictionary.get( "longitude",              self.longitude)
-        self.elevation                  = dictionary.get( "elevation",              self.elevation)
-        self.diameter                   = dictionary.get( "diameter",               self.diameter)
-        self.focal_length               = dictionary.get( "focal_length",           self.focal_length)
-        self.max_dimension              = dictionary.get( "max_dimension",          self.max_dimension)
-        self.cover_calibrator_alt       = dictionary.get( "cover_calibrator_alt",   self.cover_calibrator_alt)
-        self.cover_calibrator_az        = dictionary.get( "cover_calibrator_az",    self.cover_calibrator_az)
-        self.filters                    = dictionary.get( "filters",                self.filters)
-        self.filter_focus_offsets       = dictionary.get( "filter_focus_offsets",   self.filter_focus_offsets)
-        self.min_altitude               = dictionary.get( "min_altitude",           self.min_altitude)
-        self.settle_time                = dictionary.get( "settle_time",            self.settle_time)
-        self.slew_rate                  = dictionary.get( "slew_rate",              self.slew_rate)
+        self.site_name = dictionary.get("site_name", self.site_name)
+        self.instrument_name = dictionary.get("instrument_name", self.instrument_name)
+        self.instrument_description = dictionary.get(
+            "instrument_description", self.instrument_description
+        )
+        self.latitude = dictionary.get("latitude", self.latitude)
+        self.longitude = dictionary.get("longitude", self.longitude)
+        self.elevation = dictionary.get("elevation", self.elevation)
+        self.diameter = dictionary.get("diameter", self.diameter)
+        self.focal_length = dictionary.get("focal_length", self.focal_length)
+        self.max_dimension = dictionary.get("max_dimension", self.max_dimension)
+        self.cover_calibrator_alt = dictionary.get(
+            "cover_calibrator_alt", self.cover_calibrator_alt
+        )
+        self.cover_calibrator_az = dictionary.get(
+            "cover_calibrator_az", self.cover_calibrator_az
+        )
+        self.filters = dictionary.get("filters", self.filters)
+        self.filter_focus_offsets = dictionary.get(
+            "filter_focus_offsets", self.filter_focus_offsets
+        )
+        self.min_altitude = dictionary.get("min_altitude", self.min_altitude)
+        self.settle_time = dictionary.get("settle_time", self.settle_time)
+        self.slew_rate = dictionary.get("slew_rate", self.slew_rate)
 
-        self.cooler_setpoint            = float(dictionary.get( "cooler_setpoint",  self.cooler_setpoint))
-        self.cooler_tolerance           = float(dictionary.get( "cooler_tolerance", self.cooler_tolerance))
-
-
+        self.cooler_setpoint = float(
+            dictionary.get("cooler_setpoint", self.cooler_setpoint)
+        )
+        self.cooler_tolerance = float(
+            dictionary.get("cooler_tolerance", self.cooler_tolerance)
+        )
 
         # Not sure if this if statement is a good idea here...
         if dictionary.get("rotator_driver", self.rotator_driver) is not None:
