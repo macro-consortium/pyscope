@@ -2079,7 +2079,7 @@ class TelrunOperator:
                     tempImageFilePath = str(self._temp_path / fname) + ".fts"
                     finalImageFilePath = str(self._images_path / fname) + ".fts"
                     logger.info(
-                        f"Current selected filter is among WCS filters: attempting WCS solve on image {filename}..."
+                        f"Current selected filter is among WCS filters: attempting WCS solve on image {tempImageFilePath}..."
                     )
                     hist = str_output.getvalue().split("\n")
                     save_success = self.observatory.save_last_image(
@@ -2436,17 +2436,17 @@ class TelrunOperator:
 
             solution_found = astrometry_net_wcs(
                 image_path,
-                center_ra=center_ra,
-                center_dec=center_dec,
-                radius=1.0,
-                scale_units="arcsecperpix",
-                scale_type="ev",
-                scale_est=0.8,  # self.observatory.pixel_scale[0],
-                scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.2,
-                parity=2,
-                tweak_order=3,
-                crpix_center=True,
-                solve_timeout=self.wcs_timeout,
+                # center_ra=center_ra,
+                # center_dec=center_dec,
+                # radius=1.0,
+                # scale_units="arcsecperpix",
+                # scale_type="ev",
+                # scale_est=0.8,  # self.observatory.pixel_scale[0],
+                # scale_err=0.1,  # self.observatory.pixel_scale[0] * 0.2,
+                # parity=2,
+                # tweak_order=3,
+                # crpix_center=True,
+                # solve_timeout=self.wcs_timeout,
             )
         elif self.wcs_solver.lower() == "maxim_pinpoint_wcs":
             from ..reduction import maxim_pinpoint_wcs
