@@ -19,7 +19,53 @@ class StopExecution(Exception):
 
 class grism_utils:
     def __init__(self, grism_image, cal_file, rot_angle, box, f_wave,f_gain):
-        ''' Utilities for calibrating and plotting spectra from grism images'''
+        """
+        The main class for grism spectrum generation and analysis.
+
+        grism_utils contains all the functions required for extracting, calibrating, and visualizing spectra from grism images.
+
+        Parameters
+        ----------
+        grism_image : str
+            location of the grism image you want to work on.
+
+        cal_file : str
+            location of the grism calibration file you want to use (must be a csv).
+        
+        rot_angle : int
+            read from the calibration file; rotation angle of extraction box
+
+        f_wave : list
+            read from the calibration file; coefficients of wavelength calibration function
+
+        f_gain : list
+            read from the calibration file; coefficients of flux calibration function
+
+
+        Other Parameters
+        ----------------
+        TBD
+
+        Raises
+        ------
+        TBD
+
+        See Also
+        --------
+        TBD
+
+        Notes
+        -----
+        TBD
+
+        References
+        ----------
+        TBD
+
+        Examples
+        --------
+        TBD
+        """
         
         self.grism_image = grism_image
         self.cal_file = cal_file
@@ -45,11 +91,21 @@ class grism_utils:
         self.f_gain = f_gain
         
     def summary_info(self):
+        """
+        Prints key parameters from the current instantiation. 
+        """
         return self.object_name, self.obs_date,self.telescope,self.camera,self.title,self.im,self.rot_angle, self.box, self.f_wave, self.f_gain
     
     def create_box(self):       
-        ''' Create a strip subimage using parameters from calibration file, or user-supplied'''
-        
+        """Extracts a subimage. The spectral trace is oriented by transforming the image,
+           and the subimage is extracted based on dimensions supplied by the extraction box.
+
+        Returns:
+            im_rot (arraylike): the transformed image (full size)
+
+            subim  (arraylike): the extracted subimage
+
+        """
         
         # Flip image so L-> R corresponds to short -> long wavelength                
         im_flip = np.fliplr(self.im)
@@ -62,8 +118,28 @@ class grism_utils:
         self.subim = im_rot[ystart:ystart+ywidth,xstart:xstart+xwidth]
         return self.subim , im_rot
     
-    def plot_box(self,image = None,subim = None, vmin=None, vmax=None,figsize =(10,10),cmap='gray',box=None):
-        '''Plot image: defaults to full image '''
+    def plot_box(self,image, subim, box, vmin=None, vmax=None,figsize =(10,10),cmap='gray'):
+        """Plots the full image and extracted subimage side by side for inspection.
+
+        Args:
+            image (arraylike): full transformed image
+
+            subim (arraylike): extracted subimage
+
+            box (list): dimensions of the extraction box; this will be plotted on the full image for visual aid.
+
+            vmin (int, optional): minimum value of image scale. Defaults to None.
+
+            vmax (int, optional): maximum value of image scale. Defaults to None.
+
+            figsize (tuple, optional): size of figure. Defaults to (10,10).
+
+            cmap (str, optional): colormap to use. Defaults to 'gray'.
+
+        Returns:
+            fig (arraylike): figure displaying both images and box annotation.
+
+        """
         
         fig, ax = plt.subplots(1, 2,figsize=figsize)
         zmean = np.median(image); s = np.std(image)
@@ -84,8 +160,17 @@ class grism_utils:
             
         return fig 
     
-    def calibrate_spectrum(self,subim,norm):
-        '''Calculates raw spectrum by summing pixels in all vertical slices, then apply wavelength, gain calibration'''
+    def calibrate_spectrum(self,subim,norm=False):
+        """Calculates raw spectrum by summing pixels in all vertical slices,
+           then apply wavelength & gain calibration according to cal file.
+
+        Args:
+            subim (arraylike): the subimage from which to extract the spectrum.
+            norm (bool, optional): whether or not to normalize the spectrum.
+
+        Returns:
+            spectrum : spectrum object containing pixel, wavelength, uncalibrated amplitude and calibrated amplitude values. 
+        """
 
         pixels = np.arange(subim.shape[1])
         # find sum of pixel values along each column (spectral channel)
@@ -110,10 +195,23 @@ class grism_utils:
         return spectrum
 
     def __calc_channel_signal(self,subim,xpixel):  
-        ''' Calculates total counts in specified spectral channel xpixel 
+        """Calculates total counts in specified spectral channel xpixel 
         by subtracting background and summing. The spectral signal is assumed 
-        to be in middle half of the spectrum. '''
+        to be in middle half of the spectrum.
+
+        Args:
+            subim (arraylike): _description_
+            
+            xpixel (int): x pixel at which to perform signal calculation.
         
+        Returns:
+            ymax (int): y position of maximum value in column.
+
+            tot_signal (int): total counts in column.
+
+            signal_max (int): maximum value in column.
+        """
+
         yvals = subim[:,xpixel]
         yindex = np.arange(len(yvals))
         
@@ -129,76 +227,51 @@ class grism_utils:
         # Calculate signal vs pixel by subtracting baseline, sum and get index of maximum pixel
         signal = yvals - base
         signal_max = np.max(signal)
-        ymax = np.argmax(signal)       
-        return(ymax, np.sum(signal),signal_max) 
+        ymax = np.argmax(signal)  
+        tot_signal = np.sum(signal)     
+        return(ymax, tot_signal,signal_max) 
     
-    def plot_gain_curve(self, spectrum,wmin=350,wmax=750,color='r',title=''):
-        ''' Plot the gain vs wavelength using the f_gain function '''
+    def plot_gain_curve(self, spectrum, wmin=350,wmax=750,color='r',title=''):
+        """Plots the gain curve based on wavelengths in input spectrum.
+
+        Args:
+            spectrum (arraylike): input spectrum.
+
+            wmin (int, optional): minimum wavelength of the plot. Defaults to 350.
+
+            wmax (int, optional): maximum wavelength of the plot. Defaults to 750.
+
+            color (str, optional): color to plot the gain curve. Defaults to 'r'.
+
+            title (str, optional): title the figure. Defaults to ''.
+
+        Returns:
+            fig : plot of the gain curve
+
+        """
+
         p,w,u,c = self.clip_spectrum(spectrum,wmin,wmax)
         gain_curve =self.f_gain(w)
         gain_curve /= np.max(gain_curve)
         fig, ax = plt.subplots(1, 1,figsize=(8,5))
         ax.plot(w,gain_curve,color =color)
+        ax.set_ylabel(r'Flux  (count cm$^{2}$ s Angstrom erg$^{-1}$)')
         plt.suptitle(title)
         plt.grid()
         return fig
-    
-    # Normal 2x2 grism plot
-    def plot_2x2(self,object_spectrum, reference_spectrum,title='', medavg=1):
-        ''' Creates 2x2 plot: 
-        UL: uncalibrated object spectrum
-        UR: Gain curve
-        LL: Calibrated object spectrum
-        LR: Reference spectrum 
-        Note: object spectrum has 4 rows (pixels, wavelength, uncal. amp., calib. amplitude), 
-        reference spectrum has 2 rows (wavelength, calib. amplitude)'''
-    
-        _,wave, amp_uncal, amp_cal = object_spectrum
-        wave_ref,amp_ref = reference_spectrum
-    
-        # Median average if requested
-        amp_uncal = medfilt(amp_uncal,kernel_size = medavg) 
-        amp_cal = medfilt(amp_cal,kernel_size = medavg) 
-    
-        fig, ((ax1, ax2),(ax3,ax4)) = plt.subplots(2, 2,figsize=(10,8))
-        plt.suptitle(title)
-        # Uncalibrated spectrum
-        ax1.plot(wave, amp_uncal)
-        ax1.set_xlabel('Wavelength')
-        ax1.set_ylabel('Uncalibrated amp.')
-        ax1.set_title('Raw Spectrum')
-        ax1.grid()
-
-        # Gain curve
-        gain =  self.f_gain(wave_ref)
-        gain /= np.max(gain)
-        ax2.plot(wave_ref,gain,'k.',ms=2)
-        ax2.set_xlabel('Wavelength')
-        ax2.set_ylabel('Gain')
-        ax2.set_xlim(380,750)
-        ax2.set_title('Gain vs. Wavelength')
-        ax2.grid()
-
-        # Calibrated amplitude
-        ax3.plot(wave, amp_cal)
-        ax3.set_xlabel('Wavelength')
-        ax3.set_ylabel('Calibrated amplitude')
-        ax3.set_xlim(380,750)
-        ax3.set_title('Calibrated Spectrum')
-        ax3.grid()
-
-        # Reference spectrum
-        ax4.plot(wave_ref, amp_ref)
-        ax4.set_xlabel('Wavelength')
-        ax4.set_ylabel('Calibrated amplitude')
-        ax4.set_title('Jacoby Spectrum')
-        ax4.grid()
-        plt.tight_layout()
-        return fig
 
     def fit_spectral_line(self,spectrum,wave_min,wave_max):
-        '''Fit a Gaussian function to spectral line in the wavelength range wave_min to wave_max.
-        Returns fitted parameters with uncertainties and a plot of spectral line and fitted Gaussian'''
+        """Fit a Gaussian function to spectral line in the wavelength range wave_min to wave_max.
+        Returns fitted parameters with uncertainties and a plot of spectral line and fitted Gaussian.
+
+        Args:
+            spectrum (_type_): _description_
+            wave_min (_type_): _description_
+            wave_max (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
     
         # Constrain spectrum to desired wavelength range, unpack needed arrays
         pixel,wave,uncal_amp,amp = self.clip_spectrum(spectrum,wave_min,wave_max)
@@ -259,8 +332,8 @@ class grism_utils:
             w,c = spectrum
             s = subrange
             wave = w[s]; amp_cal = c[s]
-            x = wave    ; ax.set_xlabel('Wavelength [nm]') 
-            y = amp_cal ; ax.set_ylabel('Calibrated amplitude')
+            x = wave    ; ax.set_xlabel('Wavelength (nm)') 
+            y = amp_cal ; ax.set_ylabel('Calibrated flux (counts)')
         else:
             # Slice spectrum by selecting user-selected pixel range (Unpythonic!)
             p,w,u,c = spectrum
@@ -272,9 +345,9 @@ class grism_utils:
             if xaxis == 'pixel':
                 x = pixels ; ax.set_xlabel('Pixels')
             else:
-                x = wave ; ax.set_xlabel('Wavelength [nm]')
+                x = wave ; ax.set_xlabel('Wavelength (nm)')
             if yaxis == 'uncal':
-                y = amp_uncal ; ax.set_ylabel('Uncalibrated amplitude')
+                y = amp_uncal ; ax.set_ylabel('Uncalibrated flux (counts)')
             else:
                 y = amp_cal   ; ax.set_ylabel(r'Flux  (erg cm$^{-2}$ s$^{-1}$ Angstrom$^{-1}$)')
   
@@ -283,17 +356,19 @@ class grism_utils:
      
         # Median average if requested 
         y = medfilt(y,kernel_size = medavg)  
-        ax.plot(x,y,'k-')    
+        ax.plot(x,y,'k-')
+
+        #set axis limits
         if xlims != [0,0]: 
             xmin,xmax = xlims
-            ax.set_xlim(xmin,xmax)   
+            ax.set_xlim(xmin,xmax)
         if ylims != [0,0]: 
             ymin,ymax = ylims
             ax.set_ylim(ymin,ymax)
         else:
             #select good channels (middle 80% of channels) and set ylim based on those values
             good_channels = y[int(.15*len(y)):int(.85*len(y))]
-            ax.set_ylim(0,np.max(good_channels)*1.2)
+            ax.set_ylim(np.min(good_channels)*.7,np.max(good_channels)*1.3)
         if grid:
             ax.grid()
         return fig
