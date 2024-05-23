@@ -83,8 +83,9 @@ from . import observatory
 from . import telrun
 from . import reduction
 from . import analysis
+from . import grism
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-__all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]
+__all__ = ["analysis", "observatory", "reduction", "telrun", "utils","grism"]

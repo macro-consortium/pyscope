@@ -9,3 +9,4 @@ API Reference
     pyscope.reduction
     pyscope.analysis
     pyscope.utils
+    pyscope.grism
