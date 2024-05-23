@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import sys
 from pathlib import Path
 
 import click
@@ -9,6 +10,15 @@ from .avg_fits import avg_fits
 from .ccd_calib import ccd_calib
 
 logger = logging.getLogger(__name__)
+
+
+def custom_exit(status=0):
+    try:
+        sys.exit(status)
+    except SystemExit as e:
+        # Handle the exit cleanly in an interactive environment or during tests
+        print(f"Exiting with status: {e.code}")
+        # Optionally re-raise or do nothing, which could just print a message
 
 
 @click.command(
@@ -63,6 +73,36 @@ def reduce_calibration_set_cli(
     """
 
     calibration_set = Path(calibration_set).resolve()
+
+    # try:
+    #     bias_sets = list(calibration_set.glob("biases*"))
+    #     if not bias_sets:
+    #         logging.error("No bias sets found. Exiting program.")
+    #         custom_exit(1)
+    #     logging.debug(f"Found {len(bias_sets)} bias set(s).")
+    # except Exception as e:
+    #     logging.error("Failed to retrieve bias sets:", exc_info=True)
+    #     custom_exit(1)
+
+    # try:
+    #     dark_sets = list(calibration_set.glob("darks*"))
+    #     if not dark_sets:
+    #         logging.error("No dark sets found. Exiting program.")
+    #         custom_exit(1)
+    #     logging.debug(f"Found {len(dark_sets)} dark set(s).")
+    # except Exception as e:
+    #     logging.error("Failed to retrieve dark sets:", exc_info=True)
+    #     custom_exit(1)
+
+    # try:
+    #     flat_sets = list(calibration_set.glob("flats*"))
+    #     if not flat_sets:
+    #         logging.error("No flat sets found. Exiting program.")
+    #         custom_exit(1)
+    #     logging.debug(f"Found {len(flat_sets)} flat set(s).")
+    # except Exception as e:
+    #     logging.error("Failed to retrieve flat sets:", exc_info=True)
+    #     custom_exit(1)
 
     bias_sets = calibration_set.glob("biases*")
     dark_sets = calibration_set.glob("darks*")

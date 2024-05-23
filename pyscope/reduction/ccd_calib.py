@@ -221,10 +221,7 @@ def ccd_calib_cli(
             flat_frametyp = flat_hdr["IMAGETYP"]
         except KeyError:
             flat_frametyp = ""
-        if (
-            "flat" not in flat_frametyp.lower()
-            and "light" not in flat_frametyp.lower()
-        ):
+        if "flat" not in flat_frametyp.lower() and "light" not in flat_frametyp.lower():
             logger.warning(
                 f"Flat frame frametype ({flat_frametyp}) does not match 'flat'"
             )

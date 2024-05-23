@@ -6,8 +6,9 @@ from pathlib import Path
 import click
 from astropy.io import fits
 
-from .ccd_calib import ccd_calib
 from pyscope.analysis import calc_zmag
+
+from .ccd_calib import ccd_calib
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +219,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-#                and (
-#                    flat_frame
-#                    and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"]
-#                )
+                #                and (
+                #                    flat_frame
+                #                    and fits.getval(flat_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+                #                )
             ):
                 flat_frame = Path(calimg)
             elif (
@@ -231,10 +232,10 @@ def calib_images_cli(
                 and (camera_type == "ccd" or hdrf["EXPTIME"] == exptime)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-#                and (
-#                    dark_frame
-#                    and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
-#                )
+                #                and (
+                #                    dark_frame
+                #                    and fits.getval(dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+                #                )
             ):
                 dark_frame = Path(calimg)
             elif (
@@ -243,10 +244,10 @@ def calib_images_cli(
                 and (gain == "" or hdrf["GAIN"] == gain)
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-#                and (
-#                    bias_frame
-#                    and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"]
-#                )
+                #                and (
+                #                    bias_frame
+                #                    and fits.getval(bias_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+                #                )
             ):
                 bias_frame = Path(calimg)
             elif (
@@ -256,24 +257,31 @@ def calib_images_cli(
                 and hdrf["EXPTIME"] == exptime
                 and hdrf["XBINNING"] == xbin
                 and hdrf["YBINNING"] == ybin
-#                and (
-#                    flat_dark_frame
-#                    and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
-#                )
+                #                and (
+                #                    flat_dark_frame
+                #                    and fits.getval(flat_dark_frame, "DATE-OBS") < hdrf["DATE-OBS"]
+                #                )
             ):
                 flat_dark_frame = Path(calimg)
 
         logger.debug("Found calibration frames:")
         if dark_frame:
-            logger.debug(f"Dark: {dark_frame}")        
+            logger.debug(f"Dark: {dark_frame}")
         if bias_frame:
             logger.debug(f"Bias: {bias_frame}")
         if flat_frame:
             logger.debug(f"Flat: {flat_frame}")
         if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
-        
-        if dark_frame is None or bias_frame is None or flat_frame is None:
+
+        print(filt)
+        if filt == "HaGrism" or filt == "OGGrism":
+            if dark_frame is None or bias_frame is None:
+                logger.exception(
+                    "calib-images: Grism image detected: No matching calibration frames found."
+                )
+                return 0
+        elif dark_frame is None or bias_frame is None or flat_frame is None:
             logger.exception("calib-images: No matching calibration frames found.")
             return 0
 
