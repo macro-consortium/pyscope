@@ -2070,10 +2070,11 @@ class TelrunOperator:
             logger.info("Cleaning up WCS threads...")
             self._wcs_threads = [t for t in self._wcs_threads if t.is_alive()]
 
+            tempImageFilePath = str(self._temp_path / fname) + ".fts"
+            finalImageFilePath = str(self._images_path / fname) + ".fts"
+
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
-                tempImageFilePath = str(self._temp_path / fname) + ".fts"
-                finalImageFilePath = str(self._images_path / fname) + ".fts"
                 if (
                     self.observatory.filters[self.observatory.filter_wheel.Position]
                     in self.wcs_filters
