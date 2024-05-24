@@ -2072,12 +2072,12 @@ class TelrunOperator:
 
             # Save image, do WCS if filter in wcs_filters
             if self.observatory.filter_wheel is not None:
+                tempImageFilePath = str(self._temp_path / fname) + ".fts"
+                finalImageFilePath = str(self._images_path / fname) + ".fts"
                 if (
                     self.observatory.filters[self.observatory.filter_wheel.Position]
                     in self.wcs_filters
                 ):
-                    tempImageFilePath = str(self._temp_path / fname) + ".fts"
-                    finalImageFilePath = str(self._images_path / fname) + ".fts"
                     logger.info(
                         f"Current selected filter is among WCS filters: attempting WCS solve on image {tempImageFilePath}..."
                     )
