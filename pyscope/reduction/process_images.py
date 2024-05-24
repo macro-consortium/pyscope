@@ -162,7 +162,9 @@ def process_image(img):
             )
         except:
             sort_image(img, img.parent / "failed")
-            logger.exception(f"calib_images failed on image {img}: no matching calibration frames maybe?")
+            logger.exception(
+                f"calib_images failed on image {img}: no matching calibration frames maybe?"
+            )
             img.unlink()
             return
 
@@ -208,7 +210,7 @@ if __name__ == "__main__":
                 yyyy, mm, dd = [int(s) for s in img_isodate.split("-")]
                 age = (
                     time.time()
-                    - dt.datetime(yyyy, mm, dd, tzinfo = dt.timezone.utc).timestamp()
+                    - dt.datetime(yyyy, mm, dd, tzinfo=dt.timezone.utc).timestamp()
                 )
                 if age > MAXAGE:
                     img.unlink()
