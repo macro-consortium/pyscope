@@ -1352,15 +1352,14 @@ class Observatory:
             raise ObservatoryException("There is no filter wheel.")
 
         if self.focuser is not None:
-            if self.focuser.Connected:
+            if self.focuser.Connected and self.filter_focus_offsets[filter_name] != 0:
                 self._current_focus_offset = (
                     self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
                 # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
                 if self.focuser.Absolute:
                     if (
-                        self.focuser.Position + self.current_focus_offset
-                        > 0
+                        self.focuser.Position + self.current_focus_offset > 0
                         # and self.focuser.Position + self.current_focus_offset
                         # < self.focuser.MaxStep
                     ):
@@ -1389,6 +1388,10 @@ class Observatory:
                         time.sleep(0.1)
                     logger.info("Focuser moved")
                     return True
+            elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
+                logger.info("No focus offset for filter %s" % filter_name)
+                logger.info("Focuser at postion %i" % self.focuser.Position)
+                return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
         else:
