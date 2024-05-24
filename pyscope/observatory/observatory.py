@@ -1359,7 +1359,8 @@ class Observatory:
                 # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
                 if self.focuser.Absolute:
                     if (
-                        self.focuser.Position + self.current_focus_offset > 0
+                        self.focuser.Position + self.current_focus_offset
+                        > 0
                         # and self.focuser.Position + self.current_focus_offset
                         # < self.focuser.MaxStep
                     ):
