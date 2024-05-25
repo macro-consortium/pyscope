@@ -92,7 +92,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--connectivity",
-    type=click.Choice([4, 8]),
+    type=int,
     default=8,
     help="""Connectivity of the sources""",
 )
