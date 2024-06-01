@@ -18,5 +18,5 @@ scikit-image == 0.23.2
 scipy == 1.13.0
 smplotlib == 0.0.9
 timezonefinder == 6.5.0
-tksheet == 7.2.1
+tksheet == 7.2.4
 tqdm == 4.66.4
