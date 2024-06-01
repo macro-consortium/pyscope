@@ -6,7 +6,7 @@ pyscope
 
     |License| |Zenodo| |PyPI Version| |PyPI Python Versions| |PyPI Downloads| |Astropy| |GitHub CI| |Code Coverage| |Documentation Status| |Codespaces Status| |pre-commit| |Black| |isort| |Donate|
 
-.. image:: https://github.com/WWGolay/pyscope/blob/main/docs/source/_static/pyscope_logo_white.png
+.. image:: https://github.com/macro-consortium/pyscope/blob/main/docs/source/_static/pyscope_logo_white.png
     :alt: pyscope logo
 
 This is the repository for `pyscope <https://pyscope.readthedocs.io/en/latest/>`_,
@@ -79,14 +79,14 @@ Or with conda:
 
 .. code-block:: bash
 
-    conda create -n pyscope-dev python=3.10.12
+    conda create -n pyscope-dev python=3.12
     conda activate pyscope-dev
 
 To install pyscope for development, clone the repository and install with pip:
 
 .. code-block:: bash
 
-    git clone https://github.com/WWGolay/pyscope
+    git clone https://github.com/macro-consortium/pyscope
     cd pyscope
     pip install -e ".[dev]"
 
@@ -112,7 +112,7 @@ This project is licensed under the `GNU AGPLv3 License <LICENSE>`_.
 
 Issues
 ------
-Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues>`_.
+Please post any issues you find `here <https://github.com/macro-consortium/pyscope/issues>`_.
 
 .. |License| image:: https://img.shields.io/pypi/l/pyscope
     :target: https://pypi.org/project/pyscope/
@@ -138,20 +138,20 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
     :target: http://www.astropy.org
     :alt: Powered by Astropy
 
-.. |GitHub CI| image:: https://img.shields.io/github/actions/workflow/status/WWGolay/pyscope/ci.yml?logo=GitHub&label=CI
-    :target: https://github.com/WWGolay/pyscope/actions/workflows/ci.yml
+.. |GitHub CI| image:: https://img.shields.io/github/actions/workflow/status/macro-consortium/pyscope/ci.yml?logo=GitHub&label=CI
+    :target: https://github.com/macro-consortium/pyscope/actions/workflows/ci.yml
     :alt: GitHub CI
 
-.. |Code Coverage| image:: https://codecov.io/gh/WWGolay/pyscope/branch/main/graph/badge.svg
-    :target: https://app.codecov.io/gh/WWGolay/pyscope/
+.. |Code Coverage| image:: https://codecov.io/gh/macro-consortium/pyscope/branch/main/graph/badge.svg
+    :target: https://app.codecov.io/gh/macro-consortium/pyscope/
     :alt: Code Coverage
 
 .. |Documentation Status| image:: https://img.shields.io/readthedocs/pyscope?logo=ReadtheDocs
     :target: https://pyscope.readthedocs.io/en/latest/
     :alt: Documentation Status
 
-.. |Codespaces Status| image:: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds/badge.svg
-    :target: https://github.com/WWGolay/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds
+.. |Codespaces Status| image:: https://github.com/macro-consortium/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds/badge.svg
+    :target: https://github.com/macro-consortium/pyscope/actions/workflows/codespaces/create_codespaces_prebuilds
     :alt: Codespaces Status
 
 .. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
@@ -167,9 +167,9 @@ Please post any issues you find `here <https://github.com/WWGolay/pyscope/issues
     :alt: isort
 
 .. |Donate| image:: https://img.shields.io/badge/Donate-to_pyscope-crimson
-    :target: https://github.com/sponsors/WWGolay
+    :target: https://github.com/sponsors/macro-consortium
     :alt: Donate
 
 .. |Codespaces| image:: https://github.com/codespaces/badge.svg
-    :target: https://codespaces.new/WWGolay/pyscope
+    :target: https://codespaces.new/macro-consortium/pyscope
     :alt: Codespaces
