@@ -1390,7 +1390,14 @@ class Observatory:
                     logger.info("Focuser moved")
                     return True
             elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
-                logger.info("No focus offset for filter %s" % filter_name)
+                logger.info("No configured focus offset for filter %s" % filter_name)
+                logger.info("Checking if focuser is moving...")
+                time.sleep(1)
+                if self.focuser.IsMoving:
+                    logger.info("Focuser is moving, waiting...")
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
+                    logger.info("Focuser stopped.")
                 logger.info("Focuser at postion %i" % self.focuser.Position)
                 return True
             else:
