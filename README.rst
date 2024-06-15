@@ -102,6 +102,10 @@ Citing
 ------
 If you use this package in your research, please cite it using the following:
 
+History
+-------
+pyscope is based off of the IOTAlib (Iowa Optical Telescope Automation library) package, drawing on 25+ years of robotic observatory development at the University of Iowa, now with an emphasis on usage by anyone with a computerized telescope and python experience.
+
 Contributing
 ------------
 Please see the `developer documentation <https://pyscope.readthedocs.io/en/latest/development/>`_.
