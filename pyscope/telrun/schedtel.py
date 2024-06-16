@@ -789,9 +789,9 @@ def schedtel_cli(
     exec_blocks = exec_blocks + unscheduled_slots
     for block in exec_blocks:
         try:
-            #print(block.configuration["ID"], type(block.configuration["ID"]))
+            # print(block.configuration["ID"], type(block.configuration["ID"]))
             my_id = block.configuration["ID"].mjd
-            #print(my_id, type(my_id))
+            # print(my_id, type(my_id))
             block.configuration["ID"] = my_id
         except:
             pass
@@ -1103,7 +1103,7 @@ def plot_schedule_sky_cli(schedule_table, observatory):
             "Observatory must be, a string, Observatory object, or astroplan.Observer object."
         )
         return
-    
+
     # Get unique targets in the schedule
     target_times = {}
 
@@ -1111,18 +1111,21 @@ def plot_schedule_sky_cli(schedule_table, observatory):
         if row["name"] == "TransitionBlock" or row["name"] == "EmptyBlock":
             continue
         target_string = row["target"].to_string("hmsdms")
-        target_name = row["name"] 
+        target_name = row["name"]
         if target_string not in target_times:
-            target_times[target_string] = {"name": target_name, "times":[row["start_time"]]}
+            target_times[target_string] = {
+                "name": target_name,
+                "times": [row["start_time"]],
+            }
         else:
             target_times[target_string]["times"].append(row["start_time"])
 
-    #targets = [t.to_string("hmsdms") for t in schedule_table["target"]]
+    # targets = [t.to_string("hmsdms") for t in schedule_table["target"]]
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"})
     for target, target_dict in target_times.items():
         times = target_dict["times"]
-        try: 
+        try:
             label = target_dict["name"]
         except:
             label = target.to_string("hmsdms")
@@ -1145,7 +1148,7 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     # ax.legend(*zip(*unique), loc=(1.1, 0))
 
     ax.legend(labels, loc=(1.1, 0))
-    
+
     fig.set_facecolor("white")
     fig.set_dpi(300)
 
