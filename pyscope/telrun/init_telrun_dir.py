@@ -56,7 +56,7 @@ def init_telrun_dir_cli(path="./telhome/"):
         |
         |---schedules/
         |   |---aaa000.sch          # A schedule file for schedtel
-        |   |---schedules.cat       # A catalog of sch files to be scheduled
+        |   |---schedule.cat       # A catalog of sch files to be scheduled
         |   |---queue.ecsv          # A queue of unscheduled blocks
         |   |---completed/          # sch files that have been parsed and scheduled
         |   |---execute/            # Where schedtel puts schedules to be executed
@@ -119,8 +119,8 @@ def init_telrun_dir_cli(path="./telhome/"):
 
     if not (path / "config/logging.cfg").exists():
         shutil.copyfile(
-            cfg_templates / "logging-empty.cfg",
-            path / "config/logging.cfg",
+            cfg_templates / "logging-empty.yaml",
+            path / "config/logging.yaml",
         )
     else:
         logger.warning("logging.cfg already exists, skipping")
@@ -209,11 +209,11 @@ def init_telrun_dir_cli(path="./telhome/"):
     else:
         logger.warning("%s already exists, skipping" % (path / "schedules" / "execute"))
 
-    if not (path / "schedules" / "schedules.cat").exists():
-        (path / "schedules" / "schedules.cat").touch()
+    if not (path / "schedules" / "schedule.cat").exists():
+        (path / "schedules" / "schedule.cat").touch()
     else:
         logger.warning(
-            "%s already exists, skipping" % (path / "schedules" / "schedules.cat")
+            "%s already exists, skipping" % (path / "schedules" / "schedule.cat")
         )
 
     # TODO: call init_queue here

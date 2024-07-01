@@ -8,7 +8,6 @@ from .autofocus import Autofocus
 from .camera import Camera
 from .device import Device
 from .filter_wheel import FilterWheel
-from .wcs import WCS
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +32,6 @@ class Maxim(Device):
                 self._filter_wheel = _MaximFilterWheel(self.camera)
             if self._app.FocuserConnected:
                 self._autofocus = _MaximAutofocus(self.app)
-
-            self._wcs = _MaximPinpointWCS(self.camera)
 
     @property
     def Connected(self):
@@ -175,10 +172,11 @@ class _MaximCamera(Camera):
         logger.debug(f"Image timestamp UTC: {image_datetime}")
         logger.debug(f"Exposure start time: {self._last_exposure_start_time}")
 
-        if image_datetime < self._last_exposure_start_time:
-            raise Exception(
-                "Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera"
-            )
+        # TODO: Fix below, was getting errors when implementing grism focus script
+        # if image_datetime < self._last_exposure_start_time:
+        #     raise Exception(
+        #         "Image is too old; possibly the result of an earlier exposure. There may be a connection problem with the camera"
+        #     )
 
     @property
     def BayerOffsetX(self):
@@ -354,7 +352,7 @@ class _MaximCamera(Camera):
     @property
     def Gains(self):
         logger.debug("_MaximCameraGains called")
-        return self._com_object.Speeds.replace("(", "").replace(")", "")
+        return self._com_object.Speeds
 
     @property
     def HasFilterWheel(self):
@@ -586,24 +584,3 @@ class _MaximFilterWheel(FilterWheel):
     def Position(self, value):
         logger.debug(f"Position setter called with value={value}")
         self.maxim_camera._com_object.Filter = value
-
-
-class _MaximPinpointWCS(WCS):
-    def __init__(self, maxim_camera):
-        logger.debug("_MaximPinpointWCS __init__ called")
-        self.maxim_camera = maxim_camera._com_object
-
-    def Solve(self, ra=None, dec=None, scale_est=None, *args, **kwargs):
-        logger.debug(
-            f"_MaximPinpointWCS.Solve called with ra={ra}, dec={dec}, and scale_est={scale_est}"
-        )
-        # TODO: support arguments
-        self.maxim_camera.document.PinpointSolve()
-
-        while self.maxim_camera.document.PinpointStatus == 3:
-            time.sleep(1)
-
-        if self.maxim_camera.document.PinpointStatus == 2:
-            return True
-        else:
-            return False
