@@ -133,6 +133,7 @@ dmypy.json
 *.fts
 *.fit
 *.fits
+*.ipynb
 *.log_*
 *.ecsv
 .vscode
@@ -143,3 +144,4 @@ dmypy.json
 docs/source/api/auto_api/
 docs/source/_build/
 pgHardware
+pgtest

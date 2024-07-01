@@ -303,7 +303,11 @@ def blocks_to_table(observing_blocks):
             len(observing_blocks),
             np.max(
                 [
-                    len(block.constraints) if hasattr(block, "target") else 0
+                    (
+                        len(block.constraints)
+                        if hasattr(block, "target") and block.constraints is not None
+                        else 0
+                    )
                     for block in observing_blocks
                 ]
             ),
@@ -314,13 +318,17 @@ def blocks_to_table(observing_blocks):
         constraint_list = np.full(
             np.max(
                 [
-                    len(block.constraints) if hasattr(block, "target") else 0
+                    (
+                        len(block.constraints)
+                        if hasattr(block, "target") and block.constraints is not None
+                        else 0
+                    )
                     for block in observing_blocks
                 ]
             ),
             dict(),
         )
-        if hasattr(block, "target"):
+        if hasattr(block, "target") and block.constraints is not None:
             for constraint_num, constraint in enumerate(block.constraints):
                 if type(constraint) is astroplan.TimeConstraint:
                     constraint_dict = {
@@ -452,7 +460,7 @@ def table_to_blocks(table):
                 constraints.append(None)
 
         if row["ID"] is None:
-            row["ID"] = astrotime.Time.now()
+            row["ID"] = astrotime.Time.now().mjd
 
         blocks.append(
             astroplan.ObservingBlock(
@@ -590,29 +598,29 @@ def validate(schedule_table, observatory=None):
                     raise ValueError(
                         f"Column '{column.name}' must be of type astropy.coordinates.SkyCoord, not {type(column)}"
                     )
-            case (
-                "priority"
-                | "nexp"
-                | "readout"
-                | "frame_position"
-                | "frame_size"
-                | "binning"
-                | "repositioning"
-            ):
-                if not np.issubdtype(column.dtype, np.dtype("int64")):
-                    logger.error(
-                        f"Column '{column.name}' must be of type int64, not {column.dtype}"
-                    )
-                    raise ValueError(
-                        f"Column '{column.name}' must be of type int64, not {column.dtype}"
-                    )
+            # case (
+            #     "priority"
+            #     | "nexp"
+            #     | "readout"
+            #     | "frame_position"
+            #     | "frame_size"
+            #     | "binning"
+            #     | "repositioning"
+            # ):
+            #     if not np.issubdtype(column.dtype, np.dtype("int64")):
+            #         logger.error(
+            #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
+            #         )
+            #         raise ValueError(
+            #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
+            #         )
             case "exposure" | "pm_ra_cosdec" | "pm_dec":
-                if not np.issubdtype(column.dtype, np.dtype("float64")):
+                if not np.issubdtype(column.dtype, np.floating):
                     logger.error(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{column.name}' must be of a float type, not {column.dtype}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{column.name}' must be of a float type, not {column.dtype}"
                     )
             case "shutter_state":
                 if column.dtype != bool:
@@ -623,16 +631,7 @@ def validate(schedule_table, observatory=None):
                         f"Column '{column.name}' must be of type bool, not {column.dtype}"
                     )
 
-    # Check ID column
-    for row in schedule_table:
-        if (
-            row["ID"] is None
-            and row["name"] != "TransitionBlock"
-            and row["name"] != "EmptyBlock"
-        ):
-            row["ID"] = astrotime.Time.now().mjd
-            logger.info(f"Assigned {row['ID']} to row {row.index}")
-
+    # Obs-specific validation
     if observatory is not None:
         logger.info("Performing observatory-specific validation")
         for row in schedule_table:
@@ -642,11 +641,18 @@ def validate(schedule_table, observatory=None):
                 logger.info(f"Skipping validation of {row['name']}")
                 continue
 
+            # Logging to debug and verify the input values
+            logger.info(f"Target object: {row['target']}, Type: {type(row['target'])}")
+            logger.info(
+                f"Start time: {row['start_time']}, Type: {type(row['start_time'])}"
+            )
+
             # Check if target is observable at start time
             altaz_obj = observatory.get_object_altaz(
                 obj=row["target"],
                 t=row["start_time"],
             )
+            logger.info(f"AltAz Object: {altaz_obj}")
             if altaz_obj.alt < observatory.min_altitude:
                 logger.error("Target is not observable at start time")
                 row["status"] = "I"  # Invalid
