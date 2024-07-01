@@ -10,8 +10,9 @@ from astropy import wcs
 from astropy.io import fits
 from astroquery import sdss
 
-from ..observatory import AstrometryNetWCS
-from ..utils import _get_image_source_catalog
+from pyscope.analysis import detect_sources_photutils
+
+from ..reduction import astrometry_net_wcs
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
     "--background-params",
     "background_params",
     nargs=2,
-    type=(float, float),
+    type=(int, int),
     default=(50, 3),
     show_default=True,
     help="""Background2D box_size and filter_size
@@ -54,7 +55,7 @@ logger = logging.getLogger(__name__)
     "-g",
     "--gaussian-params",
     nargs=2,
-    type=(float, float),
+    type=(float, int),
     default=(5, 3),
     show_default=True,
     help="Gaussian2D sigma [pixels] and size parameters.",
@@ -73,8 +74,8 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-c",
     "--connectivity",
-    type=click.Choice(["4", "8"]),
-    default="8",
+    type=int,
+    default=8,
     show_default=True,
     show_choices=True,
     help="""Definition of pixel connectivity, i.e. whether
@@ -147,6 +148,11 @@ def calc_zmag_cli(
 ):
     if verbose:
         logger.setLevel("DEBUG")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
     logger.debug(
         f"""calc_zmag_cli(filt={filt}, background_params={background_params},
@@ -163,21 +169,43 @@ def calc_zmag_cli(
 
     zmags = []
     zmags_err = []
+    fig = None
+    ax0 = None
+    ax1 = None
+    ax2 = None
 
     for im in images:
         os.path.abspath(im)
         logger.info("Processing %s" % im)
 
+        data, hdr = fits.getdata(im), fits.getheader(im)
+        try:
+            exp = hdr["EXPTIME"]
+        except:
+            exp = hdr["EXPOSURE"]
+        im_filt = hdr["FILTER"]
+
+        w = wcs.WCS(hdr)
+
+        # Get header filter or override with CLI option
+        if filt is None:
+            filt = im_filt
+        filt = filt.lower()
+        logger.info("Filter: %s" % filt)
+
+        if filt not in ["u", "g", "r", "i", "z"]:
+            logger.error("Invalid filter, continuing to next image...")
+            continue
+
         # Check if WCS solution exists already, if not, try one
         try:
-            with fits.open(im) as hdul:
-                header = hdul[0].header
-            w = wcs.WCS(header)
+            w = wcs.WCS(hdr)
             sky = w.pixel_to_world(0, 0)
         except:
-            logger.info("No WCS solution found. Attempting to solve.")
-            solver = AstrometryNetWCS()
-            success = solver.Solve(im)
+            logger.info(
+                "No WCS solution found. Attempting to solve with Astrometry.net..."
+            )
+            success = astrometry_net_wcs(im)
             if success:
                 logger.info("Solved.")
             else:
@@ -186,11 +214,11 @@ def calc_zmag_cli(
 
         # Get the source catalog
         logger.info("Detecting sources...")
-        catalog = _get_image_source_catalog(
-            im,
+        catalog = detect_sources_photutils.detect_sources_photutils(
+            (im,),
             box_size=background_params[0],
             filter_size=background_params[1],
-            threshold=threshold,
+            detect_threshold=threshold,
             kernel_fwhm=gaussian_params[0],
             kernel_size=gaussian_params[1],
             effective_gain=effective_gain,
@@ -209,26 +237,6 @@ def calc_zmag_cli(
         )
 
         logger.info("Found %d sources." % len(catalog))
-
-        with fits.open(im) as hdul:
-            data = hdul[0].data
-            try:
-                exp = hdul[0].header["EXPTIME"]
-            except:
-                exp = hdul[0].header["EXPOSURE"]
-            im_filt = hdul[0].header["FILTER"]
-
-        w = wcs.WCS(hdul[0].header)
-
-        # Get header filter or override with CLI option
-        if filt is None:
-            filt = im_filt
-        filt = filt.lower()
-        logger.info("Filter: %s" % filt)
-
-        if filt not in ["u", "b", "g", "r", "i", "z"]:
-            logger.error("Invalid filter, continuing to next image...")
-            continue
 
         catalog["SDSS"] = [None for i in range(len(catalog))]
 
@@ -289,10 +297,16 @@ def calc_zmag_cli(
 
         if write:
             logger.info("Writing to header...")
-            hdul[0].header["ZMAG"] = mean_zmag
-            hdul[0].header["ZMAGERR"] = mean_zmag_err
-            hdul.writeto(im, overwrite=True)
+            hdr["ZMAG"] = mean_zmag
+            hdr["ZPMAG"] = mean_zmag
+            hdr["ZMAGERR"] = mean_zmag_err
+            hdr["ZPMAGERR"] = mean_zmag_err
+            fits.writeto(im, data=data, header=hdr, overwrite=True)
 
+        fig = None
+        ax0 = None
+        ax1 = None
+        ax2 = None
         if plot:
             fig = plt.figure(figsize=(16, 16), dpi=400)
             ax0 = fig.add_subplot(3, 2, (1, 4), projection=w)

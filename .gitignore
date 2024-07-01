@@ -133,6 +133,7 @@ dmypy.json
 *.fts
 *.fit
 *.fits
+*.ipynb
 *.log_*
 *.ecsv
 .vscode

@@ -76,6 +76,36 @@ def test_telrun_operator(tmp_path):
                 "sched_time": None,
             },
         ),
+        ObservingBlock(
+            target=coord.SkyCoord(ra=lst.to(u.hourangle), dec=obs.latitude + 1 * u.deg),
+            duration=1 * u.minute,
+            priority=1,
+            name="Test Obs",
+            configuration={
+                "observer": ["test_observer"],
+                "code": "aaa",
+                "title": "test_obs",
+                "filename": "",
+                "type": "light",
+                "backend": 0,
+                "filter": "R",
+                "exposure": 2.0,
+                "nexp": 2,
+                "repositioning": (0, 0),
+                "shutter_state": True,
+                "readout": 0,
+                "binning": (1, 1),
+                "frame_position": (0, 0),
+                "frame_size": (0, 0),
+                "pm_ra_cosdec": 0 * u.arcsec / u.hour,
+                "pm_dec": 0 * u.arcsec / u.hour,
+                "comment": "",
+                "sch": "",
+                "status": "U",
+                "message": "Unscheduled",
+                "sched_time": None,
+            },
+        ),
     ]
 
     # schedule the objects
@@ -90,4 +120,4 @@ def test_telrun_operator(tmp_path):
 
 
 if __name__ == "__main__":
-    test_telrun_operator(Path("./my_test/").resolve())
+    test_telrun_operator(Path("./tests/bin/test_dir/").resolve())

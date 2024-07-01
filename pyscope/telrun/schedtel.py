@@ -53,7 +53,7 @@ C = completed
     help="""The catalog of .sch files to be scheduled. The catalog can be a
     single .sch file or a .cat file containing a list of .sch files. If no
     catalog is provided, then the function searches for a schedule.cat file
-    in the $OBSERVATORY_HOME/schedules/ directory, then searches
+    in the $TELHOME/schedules/ directory, then searches
     in the current working directory.""",
 )
 @click.option(
@@ -123,7 +123,7 @@ C = completed
     type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
     help="""The observatory configuration file. If no observatory configuration
     file is provided, then the function searches for an observatory.cfg file
-    in the $OBSERVATORY_HOME/config/ directory, then searches in the current working
+    in the $TELHOME/config/ directory, then searches in the current working
     directory.""",
 )
 @click.option(
@@ -170,7 +170,7 @@ C = completed
     "--scheduler",
     nargs=2,
     type=(
-        click.Path(exists=True, resolve_path=True, dir_okay=False, executable=True),
+        str,
         str,
     ),
     default=("", ""),
@@ -222,14 +222,14 @@ C = completed
 )
 @click.option(
     "-t",
-    "--telrun-execute",
-    "telrun_execute",
+    "--telrun",
+    "telrun",
     is_flag=True,
     default=False,
     show_default=True,
     help="""Places the output file in specified by the $TELRUN_EXECUTE environment
-    variable. If not defined, then the $OBSERVATORY_HOME/schedules/ directory is used.
-    If neither are defined, then ./schedules/ is used. WARNING: If the file already exists,
+    variable. If not defined, then the $TELHOME/schedules/execute/ directory is used.
+    If neither are defined, then ./schedules/execute/ is used. WARNING: If the file already exists,
     it will be overwritten.""",
 )
 @click.option(
@@ -275,7 +275,7 @@ def schedtel_cli(
     scheduler=("", ""),
     gap_time=60,
     resolution=5,
-    name_format="{code}_{sch}_{ra}_{dec}_{start_time}",
+    name_format="{code}_{target}_{filter}_{exposure}s_{start_time}",
     filename=None,
     telrun=False,
     plot=None,
@@ -319,23 +319,23 @@ def schedtel_cli(
     # Define the observatory
     if observatory is None:
         try:
-            observatory = os.environ.get("OBSERVATORY_HOME") + "/config/observatory.cfg"
+            observatory = os.environ.get("TELHOME") + "/config/observatory.cfg"
             logger.info(
-                "No observatory provided, using observatory.cfg from $OBSERVATORY_HOME environment variable"
+                "No observatory provided, using observatory.cfg from $TELHOME environment variable"
             )
         except:
-            observatory = os.getcwd() + "/observatory.cfg"
+            observatory = os.getcwd() + "/config/observatory.cfg"
             logger.info(
-                "No observatory provided, using observatory.cfg from current working directory"
+                "No observatory provided, using ./config/observatory.cfg from current working directory"
             )
 
     logger.info("Parsing the observatory config")
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
-        slew_rate = obs_cfg.getfloat("scheduling", "slew_rate") * u.deg / u.second
+        slew_rate = obs_cfg["scheduling"].getfloat("slew_rate") * u.deg / u.second
         instrument_reconfig_times = json.loads(
-            obs_cfg.get("scheduling", "instrument_reconfig_times")
+            obs_cfg["scheduling"].get("instrument_reconfig_times")
         )
         observatory = astroplan.Observer(
             location=coord.EarthLocation(
@@ -349,7 +349,7 @@ def schedtel_cli(
         obs_lon = observatory.observatory_location.lon
         obs_lat = observatory.observatory_location.lat
         slew_rate = observatory.slew_rate * u.deg / u.second
-        instrument_reconfig_times = observatory.instrument_reconfiguration_times
+        instrument_reconfig_times = observatory.instrument_reconfig_times
         observatory = astroplan.Observer(
             location=coord.EarthLocation(lon=obs_lon, lat=obs_lat)
         )
@@ -390,12 +390,12 @@ def schedtel_cli(
 
     if catalog is None and queue is None:
         try:
-            catalog = os.environ.get("OBSERVATORY_HOME") + "/schedules/schedule.cat"
+            catalog = os.environ.get("TELHOME") + "/schedules/schedule.cat"
             logger.info(
-                "No catalog provided, using schedule.cat from $OBSERVATORY_HOME environment variable"
+                "No catalog provided, using schedule.cat from $TELHOME environment variable"
             )
         except:
-            catalog = os.getcwd() + "/schedule.cat"
+            catalog = os.getcwd() + "/schedules/schedule.cat"
             logger.info(
                 "No catalog provided, using schedule.cat from current working directory"
             )
@@ -541,7 +541,23 @@ def schedtel_cli(
     # Transitioner
     logger.info("Defining transitioner")
     if instrument_reconfig_times == {}:
-        instrument_reconfig_times = None
+        logger.info("Using default instrument reconfiguration times of 5 seconds")
+        instrument_reconfig_times = {"filter": {"default": 5 * u.second}}
+    else:
+        logger.debug(
+            f"Using custom instrument reconfiguration times {instrument_reconfig_times}"
+        )
+        # Multiply any integer values by u.second
+        # for key, value in instrument_reconfig_times.items():
+        #     if isinstance(value, int):
+        #         instrument_reconfig_times[key] = value * u.second
+        #     elif isinstance(value, dict):
+        #         for k, v in value.items():
+        #             if isinstance(v, int):
+        #                 instrument_reconfig_times[key][k] = v * u.second
+        logger.debug(
+            f"Updated instrument reconfiguration times {instrument_reconfig_times}"
+        )
     transitioner = astroplan.Transitioner(
         slew_rate, instrument_reconfig_times=instrument_reconfig_times
     )
@@ -669,9 +685,11 @@ def schedtel_cli(
         if block.configuration["filename"] == "":
             block.configuration["filename"] = name_format.format(
                 index=block_number,
-                target=block.target.to_string("hmsdms")
-                .replace(" ", "_")
-                .replace(".", "-"),
+                target=(
+                    block.target.to_string("hmsdms").replace(" ", "_").replace(".", "-")
+                    if block.name == ""
+                    else block.name.replace(" ", "_").replace(".", "_")
+                ),
                 start_time=block.start_time.isot.replace(":", "-").split(".")[0],
                 end_time=block.end_time.isot.replace(":", "-").split(".")[0],
                 duration="%i" % block.duration.to(u.second).value,
@@ -690,7 +708,7 @@ def schedtel_cli(
                 title=block.configuration["title"],
                 type=block.configuration["type"],
                 backend=block.configuration["backend"],
-                exposure=block.configuration["exposure"],
+                exposure=format_exptime(block.configuration["exposure"]),
                 nexp=block.configuration["nexp"],
                 repositioning=block.configuration["repositioning"],
                 shutter_state=block.configuration["shutter_state"],
@@ -706,6 +724,8 @@ def schedtel_cli(
                 status=block.configuration["status"],
                 message=block.configuration["message"],
                 sched_time=block.configuration["sched_time"],
+                name=block.name,
+                filter=block.configuration["filter"],
             )
 
     # Report unscheduled or invalid blocks, and report sch files that were
@@ -806,34 +826,17 @@ def schedtel_cli(
     write_queue = False
     if telrun:
         write_queue = True
-        try:
-            path = os.environ.get("TELRUN_EXECUTE")
-            if path is None:
-                raise Exception
-            logger.info(
-                "-t/--telrun flag set, writing schedule to %s from $TELRUN_EXECUTE environment variable"
-                % path
-            )
-        except:
-            try:
-                path = os.environ.get("TELHOME") + "/schedules/execute/"
-                if path is None:
-                    raise Exception
-                logger.info(
-                    "-t/--telrun flag set, writing schedule to %s from $TELHOME environment variable"
-                    % path
-                )
-            except:
-                path = os.getcwd() + "/schedules/"
-                logger.info(
-                    "-t/--telrun flag set, writing schedule to %s from current working directory"
-                    % path
-                )
-        if not os.path.isdir(path):
-            path = os.getcwd() + "/"
-            logger.warning(
-                f"Path {path} does not exist, writing to current working directory instead: {path}"
-            )
+
+        path = os.environ.get("TELRUN_EXECUTE")
+        if path is None:
+            path = os.environ.get("TELHOME")
+        if path is None:
+            path = os.getcwd() + "/schedules/execute/"
+        else:
+            path += "/schedules/execute/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+            logger.info("Creating directory %s" % path)
     else:
         write_queue = False
         path = os.getcwd() + "/"
@@ -926,30 +929,38 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 
     tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
     tz = zoneinfo.ZoneInfo(tz)
-    date = np.min(schedule_table["start_time"]).datetime
+    date = str(np.min(schedule_table["start_time"]).isot)
+    date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
     t0 = astrotime.Time(
         datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
     )
     t1 = t0 + 1 * u.day
+
+    # Only keep scheduled blocks
+    schedule_table = schedule_table[schedule_table["status"] == "S"]
 
     obscodes = list(np.unique(schedule_table["code"]))
 
     fig, ax = plt.subplots(1, 1, figsize=(12, len(obscodes) * 0.75))
     mdates.set_epoch(t0.strftime("%Y-%m-%dT%H:%M:%S"))
 
+    # Create list for all y-axis labels
+    y_labels = obscodes.copy()
+    y_labels.append("All")
+
     for i in range(len(obscodes)):
+        print(f"Plotting observer {obscodes[i]}")
         plot_blocks = [
             block for block in schedule_table if block["code"] == obscodes[i]
         ]
 
         for block in plot_blocks:
-            start_time = block["start_time"]
-            end_time = block["end_time"]
-            length_minutes = int(np.ceil((end_time - start_time).sec / 60))
+            start_time = astrotime.Time(np.float64(block["start_time"].jd), format="jd")
+            end_time = astrotime.Time(np.float64(block["end_time"].jd), format="jd")
+            length_min = int((end_time - start_time).sec / 60 + 1)
             times = (
                 start_time
-                + np.linspace(0, length_minutes, length_minutes, endpoint=True)
-                * u.minute
+                + np.linspace(0, length_min, length_min, endpoint=True) * u.minute
             )
             airmass = []
             for t in times:
@@ -966,7 +977,7 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
                 c=airmass,
                 cmap=ccm.batlow,
                 vmin=1,
-                vmax=3,
+                vmax=2.3,
             )
 
             scatter = ax.scatter(
@@ -977,10 +988,10 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
                 c=airmass,
                 cmap=ccm.batlow,
                 vmin=1,
-                vmax=3,
+                vmax=2.3,
             )
 
-    obscodes.append("All")
+    # obscodes.append("All")
 
     twilight_times = [
         t0,
@@ -1019,12 +1030,12 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
         "Time beginning %s [UTC]"
         % (twilight_times[1] - 0.5 * u.hour).strftime("%Y-%m-%d")
     )
-    ax.set_xlim(
+    """ax.set_xlim(
         [
             (twilight_times[1] - 0.5 * u.hour).datetime,
             (twilight_times[-2] + 0.5 * u.hour).datetime,
         ]
-    )
+    )"""
     ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
     ax.xaxis.set_minor_locator(mdates.HourLocator(interval=1))
@@ -1040,15 +1051,24 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
     ax1.xaxis.set_tick_params(rotation=45)
     ax1.set_xlabel("Observatory Local Time (%s)" % tz)
 
+    # Original y-axis labels
+    # ax.set_ylabel("Observer Code")
+    # ax.set_ylim([len(obscodes) - 0.5, 0.5])
+    # ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(obscodes))))
+    # ax.yaxis.set_major_formatter(ticker.FixedFormatter(obscodes))
+    # ax.yaxis.set_minor_locator(ticker.NullLocator())
+    # ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+
+    # Use the y_labels list for setting the y-axis labels
     ax.set_ylabel("Observer Code")
-    ax.set_ylim([len(obscodes) - 0.5, 0.5])
-    ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(obscodes))))
-    ax.yaxis.set_major_formatter(ticker.FixedFormatter(obscodes))
+    ax.set_ylim([len(y_labels) - 0.5, -1 + 0.5])
+    ax.yaxis.set_major_locator(ticker.FixedLocator(np.arange(len(y_labels))))
+    ax.yaxis.set_major_formatter(ticker.FixedFormatter(y_labels))
     ax.yaxis.set_minor_locator(ticker.NullLocator())
     ax.yaxis.set_minor_formatter(ticker.NullFormatter())
 
     cbar = fig.colorbar(scatter, ax=ax)
-    cbar.set_ticks([1, 1.5, 2, 2.5, 3])
+    cbar.set_ticks([1, 1.5, 2, 2.3])
     cbar.set_label("Airmass", rotation=270, labelpad=20)
 
     """ax.set_title(
@@ -1080,6 +1100,9 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 def plot_schedule_sky_cli(schedule_table, observatory):
     if type(schedule_table) is not table.Table:
         schedule_table = table.Table.read(schedule_table, format="ascii.ecsv")
+
+    # Only keep scheduled blocks
+    schedule_table = schedule_table[schedule_table["status"] == "S"]
 
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
@@ -1134,6 +1157,7 @@ def plot_schedule_sky_cli(schedule_table, observatory):
             astroplan.FixedTarget(target),
             observatory,
             times,
+            astrotime.Time(np.float64(row["start_time"].jd), format="jd"),
             ax=ax,
             style_kwargs={"label": label},
         )
@@ -1153,6 +1177,12 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     fig.set_dpi(300)
 
     return fig, ax
+
+
+def format_exptime(exptime):
+    return (
+        f"{exptime:.0f}" if exptime.is_integer() else f"{exptime:.2g}".replace(".", "-")
+    )
 
 
 schedtel = schedtel_cli.callback

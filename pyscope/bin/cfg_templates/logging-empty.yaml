@@ -1,0 +1,28 @@
+version: 1
+
+formatters:
+  default:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: default
+    level: INFO
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.FileHandler
+    formatter: default
+    level: INFO
+    filename: logs/pyscope.log
+
+loggers:
+  pyscope:
+    handlers: [console, file]
+    level: INFO
+    propogate: yes
+
+root:
+  handlers: [file]
+  level: WARNING

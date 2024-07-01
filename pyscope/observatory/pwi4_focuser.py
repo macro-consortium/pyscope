@@ -1,4 +1,5 @@
 import logging
+import time
 
 from ._pwi4 import _PWI4
 from .focuser import Focuser
@@ -11,6 +12,11 @@ class PWI4Focuser(Focuser):
         self._host = host
         self._port = port
         self._app = _PWI4(host=self._host, port=self._port)
+
+    def Enabled(self):
+        logger.debug("Checking if focuser is enabled in PWI4Focuser")
+        self._app.request("/autofocus/start")
+        return True
 
     def Halt(self, return_status=False):
         logger.debug("PWI4Focuser.Halt(return_status={}) called".format(return_status))
@@ -32,11 +38,27 @@ class PWI4Focuser(Focuser):
 
     @property
     def Absolute(self):
-        return False
+        return True
 
     @Absolute.setter
     def Absolute(self, value):
         raise NotImplementedError
+
+    @property
+    def Description(self):
+        return "PWI4 Focuser"
+
+    @property
+    def DriverInfo(self):
+        return "PWI4Driver"
+
+    @property
+    def DriverVersion(self):
+        return "PWI4Driver"
+
+    @property
+    def InterfaceVersion(self):
+        return "PWI4Interface"
 
     @property
     def IsMoving(self):
@@ -50,6 +72,10 @@ class PWI4Focuser(Focuser):
     @property
     def MaxStep(self):
         raise NotImplementedError
+
+    @property
+    def Name(self):
+        return "PWI4 Focuser"
 
     @property
     def Position(self):
@@ -90,6 +116,11 @@ class PWI4Focuser(Focuser):
             )
         else:
             return False
+
+    @property
+    def Enabled(self):
+        logger.debug("PWI4Focuser.Enabled() called")
+        return self._app.status().focuser.is_enabled
 
     @Connected.setter
     def Connected(self, value):
