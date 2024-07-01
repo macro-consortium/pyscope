@@ -1,23 +1,30 @@
+import glob
 import logging
+import os
+import sys
+from pathlib import Path
 
 import click
 import numpy as np
+import tqdm
 from astropy.io import fits
 
 logger = logging.getLogger(__name__)
-
-"""
-TODO: use ccdproc to average FITS files
-- look into ccdproc library
-- write tests for avg_fits
-- make a new file avg_fits_ccdproc.py
-"""
 
 
 @click.command(
     epilog="""Check out the documentation at
                 https://pyscope.readthedocs.io/ for more
                 information."""
+)
+@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
+@click.option(
+    "-p",
+    "--pre-normalize",
+    "pre_normalize",
+    is_flag=True,
+    default=False,
+    help="Normalize each image by its own mean before combining. This mode is most useful for combining sky flats.",
 )
 @click.option(
     "-m",
@@ -26,65 +33,70 @@ TODO: use ccdproc to average FITS files
     default="0",
     show_choices=True,
     show_default=True,
-    help="Mode to use for averaging FITS files (0 = median, 1 = mean).",
-)
-@click.option(
-    "-o",
-    "--outfile",
-    type=click.Path(),
-    required=True,
-    help="Path to save averaged FITS file.",
+    help="Mode to use for averaging images (0 = median, 1 = mean).",
 )
 @click.option(
     "-d",
     "--datatype",
     type=click.Choice(
         [
-            "int_",
-            "int8",
             "int16",
             "int32",
             "int64",
-            "uint",
-            "uint8",
             "uint16",
             "uint32",
             "uint64",
-            "float_",
             "float32",
             "float64",
         ]
-    ),  # TODO: update rest of file to match this
-    default="uint16",
+    ),
+    default="float32",
     show_choices=True,
     show_default=True,
-    help="Data type to use for averaged FITS file.",
+    help="Data type to use for averaged image.",
+)
+@click.option(
+    "-o",
+    "--outfile",
+    type=click.Path(),
+    help="Path to save averaged image.",
 )
 @click.option(
     "-v",
     "--verbose",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="Print verbose output.",
+    count=True,
+    default=0,
+    help="Print verbose output. Use multiple times for more verbosity.",
 )
-@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
 @click.version_option()
-def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
-    """Averages FITS files.
+def avg_fits_cli(
+    fnames,
+    pre_normalize=False,
+    mode="0",
+    datatype=np.float32,
+    outfile=None,
+    verbose=0,
+):
+    """Averages over a list of images into a single image. Select pre-normalize to normalize each image by its own mean before combining. This mode is most useful for combining sky flats.\b
 
     Parameters
     ----------
+    fnames : path
+        path of directory of images to average.
+
+    pre_normalize : bool, default=False
+        Normalize each image by its own mean before combining. This mode is most useful for combining sky flats.
+
     mode : str, default="0"
-        Mode to use for averaging FITS files (0 = median, 1 = mean).
+        Mode to use for averaging images (0 = median, 1 = mean).
 
-    outfile : str
-        Path to save averaged FITS files.
+    datatype : str, default="float32"
+        Data type to save out the averaged image. If pre_normalize is True, the data type will be float64.
 
-    fnames : list
-        List of FITS file paths to average.
+    outfile : path
+        Path to save averaged image. If not specified, the averaged image will be saved in the same directory as the input images with the first image's name and _avg.fts appended to it.
 
-    verbose : bool, default=False
+    verbose : int, default=0
         Print verbose output.
 
     Returns
@@ -92,41 +104,113 @@ def avg_fits_cli(mode, outfile, fnames, datatype=np.uint16, verbose=False):
     None
     """
 
-    if verbose:
-        logger.setLevel(logging.DEBUG)
+    if verbose == 2:
+        logging.basicConfig(level=logging.DEBUG)
+    elif verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
-    logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
+    logger.debug(
+        f"Called avg_fits_cli(fname={fnames}, mode={mode}, datatype={datatype}, outfile={outfile}, verbose={verbose})"
+    )
 
-    logger.info("Loading FITS files...")
+    first_hdr = fits.getheader(fnames[0])
+    try:
+        frametyp = first_hdr["FRAMETYP"]
+        logger.debug(f"FRAMETYP: {frametyp}")
+    except KeyError:
+        logger.error("FRAMETYP keyword not found in header. Trying image type.")
+        frametyp = first_hdr["IMAGETYP"]
+        logger.debug(f"IMAGETYP: {frametyp}")
+    binx = first_hdr["XBINNING"]
+    biny = first_hdr["YBINNING"]
+    logger.debug(f"XBINNING: {binx}, YBINNING: {biny}")
+    readout = first_hdr["READOUTM"]
+    logger.debug(f"READOUTM: {readout}")
+    exptime = first_hdr["EXPTIME"]
+    logger.debug(f"EXPTIME: {exptime}")
+    gain = first_hdr["GAIN"]
+    logger.debug(f"GAIN: {gain}")
 
-    images = np.array([fits.open(fname)[0].data for fname in fnames])
+    # TODO: don't require all images to be in memory at once
+    logger.info("Loading images...")
+    images = []
+    for fname in fnames:
+        image = fits.getdata(fname).astype(np.float64)
+        hdr = fits.getheader(fname)
 
-    images = images.astype(datatype)
+        # check for matches in header
+        try:
+            if hdr["FRAMETYP"] != frametyp:
+                logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
+        except KeyError:
+            logger.error("FRAMETYP keyword not found in header. Trying image type.")
+            if hdr["IMAGETYP"] != frametyp:
+                logger.warning(f"IMAGETYP mismatch: {hdr['IMAGETYP']} != {frametyp}")
+        if hdr["XBINNING"] != binx:
+            logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
+        if hdr["YBINNING"] != biny:
+            logger.warning(f"BINY mismatch: {hdr['BINY']} != {biny}")
+        if hdr["READOUTM"] != readout:
+            logger.warning(f"READOUTM mismatch: {hdr['READOUTM']} != {readout}")
+        if hdr["EXPTIME"] != exptime and not pre_normalize:
+            logger.warning(
+                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
+        elif hdr["EXPTIME"] != exptime and pre_normalize:
+            logger.info(
+                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
+            logger.info("pre_normalize is True so ignoring EXPTIME mismatch.")
+        if hdr["GAIN"] != gain:
+            logger.warning(f"GAIN mismatch: {hdr['GAIN']} != {gain}")
 
-    logger.info(f"Loaded {len(images)} FITS files")
+        # check for pedestal
+        if "PEDESTAL" in hdr.keys():
+            logger.info(f"Found pedestal of {hdr['PEDESTAL']}. Subtracting pedestal.")
+            image -= hdr["PEDESTAL"]
+        images.append(image)
+    images = np.array(images)
+    logger.info(f"Loaded {images.shape} images")
 
-    logger.info("Averaging FITS files...")
+    if pre_normalize:
+        logger.info(
+            "pre_normalize is True. Normalizing each image by its own mean before combining."
+        )
+        logger.info("Normalizing images...")
+        images = images / np.mean(images, axis=(1, 2))[:, None, None]
+        logger.info("Done!")
+        logger.info("pre_normalize is True so setting datatype to float64")
+        datatype = np.float64
 
+        logger.info("pre-normalized is True, removing pedestal keyword from header.")
+        if "PEDESTAL" in first_hdr:
+            logger.info("Removing PEDESTAL keyword rom header.")
+            del first_hdr["PEDESTAL"]
+
+    logger.info(f"Averaging images with mode = {mode}...")
     if str(mode) == "0":
         logger.debug("Calculating median...")
         image_avg = np.median(images, axis=0)
     elif str(mode) == "1":
         logger.debug("Calculating mean...")
         image_avg = np.mean(images, axis=0)
+    logger.debug(f"Averaged image mean: {np.mean(image_avg)}")
+    logger.debug(f"Averaged image median: {np.median(image_avg)}")
 
-    logger.debug(f"Image mean: {np.mean(image_avg)}")
-    logger.debug(f"Image median: {np.median(image_avg)}")
-
+    logger.info(f"Converting data type of averaged image to {datatype}...")
     image_avg = image_avg.astype(datatype)
+    logger.info(f"Data type of averaged image: {image_avg.dtype}")
 
-    logger.info(f"Saving averaged FITS file to {outfile}")
+    if outfile is None:
+        logger.debug("No output file specified. Using default naming convention.")
+        outfile = f"{fnames[0]}_avg.fts"
 
-    with fits.open(fnames[-1]) as hdul:
-        hdr = hdul[0].header
-
-    hdr.add_comment(f"Averaged {len(images)} FITS files using pyscope")
-    hdr.add_comment(f"Average mode: {mode}")
-    fits.writeto(outfile, image_avg, hdr, overwrite=True)
+    logger.info(f"Saving averaged image to {outfile}")
+    first_hdr.add_comment(f"Averaged {len(images)} images using pyscope")
+    first_hdr.add_comment(f"Average mode: {mode}")
+    fits.writeto(outfile, image_avg, first_hdr, overwrite=True)
 
     logger.info("Done!")
 
