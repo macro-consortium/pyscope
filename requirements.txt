@@ -10,11 +10,12 @@ markdown == 3.6
 matplotlib == 3.9.0
 numpy == 2.0.0
 oschmod == 0.3.12
-photutils == 1.12.0
+paramiko == 3.4.0
+photutils == 1.13.0
 prettytable == 3.10.0
 pywin32 == 306;platform_system=='Windows'
 scikit-image == 0.23.2
-scipy == 1.13.1
+scipy == 1.14.0
 smplotlib == 0.0.9
 timezonefinder == 6.5.0
 tksheet == 7.2.4
