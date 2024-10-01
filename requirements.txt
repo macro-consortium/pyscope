@@ -7,7 +7,7 @@ ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
 markdown == 3.6
-numpy == 2.1.0
+numpy == 2.1.1
 matplotlib == 3.9.1
 oschmod == 0.3.12
 paramiko == 3.4.0
