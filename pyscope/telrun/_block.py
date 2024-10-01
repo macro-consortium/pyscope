@@ -29,8 +29,8 @@ class _Block:
         configuration : `~pyscope.telrun.Configuration`, default: `None`
             The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun._Block`. This `~pyscope.telrun.Configuration` will be
             used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun._Block` and
-            will act as the default `~pyscope.telrun.Configuration` for all `~pyscope.telrun.Field` s
-            in the `~pyscope.telrun._Block` if a `~pyscope.telrun.Configuration` has not been provided. If a `~pyscope.telrun.Field`
+            will act as the default `~pyscope.telrun.Configuration` for all `~pyscope.telrun.Field` objects in the
+            `~pyscope.telrun._Block` if a `~pyscope.telrun.Configuration` has not been provided. If a `~pyscope.telrun.Field`
             has a different `~pyscope.telrun.Configuration`, it will override the block `~pyscope.telrun.Configuration` for the
             duration of the `~pyscope.telrun.Field`.
 
@@ -50,7 +50,7 @@ class _Block:
 
         See Also
         --------
-        pyscope.telrun.ScheduleBlock : A subclass of `~pyscope.telrun._Block` that is used to schedule `~pyscope.telrun.Field` s
+        pyscope.telrun.ScheduleBlock : A subclass of `~pyscope.telrun._Block` that is used to schedule `~pyscope.telrun.Field` objects
             in a `~pyscope.telrun.Schedule`.
         pyscope.telrun.UnallocatedBlock : A subclass of `~pyscope.telrun._Block` that is used to represent unallocated time in a
             `~pyscope.telrun.Schedule`.
@@ -71,14 +71,6 @@ class _Block:
         logger.debug("name=%s" % name)
         logger.debug("description=%s" % description)
         logger.debug("kwargs=%s" % kwargs)
-
-        if type(config) is not Configuration:
-            logger.error(
-                "The configuration parameter must be a Configuration object, not a %s",
-                type(config),
-            )
-            logger.error("Creating a new empty Configuration object.")
-            config = Configuration()
 
         self.config = config
         self.name = name
@@ -123,47 +115,40 @@ class _Block:
         logger.debug("string=%s" % string)
 
         # Parse the string representation to extract the block information
-        block_info = string.split("\n")
-        block_id = uuid(hex=block_info[1].split("Block ID: ")[1])
-        if name is None:
-            name = (
-                block_info[2].split("Name: ")[1]
-                if block_info[2].split("Name: ")[1] != "None"
-                else None
-            )
-        if description is None:
-            description = (
-                block_info[3].split("Description: ")[1]
-                if block_info[3].split("Description: ")[1] != "None"
-                else None
-            )
+        block_info = string.split(
+            "\n******************** Start Block Metadata ********************"
+        )[1].split("\n******************** End Block Metadata ********************")[0]
 
-        if kwargs is None:
-            try:
-                kwargs = ast.literal_eval(block_info[4].split("Keyword Arguments: ")[1])
-            except:
-                logger.error("Failed to parse the keyword arguments.")
-                kwargs = {}
-
+        block_id = UUID(block_info.split("\nBlock ID: ")[1].split("\n")[0])
+        name = block_info.split("\nName: ")[1].split("\n")[0] if name is None else name
+        description = (
+            block_info.split("\nDescription: ")[1].split("\n")[0]
+            if description is None
+            else description
+        )
+        kwargs = (
+            ast.literal_eval(
+                block_info.split("\nKeyword Arguments: ")[1].split("\n")[0]
+            )
+            if kwargs is None
+            else kwargs
+        )
         start_time = (
-            Time(block_info[5].split("Start Time: ")[1])
-            if block_info[5].split("Start Time: ")[1] != "None"
+            Time(block_info.split("\nStart Time: ")[1].split("\n")[0])
+            if block_info.split("\nStart Time: ")[1].split("\n")[0] != "None"
             else None
         )
         end_time = (
-            Time(block_info[6].split("End Time: ")[1])
-            if block_info[6].split("End Time: ")[1] != "None"
+            Time(block_info.split("\nEnd Time: ")[1].split("\n")[0])
+            if block_info.split("\nEnd Time: ")[1].split("\n")[0] != "None"
             else None
         )
+        config = (
+            Configuration.from_string(block_info.split("\nConfiguration: ")[1])
+            if config is None
+            else config
+        )
 
-        if config is None:
-            config = (
-                Configuration.from_string(block_info[7].split("Configuration: ")[1])
-                if block_info[7].split("Configuration: ")[1] != "None"
-                else None
-            )
-
-        # Create a new block object
         block = cls(config=config, name=name, description=description, **kwargs)
         block._uuid = block_id
         block._start_time = start_time
@@ -181,13 +166,15 @@ class _Block:
         str : `str`
         """
         logger.debug("_Block.__str__ called")
-        s = "\nBlock ID: %s\n" % self.ID.hex
-        s += "Name: %s\n" % self.name
-        s += "Description: %s\n" % self.description
-        s += "Keyword Arguments: %s\n" % self.kwargs
-        s += "Start Time: %s\n" % self.start_time
-        s += "End Time: %s\n" % self.end_time
-        s += "Configuration: %s\n" % self.config
+        s = "\n******************** Start Block Metadata ********************"
+        s += "\nBlock ID: %s" % self.ID.hex
+        s += "\nName: %s" % self.name
+        s += "\nDescription: %s" % self.description
+        s += "\nKeyword Arguments: %s" % self.kwargs
+        s += "\nStart Time: %s" % self.start_time
+        s += "\nEnd Time: %s" % self.end_time
+        s += "\nConfiguration: %s" % self.config
+        s += "\n******************** End Block Metadata ********************"
         return s
 
     def __repr__(self):
@@ -223,14 +210,13 @@ class _Block:
         value : `~pyscope.telrun.Configuration`
         """
         logger.debug("_Block.config(value=%s) called" % value)
-        if type(value) is not Configuration:
-            logger.error(
-                "The configuration parameter must be a Configuration object, not a %s",
-                type(value),
+        if Configuration not in (config.__class__, *config.__class__.__bases__):
+            raise TypeError(
+                "The config parameter must be a Configuration object (class=%s) or a subclass of Configuration (bases=%s), not a %s",
+                Configuration.__class__,
+                Configuration.__class__.__bases__,
+                type(config),
             )
-            logger.error("Ignoring the new configuration.")
-            return
-        logger.debug("Setting the configuration to %s" % value)
         self._config = value
 
     @property
@@ -257,10 +243,9 @@ class _Block:
         """
         logger.debug("_Block.name(value=%s) called" % value)
         if type(value) is not str:
-            logger.error("The name parameter must be a string, not a %s", type(value))
-            logger.error("Ignoring the new name.")
-            return
-        logger.debug("Setting the name to %s" % value)
+            raise TypeError(
+                "The name parameter must be a string, not a %s", type(value)
+            )
         self._name = value
 
     @property
@@ -287,12 +272,9 @@ class _Block:
         """
         logger.debug("_Block.description(value=%s) called" % value)
         if type(value) is not str:
-            logger.error(
+            raise TypeError(
                 "The description parameter must be a string, not a %s", type(value)
             )
-            logger.error("Ignoring the new description.")
-            return
-        logger.debug("Setting the description to %s" % value)
         self._description = value
 
     @property
@@ -320,10 +302,9 @@ class _Block:
         """
         logger.debug("_Block.kwargs(value=%s) called" % value)
         if type(value) is not dict:
-            logger.error("The kwargs parameter must be a dict, not a %s", type(value))
-            logger.error("Ignoring the new keyword arguments.")
-            return
-        logger.debug("Setting the keyword arguments to %s" % value)
+            raise TypeError(
+                "The kwargs parameter must be a dict, not a %s", type(value)
+            )
         self._kwargs = value
 
     @property
@@ -337,7 +318,7 @@ class _Block:
             The unique identifier for the `~pyscope.telrun._Block`.
         """
         logger.debug("_Block.ID called")
-        return uuid(self._uuid)
+        return UUID(self._uuid)
 
     @property
     def start_time(self):
