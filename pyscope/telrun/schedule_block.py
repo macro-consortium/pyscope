@@ -1,18 +1,5 @@
-from .block import Block
+from ._block import _Block
 
 
-class ScheduleBlock(Block):
-    def __init__(self):
-        """
-        Initialize the ScheduleBlock object
-
-
-
-        """
-        pass
-
-    def __str__(self):
-        pass
-
-    def __repr__(self):
-        return str(self)
+class ScheduleBlock(_Block):
+    pass

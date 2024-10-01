@@ -1,5 +1,5 @@
-from .block import Block
+from ._block import _Block
 
 
-class UnallocatedBlock(Block):
+class UnallocatedBlock(_Block):
     pass
