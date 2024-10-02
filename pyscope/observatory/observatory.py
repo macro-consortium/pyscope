@@ -1449,6 +1449,13 @@ class Observatory:
             )
             return False
 
+        if self.telescope.Altitude < self.min_altitude:
+            logger.exception(
+                "Telescope is below the minimum altitude of %.2f degrees"
+                % self.min_altitude.to(u.deg).value
+            )
+            return False
+
         if control_rotator and self.rotator is not None:
             self.stop_derotation_thread()
 
