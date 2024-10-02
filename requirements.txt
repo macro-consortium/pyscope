@@ -1,5 +1,4 @@
 # alpyca == 2.0.4 # not in conda
-astroplan == 0.9
 astropy == 6.1.2
 astroquery == 0.4.7
 astroscrappy == 1.2.0
