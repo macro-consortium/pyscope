@@ -9,14 +9,7 @@ logger = logging.getLogger(__name__)
 
 class UnallocatedBlock(_Block):
     def __init__(
-        self,
-        start_time,
-        end_time,
-        *args,
-        config=None,
-        name=None,
-        description=None,
-        **kwargs
+        self, start_time, end_time, config=None, name="", description="", **kwargs
     ):
         """
         A block of time that is not allocated to any fields.
@@ -29,53 +22,47 @@ class UnallocatedBlock(_Block):
         end_time : `~astropy.time.Time`, required
             The end time of the `~pyscope.telrun.UnallocatedBlock`.
 
-        *args : `tuple`
-            If provided, the next argument should be a string representation of a `~pyscope.telrun.UnallocatedBlock`. The `from_string`
-            class method will parse the string representation and create a new `~pyscope.telrun.UnallocatedBlock` object. The remaining
-            arguments will override the parsed values.
-
-        config : `~pyscope.telrun.Configuration`, default: `None`
+        config : `~pyscope.telrun.Configuration`, default : `None`
             The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.UnallocatedBlock`. This `~pyscope.telrun.Configuration` will be
             used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun.UnallocatedBlock`.
 
-        name : `str`, default: `None`
+        name : `str`, default : ""
             A user-defined name for the `~pyscope.telrun.UnallocatedBlock`. This parameter does not change
             the behavior of the `~pyscope.telrun.UnallocatedBlock`, but it can be useful for identifying the
             `~pyscope.telrun.UnallocatedBlock` in a schedule.
 
-        description : `str`, default: `None`
+        description : `str`, default : ""
             A user-defined description for the `~pyscope.telrun.UnallocatedBlock`. Similar to the `name`
             parameter, this parameter does not change the behavior of the `~pyscope.telrun.UnallocatedBlock`.
 
-        **kwargs : `dict`
+        **kwargs : `dict`, default : {}
             A dictionary of keyword arguments that can be used to store additional information
             about the `~pyscope.telrun.UnallocatedBlock`. This information can be used to store any additional
             information that is not covered by the `configuration`, `name`, or `description` parameters
 
         """
-
-        if len(args) == 3 and isinstance(args[2], str):
-            self = self.from_string(
-                args[2], config=config, name=name, description=description, **kwargs
-            )
-            self.start_time = args[0]
-            self.end_time = args[1]
-        elif len(args) == 1 and isinstance(args[0], str):
-            self = self.from_string(
-                args[0], config=config, name=name, description=description, **kwargs
-            )
-        elif len(args) != 2:
-            raise ValueError("UnallocatedBlock requires 2 arguments.")
-        else:
-            self.start_time = start_time
-            self.end_time = end_time
-
-        super().__init__(
-            *args, config=config, name=name, description=description, **kwargs
+        logger.debug(
+            "UnallocatedBlock(start_time=%s, end_time=%s, config=%s, name=%s, description=%s, **kwargs=%s)"
+            % (start_time, end_time, config, name, description, kwargs)
         )
+        super().__init__(
+            config=config, observer=None, name=name, description=description, **kwargs
+        )
+        self.start_time = start_time
+        self.end_time = end_time
+        logger.debug("UnallocatedBlock() = %s" % self)
 
     @classmethod
-    def from_string(cls, *args, config=None, name=None, description=None, **kwargs):
+    def from_string(
+        cls,
+        string,
+        start_time=None,
+        end_time=None,
+        config=None,
+        name=None,
+        description=None,
+        **kwargs
+    ):
         """
         Create a new `~pyscope.telrun.UnallocatedBlock` object from a string representation.
 
@@ -89,18 +76,10 @@ class UnallocatedBlock(_Block):
         `~pyscope.telrun.UnallocatedBlock`
             A new `~pyscope.telrun.UnallocatedBlock` object created from the string representation.
         """
-        logger.debug("UnallocatedBlock.from_string()")
-
-        if len(args) == 1:
-            string = args[0]
-            start_time = None
-            end_time = None
-        elif len(args) == 3:
-            string = args[2]
-            start_time = args[0]
-            end_time = args[1]
-        else:
-            raise ValueError("UnallocatedBlock.from_string requires 1 or 3 arguments.")
+        logger.debug(
+            "UnallocatedBlock.from_string(string=%s, config=%s, name=%s, description=%s, start_time=%s, end_time=%s, **kwargs=%s)"
+            % (string, config, name, description, start_time, end_time, kwargs)
+        )
 
         n_blocks = string.count(
             "******************** Start UnallocatedBlock ********************"
@@ -136,6 +115,7 @@ class UnallocatedBlock(_Block):
 
             blocks.append(block)
 
+        logger.debug("UnallocatedBlock.from_string() = %s" % blocks)
         if len(blocks) == 1:
             return blocks[0]
         return blocks
@@ -149,11 +129,25 @@ class UnallocatedBlock(_Block):
         `str`
             A string representation of the `~pyscope.telrun.UnallocatedBlock`.
         """
-        logger.debug("UnallocatedBlock.__str__()")
+        logger.debug("UnallocatedBlock().__str__()")
         s = "\n******************** Start UnallocatedBlock ********************\n"
         s += super().__str__()
         s += "\n******************** End UnallocatedBlock ********************"
+        logger.debug("UnallocatedBlock().__str__() = %s" % s)
         return s
+
+    @property
+    def start_time(self):
+        """
+        The start time of the `~pyscope.telrun.UnallocatedBlock`.
+
+        Returns
+        -------
+        `~astropy.time.Time`
+            The start time of the `~pyscope.telrun.UnallocatedBlock`.
+        """
+        logger.debug("UnallocatedBlock().start_time == %s" % self._start_time)
+        return self._start_time
 
     @start_time.setter
     def start_time(self, value):
@@ -165,8 +159,21 @@ class UnallocatedBlock(_Block):
         value : `~astropy.time.Time`, required
             The start time of the `~pyscope.telrun.UnallocatedBlock`.
         """
-
+        logger.debug("UnallocatedBlock().start_time = %s" % value)
         self._start_time = Time(value)
+
+    @property
+    def end_time(self):
+        """
+        The end time of the `~pyscope.telrun.UnallocatedBlock`.
+
+        Returns
+        -------
+        `~astropy.time.Time`
+            The end time of the `~pyscope.telrun.UnallocatedBlock`.
+        """
+        logger.debug("UnallocatedBlock().end_time == %s" % self._end_time)
+        return self._end_time
 
     @end_time.setter
     def end_time(self, value):
@@ -178,5 +185,5 @@ class UnallocatedBlock(_Block):
         value : `~astropy.time.Time`, required
             The end time of the `~pyscope.telrun.UnallocatedBlock`.
         """
-
+        logger.debug("UnallocatedBlock().end_time = %s" % value)
         self._end_time = Time(value)

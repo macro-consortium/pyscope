@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 class ScheduleBlock(_Block):
     def __init__(
         self,
-        *args,
         config=None,
-        name=None,
-        description=None,
+        observer=None,
+        name="",
+        description="",
+        project_code="",
         conditions=[],
         priority=0,
         fields=[],
@@ -42,12 +43,7 @@ class ScheduleBlock(_Block):
 
         Parameters
         ----------
-        *args : `tuple`
-            If provided, the first argument should be a string representation of a `~pyscope.telrun.ScheduleBlock`. The `from_string`
-            class method will parse the string representation and create a new `~pyscope.telrun.ScheduleBlock` object. The remaining
-            arguments will override the parsed values.
-
-        config : `~pyscope.telrun.Configuration`, default: `None`
+        config : `~pyscope.telrun.Configuration`, default : `None`
             The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.ScheduleBlock`. This `~pyscope.telrun.Configuration` will be
             used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun.ScheduleBlock` and
             will act as the default `~pyscope.telrun.Configuration` for all `~pyscope.telrun.Field` objects in the
@@ -55,21 +51,29 @@ class ScheduleBlock(_Block):
             has a different `~pyscope.telrun.Configuration`, it will override the block `~pyscope.telrun.Configuration` for the
             duration of the `~pyscope.telrun.Field`.
 
-        name : `str`, default: `None`
+        observer : `~pyscope.telrun.Observer`, default : `None`
+            The `~pyscope.telrun.Observer` to use for the `~pyscope.telrun.ScheduleBlock`.
+
+        name : `str`, default : ""
             A user-defined name for the `~pyscope.telrun.ScheduleBlock`. This parameter does not change
             the behavior of the `~pyscope.telrun.ScheduleBlock`, but it can be useful for identifying the
             `~pyscope.telrun.ScheduleBlock` in a schedule.
 
-        description : `str`, default: `None`
+        description : `str`, default : ""
             A user-defined description for the `~pyscope.telrun.ScheduleBlock`. Similar to the `name`
             parameter, this parameter does not change the behavior of the `~pyscope.telrun.ScheduleBlock`.
 
-        conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default: []
+        project_code : `str`, default : ""
+            A user-defined project code for the `~pyscope.telrun.ScheduleBlock`. This parameter does not change
+            the behavior of the `~pyscope.telrun.ScheduleBlock`, but it can be useful for identifying the
+            `~pyscope.telrun.ScheduleBlock`.
+
+        conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default : []
             A list of `~pyscope.telrun.BoundaryCondition` objects that define the constraints for all `~pyscope.telrun.Field`
             objects in the `~pyscope.telrun.ScheduleBlock`. The `~pyscope.telrun.Optimizer` inside the `~pyscope.telrun.Scheduler`
             will use the `~pyscope.telrun.BoundaryCondition` objects to determine the best possible schedule.
 
-        priority : `int`, default: 0
+        priority : `int`, default : 0
             The priority level of the `~pyscope.telrun.ScheduleBlock`. The `~pyscope.telrun.Prioritizer` inside the
             `~pyscope.telrun.Scheduler` will use this parameter to determine the best possible schedule. The highest
             priority level is 1 and decreasing priority levels are integers above 1. The lowest priority is 0, which
@@ -77,48 +81,56 @@ class ScheduleBlock(_Block):
             `~pyscope.telrun.Scheduler`, but some more advanced scheduling algorithms may use results from the
             `~pyscope.telrun.Optimizer` to break ties.
 
-        fields : `list` of `~pyscope.telrun.Field`, default: []
+        fields : `list` of `~pyscope.telrun.Field`, default : []
             A list of `~pyscope.telrun.Field` objects to be scheduled in the `~pyscope.telrun.ScheduleBlock`. The
             `~pyscope.telrun.Field` objects will be executed in the order they are provided in the list. If the
             `~pyscope.telrun.Field` objects have different `~pyscope.telrun.Configuration` objects, the `~pyscope.telrun.Configuration`
             object for the `~pyscope.telrun.Field` will override the block `~pyscope.telrun.Configuration` for the duration
             of the `~pyscope.telrun.Field`.
 
-        **kwargs : `dict`
+        **kwargs : `dict`, default : {}
             A dictionary of keyword arguments that can be used to store additional information
             about the `~pyscope.telrun.ScheduleBlock`. This information can be used to store any additional
-            information that is not covered by the `configuration`, `name`, or `description` parameters.
+            information that is not covered by the `config`, `name`, or `description` parameters.
 
         """
-
-        if len(args) > 0:
-            self = self.from_string(
-                args[0],
-                config=config,
-                name=name,
-                description=description,
-                conditions=conditions,
-                priority=priority,
-                fields=fields,
-                **kwargs,
+        logger.debug(
+            "ScheduleBlock(config=%s, observer=%s, name=%s, description=%s, conditions=%s, priority=%s, fields=%s, **kwargs=%s)"
+            % (
+                config,
+                observer,
+                name,
+                description,
+                conditions,
+                priority,
+                fields,
+                kwargs,
             )
-            return
-
-        super().__init__(
-            *args, config=config, name=name, description=description, **kwargs
         )
 
+        super().__init__(
+            config=config,
+            observer=observer,
+            name=name,
+            description=description,
+            **kwargs,
+        )
+
+        self.project_code = project_code
         self.conditions = conditions
         self.priority = priority
         self.fields = fields
+        logger.debug("ScheduleBlock() = %s" % self)
 
     @classmethod
     def from_string(
         cls,
         string,
         config=None,
-        name=None,
-        description=None,
+        observer=None,
+        name="",
+        description="",
+        project_code="",
         conditions=[],
         priority=0,
         fields=[],
@@ -129,18 +141,35 @@ class ScheduleBlock(_Block):
 
         Parameters
         ----------
-        string : `str`
-            A string representation of `~pyscope.telrun.ScheduleBlock`.
+        string : `str`, required
+
+        config : `~pyscope.telrun.Configuration`, default : `None`
+
+        observer : `~pyscope.telrun.Observer`, default : `None`
+
+        name : `str`, default : ""
+
+        description : `str`, default : ""
+
+        project_code : `str`, default : ""
+
+        conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default : []
+
+        priority : `int`, default : 0
+
+        fields : `list` of `~pyscope.telrun.Field`, default : []
+
+        **kwargs : `dict`, default : {}
 
         Returns
         -------
         `~pyscope.telrun.ScheduleBlock` or `list` of `~pyscope.telrun.ScheduleBlock`
-            A new `~pyscope.telrun.ScheduleBlock` object or a list of `~pyscope.telrun.ScheduleBlock` objects.
 
         """
-        logger.debug("ScheduleBlock.from_string called")
-        logger.debug("Creating a new ScheduleBlock object from string...")
-        logger.debug("string=%s" % string)
+        logger.debug(
+            "ScheduleBlock.from_string(string=%s, config=%s, name=%s, description=%s, conditions=%s, priority=%s, fields=%s, **kwargs=%s)"
+            % (string, config, name, description, conditions, priority, fields, kwargs)
+        )
 
         n_blocks = string.count(
             "******************** Start ScheduleBlock ********************"
@@ -167,12 +196,19 @@ class ScheduleBlock(_Block):
             logger.debug("block_info=%s" % block_info)
 
             block = super().from_string(
-                block_info, config=config, name=name, description=description, **kwargs
+                block_info,
+                config=config,
+                observer=observer,
+                name=name,
+                description=description,
+                **kwargs,
             )
             logger.debug("block=%s" % block)
 
             priority = int(block_info.split("\nPriority: ")[1].split("\n")[0])
             logger.debug("priority=%i" % priority)
+
+            project_code = block_info.split("\nProject Code: ")[1].split("\n")[0]
 
             conditions_info = block_info.split(
                 "\n********** Start Conditions **********"
@@ -296,8 +332,10 @@ class ScheduleBlock(_Block):
 
             sb = cls(
                 config=block.config,
+                observer=block.observer,
                 name=block.name,
                 description=block.description,
+                project_code=project_code,
                 conditions=conditions,
                 priority=priority,
                 fields=fields,
@@ -311,6 +349,7 @@ class ScheduleBlock(_Block):
             sbs.append(sb)
             logger.debug("End i=%i" % i)
 
+        logger.debug("ScheduleBlock.from_string() = %s" % sbs)
         if len(sbs) == 1:
             return sbs[0]
         return sbs
@@ -325,7 +364,7 @@ class ScheduleBlock(_Block):
             A string representation of the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        logger.debug("ScheduleBlock.__str__ called")
+        logger.debug("ScheduleBlock().__str__()")
         s = "\n******************** Start ScheduleBlock ********************"
         s += super().__str__()
         s += "\nPriority: %i" % self.priority
@@ -338,6 +377,7 @@ class ScheduleBlock(_Block):
             s += "\n" + str(field)
         s += "\n********** End Fields **********"
         s += "\n******************** End ScheduleBlock ********************"
+        logger.debug("ScheduleBlock().__str__() = %s" % s)
         return s
 
     @property
@@ -351,8 +391,8 @@ class ScheduleBlock(_Block):
             The list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        logger.debug("ScheduleBlock.conditions called")
-        return list(self._conditions)
+        logger.debug("ScheduleBlock().conditions == %s" % self._conditions)
+        return self._conditions
 
     @conditions.setter
     def conditions(self, value):
@@ -365,7 +405,7 @@ class ScheduleBlock(_Block):
             The list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        logger.debug("ScheduleBlock.conditions(value=%s) called" % value)
+        logger.debug("ScheduleBlock().conditions = %s" % value)
 
         if not isinstance(value, list):
             value = [value]
@@ -393,7 +433,8 @@ class ScheduleBlock(_Block):
             The priority level of the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        return int(self._priority)
+        logger.debug("ScheduleBlock().priority == %i" % self._priority)
+        return self._priority
 
     @priority.setter
     def priority(self, value):
@@ -406,6 +447,7 @@ class ScheduleBlock(_Block):
             The priority level of the `~pyscope.telrun.ScheduleBlock`.
 
         """
+        logger.debug("ScheduleBlock().priority = %i" % value)
         self._priority = int(value)
 
     @property
@@ -419,7 +461,8 @@ class ScheduleBlock(_Block):
             The list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        return list(self._fields)
+        logger.debug("ScheduleBlock().fields == %s" % self._fields)
+        return self._fields
 
     @fields.setter
     def fields(self, value):
@@ -432,7 +475,7 @@ class ScheduleBlock(_Block):
             The list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
 
         """
-        logger.debug("ScheduleBlock.fields(value=%s) called" % value)
+        logger.debug("ScheduleBlock().fields = %s" % value)
 
         if not isinstance(value, list):
             value = [value]

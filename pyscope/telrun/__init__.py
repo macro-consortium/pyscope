@@ -9,9 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .boundary_condition import BoundaryCondition
+from .observer import Observer
 
 from .field import Field
 from .light_field import LightField
+from .autofocus_field import AutofocusField
 from .dark_field import DarkField
 from .flat_field import FlatField
 from .transition_field import TransitionField
@@ -20,6 +22,7 @@ from .configuration import Configuration
 
 from ._block import _Block
 from .schedule_block import ScheduleBlock
+from .calibration_block import CalibrationBlock
 from .unallocated_block import UnallocatedBlock
 
 from .prioritizer import Prioritizer
@@ -42,15 +45,18 @@ from .survey_builder import survey_builder
 from .telrun_operator import TelrunOperator
 
 __all__ = [
+    "Observer",
     "BoundaryCondition",
     "Field",
     "LightField",
+    "AutofocusField",
     "DarkField",
     "FlatField",
     "TransitionField",
     "Configuration",
     "_Block",
     "ScheduleBlock",
+    "CalibrationBlock",
     "UnallocatedBlock",
     "Prioritizer",
     "Optimizer",
