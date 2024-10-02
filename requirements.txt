@@ -1,5 +1,4 @@
-alpyca == 2.0.4
-astroplan == 0.10
+# alpyca == 2.0.4 # not in conda
 astropy == 6.1.2
 astroquery == 0.4.7
 astroscrappy == 1.2.0
@@ -7,17 +6,17 @@ ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
 markdown == 3.6
-numpy == 2.1.0
+numpy == 2.1.1
 matplotlib == 3.9.1
+numpy == 2.1.0
 oschmod == 0.3.12
-paramiko == 3.4.0
+paramiko == 3.4.1
 photutils == 1.13.0
-prettytable == 3.10.0
+prettytable == 3.11.0
 pywin32 == 306;platform_system=='Windows'
 scikit-image == 0.24.0
 scipy == 1.14.1
 smplotlib == 0.0.9
-timezonefinder == 6.5.0
-tksheet == 7.2.12
+timezonefinder == 6.5.2
 tqdm == 4.66.4
-# twirl == 0.4.2
+twirl == 0.4.2
