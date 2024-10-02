@@ -15,7 +15,6 @@ from tkinter import font
 
 import astroplan
 import numpy as np
-import tksheet
 from astropy import coordinates as coord
 from astropy import table
 from astropy import time as astrotime
