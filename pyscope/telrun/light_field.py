@@ -39,9 +39,9 @@ class LightField(Field):
             using the `astropy.coordinates.SkyCoord.from_name` method. If that fails,
             the class will attempt to resolve the target as an ephemeris object, first
             using the `astropy.coordinates.get_body` method and then the
-            `astroquery.mpc.MPC.get_ephemeris` method.
+            `astroquery.solarsystem.MPC.get_ephemeris()` method.
 
-        config : `~pyscope.telrun.Config`, default : `None`
+        config : `~pyscope.telrun.Configuration`, default : `None`
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 

@@ -21,7 +21,7 @@ class Field:
             The target field to observe. If the target has proper motion, ensure
             that the reference epoch and the proper motions are set.
 
-        config : `~pyscope.telrun.Config`, default : None
+        config : `~pyscope.telrun.Configuration`, default : None
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 

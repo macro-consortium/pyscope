@@ -49,7 +49,7 @@ class FlatField(LightField):
             that the reference epoch and the proper motions are set. The default is the
             `CoverCalibrator` which is a pre-configured location to take flat field images.
 
-        config : `~pyscope.telrun.Config`, default : None
+        config : `~pyscope.telrun.Configuration`, default : None
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
