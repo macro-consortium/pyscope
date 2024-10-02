@@ -6,8 +6,6 @@ from pathlib import Path
 
 import click
 
-from . import init_queue
-
 logger = logging.getLogger(__name__)
 
 
