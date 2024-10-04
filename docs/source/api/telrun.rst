@@ -7,16 +7,16 @@ Classes
 -------
 .. automodsumm:: pyscope.telrun
     :classes-only:
-    :toctree: auto_api
+    :toctree: .
 
 Functions
 ---------
 .. automodsumm:: pyscope.telrun
     :functions-only:
-    :toctree: auto_api
+    :toctree: .
 
 Variables
 ---------------
 .. automodsumm:: pyscope.telrun
     :variables-only:
-    :toctree: auto_api
+    :toctree: .

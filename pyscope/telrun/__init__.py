@@ -18,7 +18,10 @@ from .dark_field import DarkField
 from .flat_field import FlatField
 from .transition_field import TransitionField
 
-from .configuration import Configuration
+from .option import Option
+from .instrument_configuration import InstrumentConfiguration
+
+from .project import Project
 
 from ._block import _Block
 from .schedule_block import ScheduleBlock
@@ -53,7 +56,9 @@ __all__ = [
     "DarkField",
     "FlatField",
     "TransitionField",
-    "Configuration",
+    "Option",
+    "InstrumentConfiguration",
+    "Project",
     "_Block",
     "ScheduleBlock",
     "CalibrationBlock",

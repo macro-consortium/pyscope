@@ -33,7 +33,7 @@ class DarkField(Field):
             that are captured in the dark frame. If `None`, the pointing will not change
             and the dark frame will be taken in the current position of the telescope.
 
-        config : `~pyscope.telrun.Configuration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 

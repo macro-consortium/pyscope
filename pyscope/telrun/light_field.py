@@ -26,7 +26,7 @@ class LightField(Field):
         A single science target field and configuration for an observation.
 
         The `~pyscope.telrun.LightField` is the basic unit of a standard science observation. It contains the target, instrument
-        `~pyscope.telrun.Configuration`, `~pyscope.observatory.Observatory.repositioning` offsets, exposure time, number of exposures,
+        `~pyscope.telrun.InstrumentConfiguration`, `~pyscope.observatory.Observatory.repositioning` offsets, exposure time, number of exposures,
         output filename `~pathlib.Path`, and scheduling `~pyscope.telrun.BoundaryCondition` objects. The `~pyscope.telrun.LightField`
         is used by the `~pyscope.telrun.Observer` to build a `~pyscope.telrun.ScheduleBlock` for a given observation request.
 
@@ -41,7 +41,7 @@ class LightField(Field):
             using the `astropy.coordinates.get_body` method and then the
             `astroquery.solarsystem.MPC.get_ephemeris()` method.
 
-        config : `~pyscope.telrun.Configuration`, default : `None`
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
@@ -238,12 +238,12 @@ class LightField(Field):
     @property
     def nexp(self):
         """
-        The number of exposures to take of this target field with the given `~pyscope.telrun.Configuration`.
+        The number of exposures to take of this target field with the given `~pyscope.telrun.InstrumentConfiguration`.
 
         Returns
         -------
         `int`
-            The number of exposures to take of this target field with the given `~pyscope.telrun.Configuration`.
+            The number of exposures to take of this target field with the given `~pyscope.telrun.InstrumentConfiguration`.
 
         """
         logger.debug("LightField().nexp == %i" % self._nexp)
@@ -252,12 +252,12 @@ class LightField(Field):
     @nexp.setter
     def nexp(self, value):
         """
-        Set the number of exposures to take of this target field with the given `~pyscope.telrun.Configuration`.
+        Set the number of exposures to take of this target field with the given `~pyscope.telrun.InstrumentConfiguration`.
 
         Parameters
         ----------
         value : `int`, required
-            The number of exposures to take of this target field with the given `~pyscope.telrun.Configuration`.
+            The number of exposures to take of this target field with the given `~pyscope.telrun.InstrumentConfiguration`.
 
         """
         logger.debug("LightField().nexp = %i" % value)

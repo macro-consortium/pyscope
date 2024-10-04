@@ -21,7 +21,7 @@ class Field:
             The target field to observe. If the target has proper motion, ensure
             that the reference epoch and the proper motions are set.
 
-        config : `~pyscope.telrun.Configuration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
@@ -123,12 +123,12 @@ class Field:
     @property
     def config(self):
         """
-        The instrument `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.Field`.
+        The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
 
         Returns
         -------
-        `~pyscope.telrun.Configuration`
-            The instrument `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.Field`.
+        `~pyscope.telrun.InstrumentConfiguration`
+            The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
 
         """
         logger.debug("Field().config == %s" % self._config)
@@ -137,12 +137,12 @@ class Field:
     @config.setter
     def config(self, value):
         """
-        Set the instrument `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.Field`.
+        Set the instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
 
         Parameters
         ----------
-        value : `~pyscope.telrun.Configuration`, required
-            The instrument `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.Field`.
+        value : `~pyscope.telrun.InstrumentConfiguration`, required
+            The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
 
         """
         logger.debug("Field().config = %s" % value)

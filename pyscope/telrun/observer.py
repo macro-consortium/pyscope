@@ -4,4 +4,14 @@ logger = logging.getLogger(__name__)
 
 
 class Observer:
-    pass
+    def __init__(
+        self,
+        username,
+        password,
+        access_level,
+        full_name,
+        institution,
+        email,
+        phone,
+    ):
+        pass

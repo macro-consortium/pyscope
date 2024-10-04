@@ -28,7 +28,7 @@ class TransitionField(Field):
         target : `~astropy.coordinates.SkyCoord` or `None`, default : `None`
             The target field to point to during the transition. If `None`, the telescope will not move during the transition.
 
-        config : `~pyscope.telrun.Configuration` or `None`, default : `None`
+        config : `~pyscope.telrun.InstrumentConfiguration` or `None`, default : `None`
             The instrument configuration to use during the transition. If `None`, the configuration will not change during the transition.
 
         est_duration : `~astropy.units.Quantity`, default : 0 sec

@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from astropy.time import Time
 
-from .configuration import Configuration
+from .instrument_configuration import InstrumentConfiguration
 from .observer import Observer
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,12 @@ class _Block:
 
         Parameters
         ----------
-        configuration : `~pyscope.telrun.Configuration`, required
-            The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun._Block`. This `~pyscope.telrun.Configuration` will be
-            used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun._Block` and
-            will act as the default `~pyscope.telrun.Configuration` for all `~pyscope.telrun.Field` objects in the
-            `~pyscope.telrun._Block` if a `~pyscope.telrun.Configuration` has not been provided. If a `~pyscope.telrun.Field`
-            has a different `~pyscope.telrun.Configuration`, it will override the block `~pyscope.telrun.Configuration` for the
+        configuration : `~pyscope.telrun.InstrumentConfiguration`, required
+            The `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun._Block`. This `~pyscope.telrun.InstrumentConfiguration` will be
+            used to set the telescope's `~pyscope.telrun.InstrumentConfiguration` at the start of the `~pyscope.telrun._Block` and
+            will act as the default `~pyscope.telrun.InstrumentConfiguration` for all `~pyscope.telrun.Field` objects in the
+            `~pyscope.telrun._Block` if a `~pyscope.telrun.InstrumentConfiguration` has not been provided. If a `~pyscope.telrun.Field`
+            has a different `~pyscope.telrun.InstrumentConfiguration`, it will override the block `~pyscope.telrun.InstrumentConfiguration` for the
             duration of the `~pyscope.telrun.Field`.
 
         observer : `~pyscope.telrun.Observer`, required
@@ -54,7 +54,7 @@ class _Block:
             in a `~pyscope.telrun.Schedule`.
         pyscope.telrun.UnallocatedBlock : A subclass of `~pyscope.telrun._Block` that is used to represent unallocated time in a
             `~pyscope.telrun.Schedule`.
-        pyscope.telrun.Configuration : A class that represents the configuration of the telescope.
+        pyscope.telrun.InstrumentConfiguration : A class that represents the configuration of the telescope.
         pyscope.telrun.Field : A class that represents a field to observe.
         """
         logger.debug(
@@ -84,7 +84,7 @@ class _Block:
         ----------
         string : `str`
 
-        config : `~pyscope.telrun.Configuration`, default: `None`
+        config : `~pyscope.telrun.InstrumentConfiguration`, default: `None`
 
         observer : `~pyscope.telrun.Observer`, default: `None`
 
@@ -137,7 +137,9 @@ class _Block:
             block_info.split("\nObserver: ")[1].split("\n")[0]
         )
         config = (
-            Configuration.from_string(block_info.split("\nConfiguration: ")[1])
+            InstrumentConfiguration.from_string(
+                block_info.split("\nConfiguration: ")[1]
+            )
             if config is None
             else config
         )
@@ -191,11 +193,11 @@ class _Block:
     @property
     def config(self):
         """
-        The default `~pyscope.telrun.Configuration` for the `~pyscope.telrun._Block`.
+        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.telrun._Block`.
 
         Returns
         -------
-        config : `~pyscope.telrun.Configuration`
+        config : `~pyscope.telrun.InstrumentConfiguration`
         """
         logger.debug("_Block().config == %s" % self._config)
         return self._config
@@ -203,21 +205,22 @@ class _Block:
     @config.setter
     def config(self, value):
         """
-        The default `~pyscope.telrun.Configuration` for the `~pyscope.telrun._Block`.
+        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.telrun._Block`.
 
         Parameters
         ----------
-        value : `~pyscope.telrun.Configuration`
+        value : `~pyscope.telrun.InstrumentConfiguration`
         """
         logger.debug("_Block().config = %s" % value)
         if (
-            Configuration not in (config.__class__, *config.__class__.__bases__)
+            InstrumentConfiguration
+            not in (config.__class__, *config.__class__.__bases__)
             and value is not None
         ):
             raise TypeError(
-                "The config parameter must be a Configuration object (class=%s) or a subclass of Configuration (bases=%s), not a %s",
-                Configuration.__class__,
-                Configuration.__class__.__bases__,
+                "The config parameter must be a InstrumentConfiguration object (class=%s) or a subclass of InstrumentConfiguration (bases=%s), not a %s",
+                InstrumentConfiguration.__class__,
+                InstrumentConfiguration.__class__.__bases__,
                 type(config),
             )
         self._config = value

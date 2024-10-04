@@ -30,7 +30,7 @@ class FlatField(LightField):
         is the `CoverCalibrator` which will point the telescope at a pre-configured location to take flat
         field images. A user may change the target to any other valid `~astropy.coordinates.SkyCoord` for
         taking sky flats. Some `CoverCalibrator` instruments may support the ability to adjust their
-        illumination level, and a user can change this by passing a `~pyscope.telrun.Configuration` with the
+        illumination level, and a user can change this by passing a `~pyscope.telrun.InstrumentConfiguration` with the
         appropriate settings.
 
         A user taking sky flats may want to take advantage of the `auto_exp` feature
@@ -49,7 +49,7 @@ class FlatField(LightField):
             that the reference epoch and the proper motions are set. The default is the
             `CoverCalibrator` which is a pre-configured location to take flat field images.
 
-        config : `~pyscope.telrun.Configuration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 

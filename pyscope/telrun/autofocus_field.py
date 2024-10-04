@@ -44,7 +44,7 @@ class AutofocusField(LightField):
             The target field to autofocus on. If `None`, the telescope will autofocus on the
             current target field.
 
-        config : `~pyscope.telrun.Configuration`, default : `None`
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
             The instrument configuration to use for the autofocus sequence. If `None`, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
@@ -139,7 +139,7 @@ class AutofocusField(LightField):
         ----------
         string : `str`, required
 
-        config : `~pyscope.telrun.Configuration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
 
         repositioning : 2-tuple of `~astropy.units.Quantity`, default : None
 

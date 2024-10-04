@@ -7,16 +7,16 @@ Classes
 -------
 .. automodsumm:: pyscope.utils
     :classes-only:
-    :toctree: auto_api
+    :toctree: .
 
 Functions
 ---------
 .. automodsumm:: pyscope.utils
     :functions-only:
-    :toctree: auto_api
+    :toctree: .
 
 Variables
 ---------------
 .. automodsumm:: pyscope.utils
     :variables-only:
-    :toctree: auto_api
+    :toctree: .
