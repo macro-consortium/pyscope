@@ -162,21 +162,222 @@ class InstrumentConfiguration:
             instrument-specific settings that are not covered by the standard `~pyscope.telrun.Option` objects.
 
         """
+        logger.debug(
+            """InstrumentConfiguration(
+            name=%s,
+            description=%s,
+            observatory_identifier=%s,
+            nasmyth_port=%s,
+            focus_offset=%s,
+            position_angle_offset=%s,
+            filt=%s,
+            shutter_state=%s,
+            readout_mode=%s,
+            binning=%s,
+            frame_position=%s,
+            frame_size=%s,
+            cooler_on=%s,
+            cooler_setpoint=%s,
+            flat_screen_brightness=%s,
+            inherit_from=%s,
+            kwargs=%s,
+        )"""
+            % (
+                name,
+                description,
+                observatory_identifier,
+                nasmyth_port,
+                focus_offset,
+                position_angle_offset,
+                filt,
+                shutter_state,
+                readout_mode,
+                binning,
+                frame_position,
+                frame_size,
+                cooler_on,
+                cooler_setpoint,
+                flat_screen_brightness,
+                inherit_from,
+                kwargs,
+            )
+        )
 
         self._type = "telrun operator instrument configuration"
 
     @classmethod
-    def from_string(self):
-        pass
+    def from_string(
+        self,
+        string,
+        name=None,
+        description=None,
+        observatory_identifier=None,
+        nasmyth_port=None,
+        focus_offset=None,
+        position_angle_offset=None,
+        filt=None,
+        shutter_state=None,
+        readout_mode=None,
+        binning=None,
+        frame_position=None,
+        frame_size=None,
+        cooler_on=None,
+        cooler_setpoint=None,
+        flat_screen_brightness=None,
+        inherit_from=None,
+        **kwargs,
+    ):
+        """
+        Create a `~pyscope.telrun.InstrumentConfiguration` or a `list` of `~pyscope.telrun.InstrumentConfiguration` objects
+        from a `str` representation of a `~pyscope.telrun.InstrumentConfiguration`. All optional parameters are used to
+        override the parameters extracted from the `str` representation.
+
+        Parameters
+        ----------
+        string : `str`, required
+
+        name : `str`, default : `None`
+
+        description : `str`, default : `None`
+
+        observatory_identifier : `str`, default : `None`
+
+        nasmyth_port : `~pyscope.telrun.Option`, `int`, or `None`, default : `None`
+
+        focus_offset : `~pyscope.telrun.Option`, `~astropy.units.Quantity`, or `None`, default : `None`
+
+        position_angle_offset : `~pyscope.telrun.Option`, `~astropy.units.Quantity`, or `None`, default : `None`
+
+        filt : `~pyscope.telrun.Option`, `int`, `str`, `list`, or `None`, default : `None`
+
+        shutter_state : `~pyscope.telrun.Option`, `bool`, or `None`, default : `None`
+
+        readout_mode : `~pyscope.telrun.Option`, `int`, `str`, or `None`, default : `None`
+
+        binning : `~pyscope.telrun.Option`, `tuple`, or `None`, default : `None`
+
+        frame_position : `~pyscope.telrun.Option`, `tuple`, or `None`, default : `None`
+
+        frame_size : `~pyscope.telrun.Option`, `tuple`, or `None`, default : `None`
+
+        cooler_on : `~pyscope.telrun.Option`, `bool`, or `None`, default : `None`
+
+        cooler_setpoint : `~pyscope.telrun.Option`, `~astropy.units.Quantity`, or `None`, default : `None`
+
+        flat_screen_brightness : `~pyscope.telrun.Option`, `int`, or `None`, default : `None`
+
+        inherit_from : `str`, default : "current", {"current", "default"}
+
+        **kwargs : `dict`, default : {}
+
+        """
+        logger.debug(
+            """InstrumentConfiguration.from_string(
+            string=%s,
+            name=%s,
+            description=%s,
+            observatory_identifier=%s,
+            nasmyth_port=%s,
+            focus_offset=%s,
+            position_angle_offset=%s,
+            filt=%s,
+            shutter_state=%s,
+            readout_mode=%s,
+            binning=%s,
+            frame_position=%s,
+            frame_size=%s,
+            cooler_on=%s,
+            cooler_setpoint=%s,
+            flat_screen_brightness=%s,
+            inherit_from=%s,
+            kwargs=%s,
+        )"""
+            % (
+                string,
+                name,
+                description,
+                observatory_identifier,
+                nasmyth_port,
+                focus_offset,
+                position_angle_offset,
+                filt,
+                shutter_state,
+                readout_mode,
+                binning,
+                frame_position,
+                frame_size,
+                cooler_on,
+                cooler_setpoint,
+                flat_screen_brightness,
+                inherit_from,
+                kwargs,
+            )
+        )
 
     def __str__(self):
-        pass
+        """
+        Return a `str` representation of the `~pyscope.telrun.InstrumentConfiguration`.
+
+        Returns
+        -------
+        `str`
+            A `str` representation of the `~pyscope.telrun.InstrumentConfiguration`.
+        """
+        logger.debug("InstrumentConfiguration().__str__() = %s" % self)
 
     def __repr__(self):
-        pass
+        """
+        Return a `str` representation of the `~pyscope.telrun.InstrumentConfiguration`.
 
-    def __call__(self, **kwargs):
-        pass
+        Returns
+        -------
+        `str`
+            A `str` representation of the `~pyscope.telrun.InstrumentConfiguration`.
+        """
+        logger.debug("InstrumentConfiguration().__repr__() = %s" % self)
+        return str(self)
 
-    def update_from(self, instrument_configuration, inherit_from=None):
-        pass
+    def __call__(self, instrument_configuration, inherit_from=None):
+        """
+        Update the `~pyscope.telrun.InstrumentConfiguration` object with the values from the
+        `instrument_configuration` object that contain the new values to update the
+        selection of options inside this `~pyscope.telrun.InstrumentConfiguration`. If the
+        `inherit_from` keyword argument is passed, the `~pyscope.telrun.InstrumentConfiguration` object
+        will override the default `inherit_from` value.
+
+        If `inherit_from="current"`, the
+        `~pyscope.telrun.InstrumentConfiguration` will inherit from the current configuration
+        values saved in the `~pyscope.telrun.Option` objects. This is the default behavior of the class.
+        If `inherit_from="default"`, the
+        `~pyscope.telrun.InstrumentConfiguration` will inherit the `~pyscope.telrun.Option` default
+        values to fill in the values that are not specified in the `instrument_configuration`.
+
+        Parameters
+        ----------
+        instrument_configuration : `~pyscope.telrun.InstrumentConfiguration`, required
+            The `~pyscope.telrun.InstrumentConfiguration` object that contains the new values to update
+            the selection of options inside this `~pyscope.telrun.InstrumentConfiguration`.
+
+        inherit_from : `str`, default : `None`, {"current", "default"}
+            The parameter to inherit from the `~pyscope.telrun.Option` in the `instrument_configuration`
+            for each keyword argument when applying a "requested" configuration to the instrument. If "current", the current configuration
+            saved within the `~pyscope.telrun.Option` objects will be used. If "default", the default configuration set in each
+            `~pyscope.telrun.Option` will be used.
+
+        Returns
+        -------
+        `~pyscope.telrun.InstrumentConfiguration`
+            The updated `~pyscope.telrun.InstrumentConfiguration` object with the new values from the
+            `instrument_configuration` object.
+
+        """
+        logger.debug(
+            """InstrumentConfiguration().__call__(
+            instrument_configuration=%s,
+            inherit_from=%s,
+        )"""
+            % (
+                instrument_configuration,
+                inherit_from,
+            )
+        )
