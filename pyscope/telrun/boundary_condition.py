@@ -177,11 +177,18 @@ class BoundaryCondition:
 
         return value
 
-    def calculate(target, time, location, **kwargs):
+    def calculate(self, target, time, location, **kwargs):
+        if kwargs is None:
+            kwargs = self._kwargs
         return self._func(target, time, location, **kwargs)
 
-    def score(value, **kwargs):
+    def score(self, value, **kwargs):
+        if kwargs is None:
+            kwargs = self._kwargs
         return self._lqs_func(value, **kwargs)
+
+    def plot(self, target, time, location, **kwargs):
+        pass
 
     @property
     def weight(self):

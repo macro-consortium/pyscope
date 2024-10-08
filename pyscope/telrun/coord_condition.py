@@ -13,13 +13,14 @@ class CoordinateCondition(BoundaryCondition):
         min_val=None,
         max_val=None,
         score_type="boolean",
+        ref_coord=None,
         **kwargs,
     ):
         """
         A restriction on the coordinates of the target viewed from a specific location
         and at a specific time.
 
-        A manager to hande restrictions of a source's location when it is observered. The
+        A manager to handle restrictions of a source's location when it is observered. The
         coordinates can be specified in right ascension and declination, galactic latitude
         and longitude, or altitude and azimuth.
 
@@ -30,7 +31,7 @@ class CoordinateCondition(BoundaryCondition):
             and azimuth, "radec" for right ascension and declination, and "galactic" for
             galactic latitude and longitude. The default is "altaz".
 
-        coord_idx : int, default : 0, {0, 1}
+        coord_idx : `int`, default : 0, {0, 1}
             The index of the coordinate to use. The default is 0 for the first coordinate. This
             parameter is ignored if `min_val` and `max_val` both contain two values for the
             minimum and maximum values of each coordinate.
@@ -47,12 +48,13 @@ class CoordinateCondition(BoundaryCondition):
             that returns 1 if the condition is met and 0 if it is not, commonly used for
             determining if the source is above or below the horizon. The default is "boolean".
 
-        **kwargs : Additional keyword arguments to pass to the scoring function.
+        ref_coord : `~astropy.coordinates.SkyCoord`, default : `None`
+            If `coord_type` is "radec" or "galactic", a user can specify a center value
+            and `min_val` and `max_val` will be interpreted as a minimum and maximum angular
+            separation of the target from the reference coordinate.
 
-            ref_coord : `~astropy.coordinates.SkyCoord`, default : `None`
-                If `coord_type` is "radec" or "galactic", a user can specify a center value
-                and `min_val` and `max_val` will be interpreted as a minimum and maximum angular
-                separation of the target from the reference coordinate.
+        **kwargs : `dict`, default : {}
+            Additional keyword arguments to pass to the `~pyscope.telrun.BoundaryCondition` constructor.
 
         """
         logger.debug(
@@ -63,11 +65,13 @@ class CoordinateCondition(BoundaryCondition):
                 min_val=%s,
                 max_val=%s,
                 score_type=%s,
+                ref_coord=%s,
                 kwargs=%s
             )"""
-            % (coord_type, coord_idx, min_val, max_val, score_type, kwargs)
+            % (coord_type, coord_idx, min_val, max_val, score_type, ref_coord, kwargs)
         )
 
+    @classmethod
     def from_string(
         self,
         string,
@@ -76,6 +80,7 @@ class CoordinateCondition(BoundaryCondition):
         min_val=None,
         max_val=None,
         score_type=None,
+        ref_coord=None,
         **kwargs,
     ):
         """
@@ -95,6 +100,8 @@ class CoordinateCondition(BoundaryCondition):
         max_val : `~astropy.units.Quantity`, default : None
 
         score_type : `str`, default : None
+
+        ref_coord : `~astropy.coordinates.SkyCoord`, default : None
 
         **kwargs : `dict`, default : {}
 
@@ -116,44 +123,34 @@ class CoordinateCondition(BoundaryCondition):
         """
         logger.debug("CoordinateCondition().__str__()")
 
-    def __repr__(self):
-        """
-        Return a `str` representation of the `~pyscope.telrun.CoordinateCondition`.
-
-        Returns
-        -------
-        `str`
-            A `str` representation of the `~pyscope.telrun.CoordinateCondition`.
-
-        """
-        logger.debug("CoordinateCondition().__repr__()")
-        return str(self)
-
-    def __call__(self, target, time=None, location=None):
-        """
-        Evaluate the condition for the target at the specified time and location.
-
-        Parameters
-        ----------
-        target : `~astropy.coordinates.SkyCoord`, required
-            The target to evaluate the condition for.
-
-        time : `~astropy.time.Time`, default : None
-            The time to evaluate the condition at. Some conditions do not depend on time,
-            but others that do will require this parameter.
-
-        location : `~astropy.coordinates.EarthLocation`, default : None
-            The location to evaluate the condition at. Some conditions do not depend on
-            location, but others that do will require this parameter.
-
-        Returns
-        -------
-        `float`
-            A `float` value between `0` and `1` that represents the linear quality score of the condition.
-
-        """
+    @staticmethod
+    def _func():
         pass
 
-    def plot(self, target, time, location, ax=None):
-        """ """
+    @staticmethod
+    def _lqs_func():
+        pass
+
+    @property
+    def coord_type(self):
+        pass
+
+    @property
+    def coord_idx(self):
+        pass
+
+    @property
+    def min_val(self):
+        pass
+
+    @property
+    def max_val(self):
+        pass
+
+    @property
+    def score_type(self):
+        pass
+
+    @property
+    def ref_coord(self):
         pass

@@ -6,16 +6,16 @@ logger = logging.getLogger(__name__)
 
 
 class AirmassCondition(BoundaryCondition):
-    def __init__(self, airmass_limit=3, formula="secant", weight=1):
+    def __init__(self, airmass_limit=3, formula="Schoenberg1929", weight=1, **kwargs):
         """
         A condition that penalizes targets for higher airmass values up to a limit.
 
         This condition is used to restrict the airmass value of a target to a maximum value. The airmass
-        can be calculated using several different formulae. The default is a simple secant formula,
+        can be calculated using several different formulae. The most simple is a secant formula,
         given by :math:`X = \\frac{1}{\\cos(z)}` where :math:`z` is the angle between the target and the zenith. This is the
         analytic solution for a plane-parallel atmosphere.
 
-        Other options include Schoenberg 1929[1]_, which is a geometric model for a non-refracting spherical atmosphere:
+        The default option is Schoenberg 1929[1]_, a geometric model for a non-refracting spherical atmosphere:
 
         .. math::
             X = \\frac{R_{\\oplus}}{y_{\\rm atm}}\\sqrt{\\cos^2(z) + 2\\frac{y_{\\rm atm}}{R_{\\oplus}} + \\left(\\frac{y_{\\rm atm}}{R_{\\oplus}}\\right)^2} - \\frac{R_{\\oplus}}{y_{\\rm atm}}\\cos(z)
@@ -43,7 +43,7 @@ class AirmassCondition(BoundaryCondition):
 
         .. image:: https://upload.wikimedia.org/wikipedia/commons/d/d3/Viewing_angle_and_air_masses.svg
 
-        The airmass is penalized linearly from `1` with the best linear quality score and decreases to `0` at the `airmass_limit`.
+        The airmass is penalized linearly from `1` with the best linear quality score and decreases to `0` at the `airmass_limit` and beyond.
 
         Parameters
         ----------
@@ -55,6 +55,9 @@ class AirmassCondition(BoundaryCondition):
 
         weight : float, default : 1
             The weight of the condition in the final score. The default is 1.
+
+        **kwargs : dict, default : {}
+            Additional keyword arguments to pass to the `~pyscope.telrun.BoundaryCondition` constructor for storage in the `~pyscope.telrun.BoundaryCondition.kwargs` attribute.
 
         References
         ----------
@@ -74,75 +77,82 @@ class AirmassCondition(BoundaryCondition):
 
         """
         logger.debug("AirmassCondition(airmass_limit=%s, formula=%s, weight=%s)")
-        super().__init__(
-            func=self.calculate,
-            lqs_func=self.score,
-            weight=weight,
-            airmass_limit=airmass_limit,
-            formula=formula,
-        )
-        self.airmass_limit = airmass_limit
-        self.formula = formula
+        super().__init__(func=self._func, lqs_func=self._lqs_func, **kwargs)
 
     @classmethod
-    def from_string(self, string):
-        logger.debug("AirmassCondition.from_string(string=%s)" % string)
-        pass
+    def from_string(self, string, airmass_limit=None, formula=None, weight=None):
+        """
+        Create a `~pyscope.telrun.AirmassCondition` or a `list` of `~pyscope.telrun.AirmassCondition` objects from a `str` representation of a `~pyscope.telrun.AirmassCondition`.
+        Any optional parameters are used to override the parameters extracted from the `str` representation.
+
+        Parameters
+        ----------
+        string : `str`, required
+
+        airmass_limit : `float`, default : None
+
+        formula : `str`, default : None
+
+        weight : `float`, default : None
+
+        """
+        logger.debug(
+            "AirmassCondition.from_string(string=%s, airmass_limit=%s, formula=%s, weight=%s)"
+            % (string, airmass_limit, formula, weight)
+        )
 
     def __str__(self):
-        logger.debug("AirmassCondition().__str__()")
-        pass
-
-    def calculate(self, target, time, location, **kwargs):
         """
-        Compute the airmass value for the target at the given time and location.
+        Return a `str` representation of the `~pyscope.telrun.AirmassCondition`.
+
+        Returns
+        -------
+        `str`
+            A `str` representation of the `~pyscope.telrun.AirmassCondition`.
+
+        """
+        logger.debug("AirmassCondition().__str__()")
+
+    @staticmethod
+    def _func(target, time, location, formula="Schoenberg1929", **kwargs):
+        """
+        Calculate the airmass value for the target.
 
         Parameters
         ----------
         target : `~astropy.coordinates.SkyCoord`, required
-            The target to evaluate the condition for.
-
-        time : `~astropy.time.Time`, required
-            The time to evaluate the condition at.
-
-        location : `~astropy.coordinates.EarthLocation`, required
-            The location to evaluate the condition at.
-
-        formula : `str`, default : "secant", {"secant", "Schoenberg1929", "Young+Irvine1967", "Hardie1962", "Rozenberg1966", "KastenYoung1989", "Young1994", "Pickering2002"}
-            The formula to use to calculate the airmass value.
+            The target to calculate the airmass value for.
 
         Returns
         -------
         `float`
-            The airmass value for the target at the given time and location.
+            The airmass value for the target.
 
         """
-        logger.debug(
-            "AirmassCondition().calculate(target=%s, time=%s, location=%s, kwargs=%s)"
-            % (target, time, location, kwargs)
-        )
-        pass
+        logger.debug("AirmassCondition._func(target=%s)" % target)
 
-    def score(self, value, **kwargs):
+    @staticmethod
+    def _lqs_func(self, value, airmass_limit=3, **kwargs):
         """
-        Compute the score for the airmass condition.
+        Calculate the linear quality score for the airmass value.
 
         Parameters
         ----------
         value : `float`, required
-            The airmass value to score.
+            The airmass value for the target.
 
-        airmass_limit : `float`, optional
+        airmass_limit : `float`, default : 3
             The maximum airmass value that is allowed.
 
         Returns
         -------
         `float`
-            The linear quality score value (between `0` and `1`) for the airmass condition.
+            The linear quality score for the airmass value.
 
         """
-        logger.debug("AirmassCondition().score(value=%s, kwargs=%s)" % (value, kwargs))
-        pass
+        logger.debug(
+            "AirmassCondition._lqs_func(value=%s, max_val=%s)" % (value, max_val)
+        )
 
     @property
     def airmass_limit(self):
@@ -158,23 +168,6 @@ class AirmassCondition(BoundaryCondition):
         logger.debug("AirmassCondition().airmass_limit == %s" % self._airmass_limit)
         return self._airmass_limit
 
-    @airmass_limit.setter
-    def airmass_limit(self, value):
-        """
-        The maximum airmass value that is allowed.
-
-        Parameters
-        ----------
-        value : `float`, required
-            The maximum airmass value that is allowed
-
-        """
-        logger.debug("AirmassCondition().airmass_limit = %s" % value)
-        if value is not None:
-            if value <= 1:
-                raise ValueError("Airmass limit must be greater than 1")
-        self._airmass_limit = value
-
     @property
     def formula(self):
         """
@@ -188,28 +181,3 @@ class AirmassCondition(BoundaryCondition):
         """
         logger.debug("AirmassCondition().formula == %s" % self._formula)
         return self._formula
-
-    @formula.setter
-    def formula(self, value):
-        """
-        The formula to use to calculate the airmass value.
-
-        Parameters
-        ----------
-        value : `str`, required, {"secant", "Schoenberg1929", "Young+Irvine1967", "Hardie1962", "Rozenberg1966", "KastenYoung1989", "Young1994", "Pickering2002"}
-            The formula to use to calculate the airmass value.
-
-        """
-        logger.debug("AirmassCondition().formula = %s" % value)
-        if value not in [
-            "secant",
-            "Schoenberg1929",
-            "Young+Irvine1967",
-            "Hardie1962",
-            "Rozenberg1966",
-            "KastenYoung1989",
-            "Young1994",
-            "Pickering2002",
-        ]:
-            raise ValueError("Invalid formula for airmass condition")
-        self._formula = value
