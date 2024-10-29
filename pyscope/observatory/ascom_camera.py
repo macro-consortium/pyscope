@@ -164,7 +164,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def BayerOffsetX(self):  # pragma: no cover
         """
-        The X/column offset of the Bayer filter array matrix.
+        The X/column offset of the Bayer filter array matrix. (`int`)
 
         .. warning::
             This property is not implemented in the ASCOM Alpaca protocol.
