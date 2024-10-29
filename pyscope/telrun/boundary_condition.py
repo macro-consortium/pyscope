@@ -151,7 +151,7 @@ class BoundaryCondition:
         location : `~astropy.coordinates.EarthLocation`
             The location of the observatory.
 
-        **kwargs : dict
+        **kwargs : `dict`
 
         Returns
         -------

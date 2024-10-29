@@ -43,7 +43,7 @@ class TelrunOperator:
 
         Parameters
         ----------
-        telhome : str, optional
+        telhome : `str`, optional
             The path to the TelrunOperator home directory. The default is the current working directory.
             Telhome must have a specific directory structure, which is created if it does not exist. The
             directory structure and some relevant files are as follows::
@@ -84,8 +84,8 @@ class TelrunOperator:
                 observing blocks. The `images/` directory structure is dictated by the `~pyscope.reduction` scripts,
                 which are used for rapid image calibration and reduction.
 
-        gui : bool, optional
-            Whether to start the GUI. Default is True.
+        gui : `bool`, optional
+            Whether to start the GUI. Default is `True`.
 
         **kwargs
             Keyword arguments to pass to the TelrunOperator constructor. More details in Other Parameters

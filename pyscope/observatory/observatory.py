@@ -1894,13 +1894,13 @@ class Observatory:
 
         Parameters
         ----------
-        radius : float, optional (default = 1)
+        radius : `float`, optional (default = 1)
             The radius in arcseconds to dither the telescope.
 
         center_pos : `~astropy.coordinates.SkyCoord`, optional
             The center position to dither around. If None, the current pointing of the mount will be used.
 
-        seed : int, optional
+        seed : `int`, optional
             The seed to use for the random number generator. If None, the seed will be randomly generated.
 
         Returns
@@ -1946,54 +1946,54 @@ class Observatory:
 
         Parameters
         ----------
-        obj : str or `~astropy.coordinates.SkyCoord`, optional
+        obj : `str` or `~astropy.coordinates.SkyCoord`, optional
             The name of the target or a `~astropy.coordinates.SkyCoord` object of the target. If a string,
             a query will be made to the SIMBAD database to get the coordinates. If a `~astropy.coordinates.SkyCoord`
-            object, the coordinates will be used directly. If None, the ra and dec parameters must be specified.
+            object, the coordinates will be used directly. If `None`, the ra and dec parameters must be specified.
         ra : `~astropy.coordinates.Longitude`-like, optional
             The ICRS J2000 right ascension of the target that will initialize a `~astropy.coordinates.SkyCoord`
             object. This will override the ra value in the object parameter.
         dec : `~astropy.coordinates.Latitude`-like, optional
             The ICRS J2000 declination of the target that will initialize a `~astropy.coordinates.SkyCoord`
             object. This will override the dec value in the object parameter.
-        unit : tuple, optional
+        unit : `tuple`, optional
             The units of the ra and dec parameters. Default is ('hr', 'deg').
-        frame : str, optional
+        frame : `str`, optional
             The coordinate frame of the ra and dec parameters. Default is 'icrs'.
-        target_x_pixel : float, optional
+        target_x_pixel : `float`, optional
             The desired x pixel location of the target.
-        target_y_pixel : float, optional
+        target_y_pixel : `float`, optional
             The desired y pixel location of the target.
-        initial_offset_dec : float, optional
+        initial_offset_dec : `float`, optional
             The initial offset of declination in arcseconds to use for the slew. Default is 0. Ignored if
-            do_initial_slew is False.
-        check_and_refine : bool, optional
+            do_initial_slew is `False`.
+        check_and_refine : `bool`, optional
             Whether or not to check the offset and refine the slew. Default is True.
-        max_attempts : int, optional
+        max_attempts : `int`, optional
             The maximum number of attempts to make to center the target. Default is 5. Ignored if
             check_and_refine is False.
-        tolerance : float, optional
+        tolerance : `float`, optional
             The tolerance in pixels to consider the target centered. Default is 3. Ignored if
-            check_and_refine is False.
-        exposure : float, optional
+            check_and_refine is `False`.
+        exposure : `float`, optional
             The exposure time in seconds to use for the centering images. Default is 10.
-        readout : int, optional
+        readout : `int`, optional
             The readout mode to use for the centering images. Default is 0.
-        save_images : bool, optional
-            Whether or not to save the centering images. Default is False.
-        save_path : str, optional
+        save_images : `bool`, optional
+            Whether or not to save the centering images. Default is `False`.
+        save_path : `str`, optional
             The path to save the centering images to. Default is the current directory. Ignored if
-            save_images is False.
-        settle_time : float, optional
+            save_images is `False`.
+        settle_time : `float`, optional
             The time in seconds to wait after the slew before checking the offset. Default is 5.
-        do_initial_slew : bool, optional
-            Whether or not to do the initial slew to the target. Default is True. If False, the current
+        do_initial_slew : `bool`, optional
+            Whether or not to do the initial slew to the target. Default is `True`. If `False`, the current
             telescope position will be used as the starting point for the centering routine.
 
         Returns
         -------
-        success : bool
-            True if the target was successfully centered, False otherwise.
+        success : `bool`
+            `True` if the target was successfully centered, `False` otherwise.
         """
         """logger.info(
             f"repositioning called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"

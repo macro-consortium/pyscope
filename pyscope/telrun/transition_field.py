@@ -34,7 +34,7 @@ class TransitionField(Field):
         est_duration : `~astropy.units.Quantity`, default : 0 sec
             The duration of the transition in seconds. Typically, the `~pyscope.observatory.Observatory` will calculate the duration and set this value.
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the instrument for the observation
 
         """
@@ -68,7 +68,7 @@ class TransitionField(Field):
 
         est_duration : `~astropy.units.Quantity`, default : 0 sec
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
 
         Returns
         -------

@@ -33,7 +33,7 @@ class DarkField(Field):
             that are captured in the dark frame. If `None`, the pointing will not change
             and the dark frame will be taken in the current position of the telescope.
 
-        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
             The instrument configuration to use for the observation. If None, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
@@ -47,7 +47,7 @@ class DarkField(Field):
             The output filename for the observation. If not specified, the filename
             will be automatically generated.
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the instrument for the observation.
 
         """
@@ -76,9 +76,9 @@ class DarkField(Field):
         ----------
         string : `str`, required
 
-        target : `~astropy.coordinates.SkyCoord`, default : None
+        target : `~astropy.coordinates.SkyCoord`, default : `None`
 
-        config : `~pyscope.telrun.Config`, default : None
+        config : `~pyscope.telrun.Config`, default : `None`
 
         exp : `~astropy.units.Quantity`, default : 0 sec
 

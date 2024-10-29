@@ -58,9 +58,9 @@ class HourAngleCondition(BoundaryCondition):
         ----------
         string : `str`, required
 
-        min_hour_angle : `~astropy.units.Quantity`, default : None
+        min_hour_angle : `~astropy.units.Quantity`, default : `None`
 
-        max_hour_angle : `~astropy.units.Quantity`, default : None
+        max_hour_angle : `~astropy.units.Quantity`, default : `None`
 
         Returns
         -------

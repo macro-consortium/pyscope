@@ -47,16 +47,16 @@ class AirmassCondition(BoundaryCondition):
 
         Parameters
         ----------
-        airmass_limit : float, default : 3
+        airmass_limit : `float`, default : 3
             The maximum airmass value that is allowed.
 
-        formula: `str`, default : "secant", {"secant", "Schoenberg1929", "Young+Irvine1967", "Hardie1962", "Rozenberg1966", "KastenYoung1989", "Young1994", "Pickering2002"}
+        formula : `str`, default : "secant", {"secant", "Schoenberg1929", "Young+Irvine1967", "Hardie1962", "Rozenberg1966", "KastenYoung1989", "Young1994", "Pickering2002"}
             The formula to use to calculate the airmass value.
 
-        weight : float, default : 1
+        weight : `float`, default : 1
             The weight of the condition in the final score. The default is 1.
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the `~pyscope.telrun.BoundaryCondition` constructor for storage in the `~pyscope.telrun.BoundaryCondition.kwargs` attribute.
 
         References
@@ -89,11 +89,11 @@ class AirmassCondition(BoundaryCondition):
         ----------
         string : `str`, required
 
-        airmass_limit : `float`, default : None
+        airmass_limit : `float`, default : `None`
 
-        formula : `str`, default : None
+        formula : `str`, default : `None`
 
-        weight : `float`, default : None
+        weight : `float`, default : `None`
 
         """
         logger.debug(
