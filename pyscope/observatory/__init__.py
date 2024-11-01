@@ -6,6 +6,7 @@ to all motorized observatory telescopes in the future.
 Operations include managing telescopes, cameras, focuser, filter wheels, domes, and other
 devices commonly found in an observatory setup.
 """
+
 # isort: skip_file
 
 import logging
