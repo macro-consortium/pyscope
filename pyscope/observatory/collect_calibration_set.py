@@ -126,39 +126,39 @@ def collect_calibration_set_cli(
 
     Parameters
     ----------
-    observatory : str
+    observatory : `str`
 
-    camera : str, default="ccd"
+    camera : `str`, default="ccd"
 
-    readouts : list, default=[None]
+    readouts : `list`, default=[`None`]
 
-    binnings : list, default=[None]
+    binnings : `list`, default=[`None`]
 
-    repeat : int, default=1
+    repeat : `int`, default=1
 
-    dark_exposures : list, default=[]
+    dark_exposures : `list`, default=[]
 
-    filters : list, default=[]
+    filters : `list`, default=[]
 
-    filter_exposures : list, default=[]
+    filter_exposures : `list`, default=[]
 
-    filter_brightness : list, default=None
+    filter_brightness : `list`, default=`None`
 
-    home_telescope : bool, default=False
+    home_telescope : `bool`, default=`False`
 
-    target_counts : int, default=None
+    target_counts : `int`, default=`None`
 
-    check_cooler : bool, default=True
+    check_cooler : `bool`, default=`True`
 
-    tracking : bool, default=True
+    tracking : `bool`, default=`True`
 
-    dither_radius : float, default=0
+    dither_radius : `float`, default=0
 
-    save_path : str, default="./temp/"
+    save_path : `str`, default="./temp/"
 
-    new_dir : bool, default=True
+    new_dir : `bool`, default=`True`
 
-    verbose : int, default=0
+    verbose : `int`, default=0
 
     """
 
