@@ -1,3 +1,11 @@
+"""
+The `observatory` module provides classes and functions for controlling and automating
+observatory hardware and operations. This currently includes support only for the
+`Robert L. Mutel Telescope` at the University of Iowa, but is designed to be extensible
+to all motorized observatory telescopes in the future.
+Operations include managing telescopes, cameras, focuser, filter wheels, domes, and other
+devices commonly found in an observatory setup.
+"""
 # isort: skip_file
 
 import logging
