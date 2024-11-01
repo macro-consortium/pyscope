@@ -230,71 +230,71 @@ def avg_fits_ccdproc_cli(
 
     Parameters
     ----------
-    outfile : str
+    outfile : `str`
         path to save combined image.
 
-    fnames : list
+    fnames : `list`
         list of image paths to combine.
 
-    method="median" : str, optional
+    method="median" : `str`, optional
         method to use for averaging images. Options are "median", "average", "sum"
 
-    datatype : np.datatype, optional
-        intermediate and resulting dtype for combined CCDs, by default np.uint16
+    datatype : `numpy.dtype`, optional
+        intermediate and resulting dtype for combined CCDs, by default `numpy.uint16`
 
-    weights : np.ndarray, optional
-        Weights to be used when combining images. An array with the weight values. The dimensions should match the the dimensions of the data arrays being combined., by default None
+    weights : `numpy.ndarray`, optional
+        Weights to be used when combining images. An array with the weight values. The dimensions should match the the dimensions of the data arrays being combined; by default `None`
 
-    scale : callable or np.ndarray, optional
-        Scaling factor to be used when combining images. Images are multiplied by scaling prior to combining them. Scaling may be either a function, which will be applied to each image to determine the scaling factor, or a list or array whose length is the number of images in the Combiner, by default None
+    scale : `callable` or `numpy.ndarray`, optional
+        Scaling factor to be used when combining images. Images are multiplied by scaling prior to combining them. Scaling may be either a function, which will be applied to each image to determine the scaling factor, or a `list` or array whose length is the number of images in the Combiner, by default `None`
 
-    mem_limit : float, optional
+    mem_limit : `float`, optional
         Maximum memory which should be used while combining (in bytes), by default 16000000000.0
 
-    clip_extrema : bool, optional
-        Set to True if you want to mask pixels using an IRAF-like minmax clipping algorithm. The algorithm will mask the lowest nlow values and the highest nhigh values before combining the values to make up a single pixel in the resulting image. For example, the image will be a combination of Nimages-low-nhigh pixel values instead of the combination of Nimages. Parameters below are valid only when clip_extrema is set to True, by default False
+    clip_extrema : `bool`, optional
+        Set to `True` if you want to mask pixels using an IRAF-like minmax clipping algorithm. The algorithm will mask the lowest nlow values and the highest nhigh values before combining the values to make up a single pixel in the resulting image. For example, the image will be a combination of Nimages-low-nhigh pixel values instead of the combination of Nimages. Parameters below are valid only when clip_extrema is set to `True`, by default `False`
 
-    nlow : int, optional
+    nlow : `int`, optional
         Number of low values to reject from the combination, by default 1
 
-    nhigh : int, optional
+    nhigh : `int`, optional
         Number of high values to reject from the combination, by default 1
 
-    minmax_clip : bool, optional
-        Set to True if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining, by default False
+    minmax_clip : `bool`, optional
+        Set to `True` if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining, by default `False`
 
-    minmax_clip_min : float, optional
-        All pixels with values below min_clip will be masked, by default None
+    minmax_clip_min : `float`, optional
+        All pixels with values below min_clip will be masked, by default `None`
 
-    minmax_clip_max : flaot, optional
-        All pixels with values above min_clip will be masked, by default None
+    minmax_clip_max : `float`, optional
+        All pixels with values above min_clip will be masked, by default `None`
 
-    sigma_clip : bool, optional
-        Set to True if you want to reject pixels which have deviations greater than those set by the threshold values. The algorithm will first calculated a baseline value using the function specified in func and deviation based on sigma_clip_dev_func and the input data array. Any pixel with a deviation from the baseline value greater than that set by sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected, by default False
+    sigma_clip : `bool`, optional
+        Set to `True` if you want to reject pixels which have deviations greater than those set by the threshold values. The algorithm will first calculated a baseline value using the function specified in func and deviation based on sigma_clip_dev_func and the input data array. Any pixel with a deviation from the baseline value greater than that set by sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected, by default `False`
 
-    sigma_clip_low_thresh : int, optional
-        Threshold for rejecting pixels that deviate below the baseline value. If negative value, then will be convert to a positive value. If None, no rejection will be done based on low_thresh, by default 3
+    sigma_clip_low_thresh : `int`, optional
+        Threshold for rejecting pixels that deviate below the baseline value. If negative value, then will be convert to a positive value. If `None`, no rejection will be done based on low_thresh, by default 3
 
-    sigma_clip_high_thresh : int, optional
-        Threshold for rejecting pixels that deviate above the baseline value. If None, no rejection will be done based on high_thresh, by default 3
+    sigma_clip_high_thresh : `int`, optional
+        Threshold for rejecting pixels that deviate above the baseline value. If `None`, no rejection will be done based on high_thresh, by default 3
 
-    sigma_clip_func : callable, optional
-        The statistic or callable function/object used to compute the center value for the clipping. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanmean) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'median', by default None
+    sigma_clip_func : `callable`, optional
+        The statistic or callable function/object used to compute the center value for the clipping. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., `numpy.nanmean`) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'median', by default `None`
 
-    sigma_clip_dev_func : callable, optional
-        The statistic or callable function/object used to compute the standard deviation about the center value. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanstd) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'std', by default None
+    sigma_clip_dev_func : `callable`, optional
+        The statistic or callable function/object used to compute the standard deviation about the center value. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., `numpy.nanstd`) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'std', by default `None`
 
-    combine_uncertainty_function : callable, optional
-        If None use the default uncertainty func when using average, median or sum combine, otherwise use the function provided, by default None
+    combine_uncertainty_function : `callable`, optional
+        If `None` use the default uncertainty func when using average, median or sum combine, otherwise use the function provided, by default `None`
 
-    overwrite_output : bool, optional
-        If output_file is specified, this is passed to the astropy.nddata.fits_ccddata_writer under the keyword overwrite; has no effect otherwise., by default False
+    overwrite_output : `bool`, optional
+        If `output_file` is specified, this is passed to the `astropy.nddata.fits_ccddata_writer` under the keyword overwrite; has no effect otherwise., by default `False`
 
-    unit : str, optional
+    unit : `str`, optional
         unit for CCDData objects, by default 'adu'
 
-    verbose : bool, optional
-        verbosity of logger, by default False
+    verbose : `bool`, optional
+        verbosity of logger, by default `False`
     """
 
     if verbose:
