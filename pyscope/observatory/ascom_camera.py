@@ -11,6 +11,20 @@ logger = logging.getLogger(__name__)
 
 class ASCOMCamera(ASCOMDevice, Camera):
     def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        """
+        Provides the `ASCOMCamera` class for controlling `ASCOM <https://ascom-standards.org/About/Overview.htm>`_-compatible cameras.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier. This can be the ProgID or the device number.
+        alpaca : `bool`, default : `False`, optional
+            Whether to use the Alpaca protocol for Alpaca-compatible devices.
+        device_number : `int`, default : 0, optional
+            The device number. This is only used if the identifier is a ProgID.
+        protocol : `str`, default : `http`, optional
+            The protocol to use for Alpaca-compatible devices.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -25,6 +39,18 @@ class ASCOMCamera(ASCOMDevice, Camera):
         self._camera_time = True
 
     def AbortExposure(self):
+        """
+        Abort the current exposure immediately and return camera to idle.
+        See `CanAbortExposure` for support and possible reasons to abort.
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._device.AbortExposure()
 
@@ -59,22 +85,87 @@ class ASCOMCamera(ASCOMDevice, Camera):
             self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
+        """
+        Moves scope in the given direction for the given interval or time at the rate
+        given by the :py:meth:`ASCOMTelescope.GuideRateRightAscension` and :py:meth:`ASCOMTelescope.GuideRateDeclination` properties.
+
+        Parameters
+        ----------
+        Direction : `GuideDirections <https://ascom-standards.org/help/developer/html/T_ASCOM_DeviceInterface_GuideDirections.htm>`_
+            The direction in which to move the scope.
+            The corresponding values are as follows:
+
+                * 0 : North or +declination.
+                * 1 : South or -declination.
+                * 2 : East or +right ascension.
+                * 3 : West or -right ascension.
+        
+        Duration : `int`
+            The duration of the guide pulse in milliseconds.
+        
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Method returns immediately if hardware supports back-to-back guiding e.g. dual-axis moving.
+        Otherwise returns only after the guide pulse has completed.
+        """
         logger.debug(f"ASCOMCamera.PulseGuide({Direction}, {Duration}) called")
         self._device.PulseGuide(Direction, Duration)
 
     def StartExposure(self, Duration, Light):
+        """
+        Starts an exposure with a given duration and light status. Check `ImageReady` for operation completion.
+        
+        Parameters
+        ----------
+        Duration : `float`
+            The exposure duration in seconds. Can be zero if `Light` is `False`.
+        
+        Light : `bool`
+            Whether the exposure is a light frame (`True`) or a dark frame (`False`).
+        
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        `Duration` can be shorter than `ExposureMin` if used for dark frame or bias exposure.
+        Bias frame also allows a `Duration` of zero.
+        """
         logger.debug(f"ASCOMCamera.StartExposure({Duration}, {Light}) called")
         self._last_exposure_duration = Duration
         self._last_exposure_start_time = str(Time.now())
         self._device.StartExposure(Duration, Light)
 
     def StopExposure(self):
+        """
+        Stops the current exposure gracefully.
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Readout process will initiate if stop is called during an exposure.
+        Ignored if readout is already in process.
+        """
         logger.debug(f"ASCOMCamera.StopExposure() called")
         self._device.StopExposure()
 
     @property
     def BayerOffsetX(self):  # pragma: no cover
         """
+        The X/column offset of the Bayer filter array matrix. (`int`)
+
         .. warning::
             This property is not implemented in the ASCOM Alpaca protocol.
         """
@@ -84,6 +175,8 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def BayerOffsetY(self):  # pragma: no cover
         """
+        The Y/row offset of the Bayer filter array matrix. (`int`)
+
         .. warning::
             This property is not implemented in the ASCOM Alpaca protocol.
         """
@@ -92,6 +185,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def BinX(self):
+        """
+        The binning factor in the X/column direction. (`int`)
+
+        Default is 1 after camera connection is established.
+        """
         logger.debug(f"ASCOMCamera.BinX property called")
         return self._device.BinX
 
@@ -102,6 +200,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def BinY(self):
+        """
+        The binning factor in the Y/row direction. (`int`)
+        
+        Default is 1 after camera connection is established.
+        """
         logger.debug(f"ASCOMCamera.BinY property called")
         return self._device.BinY
 
@@ -112,66 +215,115 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def CameraState(self):
+        """
+        The current operational state of the camera. (`CameraStates <https://ascom-standards.org/help/developer/html/P_ASCOM_DriverAccess_Camera_CameraState.htm>`_)
+        
+        Can be interpreted as `int` values in the following logic:
+
+            * 0 : Camera is idle and ready to start an exposure.
+            * 1 : Camera exposure started but waiting (i.e. shutter, trigger, filter wheel, etc.).
+            * 2 : Camera exposure in progress.
+            * 3 : CCD readout in progress.
+            * 4 : Data downloading to PC.
+            * 5 : Camera in error condition, cannot continue.
+        """
         logger.debug(f"ASCOMCamera.CameraState property called")
         return self._device.CameraState
 
     @property
     def CameraXSize(self):
+        """The width of the CCD chip in unbinned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.CameraXSize property called")
         return self._device.CameraXSize
 
     @property
     def CameraYSize(self):
+        """The height of the CCD chip in unbinned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.CameraYSize property called")
         return self._device.CameraYSize
 
     @property
     def CameraTime(self):
+        """Whether the camera supports the CameraTime property. (`bool`)"""
         logger.debug(f"ASCOMCamera.CameraTime property called")
         return self._camera_time
 
     @property
     def CanAbortExposure(self):
+        """
+        Whether the camera can abort exposures imminently. (`bool`)
+        
+        Aborting is not synonymous with stopping an exposure.
+        Aborting immediately stops the exposure and discards the data.
+        Used for urgent situations such as errors or temperature concerns.
+        See `CanStopExposure` for gracious cancellation of an exposure.
+        """
         logger.debug(f"ASCOMCamera.CanAbortExposure property called")
         return self._device.CanAbortExposure
 
     @property
     def CanAsymmetricBin(self):
+        """
+        Whether the camera supports asymmetric binning such that
+        `BinX` != `BinY`. (`bool`)
+        """
         logger.debug(f"ASCOMCamera.CanAsymmetricBin property called")
         return self._device.CanAsymmetricBin
 
     @property
     def CanFastReadout(self):
+        """Whether the camera supports fast readout mode. (`bool`)"""
         logger.debug(f"ASCOMCamera.CanFastReadout property called")
         return self._device.CanFastReadout
 
     @property
     def CanGetCoolerPower(self):
+        """Whether the camera's cooler power setting can be read. (`bool`)"""
         logger.debug(f"ASCOMCamera.CanGetCoolerPower property called")
         return self._device.CanGetCoolerPower
 
     @property
     def CanPulseGuide(self):
+        """
+        Whether the camera supports pulse guiding,
+        see `definition <https://ascom-standards.org/Help/Developer/html/M_ASCOM_DriverAccess_Telescope_PulseGuide.htm>`_. (`bool`)
+        """
         logger.debug(f"ASCOMCamera.CanPulseGuide property called")
         return self._device.CanPulseGuide
 
     @property
     def CanSetCCDTemperature(self):
+        """
+        Whether the camera's CCD temperature can be set. (`bool`)
+        
+        A false means either the camera uses an open-loop cooling system or
+        does not support adjusting the CCD temperature from software.
+        """
         logger.debug(f"ASCOMCamera.CanSetCCDTemperature property called")
         return self._device.CanSetCCDTemperature
 
     @property
     def CanStopExposure(self):
+        """
+        Whether the camera can stop exposures graciously. (`bool`)
+        
+        Stopping is not synonymous with aborting an exposure.
+        Stopping allows the camera to complete the current exposure cycle, then stop.
+        Image data up to the point of stopping is typically still available.
+        See `CanAbortExposure` for instant cancellation of an exposure.
+        """
         logger.debug(f"ASCOMCamera.CanStopExposure property called")
         return self._device.CanStopExposure
 
     @property
     def CCDTemperature(self):
+        """The current CCD temperature in degrees Celsius. (`float`)"""
         logger.debug(f"ASCOMCamera.CCDTemperature property called")
         return self._device.CCDTemperature
 
     @property
     def CoolerOn(self):
+        """Whether the camera's cooler is on. (`bool`)"""
         logger.debug(f"ASCOMCamera.CoolerOn property called")
         return self._device.CoolerOn
 
@@ -182,31 +334,53 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def CoolerPower(self):
+        """The current cooler power level as a percentage. (`float`)"""
         logger.debug(f"ASCOMCamera.CoolerPower property called")
         return self._device.CoolerPower
 
     @property
     def ElectronsPerADU(self):
+        """Gain of the camera in photoelectrons per analog-to-digital-unit. (`float`)"""
         logger.debug(f"ASCOMCamera.ElectronsPerADU() property called")
         return self._device.ElectronsPerADU
 
     @property
     def ExposureMax(self):
+        """The maximum exposure duration supported by `StartExposure` in seconds. (`float`)"""
         logger.debug(f"ASCOMCamera.ExposureMax property called")
         return self._device.ExposureMax
 
     @property
     def ExposureMin(self):
+        """
+        The minimum exposure duration supported by `StartExposure` in seconds. (`float`)
+        
+        Non-zero number, except for bias frame acquisition, where an exposure < ExposureMin
+        may be possible.
+        """
         logger.debug(f"ASCOMCamera.ExposureMin property called")
         return self._device.ExposureMin
 
     @property
     def ExposureResolution(self):
+        """
+        The smallest increment in exposure duration supported by `StartExposure`. (`float`)
+        
+        This property could be useful if one wants to implement a 'spin control' interface
+        for fine-tuning exposure durations.
+        
+        Providing a `Duration` to `StartExposure` that is not a multiple of `ExposureResolution`
+        will choose the closest available value.
+
+        A value of 0.0 indicates no minimum resolution increment, except that imposed by the
+        floating-point precision of `float` itself.
+        """
         logger.debug(f"ASCOMCamera.ExposureResolution property called")
         return self._device.ExposureResolution
 
     @property
     def FastReadout(self):
+        """Whether the camera is in fast readout mode. (`bool`)"""
         logger.debug(f"ASCOMCamera.FastReadout property called")
         return self._device.FastReadout
 
@@ -217,11 +391,30 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def FullWellCapacity(self):
+        """
+        The full well capacity of the camera in electrons with the
+        current camera settings. (`float`)
+        """
         logger.debug(f"ASCOMCamera.FullWellCapacity property called")
         return self._device.FullWellCapacity
 
     @property
     def Gain(self):
+        """
+        The camera's gain OR index of the selected camera gain description.
+        See below for more information. (`int`)
+        
+        Represents either the camera's gain in photoelectrons per analog-to-digital-unit,
+        or the 0-index of the selected camera gain description in the `Gains` array.
+
+        Depending on a camera's capabilities, the driver can support none, one, or both
+        representation modes, but only one mode will be active at a time.
+
+        To determine operational mode, read the `GainMin`, `GainMax`, and `Gains` properties.
+
+        `ReadoutMode` may affect the gain of the camera, so it is recommended to set
+        driver behavior to ensure no conflictions occur if both `Gain` and `ReadoutMode` are used.
+        """
         logger.debug(f"ASCOMCamera.Gain property called")
         return self._device.Gain
 
@@ -232,26 +425,44 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def GainMax(self):
+        """The maximum gain value supported by the camera. (`int`)"""
         logger.debug(f"ASCOMCamera.GainMax property called")
         return self._device.GainMax
 
     @property
     def GainMin(self):
+        """The minimum gain value supported by the camera. (`int`)"""
         logger.debug(f"ASCOMCamera.GainMin property called")
         return self._device.GainMin
 
     @property
     def Gains(self):
+        """
+        0-indexed array of camera gain descriptions supported by the camera. (`list` of `str`)
+        
+        Depending on implementation, the array may contain ISOs, or gain names.
+        """
         logger.debug(f"ASCOMCamera.Gains property called")
         return self._device.Gains
 
     @property
     def HasShutter(self):
+        """
+        Whether the camera has a mechanical shutter. (`bool`)
+        
+        If `False`, i.e. the camera has no mechanical shutter, the `StartExposure`
+        method will ignore the `Light` parameter.
+        """
         logger.debug(f"ASCOMCamera.HasShutter property called")
         return self._device.HasShutter
 
     @property
     def HeatSinkTemperature(self):
+        """
+        The current heat sink temperature in degrees Celsius. (`float`)
+        
+        The readout is only valid if `CanSetCCDTemperature` is `True`.
+        """
         logger.debug(f"ASCOMCamera.HeatSinkTemperature property called")
         return self._device.HeatSinkTemperature
 
@@ -304,16 +515,27 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def ImageReady(self):
+        """
+        Whether the camera has completed an exposure and the image is ready to be downloaded. (`bool`)
+        
+        If `False`, the `ImageArray` property will exit with an exception.
+        """
         logger.debug(f"ASCOMCamera.ImageReady property called")
         return self._device.ImageReady
 
     @property
     def IsPulseGuiding(self):
+        """Whether the camera is currently pulse guiding. (`bool`)"""
         logger.debug(f"ASCOMCamera.IsPulseGuiding property called")
         return self._device.IsPulseGuiding
 
     @property
     def LastExposureDuration(self):
+        """
+        The duration of the last exposure in seconds. (`float`)
+        
+        May differ from requested exposure time due to shutter latency, camera timing accuracy, etc.
+        """
         logger.debug(f"ASCOMCamera.LastExposureDuration property called")
         last_exposure_duration = self._device.LastExposureDuration
         if last_exposure_duration is None or last_exposure_duration == 0:
@@ -323,6 +545,11 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def LastExposureStartTime(self):
+        """
+        The actual last exposure start time in FITS CCYY-MM-DDThh:mm:ss[.sss...] format. (`str`)
+        
+        The date string represents UTC time.
+        """
         logger.debug(f"ASCOMCamera.LastExposureStartTime property called")
         last_time = self._device.LastExposureStartTime
         """ This code is needed to handle the case of the ASCOM ZWO driver
@@ -346,21 +573,33 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def MaxADU(self):
+        """The maximum ADU value the camera is capable of producing. (`int`)"""
         logger.debug(f"ASCOMCamera.MaxADU property called")
         return self._device.MaxADU
 
     @property
     def MaxBinX(self):
+        """
+        The maximum allowed binning factor in the X/column direction. (`int`)
+        
+        Value equivalent to `MaxBinY` if `CanAsymmetricBin` is `False`.
+        """
         logger.debug(f"ASCOMCamera.MaxBinX property called")
         return self._device.MaxBinX
 
     @property
     def MaxBinY(self):
+        """
+        The maximum allowed binning factor in the Y/row direction. (`int`)
+
+        Value equivalent to `MaxBinX` if `CanAsymmetricBin` is `False`.
+        """
         logger.debug(f"ASCOMCamera.MaxBinY property called")
         return self._device.MaxBinY
 
     @property
     def NumX(self):
+        """The width of the subframe in binned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.NumX property called")
         return self._device.NumX
 
@@ -371,6 +610,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def NumY(self):
+        """The height of the subframe in binned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.NumY property called")
         return self._device.NumY
 
@@ -381,6 +621,21 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def Offset(self):
+        """
+        The camera's offset OR index of the selected camera offset description.
+        See below for more information. (`int`)
+        
+        Represents either the camera's offset, or the 0-index of the selected
+        camera offset description in the `Offsets` array.
+
+        Depending on a camera's capabilities, the driver can support none, one, or both
+        representation modes, but only one mode will be active at a time.
+
+        To determine operational mode, read the `OffsetMin`, `OffsetMax`, and `Offsets` properties.
+
+        `ReadoutMode` may affect the gain of the camera, so it is recommended to set
+        driver behavior to ensure no conflictions occur if both `Gain` and `ReadoutMode` are used.
+        """
         logger.debug(f"ASCOMCamera.Offset property called")
         return self._device.Offset
 
@@ -391,36 +646,52 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def OffsetMax(self):
+        """The maximum offset value supported by the camera. (`int`)"""
         logger.debug(f"ASCOMCamera.OffsetMax property called")
         return self._device.OffsetMax
 
     @property
     def OffsetMin(self):
+        """The minimum offset value supported by the camera. (`int`)"""
         logger.debug(f"ASCOMCamera.OffsetMin property called")
         return self._device.OffsetMin
 
     @property
     def Offsets(self):
+        """The array of camera offset descriptions supported by the camera. (`list` of `str`)"""
         logger.debug(f"ASCOMCamera.Offsets property called")
         return self._device.Offsets
 
     @property
     def PercentCompleted(self):
+        """
+        The percentage of completion of the current operation. (`int`)
+        
+        As opposed to `CoolerPower`, this is represented as an integer
+        s.t. 0 <= PercentCompleted <= 100 instead of float.
+        """
         logger.debug(f"ASCOMCamera.PercentCompleted property called")
         return self._device.PercentCompleted
 
     @property
     def PixelSizeX(self):
+        """The width of the CCD chip pixels in microns. (`float`)"""
         logger.debug(f"ASCOMCamera.PixelSizeX property called")
         return self._device.PixelSizeX
 
     @property
     def PixelSizeY(self):
+        """The height of the CCD chip pixels in microns. (`float`)"""
         logger.debug(f"ASCOMCamera.PixelSizeY property called")
         return self._device.PixelSizeY
 
     @property
     def ReadoutMode(self):
+        """
+        Current readout mode of the camera as an index. (`int`)
+        
+        The index corresponds to the `ReadoutModes` array.
+        """
         logger.debug(f"ASCOMCamera.ReadoutMode property called")
         return self._device.ReadoutMode
 
@@ -431,21 +702,45 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def ReadoutModes(self):
+        """The array of camera readout mode descriptions supported by the camera. (`list` of `str`)"""
         logger.debug(f"ASCOMCamera.ReadoutModes property called")
         return self._device.ReadoutModes
 
     @property
     def SensorName(self):
+        """
+        The name of the sensor in the camera. (`str`)
+        
+        The name is the manufacturer's data sheet part number.
+        """
         logger.debug(f"ASCOMCamera.SensorName property called")
         return self._device.SensorName
 
     @property
     def SensorType(self):
+        """
+        The type of color information the camera sensor captures. (`SensorType <https://ascom-standards.org/help/developer/html/T_ASCOM_DeviceInterface_SensorType.htm>`_)
+        
+        The default representations are as follows:
+
+            * 0 : Monochrome with no Bayer encoding.
+            * 1 : Color without needing Bayer decoding.
+            * 2 : RGGB encoded Bayer array.
+            * 3 : CMYG encoded Bayer array.
+            * 4 : CMYG2 encoded Bayer array.
+            * 5 : LRGB Kodak TRUESENSE encoded Bayer array.
+        """
         logger.debug(f"ASCOMCamera.SensorType property called")
         return self._device.SensorType
 
     @property
     def SetCCDTemperature(self):
+        """
+        The set-target CCD temperature in degrees Celsius. (`float`)
+        
+        Contrary to `CCDTemperature`, which is the current CCD temperature,
+        this property is the target temperature for the cooler to reach.
+        """
         logger.debug(f"ASCOMCamera.SetCCDTemperature property called")
         return self._device.SetCCDTemperature
 
@@ -456,6 +751,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def StartX(self):
+        """The set X/column position of the start subframe in binned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.StartX property called")
         return self._device.StartX
 
@@ -466,6 +762,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def StartY(self):
+        """The set Y/row position of the start subframe in binned pixels. (`int`)"""
         logger.debug(f"ASCOMCamera.StartY property called")
         return self._device.StartY
 
@@ -476,6 +773,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def SubExposureDuration(self):
+        """The duration of the subframe exposure interval in seconds. (`float`)"""
         logger.debug(f"ASCOMCamera.SubExposureDuration property called")
         return self._device.SubExposureDuration
 
