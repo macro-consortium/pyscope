@@ -6,6 +6,20 @@ from ._docstring_inheritee import _DocstringInheritee
 class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
+        """
+        Abstract class for camera devices.
+
+        The class defines the interface for camera devices, including methods for controlling
+        exposures, guiding, and retrieving camera properties. Subclasses must implement
+        the abstract methods defined in this class.
+
+        Parameters
+        ----------
+        *args : `tuple`
+            Variable length argument list.
+        **kwargs : `dict`
+            Arbitrary keyword arguments.
+        """
         pass
 
     @abstractmethod
