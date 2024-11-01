@@ -39,18 +39,6 @@ class ASCOMCamera(ASCOMDevice, Camera):
         self._camera_time = True
 
     def AbortExposure(self):
-        """
-        Abort the current exposure immediately and return camera to idle.
-        See `CanAbortExposure` for support and possible reasons to abort.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
         logger.debug(f"ASCOMCamera.AbortExposure() called")
         self._device.AbortExposure()
 

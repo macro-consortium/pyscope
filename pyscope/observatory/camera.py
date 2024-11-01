@@ -10,6 +10,18 @@ class Camera(ABC, metaclass=_DocstringInheritee):
 
     @abstractmethod
     def AbortExposure(self):
+        """
+        Abort the current exposure immediately and return camera to idle.
+        See `CanAbortExposure` for support and possible reasons to abort.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
         pass
 
     @abstractmethod
