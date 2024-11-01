@@ -84,19 +84,19 @@ def avg_fits_cli(
     fnames : path
         path of directory of images to average.
 
-    pre_normalize : bool, default=False
+    pre_normalize : `bool`, default=`False`
         Normalize each image by its own mean before combining. This mode is most useful for combining sky flats.
 
-    mode : str, default="0"
+    mode : `str`, default="0"
         Mode to use for averaging images (0 = median, 1 = mean).
 
-    datatype : str, default="float32"
+    datatype : `str`, default="float32"
         Data type to save out the averaged image. If pre_normalize is True, the data type will be float64.
 
     outfile : path
         Path to save averaged image. If not specified, the averaged image will be saved in the same directory as the input images with the first image's name and _avg.fts appended to it.
 
-    verbose : int, default=0
+    verbose : `int`, default=0
         Print verbose output.
 
     Returns
