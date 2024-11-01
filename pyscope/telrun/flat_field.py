@@ -49,8 +49,8 @@ class FlatField(LightField):
             that the reference epoch and the proper motions are set. The default is the
             `CoverCalibrator` which is a pre-configured location to take flat field images.
 
-        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
-            The instrument configuration to use for the observation. If None, the
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
+            The instrument configuration to use for the observation. If `None`, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
         dither : `~astropy.units.Quantity`, default : 0 arcsec
@@ -119,9 +119,9 @@ class FlatField(LightField):
         ----------
         string : `str`, required
 
-        target : `~astropy.coordinates.SkyCoord`, default : None
+        target : `~astropy.coordinates.SkyCoord`, default : `None`
 
-        config : `~pyscope.telrun.Config`, default : None
+        config : `~pyscope.telrun.Config`, default : `None`
 
         dither : `~astropy.units.Quantity`, default : 0 arcsec
 

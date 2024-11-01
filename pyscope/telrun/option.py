@@ -31,10 +31,10 @@ class Option:
         instruments : `list` of `str`, default : []
             The list of instruments used by the `~pyscope.telrun.Option`. This can be used to sort options by instrument.
 
-        current_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : None
+        current_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : `None`
             The current value of the `~pyscope.telrun.Option`. This is the value that will be used in the observation if the `~pyscope.telrun.Option` is not changed.
 
-        default_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : None
+        default_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : `None`
             The default value of the `~pyscope.telrun.Option`. This is the value that will be used if the `~pyscope.telrun.Option` is not set by the user.
 
         description : `str`, default : ""
@@ -43,7 +43,7 @@ class Option:
         type : `str`, default : "str"
             The type of the `~pyscope.telrun.Option`. This can be one of "str", "int", "float", "bool", "list", or "dict".
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the `~pyscope.telrun.Option`. If `type="list"` or `type="dict"`, requested values
             will be validated against `vlist` or `vdict` respectively. If `type="int"` or `type="float"`, the value will be validated
             against `min` and `max` if they are set. If `type="bool"`, the value will be converted to a `bool`. If `type="str"`, the
@@ -84,17 +84,17 @@ class Option:
         ----------
         string : `str`, required
 
-        name : `str`, default : None
+        name : `str`, default : `None`
 
-        instruments : `list` of `str`, default : None
+        instruments : `list` of `str`, default : `None`
 
-        current_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : None
+        current_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : `None`
 
-        default_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : None
+        default_value : `str`, `int`, `float`, `bool`, `list`, `dict`, default : `None`
 
-        description : `str`, default : None
+        description : `str`, default : `None`
 
-        type : `str`, default : None
+        type : `str`, default : `None`
 
         **kwargs : `dict`, default : {}
 

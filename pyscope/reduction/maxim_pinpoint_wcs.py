@@ -28,7 +28,7 @@ def maxim_pinpoint_wcs_cli(filepath):
 
     Parameters
     ----------
-    filepath : str
+    filepath : `str`
 
     Returns
     -------

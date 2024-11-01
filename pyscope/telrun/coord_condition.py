@@ -91,17 +91,17 @@ class CoordinateCondition(BoundaryCondition):
         ----------
         string : `str`, required
 
-        coord_type : `str`, default : None
+        coord_type : `str`, default : `None`
 
-        coord_idx : `int`, default : None
+        coord_idx : `int`, default : `None`
 
-        min_val : `~astropy.units.Quantity`, default : None
+        min_val : `~astropy.units.Quantity`, default : `None`
 
-        max_val : `~astropy.units.Quantity`, default : None
+        max_val : `~astropy.units.Quantity`, default : `None`
 
-        score_type : `str`, default : None
+        score_type : `str`, default : `None`
 
-        ref_coord : `~astropy.coordinates.SkyCoord`, default : None
+        ref_coord : `~astropy.coordinates.SkyCoord`, default : `None`
 
         **kwargs : `dict`, default : {}
 

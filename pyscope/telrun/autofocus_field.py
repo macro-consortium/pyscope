@@ -139,9 +139,9 @@ class AutofocusField(LightField):
         ----------
         string : `str`, required
 
-        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
 
-        repositioning : 2-tuple of `~astropy.units.Quantity`, default : None
+        repositioning : 2-tuple of `~astropy.units.Quantity`, default : `None`
 
         dither : `~astropy.units.Quantity`, default : 0 arcsec
 

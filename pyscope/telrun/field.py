@@ -21,11 +21,11 @@ class Field:
             The target field to observe. If the target has proper motion, ensure
             that the reference epoch and the proper motions are set.
 
-        config : `~pyscope.telrun.InstrumentConfiguration`, default : None
-            The instrument configuration to use for the observation. If None, the
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
+            The instrument configuration to use for the observation. If `None`, the
             default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the instrument for the observation.
 
         """

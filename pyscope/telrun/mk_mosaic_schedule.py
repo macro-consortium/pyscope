@@ -156,55 +156,55 @@ def mk_mosaic_schedule_cli(
 
     Parameters
     ----------
-    source : str
+    source : `str`
         Source name to resolve coordinates or a pair of ICRS ra,dec coordinates
 
-    filters : str or tuple of str
+    filters : `str` or `tuple` of `str`
         Filters to use. Multiple filters can be specified by a tuple, e.g. ('b', 'g', 'r')
 
-    exp_times : float or tuple of float
+    exp_times : `float` or `tuple` of `float`
         Exposure times to use. Multiple exposure times can be specified by a tuple, e.g. (10, 20)
 
-    observer : tuple of str
+    observer : `tuple` of `str`
         Observer name and 3-character code, e.g. ('Walter Golay', 'XWG')
 
-    overlap : float, default=5
+    overlap : `float`, default=5
         Overlap between pointings (arcmin).
 
-    fov : tuple of float, default=(20, 20)
+    fov : `tuple` of `float`, default=(20, 20)
         Field of view (arcmin).
 
-    grid_size : tuple of int, default=(3, 3)
+    grid_size : `tuple` of `int`, default=(3, 3)
         Grid size (nrows, ncols).
 
-    n_exp : int, default=1
+    n_exp : `int`, default=1
         Number of exposures per filter and exposure time.
 
-    readout : int, default=0
+    readout : `int`, default=0
         Readout mode as specified by the camera.
 
-    binning : str, default='1x1'
+    binning : `str`, default='1x1'
         Binning mode.
 
-    ut_start : str, optional
+    ut_start : `str`, optional
         UT start time of the observation in the ISOT format. If none given,
         the object will be scheduled for the best possible time.
 
-    comment : str, optional
+    comment : `str`, optional
         Comment to be added to the schedule.
 
-    write : str, optional
+    write : `str`, optional
         Write a .sch file with the given name. If none given from the command line,
         a name is generated from the observing code. Otherwise, a file will not
         be written and the ObservingBlock set will be returned.
 
-    verbose : int, {-1, 0, 1}, default=-1
+    verbose : `int`, {-1, 0, 1}, default=-1
         Verbosity level. 0: no debug messages, 1: debug messages. Default set to -1
         for API use and 0 for CLI use.
 
     Returns
     -------
-    obsblocks : `~astroplan.ObservingBlock` tuple or None
+    obsblocks : `~astroplan.ObservingBlock` `tuple` or `None`
         Set of ObservingBlocks for the mosaic observation.
 
     Raises

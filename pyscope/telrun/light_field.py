@@ -75,7 +75,7 @@ class LightField(Field):
             constraints for this field. The `~pyscope.telrun.Optimizer` inside the `~pyscope.telrun.Scheduler`
             will use the `~pyscope.telrun.BoundaryCondition` objects to determine the best possible schedule.
 
-        **kwargs : dict, default : {}
+        **kwargs : `dict`, default : {}
             Additional keyword arguments to pass to the instrument for the observation.
 
         """
@@ -135,7 +135,7 @@ class LightField(Field):
 
         conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default : []
 
-        kwargs : dict, default : {}
+        kwargs : `dict`, default : {}
 
         Returns
         -------
