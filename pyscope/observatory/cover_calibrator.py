@@ -86,9 +86,9 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def Brightness(self):
         """
-        The current calibrator brightness in the range of 0 to `MaxBrightness`.
+        The current calibrator brightness in the range of 0 to `MaxBrightness`. (`int`)
         
-        The brightness must be 0 if the `CalibratorState` is not off.
+        The brightness must be 0 if the `CalibratorState` is `Off`.
         """
         pass
 
@@ -96,11 +96,12 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def CalibratorState(self):
         """
-        The state of the calibrator device, if present, otherwise indicate that it does not exist.
+        The state of the calibrator device, if present, otherwise indicate that it does not exist. (`enum`)
 
         When the calibrator is changing the state must indicate that the calibrator is busy.
         If the device is unaware of the calibrator state, such as if hardware doesn't report the state and the calibrator was just powered on, it must indicate as such.
         Users should be able to carry out commands like `CalibratorOn` and `CalibratorOff` regardless of this unknown state.
+        Enum values representing states is determined by the device manufacturer or driver author.
         """
         pass
 
@@ -108,7 +109,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def CoverState(self):
         """
-        The state of the cover device, if present, otherwise indicate that it does not exist.
+        The state of the cover device, if present, otherwise indicate that it does not exist. (`enum`)
         
         When the cover is changing the state must indicate that the cover is busy.
         If the device is unaware of the cover state, such as if hardware doesn't report the state and the cover was just powered on, it must indicate as such.
