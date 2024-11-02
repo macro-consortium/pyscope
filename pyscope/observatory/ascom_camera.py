@@ -22,7 +22,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
             Whether to use the Alpaca protocol for Alpaca-compatible devices.
         device_number : `int`, default : 0, optional
             The device number. This is only used if the identifier is a ProgID.
-        protocol : `str`, default : `http`, optional
+        protocol : `str`, default : "http", optional
             The protocol to use for Alpaca-compatible devices.
         """
         super().__init__(
