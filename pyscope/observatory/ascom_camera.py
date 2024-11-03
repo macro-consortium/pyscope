@@ -75,7 +75,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
     def PulseGuide(self, Direction, Duration):
         """
         Moves scope in the given direction for the given interval or time at the rate
-        given by the :py:meth:`ASCOMTelescope.GuideRateRightAscension` and :py:meth:`ASCOMTelescope.GuideRateDeclination` properties.
+        given by the :py:attr:`ASCOMTelescope.GuideRateRightAscension` and :py:attr:`ASCOMTelescope.GuideRateDeclination` properties.
 
         Parameters
         ----------

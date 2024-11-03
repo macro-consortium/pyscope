@@ -153,7 +153,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
 
         Possible values are at the discretion of the camera manufacturer specification.
         In case of a lack of one, discretion is at the developer.
-        See :py:meth:`ASCOMCamera.CameraState` for an example.
+        See :py:attr:`ASCOMCamera.CameraState` for an example.
         """
         pass
 
@@ -596,7 +596,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
 
         Possible types and the corresponding values are at the discretion of the camera manufacturer.
         In case of a lack of specification, discretion is at the developer.
-        See :py:meth:`ASCOMCamera.SensorType` for an example.
+        See :py:attr:`ASCOMCamera.SensorType` for an example.
         """
         pass
 
