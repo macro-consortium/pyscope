@@ -1118,20 +1118,32 @@ def plot_schedule_sky_cli(schedule_table, observatory):
             "Observatory must be, a string, Observatory object, or astroplan.Observer object."
         )
         return
+    
+    # Get list of targets (and their ra/dec) and start times and insert into
+    # a dictionary with the target as the key and a list of start times as the value
+    targets = {}
+    for block in schedule_table:
+        if block["name"] == "TransitionBlock" or block["name"] == "EmptyBlock":
+            continue
+
+        if block["name"] not in targets:
+            targets[block["name"]] = []
+        obs_time = astrotime.Time(np.float64(block["start_time"].jd), format="jd")
+        targets[block["name"]].append(obs_time)
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"})
-    for i, row in enumerate(schedule_table):
-        if row["name"] == "TransitionBlock" or row["name"] == "EmptyBlock":
-            continue
+    # Plot new axes for each target only, not each start time
+    for target in targets:
         ax = astroplan_plots.plot_sky(
-            astroplan.FixedTarget(row["target"]),
+            astroplan.FixedTarget(coord.SkyCoord.from_name(target)),
             observatory,
-            astrotime.Time(np.float64(row["start_time"].jd), format="jd"),
+            targets[target],
             ax=ax,
             style_kwargs={
-                "label": row["target"].to_string("hmsdms"),
+                "label": target,
             },
         )
+
     handles, labels = ax.get_legend_handles_labels()
     unique = [
         (h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]
