@@ -116,6 +116,7 @@ def ccd_calib_cli(
 
     logger.info("Loading calibration frames...")
 
+    camera_type = camera_type.lower()
     if camera_type == "ccd":
         if bias_frame is not None:
             logger.info(f"Loading bias frame: {bias_frame}")
