@@ -6,14 +6,48 @@ from ._docstring_inheritee import _DocstringInheritee
 class ObservingConditions(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
+        """
+        Abstract base class for observing conditions.
+
+        This class defines the interface for observing conditions, including methods
+        for refreshing data, getting sensor descriptions, and checking time since last
+        update for a given property, and properties for various environmental conditions.
+        Subclasses must implement the abstract methods and properties in this class.
+
+        Parameters
+        ----------
+        *args : `tuple`
+            Variable length argument list.
+        **kwargs : `dict`
+            Arbitrary keyword arguments.
+        """
         pass
 
     @abstractmethod
     def Refresh(self):
+        """Forces an immediate query to the hardware to refresh sensor values."""
         pass
 
     @abstractmethod
     def SensorDescription(self, PropertyName):
+        """
+        Provides the description of the sensor of the specified property. (`str`)
+
+        The property whose name is supplied must be one of the properties specified
+        in the `ObservingConditions` interface, else the method should throw an exception.
+
+        Even if the driver to the sensor isn't connected, if the sensor itself is implemented, this method must
+        return a valid string, for example in case an application wants to determine what sensors are available.
+        Parameters
+        ----------
+        PropertyName : `str`
+            The name of the property for which the sensor description is required.
+        
+        Returns
+        -------
+        `str`
+            The sensor description.
+        """
         pass
 
     @abstractmethod
