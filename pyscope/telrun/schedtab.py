@@ -18,7 +18,7 @@ def blocks_to_table(observing_blocks):
 
     Parameters
     ----------
-    observing_blocks : list
+    observing_blocks : `list`
         A list of observing blocks.
 
     Returns
