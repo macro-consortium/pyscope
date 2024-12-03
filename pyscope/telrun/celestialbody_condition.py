@@ -1,21 +1,28 @@
 import logging
 
+from astropy import units as u
+
 from .boundary_condition import BoundaryCondition
 
 logger = logging.getLogger(__name__)
 
 
-class SNRCondition(BoundaryCondition):
+class CelestialBodyCondition(BoundaryCondition):
     def __init__(
-        self, min_snr=None, max_snr=None, score_type="boolean", inclusive=True
+        self,
+        body_name,
+        min_sep=0 * u.deg,
+        max_sep=180 * u.deg,
+        min_alt=-90 * u.deg,
+        max_alt=90 * u.deg,
+        score_type="boolean",
+        inclusive=True,
     ):
         """ """
         pass
 
     @classmethod
-    def from_string(
-        cls, string, min_snr=None, max_snr=None, score_type=None, inclusive=None
-    ):
+    def from_string(cls, string):
         pass
 
     def __str__(self):
@@ -30,11 +37,19 @@ class SNRCondition(BoundaryCondition):
         pass
 
     @property
-    def min_snr(self):
+    def min_sep(self):
         pass
 
     @property
-    def max_snr(self):
+    def max_sep(self):
+        pass
+
+    @property
+    def min_alt(self):
+        pass
+
+    @property
+    def max_alt(self):
         pass
 
     @property
