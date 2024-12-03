@@ -66,10 +66,34 @@ class Maxim(Device):
 
 class _MaximAutofocus(Autofocus):
     def __init__(self, maxim):
+        """
+        Autofocus class for Maxim DL.
+
+        This class provides an interface for running and aborting the autofocus routine in Maxim DL.
+
+        Parameters
+        ----------
+        maxim : `Maxim`
+            The Maxim DL object.
+        """
         logger.debug("_MaximAutofocus.MaximAutofocus __init__ called")
         self.maxim = maxim
 
     def Run(self, exposure=10):
+        """
+        Run the autofocus routine in Maxim DL.
+        Only returns once the autofocus routine is complete.
+
+        Parameters
+        ----------
+        exposure : `int`, default : 10, optional
+            The exposure time in seconds for the autofocus routine.
+        
+        Returns
+        -------
+        `bool`
+            `True` if the autofocus routine was successful, `False` if it failed.
+        """
         logger.debug(f"Run called with exposure={exposure}")
         self.maxim.Autofocus(exposure)
 
@@ -82,6 +106,9 @@ class _MaximAutofocus(Autofocus):
             return False
 
     def Abort(self):
+        """
+        Abort the autofocus routine in Maxim DL.
+        """
         logger.debug("_MaximAutofocus.Abort called")
         raise NotImplementedError
 
