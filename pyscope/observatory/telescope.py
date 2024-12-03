@@ -43,10 +43,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Axis : `enum`
-            The axis about which the telescope may be moved. See below for example values.
-            * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
-            * 1 : Secondary axis, usually corresponding to Declination or Altitude.
-            * 2 : Tertiary axis, usually corresponding to imager rotators.
+            The axis about which the telescope may be moved. See below for example values:
+                * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
+                * 1 : Secondary axis, usually corresponding to Declination or Altitude.
+                * 2 : Tertiary axis, usually corresponding to imager rotators.
         
         Returns
         -------
@@ -74,10 +74,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Axis : `enum`
-            The axis about which the telescope may be moved. See below for example values.
-            * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
-            * 1 : Secondary axis, usually corresponding to Declination or Altitude.
-            * 2 : Tertiary axis, usually corresponding to imager rotators.
+            The axis about which the telescope may be moved. See below for example values:
+                * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
+                * 1 : Secondary axis, usually corresponding to Declination or Altitude.
+                * 2 : Tertiary axis, usually corresponding to imager rotators.
         """
         pass
 
@@ -96,10 +96,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Returns
         -------
         `enum`
-            The side of the pier on which the telescope will be after slewing to the specified equatorial coordinates at the current instant of time. See below for example values.
-            * 0 : Normal pointing state, mount on East side of pier, looking West.
-            * 1 : Through the pole pointing state, mount on West side of pier, looking East.
-            * -1 : Unknown or indeterminate.
+            The side of the pier on which the telescope will be after slewing to the specified equatorial coordinates at the current instant of time. See below for example values:
+                * 0 : Normal pointing state, mount on East side of pier, looking West.
+                * 1 : Through the pole pointing state, mount on West side of pier, looking East.
+                * -1 : Unknown or indeterminate.
         """
         pass
 
@@ -127,10 +127,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Axis : `enum`
-            The axis about which the telescope may be moved. See below for example values.
-            * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
-            * 1 : Secondary axis, usually corresponding to Declination or Altitude.
-            * 2 : Tertiary axis, usually corresponding to imager rotators.
+            The axis about which the telescope may be moved. See below for example values:
+                * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
+                * 1 : Secondary axis, usually corresponding to Declination or Altitude.
+                * 2 : Tertiary axis, usually corresponding to imager rotators.
         Rate : `float`
             Rate of motion in degrees per second. Positive values indicate motion in one direction,
             negative values in the opposite direction, and 0.0 stops motion by this method and resumes tracking motion.
@@ -168,11 +168,11 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Direction : `enum`
-            Direction in which to move the telescope. See below for example values.
-            * 0 : North or up.
-            * 1 : South or down.
-            * 2 : East or right.
-            * 3 : West or left.
+            Direction in which to move the telescope. See below for example values:
+                * 0 : North or up.
+                * 1 : South or down.
+                * 2 : East or right.
+                * 3 : West or left.
         Duration : `int`
             Time in milliseconds for which to pulse the guide. Must be a positive non-zero value.
         """
@@ -331,10 +331,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         """
         The alignment mode of the telescope. (`enum`)
 
-        See below for example values.
-        * 0 : Altitude-Azimuth alignment.
-        * 1 : Polar (equatorial) mount alignment, NOT German.
-        * 2 : German equatorial mount alignment.
+        See below for example values:
+            * 0 : Altitude-Azimuth alignment.
+            * 1 : Polar (equatorial) mount alignment, NOT German.
+            * 2 : German equatorial mount alignment.
         """
         pass
 
@@ -556,12 +556,12 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         """
         Equatorial coordinate system used by the telescope. (`enum`)
 
-        See below for example values.
-        * 0 : Custom/unknown equinox and/or reference frame.
-        * 1 : Topocentric coordinates. Coordinates at the current date, allowing for annual aberration and precession-nutation. Most common for amateur telescopes.
-        * 2 : J2000 equator and equinox. Coordinates at the J2000 epoch, ICRS reference frame. Most common for professional telescopes.
-        * 3 : J2050 equator and equinox. Coordinates at the J2050 epoch, ICRS reference frame.
-        * 4 : B1950 equinox. Coordinates at the B1950 epoch, FK4 reference frame.
+        See below for example values:
+            * 0 : Custom/unknown equinox and/or reference frame.
+            * 1 : Topocentric coordinates. Coordinates at the current date, allowing for annual aberration and precession-nutation. Most common for amateur telescopes.
+            * 2 : J2000 equator and equinox. Coordinates at the J2000 epoch, ICRS reference frame. Most common for professional telescopes.
+            * 3 : J2050 equator and equinox. Coordinates at the J2050 epoch, ICRS reference frame.
+            * 4 : B1950 equinox. Coordinates at the B1950 epoch, FK4 reference frame.
         """
         pass
 
@@ -656,10 +656,10 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         """
         The pointing state of the mount. (`enum`)
 
-        See below for example values.
-        * 0 : Normal pointing state, mount on East side of pier, looking West.
-        * 1 : Through the pole pointing state, mount on West side of pier, looking East.
-        * -1 : Unknown or indeterminate.
+        See below for example values:
+            * 0 : Normal pointing state, mount on East side of pier, looking West.
+            * 1 : Through the pole pointing state, mount on West side of pier, looking East.
+            * -1 : Unknown or indeterminate.
 
         .. warning::
             The name of this property is misleading and does not reflect the true meaning of the property.
@@ -793,11 +793,11 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         and report a default rate on connection.
         In this circumstance, a default of `Sidereal` rate is preferred.
 
-        See below for example values.
-        * 0 : Sidereal tracking, 15.041 arcseconds per second.
-        * 1 : Lunar tracking, 14.685 arcseconds per second.
-        * 2 : Solar tracking, 15.0 arcseconds per second.
-        * 3 : King tracking, 15.0369 arcseconds per second.
+        See below for example values:
+            * 0 : Sidereal tracking, 15.041 arcseconds per second.
+            * 1 : Lunar tracking, 14.685 arcseconds per second.
+            * 2 : Solar tracking, 15.0 arcseconds per second.
+            * 3 : King tracking, 15.0369 arcseconds per second.
         """
         pass
 
@@ -817,11 +817,11 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         include properties for the number of rates, and the actual rates, and methods for returning
         an enumerator for the rates, and for disposing of the object as a whole.
 
-        See below for an example collection.
-        * 0 : Sidereal tracking, 15.041 arcseconds per second.
-        * 1 : Lunar tracking, 14.685 arcseconds per second.
-        * 2 : Solar tracking, 15.0 arcseconds per second.
-        * 3 : King tracking, 15.0369 arcseconds per second.
+        See below for an example collection:
+            * 0 : Sidereal tracking, 15.041 arcseconds per second.
+            * 1 : Lunar tracking, 14.685 arcseconds per second.
+            * 2 : Solar tracking, 15.0 arcseconds per second.
+            * 3 : King tracking, 15.0369 arcseconds per second.
         """
         pass
 

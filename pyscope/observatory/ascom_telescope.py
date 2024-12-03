@@ -48,10 +48,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Parameters
         ----------
         Axis : `TelescopeAxes <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_TelescopeAxes.htm>`_
-            The axis about which the telescope may be moved. See below for ASCOM standard.
-            * 0 : Primary axis, Right Ascension or Azimuth.
-            * 1 : Secondary axis, Declination or Altitude.
-            * 2 : Tertiary axis, imager rotators.
+            The axis about which the telescope may be moved. See below for ASCOM standard:
+                * 0 : Primary axis, Right Ascension or Azimuth.
+                * 1 : Secondary axis, Declination or Altitude.
+                * 2 : Tertiary axis, imager rotators.
         
         Returns
         -------
@@ -80,10 +80,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Parameters
         ----------
         Axis : `TelescopeAxes <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_TelescopeAxes.htm>`_
-            The axis about which the telescope may be moved. See below for ASCOM standard.
-            * 0 : Primary axis, Right Ascension or Azimuth.
-            * 1 : Secondary axis, Declination or Altitude.
-            * 2 : Tertiary axis, imager rotators.
+            The axis about which the telescope may be moved. See below for ASCOM standard:
+                * 0 : Primary axis, Right Ascension or Azimuth.
+                * 1 : Secondary axis, Declination or Altitude.
+                * 2 : Tertiary axis, imager rotators.
         """
         logger.debug(f"ASCOMTelescope.CanMoveAxis({Axis}) called")
         return self._device.CanMoveAxis(Axis)
@@ -102,10 +102,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Returns
         -------
         `PierSide <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_PierSide.htm>`_
-            The side of the pier on which the telescope will be after slewing to the specified coordinates. See below for ASCOM standard.
-            * 0 : Normal pointing state, mount on East side of pier, looking West.
-            * 1 : Through the pole pointing state, mount on West side of pier, looking East.
-            * -1 : Unknown or indeterminate.
+            The side of the pier on which the telescope will be after slewing to the specified coordinates. See below for ASCOM standard:
+                * 0 : Normal pointing state, mount on East side of pier, looking West.
+                * 1 : Through the pole pointing state, mount on West side of pier, looking East.
+                * -1 : Unknown or indeterminate.
         """
         logger.debug(
             f"ASCOMTelescope.DestinationSideOfPier({RightAscension}, {Declination}) called"
@@ -129,10 +129,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Parameters
         ----------
         Axis : `TelescopeAxes <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_TelescopeAxes.htm>`_
-            The axis about which the telescope may be moved. See below for ASCOM standard.
-            * 0 : Primary axis, Right Ascension or Azimuth.
-            * 1 : Secondary axis, Declination or Altitude.
-            * 2 : Tertiary axis, imager rotators.
+            The axis about which the telescope may be moved. See below for ASCOM standard:
+                * 0 : Primary axis, Right Ascension or Azimuth.
+                * 1 : Secondary axis, Declination or Altitude.
+                * 2 : Tertiary axis, imager rotators.
         Rate : `float`
             Rate of motion in degrees per second. Positive values indicate motion in one direction,
             negative values in the opposite direction, and 0.0 stops motion by this method and resumes tracking motion.
@@ -176,11 +176,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Parameters
         ----------
         Direction : `GuideDirections <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_GuideDirections.htm>`_
-            Direction in which to move the telescope. See below for ASCOM standard.
-            * 0 : North or up.
-            * 1 : South or down.
-            * 2 : East or right.
-            * 3 : West or left.
+            Direction in which to move the telescope. See below for ASCOM standard:
+                * 0 : North or up.
+                * 1 : South or down.
+                * 2 : East or right.
+                * 3 : West or left.
         Duration : `int`
             Time in milliseconds for which to pulse the guide. Must be a positive non-zero value.
         """
@@ -254,10 +254,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         """
         The alignment mode of the telescope. (`AlignmentModes <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_AlignmentModes.htm>`_)
 
-        See below for ASCOM standard.
-        * 0 : Altitude-Azimuth alignment.
-        * 1 : Polar (equatorial) mount alignment, NOT German.
-        * 2 : German equatorial mount alignment.
+        See below for ASCOM standard:
+            * 0 : Altitude-Azimuth alignment.
+            * 1 : Polar (equatorial) mount alignment, NOT German.
+            * 2 : German equatorial mount alignment.
         """
         logger.debug("ASCOMTelescope.AlignmentMode property accessed")
         return self._device.AlignmentMode
@@ -409,12 +409,12 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         """
         Equatorial coordinate system used by the telescope. (`EquatorialCoordinateType <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_EquatorialCoordinateType.htm>`_)
 
-        See below for ASCOM standard.
-        * 0 : Custom/unknown equinox and/or reference frame.
-        * 1 : Topocentric coordinates. Coordinates at the current date, allowing for annual aberration and precession-nutation. Most common for amateur telescopes.
-        * 2 : J2000 equator and equinox. Coordinates at the J2000 epoch, ICRS reference frame. Most common for professional telescopes.
-        * 3 : J2050 equator and equinox. Coordinates at the J2050 epoch, ICRS reference frame.
-        * 4 : B1950 equinox. Coordinates at the B1950 epoch, FK4 reference frame.
+        See below for ASCOM standard:
+            * 0 : Custom/unknown equinox and/or reference frame.
+            * 1 : Topocentric coordinates. Coordinates at the current date, allowing for annual aberration and precession-nutation. Most common for amateur telescopes.
+            * 2 : J2000 equator and equinox. Coordinates at the J2000 epoch, ICRS reference frame. Most common for professional telescopes.
+            * 3 : J2050 equator and equinox. Coordinates at the J2050 epoch, ICRS reference frame.
+            * 4 : B1950 equinox. Coordinates at the B1950 epoch, FK4 reference frame.
         """
         logger.debug("ASCOMTelescope.EquatorialSystem property accessed")
         return self._device.EquatorialSystem
@@ -469,10 +469,10 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         """
         The pointing state of the mount. (`PierSide <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_PierSide.htm>`_)
 
-        See below for ASCOM standard.
-        * 0 : Normal pointing state, mount on East side of pier, looking West.
-        * 1 : Through the pole pointing state, mount on West side of pier, looking East.
-        * -1 : Unknown or indeterminate.
+        See below for ASCOM standard:
+            * 0 : Normal pointing state, mount on East side of pier, looking West.
+            * 1 : Through the pole pointing state, mount on West side of pier, looking East.
+            * -1 : Unknown or indeterminate.
 
         .. warning::
             The name of this property is misleading and does not reflect the true meaning of the property.
@@ -578,11 +578,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         and report a default rate on connection.
         In this circumstance, a default of `Sidereal` rate is preferred.
 
-        See below for ASCOM standard.
-        * 0 : Sidereal tracking, 15.041 arcseconds per second.
-        * 1 : Lunar tracking, 14.685 arcseconds per second.
-        * 2 : Solar tracking, 15.0 arcseconds per second.
-        * 3 : King tracking, 15.0369 arcseconds per second.
+        See below for ASCOM standard:
+            * 0 : Sidereal tracking, 15.041 arcseconds per second.
+            * 1 : Lunar tracking, 14.685 arcseconds per second.
+            * 2 : Solar tracking, 15.0 arcseconds per second.
+            * 3 : King tracking, 15.0369 arcseconds per second.
         """
         logger.debug("ASCOMTelescope.TrackingRate property accessed")
         return self._device.TrackingRate
@@ -602,11 +602,11 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         properties for the number of rates, and the actual rates, and methods for returning
         an enumerator for the rates, and for disposing of the object as a whole.
 
-        See below for ASCOM standard expected collection.
-        * 0 : Sidereal tracking, 15.041 arcseconds per second.
-        * 1 : Lunar tracking, 14.685 arcseconds per second.
-        * 2 : Solar tracking, 15.0 arcseconds per second.
-        * 3 : King tracking, 15.0369 arcseconds per second
+        See below for ASCOM standard expected collection:
+            * 0 : Sidereal tracking, 15.041 arcseconds per second.
+            * 1 : Lunar tracking, 14.685 arcseconds per second.
+            * 2 : Solar tracking, 15.0 arcseconds per second.
+            * 3 : King tracking, 15.0369 arcseconds per second
         """
         logger.debug("ASCOMTelescope.TrackingRates property accessed")
         return self._device.TrackingRates
