@@ -7,7 +7,7 @@ class Switch(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         """
-        Abstract class for switch devices.
+        Abstract base class for switch devices.
 
         This class defines the common interface for switch devices, including methods for
         getting and setting switch values, and getting switch names and descriptions.
