@@ -193,6 +193,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def SlewToAltAz(self, Azimuth, Altitude):  # pragma: no cover
         """
+        Deprecated
+
         .. deprecated:: 0.1.1
             ASCOM is deprecating this method.
         """
@@ -205,6 +207,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def SlewToCoordinates(self, RightAscension, Declination):  # pragma: no cover
         """
+        Deprecated
+
         .. deprecated:: 0.1.1
             ASCOM is deprecating this method.
         """
@@ -221,6 +225,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def SlewToTarget(self):  # pragma: no cover
         """
+        Deprecated
+
         .. deprecated:: 0.1.1
             ASCOM is deprecating this method.
         """
@@ -339,6 +345,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
     @property
     def CanSlew(self):  # pragma: no cover
         """
+        Deprecated
+
         .. deprecated:: 0.1.1
             ASCOM is deprecating this property.
         """
@@ -348,6 +356,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
     @property
     def CanSlewAltAz(self):  # pragma: no cover
         """
+        Deprecated
+        
         .. deprecated:: 0.1.1
             ASCOM is deprecating this property.
         """

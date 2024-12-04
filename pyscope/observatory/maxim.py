@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class Maxim(Device):
     def __init__(self):
+        """
+        This class provides an interface to Maxim DL, and its camera, filter wheel, and autofocus routines.
+
+        This class is only available on Windows.
+        """
         logger.debug("Maxim.Maxim __init__ called")
         if platform.system() != "Windows":
             raise Exception("This class is only available on Windows.")
@@ -50,16 +55,19 @@ class Maxim(Device):
 
     @property
     def app(self):
+        """The Maxim DL application object. (`win32com.client.CDispatch`)"""
         logger.debug("Maxim.app called")
         return self._app
 
     @property
     def autofocus(self):
+        """The autofocus object. (`_MaximAutofocus`)"""
         logger.debug("Maxim.autofocus called")
         return self._autofocus
 
     @property
     def camera(self):
+        """The camera object. (`_MaximCamera`)"""
         logger.debug("Maxim.camera called")
         return self._camera
 
