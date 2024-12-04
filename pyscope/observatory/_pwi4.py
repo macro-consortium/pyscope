@@ -27,11 +27,17 @@ import time
 
 
 class _PWI4:
-    """
-    Client to the PWI4 telescope control application.
-    """
-
     def __init__(self, host="localhost", port=8220):
+        """
+        Client to the PWI4 telescope control application.
+
+        Parameters
+        ----------
+        host : `str`, default : "localhost", optional
+            The hostname or IP address of the computer running PWI4.
+        port : `int`, default : 8220, optional
+            The port number on which PWI4 is listening for HTTP requests.
+        """
         self.host = host
         self.port = port
         self.comm = _PWI4HttpCommunicator(host, port)
