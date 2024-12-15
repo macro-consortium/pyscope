@@ -1118,37 +1118,59 @@ def plot_schedule_sky_cli(schedule_table, observatory):
             "Observatory must be, a string, Observatory object, or astroplan.Observer object."
         )
         return
-    
-    # Get list of targets (and their ra/dec) and start times and insert into
-    # a dictionary with the target as the key and a list of start times as the value
-    targets = {}
-    for block in schedule_table:
-        if block["name"] == "TransitionBlock" or block["name"] == "EmptyBlock":
-            continue
 
-        if block["name"] not in targets:
-            targets[block["name"]] = []
-        obs_time = astrotime.Time(np.float64(block["start_time"].jd), format="jd")
-        targets[block["name"]].append(obs_time)
+    # Get unique targets in the schedule
+    target_times = {}
+
+    for row in schedule_table:
+        if row["name"] == "TransitionBlock" or row["name"] == "EmptyBlock":
+            continue
+        target_string = row["target"].to_string("hmsdms")
+        target_name = row["name"]
+        if target_string not in target_times:
+            target_times[target_string] = {
+                "name": target_name,
+                "times": [row["start_time"]],
+            }
+        else:
+            target_times[target_string]["times"].append(row["start_time"])
+
+    # targets = [t.to_string("hmsdms") for t in schedule_table["target"]]
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"})
-    # Plot new axes for each target only, not each start time
-    for target in targets:
+    for target, target_dict in target_times.items():
+        times = target_dict["times"]
+        try:
+            label = target_dict["name"].strip()
+        except:
+            label = target
+        target = coord.SkyCoord(target, unit=(u.hourangle, u.deg))
         ax = astroplan_plots.plot_sky(
-            astroplan.FixedTarget(coord.SkyCoord.from_name(target)),
+            astroplan.FixedTarget(target),
             observatory,
-            targets[target],
+            times,
             ax=ax,
-            style_kwargs={
-                "label": target,
-            },
+            style_kwargs={"label": label},
         )
 
     handles, labels = ax.get_legend_handles_labels()
-    unique = [
-        (h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]
-    ]
-    ax.legend(*zip(*unique), loc=(1.1, 0))
+    # unique = [
+    #     (h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]
+    # ]
+    # ax.legend(*zip(*unique), loc=(1.1, 0))
+
+    
+
+    # Add title to plot based on date
+    t0 = np.min(schedule_table["start_time"]) # -1 corrects for UTC to local time, should be cleaned up
+    t0 = astrotime.Time(t0, format="mjd")
+    t0.format = "iso"
+    
+    ax.set_title(f"Observing Schedule: Night of {t0.to_string().split(' ')[0]} UTC",
+        fontsize=14
+    )
+
+    ax.legend(labels, loc=(1.1, 0))
 
     fig.set_facecolor("white")
     fig.set_dpi(300)

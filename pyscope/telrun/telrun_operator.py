@@ -1446,6 +1446,23 @@ class TelrunOperator:
             logger.info("Setting camera readout mode to %s" % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
+            # TODO: Make this better - temporary fix 2024-11-15
+            # Check if focuser is outside of self.autofocus_midpoint +/- 1000
+            if (
+                self.observatory.focuser.Position
+                < self.autofocus_midpoint - 1000
+                or self.observatory.focuser.Position
+                > self.autofocus_midpoint + 1000
+            ):
+                logger.info(
+                    "Focuser position is outside of autofocus_midpoint +/- 1000, moving to autofocus_midpoint..."
+                )
+                self._focuser_status = "Moving"
+                self.observatory.focuser.Move(self.autofocus_midpoint)
+                while self.observatory.focuser.IsMoving:
+                    time.sleep(0.1)
+                self._focuser_status = "Idle"
+
             logger.info("Starting autofocus, ensuring tracking is on...")
             self.observatory.telescope.Tracking = True
             t = threading.Thread(

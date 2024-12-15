@@ -126,6 +126,9 @@ class Observatory:
 
         self._maxim = None
 
+        if not os.path.exists(config_path):
+            raise ObservatoryException("Config file '%s' not found" % config_path)
+
         if config_path is not None:
             logger.info(
                 "Using this config file to initialize the observatory: %s" % config_path
@@ -2258,18 +2261,18 @@ class Observatory:
                 self.telescope.Tracking = False
             logger.info("Tracking off")
 
-        if self.cover_calibrator is not None:
+        '''if self.cover_calibrator is not None:
             if self.cover_calibrator.CoverState != "NotPresent":
                 logger.info("Opening the cover calibrator")
                 self.cover_calibrator.OpenCover()
-                logger.info("Cover open")
+                logger.info("Cover open")'''
 
         if gain is not None:
             logger.info("Setting the camera gain to %i" % gain)
             self.camera.Gain = gain
             logger.info("Camera gain set")
 
-        for filt, filt_exp in zip(filters, filter_exposures):
+        for filt, filt_exp, idx in zip(filters, filter_exposures, range(len(filters))):
 
             # skip filters with 0 exposure time
             if filt_exp == 0:
@@ -2287,9 +2290,9 @@ class Observatory:
                 if type(filter_brightness) is list:
                     logger.info(
                         "Setting the cover calibrator brightness to %i"
-                        % filter_brightness[i]
+                        % filter_brightness[idx]
                     )
-                    self.cover_calibrator.CalibratorOn(filter_brightness[i])
+                    self.cover_calibrator.CalibratorOn(filter_brightness[idx])
                     logger.info("Cover calibrator on")
             else:
                 logger.warning("Cover calibrator not available, assuming sky flats")
@@ -2351,7 +2354,7 @@ class Observatory:
                             iter_save_name = Path(
                                 (
                                     str(iter_save_name)
-                                    + (f"_Bright{filter_brightness[i]}" + "_{j}.fts")
+                                    + (f"_Bright{filter_brightness[idx]}" + f"_{j}.fts")
                                 )
                             )
                         else:
@@ -2878,32 +2881,32 @@ class Observatory:
                 "CALSTATE": (self.cover_calibrator.CalibratorState, "Calibrator state"),
                 "COVSTATE": (self.cover_calibrator.CoverState, "Cover state"),
                 "BRIGHT": (None, "Brightness of cover calibrator"),
-                "CCNAME": (self.cover_calibrator.Name, "Cover calibrator name"),
-                "COVCAL": (self.cover_calibrator.Name, "Cover calibrator name"),
-                "CCDRVER": (
-                    self.cover_calibrator.DriverVersion,
-                    "Cover calibrator driver version",
-                ),
-                "CCDRV": (
-                    str(self.cover_calibrator.DriverInfo),
-                    "Cover calibrator driver info",
-                ),
-                "CCINTF": (
-                    self.cover_calibrator.InterfaceVersion,
-                    "Cover calibrator interface version",
-                ),
-                "CCDESC": (
-                    self.cover_calibrator.Description,
-                    "Cover calibrator description",
-                ),
-                "MAXBRITE": (
-                    self.cover_calibrator.MaxBrightness,
-                    "Cover calibrator maximum possible brightness",
-                ),
-                "CCSUPAC": (
-                    str(self.cover_calibrator.SupportedActions),
-                    "Cover calibrator supported actions",
-                ),
+                # "CCNAME": (self.cover_calibrator.Name, "Cover calibrator name"),
+                # "COVCAL": (self.cover_calibrator.Name, "Cover calibrator name"),
+                # "CCDRVER": (
+                #     self.cover_calibrator.DriverVersion,
+                #     "Cover calibrator driver version",
+                # ),
+                # "CCDRV": (
+                #     str(self.cover_calibrator.DriverInfo),
+                #     "Cover calibrator driver info",
+                # ),
+                # "CCINTF": (
+                #     self.cover_calibrator.InterfaceVersion,
+                #     "Cover calibrator interface version",
+                # ),
+                # "CCDESC": (
+                #     self.cover_calibrator.Description,
+                #     "Cover calibrator description",
+                # ),
+                # "MAXBRITE": (
+                #     self.cover_calibrator.MaxBrightness,
+                #     "Cover calibrator maximum possible brightness",
+                # ),
+                # "CCSUPAC": (
+                #     str(self.cover_calibrator.SupportedActions),
+                #     "Cover calibrator supported actions",
+                # ),
             }
             try:
                 info["BRIGHT"] = (self.cover_calibrator.Brightness, info["BRIGHT"][1])
