@@ -48,6 +48,30 @@ class Switch(ABC, metaclass=_DocstringInheritee):
     def SwitchStep(self, ID):
         pass
 
+    @abstractmethod
+    def RebootSwitch(self, ID):
+        pass
+
+    @abstractmethod
+    def ToggleSwitch(self, ID):
+        pass
+
+    @abstractmethod
+    def AllOn(self):
+        pass
+
+    @abstractmethod
+    def AllOff(self):
+        pass
+
+    @abstractmethod
+    def PowerCycleAll(self):
+        pass
+
+    @abstractmethod
+    def Status(self):
+        pass
+
     @property
     @abstractmethod
     def MaxSwitch(self):

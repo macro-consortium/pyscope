@@ -6,16 +6,17 @@ astroscrappy == 1.2.0
 ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
+dlipower >= 1.0.176
 markdown == 3.6
 matplotlib == 3.9.0
 numpy == 1.26.4
 oschmod == 0.3.12
-photutils == 1.12.0
+photutils == 2.0.2
 prettytable == 3.10.0
-pywin32 == 306;platform_system=='Windows'
-scikit-image == 0.23.2
-scipy == 1.13.1
-smplotlib == 0.0.9
+pywin32 == 308;platform_system=='Windows'
+# scikit-image == 0.23.2
+# scipy == 1.13.1
+# smplotlib == 0.0.9
 timezonefinder == 6.5.0
 tksheet == 7.2.4
 tqdm == 4.66.4
