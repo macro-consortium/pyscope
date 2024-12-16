@@ -7,7 +7,7 @@ from .switch import Switch
 logger = logging.getLogger(__name__)
 
 class DLIPowerSwitch(Switch):
-    def __init__(self, hostname, userid, password):
+    def __init__(self, name, hostname, userid, password):
         """
         Initialize the DLIPowerSwitch instance.
         :param hostname: Hostname or IP address of the DLI power switch.
@@ -17,6 +17,7 @@ class DLIPowerSwitch(Switch):
         self.hostname = hostname
         self.userid = userid
         self.password = password
+        self.name = name
         try:
             self.switch = dlipower.PowerSwitch(hostname=self.hostname, userid=self.userid, password=self.password)
         except Exception as e:
@@ -108,3 +109,13 @@ class DLIPowerSwitch(Switch):
     @property
     def MaxSwitch(self):
         return len(self.switch)
+
+    @property
+    def Name(self):
+        return self.name
+    
+    @property
+    def Hostname(self):
+        return self.hostname
+    
+    
