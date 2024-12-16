@@ -1,5 +1,6 @@
 import configparser
 import datetime
+import glob
 import importlib
 import json
 import logging
@@ -1307,17 +1308,20 @@ class Observatory:
             filepath = os.path.join(os.getcwd(), filename)
             self.camera.SaveImageAsFits(filepath)
             img_array = fits.getdata(filename)
+        try:
+            hdr = self.generate_header_info(
+                filename, frametyp, custom_header, history, maxim, allowed_overwrite
+            )
+                    # update RADECSYS key to RADECSYSa
+            if "RADECSYS" in hdr:
+                hdr["RADECSYSa"] = hdr["RADECSYS"]
+                hdr.pop("RADECSYS", None)
+            hdu = fits.PrimaryHDU(img_array, header=hdr)
+        except Exception as e:
+            logger.exception(f"Error generating header information: {e}")
+            hdu = fits.PrimaryHDU(img_array)
 
-        hdr = self.generate_header_info(
-            filename, frametyp, custom_header, history, maxim, allowed_overwrite
-        )
-
-        # update RADECSYS key to RADECSYSa
-        if "RADECSYS" in hdr:
-            hdr["RADECSYSa"] = hdr["RADECSYS"]
-            hdr.pop("RADECSYS", None)
-
-        hdu = fits.PrimaryHDU(img_array, header=hdr)
+        
         hdu.writeto(filename, overwrite=overwrite)
 
         return True
@@ -1791,7 +1795,12 @@ class Observatory:
                 nsteps,
                 endpoint=True,
             )
-            test_positions = np.round(test_positions, -2)
+            test_positions = test_positions.astype(int)
+
+            autofocus_time = self.observatory_time.isot.replace(":", "-")
+
+            if save_path is None:
+                save_path = Path(os.getcwd(),"images","autofocus",f"{autofocus_time}").resolve()
 
             focus_values = []
             for i, position in enumerate(test_positions):
@@ -1817,43 +1826,76 @@ class Observatory:
                 logger.info("Exposure complete.")
 
                 logger.info("Calculating mean star fwhm...")
-                if save_images:
-                    if save_path is None:
-                        save_path = Path(self._images_path / "autofocus").resolve()
-                else:
-                    save_path = Path(tempfile.gettempdir()).resolve()
+                if not save_images:
+                    save_path = Path(tempfile.gettempdir(),f"{autofocus_time}").resolve()
                 if not save_path.exists():
                     save_path.mkdir(parents=True)
                 fname = (
                     save_path
-                    / f"autofocus_{self.observatory_time.isot.replace(':', '-')}.fts"
+                    / f"FOCUS{int(position)}.fit"
                 )
 
                 self.save_last_image(fname, frametyp="Focus")
-                cat = detect_sources_photutils(
-                    fname,
-                    threshold=100,
-                    deblend=False,
-                    tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
-                )
-                focus_values.append(np.mean(cat.fwhm.value))
-                logger.info("FWHM = %.1f pixels" % focus_values[-1])
+
+                # Removed for hotfix for PlateSolve2
+                # cat = detect_sources_photutils(
+                #     fname,
+                #     threshold=100,
+                #     deblend=False,
+                #     tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
+                # )
+                # focus_values.append(np.mean(cat.fwhm.value))
+                # logger.info("FWHM = %.1f pixels" % focus_values[-1])
 
             # fit hyperbola to focus values
-            popt, pcov = curve_fit(
-                lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
-                test_positions,
-                focus_values,
-                p0=[midpoint, 1, 1, 0],
-                bounds=(
-                    [midpoint - n_steps * step_size, 0, 0, -1e6],
-                    [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
-                ),
-            )
 
-            result = popt[0]
-            result_err = np.sqrt(np.diag(pcov))[0]
-            logger.info("Best focus position is %i +/- %i" % (result, result_err))
+            # Removed for hotfix for PlateSolve2
+            # popt, pcov = curve_fit(
+            #     lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
+            #     test_positions,
+            #     focus_values,
+            #     p0=[midpoint, 1, 1, 0],
+            #     bounds=(
+            #         [midpoint - n_steps * step_size, 0, 0, -1e6],
+            #         [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
+            #     ),
+            # )
+            #
+            # result = popt[0]
+            # result_err = np.sqrt(np.diag(pcov))[0]
+
+            # Run platesolve 2 from cmd line
+            platesolve2_path = Path(r'C:\Program Files (x86)\PlaneWave Instruments\PlaneWave Interface 4\PlateSolve2\PlateSolve2.exe').resolve()
+            #print(platesolve2_path)
+            results_path = Path(save_path / 'results.txt').resolve()
+            #print(f"Results path: {results_path}")
+            image_path = glob.glob(str(save_path / '*.fit'))[0]
+            #print(f"Image path: {image_path}")
+            logger.info("Running PlateSolve2...")
+            procid = os.spawnv(os.P_NOWAIT, platesolve2_path, [f'"{platesolve2_path}" {image_path},{results_path},180'])
+            
+            while results_path.exists() == False:
+                time.sleep(0.1)
+            # Read results
+            with open(results_path, 'r') as f:
+                results = f.read()
+            while results == '':
+                time.sleep(0.1)
+                with open(results_path, 'r') as f:
+                    results = f.read()
+
+            print(f"Results path: {results_path}")
+            print(results)
+            results = results.split(',')
+            # Remove whitespace
+            results = [x.strip() for x in results]
+            print(results)
+            result, fwhm, result_err = float(results[0]), float(results[1]), float(results[2])
+            print(f"Best focus: {result}")
+            print(f"FWHM: {fwhm}")
+            print(f"Focus error: {result_err}")
+
+            logger.info(f"Best focus position is {result} +/- {result_err}")
 
             if result < test_positions[0] or result > test_positions[-1]:
                 logger.warning("Best focus position is outside the test range.")
@@ -2747,6 +2789,7 @@ class Observatory:
             info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
             info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
         except:
+            logger.debug("Could not get last exposure duration")
             pass
         try:
             info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
