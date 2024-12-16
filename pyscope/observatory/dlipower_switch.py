@@ -21,7 +21,7 @@ class DLIPowerSwitch(Switch):
         try:
             self.switch = dlipower.PowerSwitch(hostname=self.hostname, userid=self.userid, password=self.password)
         except Exception as e:
-            logger.error(f"Failed to connect to DLIPowerSwitch: {e}")
+            logger.error("Failed to connect to DLIPowerSwitch: %s", e)
             raise
 
     def CanWrite(self, ID):
@@ -47,14 +47,14 @@ class DLIPowerSwitch(Switch):
         try:
             outlet.state = 'ON' if State else 'OFF'
         except Exception as e:
-            logger.error(f"Failed to set switch {ID} to {'ON' if State else 'OFF'}: {e}")
+            logger.error("Failed to set switch %s to %s: %s", ID, 'ON' if State else 'OFF', e)
             raise
 
     def SetSwitchName(self, ID, Name):
         try:
             self.switch[int(ID) - 1].name = Name
         except Exception as e:
-            logger.error(f"Failed to set name for switch {ID}: {e}")
+            logger.error("Failed to set name for switch %s: %s", ID, e)
             raise
 
     def SetSwitchValue(self, ID, Value):
@@ -68,7 +68,7 @@ class DLIPowerSwitch(Switch):
         try:
             outlet.cycle()
         except Exception as e:
-            logger.error(f"Failed to reboot switch {ID}: {e}")
+            logger.error("Failed to reboot switch %s: %s", ID, e)
             raise
 
     def ToggleSwitch(self, ID):
@@ -80,7 +80,7 @@ class DLIPowerSwitch(Switch):
             for outlet in self.switch:
                 outlet.state = 'ON'
         except Exception as e:
-            logger.error(f"Failed to turn all switches ON: {e}")
+            logger.error("Failed to turn all switches ON: %s", e)
             raise
 
     def AllOff(self):
@@ -88,22 +88,27 @@ class DLIPowerSwitch(Switch):
             for outlet in self.switch:
                 outlet.state = 'OFF'
         except Exception as e:
-            logger.error(f"Failed to turn all switches OFF: {e}")
+            logger.error("Failed to turn all switches OFF: %s", e)
             raise
 
     def PowerCycleAll(self):
         try:
             for outlet in self.switch:
-                outlet.cycle()
+                if outlet.state == 'ON':
+                    outlet.state = 'OFF'
+                    time.sleep(10)
+                    outlet.state = 'ON'
+                else:
+                    pass
         except Exception as e:
-            logger.error(f"Failed to power cycle all switches: {e}")
+            logger.error("Failed to power cycle all switches: %s", e)
             raise
 
     def Status(self):
         try:
             return {outlet.name: outlet.state for outlet in self.switch}
         except Exception as e:
-            logger.error(f"Failed to retrieve status of all switches: {e}")
+            logger.error("Failed to retrieve status of all switches: %s", e)
             raise
 
     @property
