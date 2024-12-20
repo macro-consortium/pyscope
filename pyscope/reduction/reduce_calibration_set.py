@@ -69,7 +69,33 @@ def reduce_calibration_set_cli(
     verbose=0,
 ):
     """
-    Reduce a calibration set to master frames.\b
+    Reduce a calibration set to master frames.
+
+    This function processes a calibration set of FITS images, typically used in astronomy, 
+    to create master bias, dark, and flat calibration frames. The input calibration set 
+    should be a directory containing subdirectories for bias, dark, and flat frames. 
+    The resulting master calibration frames are saved in the same directory.
+
+    Parameters
+    ----------
+    calibration_set : `str`
+        Path to the calibration set directory.
+    camera : `str`, optional
+        Camera type, either `"ccd"` or `"cmos"`. Defaults to `"ccd"`.
+    mode : `str`, optional
+        Method to use for averaging images, either `"median"` or `"average"`. 
+        Defaults to `"median"`.
+    pre_normalize : `bool`, optional
+        Pre-normalize flat images before combining. This option is useful 
+        for sky flats. Defaults to `True`.
+    verbose : `int`, optional
+        Level of verbosity for output logs. Use higher values for more detailed output. 
+        Defaults to `0`.
+
+    Raises
+    ------
+    `SystemExit`
+        Raised if the program encounters a critical issue and exits prematurely.
     """
 
     calibration_set = Path(calibration_set).resolve()
