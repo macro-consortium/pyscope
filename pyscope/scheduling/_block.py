@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from astropy.time import Time
 
-from .instrument_configuration import InstrumentConfiguration
+from ..telrun import InstrumentConfiguration
 from .observer import Observer
 
 logger = logging.getLogger(__name__)
