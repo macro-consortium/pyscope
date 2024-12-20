@@ -24,13 +24,14 @@ def maxim_pinpoint_wcs_cli(filepath):
     """
     Platesolve images using the PinPoint solver in MaxIm DL.
 
-    This script interacts with MaxIm DL's PinPoint solver via its COM interface 
-    to solve astronomical images for their World Coordinate System (`WCS`). The 
+    This script interacts with MaxIm DL's PinPoint solver via its COM interface
+    to solve astronomical images for their World Coordinate System (`WCS`). The
     solved image is saved back to the original file if the process is successful.
 
     .. note::
-    This script requires MaxIm DL to be installed on a Windows system. The PinPoint 
-    solver is accessed through MaxIm DL's COM interface.
+
+        This script requires MaxIm DL to be installed on a Windows system. The PinPoint
+        solver is accessed through MaxIm DL's COM interface.
 
     Parameters
     ----------
