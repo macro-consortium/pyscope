@@ -12,8 +12,8 @@ matplotlib == 3.9.1
 oschmod == 0.3.12
 paramiko == 3.5.0
 photutils == 1.13.0
+pywin32 == 308;platform_system=='Windows'
 prettytable == 3.11.0
-pywin32 == 306;platform_system=='Windows'
 scikit-image == 0.24.0
 scipy == 1.14.1
 smplotlib == 0.0.9
