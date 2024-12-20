@@ -1312,7 +1312,7 @@ class Observatory:
             hdr = self.generate_header_info(
                 filename, frametyp, custom_header, history, maxim, allowed_overwrite
             )
-                    # update RADECSYS key to RADECSYSa
+            # update RADECSYS key to RADECSYSa
             if "RADECSYS" in hdr:
                 hdr["RADECSYSa"] = hdr["RADECSYS"]
                 hdr.pop("RADECSYS", None)
@@ -1321,7 +1321,6 @@ class Observatory:
             logger.exception(f"Error generating header information: {e}")
             hdu = fits.PrimaryHDU(img_array)
 
-        
         hdu.writeto(filename, overwrite=overwrite)
 
         return True
@@ -1760,6 +1759,7 @@ class Observatory:
         use_current_pointing=False,
         save_images=False,
         save_path=None,
+        binning=2,  # HOTFIX for 6200
     ):
         """Runs the autofocus routine"""
 
@@ -1800,7 +1800,9 @@ class Observatory:
             autofocus_time = self.observatory_time.isot.replace(":", "-")
 
             if save_path is None:
-                save_path = Path(os.getcwd(),"images","autofocus",f"{autofocus_time}").resolve()
+                save_path = Path(
+                    os.getcwd(), "images", "autofocus", f"{autofocus_time}"
+                ).resolve()
 
             focus_values = []
             for i, position in enumerate(test_positions):
@@ -1819,6 +1821,9 @@ class Observatory:
                         time.sleep(0.1)
                 logger.info("Focuser moved.")
 
+                # Set binning
+                self.camera.BinX = binning
+
                 logger.info("Taking %s second exposure..." % exposure)
                 self.camera.StartExposure(exposure, True)
                 while not self.camera.ImageReady:
@@ -1827,15 +1832,14 @@ class Observatory:
 
                 logger.info("Calculating mean star fwhm...")
                 if not save_images:
-                    save_path = Path(tempfile.gettempdir(),f"{autofocus_time}").resolve()
+                    save_path = Path(
+                        tempfile.gettempdir(), f"{autofocus_time}"
+                    ).resolve()
                 if not save_path.exists():
                     save_path.mkdir(parents=True)
-                fname = (
-                    save_path
-                    / f"FOCUS{int(position)}.fit"
-                )
+                fname = save_path / f"FOCUS{int(position)}.fit"
 
-                self.save_last_image(fname, frametyp="Focus")
+                self.save_last_image(fname, frametyp="Focus", overwrite=True)
 
                 # Removed for hotfix for PlateSolve2
                 # cat = detect_sources_photutils(
@@ -1865,32 +1869,42 @@ class Observatory:
             # result_err = np.sqrt(np.diag(pcov))[0]
 
             # Run platesolve 2 from cmd line
-            platesolve2_path = Path(r'C:\Program Files (x86)\PlaneWave Instruments\PlaneWave Interface 4\PlateSolve2\PlateSolve2.exe').resolve()
-            #print(platesolve2_path)
-            results_path = Path(save_path / 'results.txt').resolve()
-            #print(f"Results path: {results_path}")
-            image_path = glob.glob(str(save_path / '*.fit'))[0]
-            #print(f"Image path: {image_path}")
+            platesolve2_path = Path(
+                r"C:\Program Files (x86)\PlaneWave Instruments\PlaneWave Interface 4\PlateSolve2\PlateSolve2.exe"
+            ).resolve()
+            # print(platesolve2_path)
+            results_path = Path(save_path / "results.txt").resolve()
+            # print(f"Results path: {results_path}")
+            image_path = glob.glob(str(save_path / "*.fit"))[0]
+            # print(f"Image path: {image_path}")
             logger.info("Running PlateSolve2...")
-            procid = os.spawnv(os.P_NOWAIT, platesolve2_path, [f'"{platesolve2_path}" {image_path},{results_path},180'])
-            
+            procid = os.spawnv(
+                os.P_NOWAIT,
+                platesolve2_path,
+                [f'"{platesolve2_path}" {image_path},{results_path},180'],
+            )
+
             while results_path.exists() == False:
                 time.sleep(0.1)
             # Read results
-            with open(results_path, 'r') as f:
+            with open(results_path, "r") as f:
                 results = f.read()
-            while results == '':
+            while results == "":
                 time.sleep(0.1)
-                with open(results_path, 'r') as f:
+                with open(results_path, "r") as f:
                     results = f.read()
 
             print(f"Results path: {results_path}")
             print(results)
-            results = results.split(',')
+            results = results.split(",")
             # Remove whitespace
             results = [x.strip() for x in results]
             print(results)
-            result, fwhm, result_err = float(results[0]), float(results[1]), float(results[2])
+            result, fwhm, result_err = (
+                float(results[0]),
+                float(results[1]),
+                float(results[2]),
+            )
             print(f"Best focus: {result}")
             print(f"FWHM: {fwhm}")
             print(f"Focus error: {result_err}")
@@ -1973,6 +1987,7 @@ class Observatory:
         tolerance=3,
         exposure=10,
         readout=0,
+        binning=2,  # HOTFIX: HARDCODED FOR ASI6200
         save_images=False,
         save_path="./",
         settle_time=5,
@@ -2096,6 +2111,7 @@ class Observatory:
 
             logger.info("Taking %.2f second exposure" % exposure)
             self.camera.ReadoutMode = readout
+            self.camera.BinX = binning
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
@@ -2303,11 +2319,11 @@ class Observatory:
                 self.telescope.Tracking = False
             logger.info("Tracking off")
 
-        '''if self.cover_calibrator is not None:
+        """if self.cover_calibrator is not None:
             if self.cover_calibrator.CoverState != "NotPresent":
                 logger.info("Opening the cover calibrator")
                 self.cover_calibrator.OpenCover()
-                logger.info("Cover open")'''
+                logger.info("Cover open")"""
 
         if gain is not None:
             logger.info("Setting the camera gain to %i" % gain)

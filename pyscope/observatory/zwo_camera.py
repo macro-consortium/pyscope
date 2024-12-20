@@ -1,16 +1,17 @@
 import logging
-
+import pathlib
 
 import numpy as np
-from astropy.time import Time
-import pathlib
 import zwoasi as asi
+from astropy.time import Time
 
 from .camera import Camera
 
 logger = logging.getLogger(__name__)
 
-lib_path = pathlib.Path(r'C:\Users\MACRO\Downloads\ASI_Camera_SDK\ASI_Camera_SDK\ASI_Windows_SDK_V1.37\ASI SDK\lib\x64\ASICamera2.dll')
+lib_path = pathlib.Path(
+    r"C:\Users\MACRO\Downloads\ASI_Camera_SDK\ASI_Camera_SDK\ASI_Windows_SDK_V1.37\ASI SDK\lib\x64\ASICamera2.dll"
+)
 print(lib_path)
 
 asi.init(lib_path)
@@ -20,12 +21,13 @@ class ZWOCamera(Camera):
     def __init__(self, device_number=0):
         logger.debug(f"ZWOCamera.__init__({device_number})")
 
-        
-
         self._device = asi.Camera(device_number)
         self._camera_info = self._device.get_camera_property()
         # Use minimum USB bandwidth permitted
-        self._device.set_control_value(asi.ASI_BANDWIDTHOVERLOAD, self._device.get_controls()['BandWidth']['MinValue'])        
+        self._device.set_control_value(
+            asi.ASI_BANDWIDTHOVERLOAD,
+            self._device.get_controls()["BandWidth"]["MinValue"],
+        )
         self._controls = self._device.get_controls()
         self._last_exposure_duration = None
         self._last_exposure_start_time = None
@@ -33,8 +35,8 @@ class ZWOCamera(Camera):
         self._DoTranspose = True
         self._camera_time = True
         self._binX = 1
-        self._NumX = self._camera_info['MaxWidth']
-        self._NumY = self._camera_info['MaxHeight']
+        self._NumX = self._camera_info["MaxWidth"]
+        self._NumY = self._camera_info["MaxHeight"]
         self._StartX = 0
         self._StartY = 0
 
@@ -94,7 +96,7 @@ class ZWOCamera(Camera):
 
         width = self.NumX
         height = self.NumY
-        
+
         image_type = asi.ASI_IMG_RAW16
         whbi_old = self._device.get_roi_format()
         whbi_new = [width, height, bins, image_type]
@@ -142,12 +144,16 @@ class ZWOCamera(Camera):
 
     @property
     def BinY(self):
-        logger.debug(f"ASCOMCamera.BinY property called - Symmetric binning only - use BinX property")
+        logger.debug(
+            f"ASCOMCamera.BinY property called - Symmetric binning only - use BinX property"
+        )
         return self.BinX
 
     @BinY.setter
     def BinY(self, value):
-        logger.debug(f"ASCOMCamera.BinY setter called - Symmetric binning only - use BinX property")
+        logger.debug(
+            f"ASCOMCamera.BinY setter called - Symmetric binning only - use BinX property"
+        )
         pass
 
     @property
@@ -158,12 +164,12 @@ class ZWOCamera(Camera):
     @property
     def CameraXSize(self):
         logger.debug(f"ASCOMCamera.CameraXSize property called")
-        return self._camera_info['MaxWidth']
+        return self._camera_info["MaxWidth"]
 
     @property
     def CameraYSize(self):
         logger.debug(f"ASCOMCamera.CameraYSize property called")
-        return self._camera_info['MaxHeight']
+        return self._camera_info["MaxHeight"]
 
     @property
     def CameraTime(self):
@@ -198,7 +204,7 @@ class ZWOCamera(Camera):
     @property
     def CanSetCCDTemperature(self):
         logger.debug(f"ASCOMCamera.CanSetCCDTemperature property called")
-        return self._camera_info['IsCoolerCam']
+        return self._camera_info["IsCoolerCam"]
 
     @property
     def CanStopExposure(self):
@@ -208,7 +214,7 @@ class ZWOCamera(Camera):
     @property
     def CCDTemperature(self):
         logger.debug(f"ASCOMCamera.CCDTemperature property called")
-        return self._device.get_control_value(asi.ASI_TEMPERATURE)[0]/10
+        return self._device.get_control_value(asi.ASI_TEMPERATURE)[0] / 10
 
     @property
     def CoolerOn(self):
@@ -229,46 +235,46 @@ class ZWOCamera(Camera):
     def DriverVersion(self):
         logger.debug(f"ASCOMCamera.DriverVersion property called")
         return "Custom Driver"
-    
+
     @property
     def DriverInfo(self):
         logger.debug(f"ASCOMCamera.DriverInfo property called")
         return ["Custom Driver for ZWO ASI Cameras", 1]
-    
+
     @property
     def Description(self):
         logger.debug(f"ASCOMCamera.Description property called")
-        return self._camera_info['Name']
+        return self._camera_info["Name"]
 
     @property
     def ElectronsPerADU(self):
         logger.debug(f"ASCOMCamera.ElectronsPerADU() property called")
-        return self._device.get_camera_property()['ElecPerADU']*self.BinX*self.BinY
-    
+        return self._device.get_camera_property()["ElecPerADU"] * self.BinX * self.BinY
+
     @property
     def Exposure(self):
-        '''
+        """
         Get the exposure time in seconds. The exposure time is the time that the camera will be collecting light from the sky. The exposure time must be greater than or equal to the minimum exposure time and less than or equal to the maximum exposure time. The exposure time is specified in seconds.
-        
+
         Returns
         -------
         float
             The exposure time in seconds.
-        '''
+        """
         logger.debug(f"ZWOASI.Exposure property called")
         # Convert to seconds
         return self._device.get_control_value(asi.ASI_EXPOSURE)[0] / 1e6
-    
+
     @Exposure.setter
     def Exposure(self, value):
-        '''
+        """
         Set the exposure time in seconds. The exposure time is the time that the camera will be collecting light from the sky. The exposure time must be greater than or equal to the minimum exposure time and less than or equal to the maximum exposure time. The exposure time is specified in seconds.
-        
+
         Parameters
         ----------
         value : float
             The exposure time in seconds.
-        '''
+        """
         logger.debug(f"ZWOASI.Exposure property set to {value}")
         # Convert to microseconds
         value = int(value * 1e6)
@@ -277,15 +283,15 @@ class ZWOCamera(Camera):
     @property
     def ExposureMax(self):
         logger.debug(f"ASCOMCamera.ExposureMax property called")
-        exp_max = self._controls['Exposure']['MaxValue']
-        exp_max /= 1E6
+        exp_max = self._controls["Exposure"]["MaxValue"]
+        exp_max /= 1e6
         return exp_max
 
     @property
     def ExposureMin(self):
         logger.debug(f"ASCOMCamera.ExposureMin property called")
-        exp_min = self._controls['Exposure']['MinValue']
-        exp_min /= 1E6
+        exp_min = self._controls["Exposure"]["MinValue"]
+        exp_min /= 1e6
         return exp_min
 
     @property
@@ -324,12 +330,12 @@ class ZWOCamera(Camera):
     @property
     def GainMax(self):
         logger.debug(f"ASCOMCamera.GainMax property called")
-        return self._controls['Gain']['MaxValue']
+        return self._controls["Gain"]["MaxValue"]
 
     @property
     def GainMin(self):
         logger.debug(f"ASCOMCamera.GainMin property called")
-        return self._controls['Gain']['MinValue']
+        return self._controls["Gain"]["MinValue"]
 
     @property
     def Gains(self):
@@ -396,7 +402,7 @@ class ZWOCamera(Camera):
             img = np.frombuffer(data, dtype=np.uint8)
             shape.append(3)
         else:
-            raise ValueError('Unsupported image type')
+            raise ValueError("Unsupported image type")
         img = img.reshape(shape)
         # Done by default in zwoasi
         # if self._DoTranspose:
@@ -453,12 +459,12 @@ class ZWOCamera(Camera):
     @property
     def MaxBinX(self):
         logger.debug(f"ASCOMCamera.MaxBinX property called")
-        return self._camera_info['SupportedBins'][-1]
+        return self._camera_info["SupportedBins"][-1]
 
     @property
     def MaxBinY(self):
         logger.debug(f"ASCOMCamera.MaxBinY property called")
-        return self._camera_info['SupportedBins'][-1]
+        return self._camera_info["SupportedBins"][-1]
 
     @property
     def NumX(self):
@@ -469,8 +475,8 @@ class ZWOCamera(Camera):
     def NumX(self, value):
         logger.debug(f"ASCOMCamera.NumX property set to {value}")
         width = value
-        if width%8 != 0:
-            width -= width%8 # Make width a multiple of 8
+        if width % 8 != 0:
+            width -= width % 8  # Make width a multiple of 8
         self._NumX = width
 
     @property
@@ -483,8 +489,8 @@ class ZWOCamera(Camera):
         logger.debug(f"ASCOMCamera.NumY property set to {value}")
         # Set height to next multiple of 2
         height = value
-        if height%2 != 0:
-            height -= 1 # Make height even
+        if height % 2 != 0:
+            height -= 1  # Make height even
         self._NumY = height
 
     @property
@@ -500,12 +506,12 @@ class ZWOCamera(Camera):
     @property
     def OffsetMax(self):
         logger.debug(f"ASCOMCamera.OffsetMax property called")
-        return self._controls['Offset']['MaxValue']
+        return self._controls["Offset"]["MaxValue"]
 
     @property
     def OffsetMin(self):
         logger.debug(f"ASCOMCamera.OffsetMin property called")
-        return self._controls['Offset']['MinValue']
+        return self._controls["Offset"]["MinValue"]
 
     @property
     def Offsets(self):
@@ -520,13 +526,13 @@ class ZWOCamera(Camera):
     @property
     def PixelSizeX(self):
         logger.debug(f"ASCOMCamera.PixelSizeX property called")
-        return self._camera_info['PixelSize']*self.BinX
+        return self._camera_info["PixelSize"] * self.BinX
 
     @property
     def PixelSizeY(self):
         logger.debug(f"ASCOMCamera.PixelSizeY property called")
-        return self._camera_info['PixelSize']*self.BinY
-    
+        return self._camera_info["PixelSize"] * self.BinY
+
     @property
     def ReadoutMode(self):
         logger.debug(f"ASCOMCamera.ReadoutMode property called")
@@ -545,17 +551,17 @@ class ZWOCamera(Camera):
     @property
     def SensorName(self):
         logger.debug(f"ASCOMCamera.SensorName property called")
-        return self._camera_info['Name']
-    
+        return self._camera_info["Name"]
+
     @property
     def Name(self):
         logger.debug(f"ASCOMCamera.Name property called")
-        return self._camera_info['Name']
+        return self._camera_info["Name"]
 
     @property
     def SensorType(self):
         logger.debug(f"ASCOMCamera.SensorType property called")
-        return 'CMOS'
+        return "CMOS"
 
     @property
     def SetCCDTemperature(self):

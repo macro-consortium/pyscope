@@ -1159,15 +1159,15 @@ def plot_schedule_sky_cli(schedule_table, observatory):
     # ]
     # ax.legend(*zip(*unique), loc=(1.1, 0))
 
-    
-
     # Add title to plot based on date
-    t0 = np.min(schedule_table["start_time"]) # -1 corrects for UTC to local time, should be cleaned up
+    t0 = np.min(
+        schedule_table["start_time"]
+    )  # -1 corrects for UTC to local time, should be cleaned up
     t0 = astrotime.Time(t0, format="mjd")
     t0.format = "iso"
-    
-    ax.set_title(f"Observing Schedule: Night of {t0.to_string().split(' ')[0]} UTC",
-        fontsize=14
+
+    ax.set_title(
+        f"Observing Schedule: Night of {t0.to_string().split(' ')[0]} UTC", fontsize=14
     )
 
     ax.legend(labels, loc=(1.1, 0))
