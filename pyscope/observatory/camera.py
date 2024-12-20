@@ -7,7 +7,7 @@ class Camera(ABC, metaclass=_DocstringInheritee):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         """
-        Abstract class for camera devices.
+        Abstract base class for camera devices.
 
         The class defines the interface for camera devices, including methods for controlling
         exposures, guiding, and retrieving camera properties. Subclasses must implement

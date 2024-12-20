@@ -12,6 +12,33 @@ from zipfile import ZipFile
 
 class SimulatorServer:
     def __init__(self, force_update=False):
+        """
+        Class for starting the ASCOM Alpaca Simulators server.
+
+        This classhandles downloading, extracting, and launching the ASCOM Alpaca Simulators
+        server executable appropriate for the host's operating system and architecture.
+        Ensures correct version is downloaded and forces updating if specified.
+
+        Parameters
+        ----------
+        force_update : bool, default : `False`, optional
+            If `True`, forces download of the ASCOM Alpaca Simulators server executable.
+            If `False`, checks if the executable exists and skips download if it does.
+        
+        Raises
+        ------
+        Exception
+            If the host's operating system is not supported.
+        
+        Notes
+        -----
+        The server executable is downloaded from the ASCOM Initiative GitHub repository found `here <https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators>`_,
+        and is from the latest release version of v0.3.1.
+        Currently supported operating systems are:
+        - macOS (Darwin)
+        - Linux (x86_64, armhf, aarch64)
+        - Windows (x86, x64)
+        """
         if platform.system() == "Darwin":
             sys_name = "macos-x64"
             zip_type = ".zip"
@@ -86,6 +113,9 @@ class SimulatorServer:
         os.chdir(current_dir)
 
     def __del__(self):
+        """
+        Automatically kills the server process when the object is deleted.
+        """
         if platform.system() == "Darwin" or platform.system() == "Linux":
             # self.process.kill() # doesn't work since sudo is needed
             subprocess.Popen(

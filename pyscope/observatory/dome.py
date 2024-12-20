@@ -92,7 +92,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Azimuth : `float`
-            The azimuth to slew to in degrees.
+            The azimuth to slew to in degrees, North-referenced, CW.
         """
         pass
 
@@ -104,7 +104,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
         Parameters
         ----------
         Azimuth : `float`
-            The azimuth to synchronize to in degrees.
+            The azimuth to synchronize to in degrees, North-referenced, CW.
         """
         pass
 
