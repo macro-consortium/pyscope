@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
+  rev: v5.0.0
   hooks:
   - id: check-ast
   - id: check-case-conflict
@@ -14,7 +14,7 @@ repos:
   - id: isort
     args: [--profile=black]
 - repo: https://github.com/psf/black
-  rev: 24.3.0
+  rev: 24.10.0
   hooks:
   - id: black
 - repo: https://github.com/pre-commit/pygrep-hooks

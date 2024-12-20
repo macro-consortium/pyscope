@@ -398,6 +398,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def LastInputExposureDuration(self):
+        """The duration of the last exposure in seconds. (`float`)"""
         logger.debug(f"ASCOMCamera.LastInputExposureDuration property called")
         return self._last_exposure_duration
 
