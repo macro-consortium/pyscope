@@ -48,7 +48,7 @@ class PWIAutofocus(Autofocus):
             Exposure time in seconds for the autofocus routine.
         timeout : `float`, default : 120, optional
             Timeout in seconds for the autofocus routine to complete.
-        
+
         Returns
         -------
         `float` or `None`

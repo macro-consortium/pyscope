@@ -59,7 +59,7 @@ class HTMLObservingConditions(ObservingConditions):
 
         The class is designed to be used with an HTML page that contains observing conditions data,
         sensor descriptions, and time since last update.
-        
+
         Parameters
         ----------
         url : `str`

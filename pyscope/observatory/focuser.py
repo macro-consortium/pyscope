@@ -71,7 +71,7 @@ class Focuser(ABC, metaclass=_DocstringInheritee):
     def MaxIncrement(self):
         """
         The maximum increment size allowed by the focuser. (`int`)
-        
+
         In other words, the maximum number of steps allowed in a single move operation.
         For most focuser devices, this value is the same as the `MaxStep` property, and is normally used to limit
         the increment size in relation to displaying in the host software.

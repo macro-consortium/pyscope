@@ -33,7 +33,7 @@ def astrometry_net_wcs_cli(filepath, **kwargs):
     Returns
     -------
     bool
-        `True` if the WCS was successfully updated in the image header, `False` otherwise.    
+        `True` if the WCS was successfully updated in the image header, `False` otherwise.
 
 
     Raises

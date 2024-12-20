@@ -24,12 +24,12 @@ class SimulatorServer:
         force_update : bool, default : `False`, optional
             If `True`, forces download of the ASCOM Alpaca Simulators server executable.
             If `False`, checks if the executable exists and skips download if it does.
-        
+
         Raises
         ------
         Exception
             If the host's operating system is not supported.
-        
+
         Notes
         -----
         The server executable is downloaded from the ASCOM Initiative GitHub repository found `here <https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators>`_,

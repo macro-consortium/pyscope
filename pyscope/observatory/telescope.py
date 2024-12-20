@@ -27,7 +27,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     def AbortSlew(self):
         """
         Immediately stop any movement of the telescope due to any of the SlewTo*** calls.
-        
+
         Does nothing if the telescope is not slewing. Tracking will return to its pre-slew state.
         """
         pass
@@ -47,14 +47,14 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
                 * 0 : Primary axis, usually corresponding to Right Ascension or Azimuth.
                 * 1 : Secondary axis, usually corresponding to Declination or Altitude.
                 * 2 : Tertiary axis, usually corresponding to imager rotators.
-        
+
         Returns
         -------
         `object`
             This object should be an iterable collection, including properties for both
             the number of rates, and the actual rates, and methods for returning an
             enumerator for the rates, and for disposing of the object as a whole.
-        
+
         Notes
         -----
         Rates must be absolute non-negative values only. Determining direction
@@ -92,7 +92,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
             Right ascension coordinate (hours) of destination, not current, at current instant of time.
         Declination : `float`
             Declination coordinate (degrees) of destination, not current, at current instant of time.
-        
+
         Returns
         -------
         `enum`
@@ -134,7 +134,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
         Rate : `float`
             Rate of motion in degrees per second. Positive values indicate motion in one direction,
             negative values in the opposite direction, and 0.0 stops motion by this method and resumes tracking motion.
-        
+
         Notes
         -----
         Rate must be within the values returned by `AxisRates`. Note that those values are absolute,
@@ -432,7 +432,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     def CanSetPierSide(self):
         """
         Whether the telescope is capable of setting the side of the pier with `SideOfPier`, i.e. the mount can be forced to flip. (`bool`)
-        
+
         This is only relevant for German equatorial mounts, as non-Germans do not have to be flipped
         and should therefore have `CansetPierSide` `False`.
         """
@@ -455,7 +455,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     def CanSlew(self):
         """
         Whether the telescope is capable of slewing with `SlewToCoordinates`, or `SlewToTarget`. (`bool`)
-        
+
         A `True` only guarantees that the synchronous slews are possible.
         Asynchronous slew capabilies are determined by `CanSlewAsync`.
         """
@@ -526,7 +526,7 @@ class Telescope(ABC, metaclass=_DocstringInheritee):
     def DeclinationRate(self):
         """
         Declination tracking rate in arcseconds per second. (`float`)
-        
+
         This, in conjunction with `RightAscensionRate`, is primarily used for offset tracking,
         tracking objects that move relatively slowly against the equatorial coordinate system.
         The supported range is telescope-dependent, but it can be expected to be a range

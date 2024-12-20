@@ -119,7 +119,7 @@ def store_image(img, dest, update_db=False):
     """
     Archives a FITS image in a long-term storage directory.
 
-    Copies the file to the specified directory if the target does not exist or 
+    Copies the file to the specified directory if the target does not exist or
     is older than the source. Logs errors during the copy process.
 
     Parameters
@@ -152,13 +152,13 @@ def store_image(img, dest, update_db=False):
 
 def process_image(img):
     """
-    Processes a single FITS image by calibrating and classifying it based on the outcome. 
+    Processes a single FITS image by calibrating and classifying it based on the outcome.
 
-    The function begins by reading the FITS file data and header. If the image has not 
-    already been calibrated, it applies calibration using the `calib_images` function. 
-    Once calibrated, the image is moved to a `reduced` directory if the calibration is 
-    successful or a `failed` directory if calibration fails. Regardless of the outcome, 
-    the image is archived in a long-term storage directory for later use. Finally, the 
+    The function begins by reading the FITS file data and header. If the image has not
+    already been calibrated, it applies calibration using the `calib_images` function.
+    Once calibrated, the image is moved to a `reduced` directory if the calibration is
+    successful or a `failed` directory if calibration fails. Regardless of the outcome,
+    the image is archived in a long-term storage directory for later use. Finally, the
     image is removed from the landing directory to complete the process.
 
     Parameters

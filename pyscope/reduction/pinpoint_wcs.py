@@ -41,7 +41,7 @@ class PinpointWCS(WCS):
     ):
         """
         Solve the WCS of a FITS image using PinPoint.
-        
+
         This method uses PinPoint to attach to a FITS file, solve for its astrometry based
         on provided or inferred RA/DEC and scale estimates, and update the FITS file with the
         resulting WCS solution.

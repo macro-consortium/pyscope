@@ -286,9 +286,9 @@ def schedtel_cli(
     """
     Schedule observations for an observatory.
 
-    This function creates an observation schedule based on input catalogs or 
-    queues. It applies constraints such as airmass, elevation, and moon separation, 
-    and outputs a schedule file. Optionally, it generates visualizations like Gantt 
+    This function creates an observation schedule based on input catalogs or
+    queues. It applies constraints such as airmass, elevation, and moon separation,
+    and outputs a schedule file. Optionally, it generates visualizations like Gantt
     charts or sky charts.
 
     Parameters
@@ -297,7 +297,7 @@ def schedtel_cli(
         Path to a `.sch` file or `.cat` file containing observation blocks. If not provided,
         defaults to `schedule.cat` in `$TELHOME/schedules/`.
     queue : `str`, optional
-        Path to a queue file (`.ecsv`) with observation requests. If a catalog is provided, 
+        Path to a queue file (`.ecsv`) with observation requests. If a catalog is provided,
         entries from the catalog are added to the queue.
     add_only : `bool`, optional
         If True, adds catalog entries to the queue without scheduling.
@@ -324,13 +324,13 @@ def schedtel_cli(
     resolution : `float`, optional
         Time resolution for scheduling in seconds. Defaults to `5`.
     name_format : `str`, optional
-        Format string for scheduled image names. Defaults to 
+        Format string for scheduled image names. Defaults to
         `"{code}_{target}_{filter}_{exposure}s_{start_time}"`.
     filename : `str`, optional
-        Output file name. If not specified, defaults to a file named with the UTC date 
+        Output file name. If not specified, defaults to a file named with the UTC date
         of the first observation in the current working directory.
     telrun : `bool`, optional
-        If True, places the output file in the `$TELRUN_EXECUTE` directory or a default 
+        If True, places the output file in the `$TELRUN_EXECUTE` directory or a default
         `schedules/execute/` directory.
     plot : `int`, optional
         Type of plot to generate (1: Gantt, 2: Airmass, 3: Sky). Defaults to no plot.

@@ -1,8 +1,8 @@
 import logging
 import pathlib
+import platform
 
 import numpy as np
-import zwoasi as asi
 from astropy.time import Time
 
 from .camera import Camera
@@ -12,14 +12,18 @@ logger = logging.getLogger(__name__)
 lib_path = pathlib.Path(
     r"C:\Users\MACRO\Downloads\ASI_Camera_SDK\ASI_Camera_SDK\ASI_Windows_SDK_V1.37\ASI SDK\lib\x64\ASICamera2.dll"
 )
-print(lib_path)
-
-asi.init(lib_path)
 
 
 class ZWOCamera(Camera):
     def __init__(self, device_number=0):
         logger.debug(f"ZWOCamera.__init__({device_number})")
+
+        if platform.system() != "Windows":
+            raise ImportError("ZWO ASI Camera SDK is only supported on Windows")
+        else:
+            import zwoasi as asi
+
+            asi.init(lib_path)
 
         self._device = asi.Camera(device_number)
         self._camera_info = self._device.get_camera_property()

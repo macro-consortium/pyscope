@@ -96,7 +96,7 @@ class _MaximAutofocus(Autofocus):
         ----------
         exposure : `int`, default : 10, optional
             The exposure time in seconds for the autofocus routine.
-        
+
         Returns
         -------
         `bool`

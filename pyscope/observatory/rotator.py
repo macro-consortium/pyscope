@@ -117,7 +117,7 @@ class Rotator(ABC, metaclass=_DocstringInheritee):
     def Reverse(self):
         """
         Whether the rotator is in reverse mode. (`bool`)
-        
+
         If `True`, the rotation and angular direction must be reversed for optics.
         """
         pass
@@ -138,7 +138,7 @@ class Rotator(ABC, metaclass=_DocstringInheritee):
     def TargetPosition(self):
         """
         The target angular position of the rotator, in degrees. (`float`)
-        
+
         Upon a `Move` or `MoveAbsolute` call, this property is set to the position angle to which
         the rotator is moving. Value persists until another move call.
         """

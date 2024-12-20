@@ -57,7 +57,7 @@ class Switch(ABC, metaclass=_DocstringInheritee):
     def GetSwitchDescription(self, ID):
         """
         The detailed description of the switch, to be used for features such as tooltips. (`str`)
-        
+
         Parameters
         ----------
         ID : `int`

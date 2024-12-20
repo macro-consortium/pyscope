@@ -56,12 +56,12 @@ class ASCOMDevice(Device):
             The name of the action to invoke. Action names are either specified by the device driver or are well known names agreed upon and constructed by interested parties.
         ActionParameters : `list`
             The required parameters for the given action. Empty string if none are required.
-        
+
         Returns
         -------
         `str`
             The result of the action. The return value is dependent on the action being invoked and the representations are set by the driver author.
-        
+
         Notes
         -----
         See `SupportedActions` for a list of supported actions set up by the driver author.
@@ -101,7 +101,7 @@ class ASCOMDevice(Device):
             The command string to send to the device.
         Raw : `bool`
             If `True`, the command is set as-is. If `False`, protocol framing characters may be added onto the command.
-        
+
         Returns
         -------
         `bool`
@@ -124,7 +124,7 @@ class ASCOMDevice(Device):
             The command string to send to the device.
         Raw : `bool`
             If `True`, the command is set as-is. If `False`, protocol framing characters may be added onto the command.
-        
+
         Returns
         -------
         `str`
@@ -148,7 +148,7 @@ class ASCOMDevice(Device):
     def Description(self):
         """
         The description of the device such as the manufacturer and model number. (`str`)
-        
+
         Description should be limited to 64 characters so that it can be used in FITS headers.
         """
         logger.debug(f"ASCOMDevice.Description property")
@@ -158,7 +158,7 @@ class ASCOMDevice(Device):
     def DriverInfo(self):
         """
         Description and version information about this ASCOM driver. (`str`)
-        
+
         Length of info can contain line endings and may be up to thousands of characters long.
         Version data and copyright data should be included.
         See `Description` for information on the device itself.

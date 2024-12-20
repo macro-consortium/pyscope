@@ -38,12 +38,12 @@ class ObservingConditions(ABC, metaclass=_DocstringInheritee):
 
         Even if the driver to the sensor isn't connected, if the sensor itself is implemented, this method must
         return a valid string, for example in case an application wants to determine what sensors are available.
-        
+
         Parameters
         ----------
         PropertyName : `str`
             The name of the property for which the sensor description is required.
-        
+
         Returns
         -------
         `str`

@@ -36,7 +36,7 @@ class PWI4Autofocus(Autofocus):
             Variable length argument list.
         **kwargs : `dict`
             Arbitrary keyword arguments.
-        
+
         Returns
         -------
         `float`

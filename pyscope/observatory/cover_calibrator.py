@@ -8,7 +8,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def __init__(self, *args, **kwargs):
         """
         Abstract base class for a cover calibrator device.
-        
+
         Defines the common interface for cover calibrator devices, including methods
         for controlling the cover and calibrator light. Subclasses must implement the
         abstract methods and properties in this class.
@@ -38,7 +38,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def CalibratorOn(self, Brightness):
         """
         Turns the calibrator on at the specified brightness if the device has a calibrator.
-        
+
         If the calibrator requires time to safely stabilise, `CalibratorState` must show that the calibrator is not ready yet.
         When the calibrator has stabilised, `CalibratorState` must show that the calibrator is ready and on.
         If a device has both cover and calibrator capabilities, the method may change `CoverState`.
@@ -55,7 +55,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def CloseCover(self):
         """
         Starts closing the cover if the device has a cover.
-        
+
         While the cover is closing, `CoverState` must show that the cover is moving.
         When the cover is fully closed, `CoverState` must show that the cover is closed.
         If an error condition arises while closing the cover, it must be indicated in `CoverState`.
@@ -66,7 +66,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def HaltCover(self):
         """
         Stops any present cover movement if the device has a cover and cover movement can be halted.
-        
+
         Stops cover movement as soon as possible and sets `CoverState` to an appropriate value such as open or closed.
         """
         pass
@@ -87,7 +87,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def Brightness(self):
         """
         The current calibrator brightness in the range of 0 to `MaxBrightness`. (`int`)
-        
+
         The brightness must be 0 if the `CalibratorState` is `Off`.
         """
         pass
@@ -110,7 +110,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def CoverState(self):
         """
         The state of the cover device, if present, otherwise indicate that it does not exist. (`enum`)
-        
+
         When the cover is changing the state must indicate that the cover is busy.
         If the device is unaware of the cover state, such as if hardware doesn't report the state and the cover was just powered on, it must indicate as such.
         Users should be able to carry out commands like `OpenCover`, `CloseCover`, and `HaltCover` regardless of this unknown state.
@@ -122,7 +122,7 @@ class CoverCalibrator(ABC, metaclass=_DocstringInheritee):
     def MaxBrightness(self):
         """
         Brightness value that makes the calibrator produce the maximum illumination supported. (`int`)
-        
+
         A value of 1 indicates that the calibrator can only be off or on.
         A value of any other X should indicate that the calibrator has X discreet brightness levels in addition to off (0).
         Value determined by the device manufacturer or driver author based on hardware capabilities.

@@ -167,8 +167,8 @@ def fitslist_cli(
     """
     List FITS files and their properties.
 
-    This command-line tool extracts metadata from FITS files in a specified directory 
-    and presents it in a structured table. Users can filter files by various criteria 
+    This command-line tool extracts metadata from FITS files in a specified directory
+    and presents it in a structured table. Users can filter files by various criteria
     and save the results to a CSV file.
 
     Parameters

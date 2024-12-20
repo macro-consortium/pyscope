@@ -11,7 +11,7 @@ class PWI4Focuser(Focuser):
     def __init__(self, host="localhost", port=8220):
         """
         Focuser class for the PWI4 software platform.
-        
+
         This class provides an interface to the PWI4 Focuser, and enables the user to access properties of
         the focuser such as position, temperature, and whether the focuser is moving, and methods to move the
         focuser, enable/disable the focuser, and check if the focuser is connected.

@@ -122,8 +122,8 @@ def calib_images_cli(
 
     .. note::
 
-        Ensure all required calibration frames (`bias`, `dark`, `flat`, `flat-dark`) are present in the specified 
-        `--calib-dir`. If any calibration frames are missing, the process will fail, and the function will 
+        Ensure all required calibration frames (`bias`, `dark`, `flat`, `flat-dark`) are present in the specified
+        `--calib-dir`. If any calibration frames are missing, the process will fail, and the function will
         return `0` without making changes to the images.
 
     Parameters
@@ -159,7 +159,7 @@ def calib_images_cli(
     `int`
     Returns `0` if the calibration process fails due to missing calibration frames.
     `None`
-        Returns `None` on successful completion of all calibrations. 
+        Returns `None` on successful completion of all calibrations.
 
     Raises
     ------
@@ -346,10 +346,11 @@ def calib_images_cli(
 
     logger.info("Done!")
 
-'''
+
+"""
 Notes: Having an example set up of this function would be helpful.
     This would allow for me to know what the environment looks like when
     calling this function.
-'''
+"""
 
 calib_images = calib_images_cli.callback

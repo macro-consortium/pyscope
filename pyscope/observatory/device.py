@@ -8,7 +8,7 @@ class Device(ABC, metaclass=_DocstringInheritee):
     def __init__(self, *args, **kwargs):
         """
         Abstract base class for all deivce types.
-        
+
         This class defines the common interface for all devices.
         Includes connection status and device name properties. Subclasses must implement the
         abstract methods and properties in this class.

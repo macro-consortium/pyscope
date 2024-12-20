@@ -110,7 +110,6 @@ def avg_fits_cli(
         If the input images have incompatible dimensions or data types.
     """
 
-
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)
     elif verbose == 1:

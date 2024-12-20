@@ -48,7 +48,7 @@ class ASCOMCoverCalibrator(ASCOMDevice, CoverCalibrator):
     def CalibratorOn(self, Brightness):
         """
         Turns the calibrator on at the specified brightness if the device has a calibrator.
-        
+
         If the calibrator requires time to safely stabilise, `CalibratorState` must return `NotReady`.
         When the calibrator has stabilised, `CalibratorState` must return `Ready`.
         If a device has both cover and calibrator capabilities, the method may change `CoverState`.
@@ -65,7 +65,7 @@ class ASCOMCoverCalibrator(ASCOMDevice, CoverCalibrator):
     def CloseCover(self):
         """
         Starts closing the cover if the device has a cover.
-        
+
         While the cover is closing, `CoverState` must return `Moving`.
         When the cover is fully closed, `CoverState` must return `Closed`.
         If an error condition arises while closing the cover, `CoverState` must return `Error`.
@@ -76,7 +76,7 @@ class ASCOMCoverCalibrator(ASCOMDevice, CoverCalibrator):
     def HaltCover(self):
         """
         Stops any present cover movement if the device has a cover and cover movement can be halted.
-        
+
         Stops cover movement as soon as possible and sets `CoverState` to `Open`, `Closed`, or `Unknown` appropriately.
         """
         logger.debug(f"ASCOMCoverCalibrator.HaltCover() called")
@@ -125,11 +125,11 @@ class ASCOMCoverCalibrator(ASCOMDevice, CoverCalibrator):
     def CoverState(self):
         """
         The state of the cover device, if present, otherwise return `NotPresent`. (`CoverStatus <https://ascom-standards.org/help/developer/html/T_ASCOM_DeviceInterface_CoverStatus.htm>`_)
-        
+
         When the cover is changing the state must be `Moving`.
         If the device is unaware of the cover state, such as if hardware doesn't report the state and the cover was just powered on, the state must be `Unknown`.
         Users should be able to carry out commands like `OpenCover`, `CloseCover`, and `HaltCover` regardless of this unknown state.
-        
+
         Returns
         -------
         `CoverStatus`

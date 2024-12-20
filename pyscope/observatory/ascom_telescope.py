@@ -52,7 +52,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
                 * 0 : Primary axis, Right Ascension or Azimuth.
                 * 1 : Secondary axis, Declination or Altitude.
                 * 2 : Tertiary axis, imager rotators.
-        
+
         Returns
         -------
         `IAxisRates <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_IAxisRates.htm>`_
@@ -60,7 +60,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
             collection of rates, including properties for both the number of rates, and the
             actual rates, and methods for returning an enumerator for the rates, and for
             disposing of the object as a whole.
-        
+
         Notes
         -----
         Rates must be absolute non-negative values only. Determining direction
@@ -98,7 +98,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
             Right ascension coordinate (hours) of destination, not current, at current instant of time.
         Declination : `float`
             Declination coordinate (degrees) of destination, not current, at current instant of time.
-        
+
         Returns
         -------
         `PierSide <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_PierSide.htm>`_
@@ -136,7 +136,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Rate : `float`
             Rate of motion in degrees per second. Positive values indicate motion in one direction,
             negative values in the opposite direction, and 0.0 stops motion by this method and resumes tracking motion.
-        
+
         Notes
         -----
         Rate must be within the values returned by `AxisRates`. Note that those values are absolute,
@@ -357,7 +357,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
     def CanSlewAltAz(self):  # pragma: no cover
         """
         Deprecated
-        
+
         .. deprecated:: 0.1.1
             ASCOM is deprecating this property.
         """

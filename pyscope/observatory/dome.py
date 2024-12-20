@@ -56,7 +56,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
     def Park(self):
         """
         Move the dome to the park position along the dome azimuth axis.
-        
+
         Sets the `AtPark` property to `True` after completion, and should raise an error if `Slaved`.
         """
         pass
@@ -186,7 +186,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
     def CanSetAzimuth(self):
         """
         Whether the dome can set the azimuth, i.e. is it capable of `SlewToAzimuth`. (`bool`)
-        
+
         In simpler terms, whether the dome is equipped with rotation control or not.
         """
         pass
@@ -208,7 +208,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
     def CanSlave(self):
         """
         Whether the dome can be slaved to a telescope, i.e. is it capable of `Slaved` states. (`bool`)
-        
+
         This should only be `True` if the dome has its own slaving mechanism;
         a dome driver should not query a telescope driver directly.
         """
@@ -237,7 +237,7 @@ class Dome(ABC, metaclass=_DocstringInheritee):
     def Slaved(self):
         """
         Whether the dome is currently slaved to a telescope. (`bool`)
-        
+
         During operations, set to `True` to enable hardware slewing, if capable, see `CanSlave`.
         """
         pass
