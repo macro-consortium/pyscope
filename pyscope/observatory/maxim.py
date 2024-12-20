@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class Maxim(Device):
     def __init__(self):
+        """
+        This class provides an interface to Maxim DL, and its camera, filter wheel, and autofocus routines.
+
+        This class is only available on Windows.
+        """
         logger.debug("Maxim.Maxim __init__ called")
         if platform.system() != "Windows":
             raise Exception("This class is only available on Windows.")
@@ -50,26 +55,53 @@ class Maxim(Device):
 
     @property
     def app(self):
+        """The Maxim DL application object. (`win32com.client.CDispatch`)"""
         logger.debug("Maxim.app called")
         return self._app
 
     @property
     def autofocus(self):
+        """The autofocus object. (`_MaximAutofocus`)"""
         logger.debug("Maxim.autofocus called")
         return self._autofocus
 
     @property
     def camera(self):
+        """The camera object. (`_MaximCamera`)"""
         logger.debug("Maxim.camera called")
         return self._camera
 
 
 class _MaximAutofocus(Autofocus):
     def __init__(self, maxim):
+        """
+        Autofocus class for Maxim DL.
+
+        This class provides an interface for running and aborting the autofocus routine in Maxim DL.
+
+        Parameters
+        ----------
+        maxim : `Maxim`
+            The Maxim DL object.
+        """
         logger.debug("_MaximAutofocus.MaximAutofocus __init__ called")
         self.maxim = maxim
 
     def Run(self, exposure=10):
+        """
+        Run the autofocus routine in Maxim DL.
+        Only returns once the autofocus routine is complete.
+
+        Parameters
+        ----------
+        exposure : `int`, default : 10, optional
+            The exposure time in seconds for the autofocus routine.
+        
+        Returns
+        -------
+        `bool`
+            `True` if the autofocus routine was successful, `False` if it failed.
+        """
         logger.debug(f"Run called with exposure={exposure}")
         self.maxim.Autofocus(exposure)
 
@@ -82,6 +114,9 @@ class _MaximAutofocus(Autofocus):
             return False
 
     def Abort(self):
+        """
+        Abort the autofocus routine in Maxim DL.
+        """
         logger.debug("_MaximAutofocus.Abort called")
         raise NotImplementedError
 
