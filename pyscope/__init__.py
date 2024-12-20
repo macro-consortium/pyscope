@@ -87,4 +87,4 @@ from . import analysis
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-__all__ = ["analysis", "observatory", "reduction", "telrun", "utils"]
+__all__ = ["analysis", "observatory", "reduction", "scheduling", "telrun", "utils"]
