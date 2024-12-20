@@ -537,13 +537,13 @@ def read(
         if "repositioning" in line.keys():
             if (
                 line["repositioning"].startswith("t")
-                or line["repositioning"].startswith("1")
+                or line["repositioning"] == "1"
                 or line["repositioning"].startswith("y")
             ):
                 repositioning = (-1, -1)
             elif (
                 line["repositioning"].startswith("f")
-                or line["repositioning"].startswith("0")
+                or line["repositioning"] == "0"
                 or line["repositioning"].startswith("n")
             ):
                 repositioning = (0, 0)

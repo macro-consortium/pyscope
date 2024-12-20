@@ -93,7 +93,7 @@ def blocks_to_table(observing_blocks):
         ),
         format="mjd",
     )
-
+    # print(f"Target to hmsdms: {block.target.to_string('hmsdms')}")
     t["target"] = coord.SkyCoord(
         [
             (
