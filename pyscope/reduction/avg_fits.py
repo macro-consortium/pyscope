@@ -77,32 +77,39 @@ def avg_fits_cli(
     outfile=None,
     verbose=0,
 ):
-    """Averages over a list of images into a single image. Select pre-normalize to normalize each image by its own mean before combining. This mode is most useful for combining sky flats.\b
+    """
+    Averages a list of FITS images into a single output image.
+
+    Averages multiple FITS images into a single output image, with options for pre-normalization, averaging mode, and output data type.
 
     Parameters
     ----------
-    fnames : path
-        path of directory of images to average.
-
-    pre_normalize : bool, default=False
-        Normalize each image by its own mean before combining. This mode is most useful for combining sky flats.
-
-    mode : str, default="0"
-        Mode to use for averaging images (0 = median, 1 = mean).
-
-    datatype : str, default="float32"
-        Data type to save out the averaged image. If pre_normalize is True, the data type will be float64.
-
-    outfile : path
-        Path to save averaged image. If not specified, the averaged image will be saved in the same directory as the input images with the first image's name and _avg.fts appended to it.
-
-    verbose : int, default=0
-        Print verbose output.
+    fnames : list of `str`
+        Paths to FITS files to average.
+    pre_normalize : `bool`, default=`False`
+        Normalize each image by its own mean before combining.
+    mode : `str`, default=`"0"`
+        Averaging mode: `"0"` for median, `"1"` for mean.
+    datatype : `str`, default=`"float32"`
+        Data type for the averaged image. Defaults to `"float32"` unless pre-normalizing, where `"float64"` is used.
+    outfile : `str`, optional
+        Output path for the averaged image. Defaults to using the first input file name with `"_avg.fts"` appended.
+    verbose : `int`, default=`0`
+        Logging verbosity level. Use `-v` for `INFO` and `-vv` for `DEBUG`.
 
     Returns
     -------
-    None
+    `None`
+        The averaged FITS image is saved to the specified output file or the default location.
+
+    Raises
+    ------
+    `KeyError`
+        If required FITS header keywords (e.g., `FRAMETYP`, `EXPTIME`) are missing.
+    `ValueError`
+        If the input images have incompatible dimensions or data types.
     """
+
 
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)

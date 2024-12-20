@@ -141,6 +141,7 @@ dmypy.json
 *ascom.alpaca.simulators*
 *OmniSim*
 !coverage.xml
-docs/source/api/auto_api/
+docs/source/api/pyscope*
 docs/source/_build/
 pgHardware
+pgtest

@@ -283,6 +283,69 @@ def schedtel_cli(
     quiet=False,
     verbose=0,
 ):
+    """
+    Schedule observations for an observatory.
+
+    This function creates an observation schedule based on input catalogs or 
+    queues. It applies constraints such as airmass, elevation, and moon separation, 
+    and outputs a schedule file. Optionally, it generates visualizations like Gantt 
+    charts or sky charts.
+
+    Parameters
+    ----------
+    catalog : `str`, optional
+        Path to a `.sch` file or `.cat` file containing observation blocks. If not provided,
+        defaults to `schedule.cat` in `$TELHOME/schedules/`.
+    queue : `str`, optional
+        Path to a queue file (`.ecsv`) with observation requests. If a catalog is provided, 
+        entries from the catalog are added to the queue.
+    add_only : `bool`, optional
+        If True, adds catalog entries to the queue without scheduling.
+    ignore_order : `bool`, optional
+        Ignores the order of `.sch` files in the catalog, scheduling all blocks as a single group.
+    date : `str`, optional
+        Local date of the night to be scheduled (`YYYY-MM-DD`). Defaults to the current date.
+    length : `int`, optional
+        Length of the schedule in days. Defaults to `1`.
+    observatory : `str`, optional
+        Path to an observatory configuration file. Defaults to `observatory.cfg` in `$TELHOME/config/`.
+    max_altitude : `float`, optional
+        Maximum solar altitude for nighttime scheduling. Defaults to `-12` degrees (nautical twilight).
+    elevation : `float`, optional
+        Minimum target elevation in degrees. Defaults to `30`.
+    airmass : `float`, optional
+        Maximum target airmass. Defaults to `3`.
+    moon_separation : `float`, optional
+        Minimum angular separation between the Moon and targets in degrees. Defaults to `30`.
+    scheduler : `tuple`, optional
+        Custom scheduler class and module. Defaults to `astroplan.PriorityScheduler`.
+    gap_time : `float`, optional
+        Maximum transition time between observation blocks in seconds. Defaults to `60`.
+    resolution : `float`, optional
+        Time resolution for scheduling in seconds. Defaults to `5`.
+    name_format : `str`, optional
+        Format string for scheduled image names. Defaults to 
+        `"{code}_{target}_{filter}_{exposure}s_{start_time}"`.
+    filename : `str`, optional
+        Output file name. If not specified, defaults to a file named with the UTC date 
+        of the first observation in the current working directory.
+    telrun : `bool`, optional
+        If True, places the output file in the `$TELRUN_EXECUTE` directory or a default 
+        `schedules/execute/` directory.
+    plot : `int`, optional
+        Type of plot to generate (1: Gantt, 2: Airmass, 3: Sky). Defaults to no plot.
+    yes : `bool`, optional
+        Automatically answers yes to prompts about unscheduled or invalid blocks.
+    quiet : `bool`, optional
+        Suppresses logging output.
+    verbose : `int`, optional
+        Controls logging verbosity. Defaults to `0`.
+
+    Returns
+    -------
+    astropy.table.Table
+        Table containing the scheduled observation blocks.
+    """
     # Set up logging
     if quiet:
         level = logging.ERROR
@@ -807,6 +870,14 @@ def schedtel_cli(
         queue_table = schedtab.blocks_to_table(queue_blocks)
 
     exec_blocks = exec_blocks + unscheduled_slots
+    for block in exec_blocks:
+        try:
+            # print(block.configuration["ID"], type(block.configuration["ID"]))
+            my_id = block.configuration["ID"].mjd
+            # print(my_id, type(my_id))
+            block.configuration["ID"] = my_id
+        except:
+            pass
     exec_table = schedtab.blocks_to_table(exec_blocks)
 
     # Write the schedule to file
