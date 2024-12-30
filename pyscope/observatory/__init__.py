@@ -54,8 +54,9 @@ from .simulator_server import SimulatorServer
 from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
-
 from .pwi_autofocus import PWIAutofocus
+
+from .zwo_camera import ZWOCamera
 
 # from .skyx import SkyX
 

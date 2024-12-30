@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from astropy.time import Time
 
-from .instrument_configuration import InstrumentConfiguration
+from ..telrun import InstrumentConfiguration
 from .observer import Observer
 
 logger = logging.getLogger(__name__)
@@ -13,60 +13,60 @@ logger = logging.getLogger(__name__)
 class _Block:
     def __init__(self, config, observer, name="", description="", **kwargs):
         """
-        A class to represent a time range in the schedule.
+        Represents a `~astropy.time.Time` range in a `~pyscope.scheduling.Schedule` attributed to an `~pyscope.scheduling.Observer`.
 
-        A `~pyscope.telrun._Block` are used to represent a time range in the schedule. A `~pyscope.telrun._Block` can be
-        used to represent allocated time with a `~pyscope.telrun.ScheduleBlock` or unallocated time with a
-        `~pyscope.telrun.UnallocatedBlock`. The `~pyscope.telrun._Block` class is a base class that should not be instantiated
-        directly. Instead, use the `~pyscope.telrun.ScheduleBlock` or `~pyscope.telrun.UnallocatedBlock` subclasses.
+        A `~pyscope.scheduling._Block` can be used to represent allocated time with a `~pyscope.scheduling.ScheduleBlock`
+        or unallocated time with an `~pyscope.scheduling.UnallocatedBlock`. The `~pyscope.scheduling._Block` class is a base
+        class that should not be instantiated directly. Instead, use the `~pyscope.scheduling.ScheduleBlock` or
+        `~pyscope.scheduling.UnallocatedBlock` subclasses.
 
         Parameters
         ----------
         configuration : `~pyscope.telrun.InstrumentConfiguration`, required
-            The `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun._Block`. This `~pyscope.telrun.InstrumentConfiguration` will be
-            used to set the telescope's `~pyscope.telrun.InstrumentConfiguration` at the start of the `~pyscope.telrun._Block` and
-            will act as the default `~pyscope.telrun.InstrumentConfiguration` for all `~pyscope.telrun.Field` objects in the
-            `~pyscope.telrun._Block` if a `~pyscope.telrun.InstrumentConfiguration` has not been provided. If a `~pyscope.telrun.Field`
+            The `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.scheduling._Block`. This `~pyscope.telrun.InstrumentConfiguration` will be
+            used to set the telescope's `~pyscope.telrun.InstrumentConfiguration` at the start of the `~pyscope.scheduling._Block` and
+            will act as the default `~pyscope.telrun.InstrumentConfiguration` for all `~pyscope.scheduling.Field` objects in the
+            `~pyscope.scheduling._Block` if a `~pyscope.telrun.InstrumentConfiguration` has not been provided. If a `~pyscope.scheduling.Field`
             has a different `~pyscope.telrun.InstrumentConfiguration`, it will override the block `~pyscope.telrun.InstrumentConfiguration` for the
-            duration of the `~pyscope.telrun.Field`.
+            duration of the `~pyscope.scheduling.Field`.
 
-        observer : `~pyscope.telrun.Observer`, required
-            Associate this `~pyscope.telrun._Block` with an `~pyscope.telrun.Observer`. The `~pyscope.telrun.Observer` is a
+        observer : `~pyscope.scheduling.Observer`, required
+            Associate this `~pyscope.scheduling._Block` with an `~pyscope.scheduling.Observer`. The `~pyscope.scheduling.Observer` is a
             bookkeeping object for an `~pyscope.observatory.Observatory` with multiple users/user groups.
 
         name : `str`, default : ""
-            A user-defined name for the `~pyscope.telrun._Block`. This parameter does not change
-            the behavior of the `~pyscope.telrun._Block`, but it can be useful for identifying the
-            `~pyscope.telrun._Block` in a schedule.
+            A user-defined name for the `~pyscope.scheduling._Block`. This parameter does not change
+            the behavior of the `~pyscope.scheduling._Block`, but it can be useful for identifying the
+            `~pyscope.scheduling._Block` in a schedule.
 
         description : `str`, default : ""
-            A user-defined description for the `~pyscope.telrun._Block`. Similar to the `name`
-            parameter, this parameter does not change the behavior of the `~pyscope.telrun._Block`.
+            A user-defined description for the `~pyscope.scheduling._Block`. Similar to the `name`
+            parameter, this parameter does not change the behavior of the `~pyscope.scheduling._Block`.
 
         **kwargs : `dict`, default : {}
             A dictionary of keyword arguments that can be used to store additional information
-            about the `~pyscope.telrun._Block`. This information can be used to store any additional
+            about the `~pyscope.scheduling._Block`. This information can be used to store any additional
             information that is not covered by the `configuration`, `name`, or `description` parameters.
 
         See Also
         --------
-        pyscope.telrun.ScheduleBlock : A subclass of `~pyscope.telrun._Block` that is used to schedule `~pyscope.telrun.Field` objects
-            in a `~pyscope.telrun.Schedule`.
-        pyscope.telrun.UnallocatedBlock : A subclass of `~pyscope.telrun._Block` that is used to represent unallocated time in a
-            `~pyscope.telrun.Schedule`.
+        pyscope.scheduling.ScheduleBlock : A subclass of `~pyscope.scheduling._Block` that is used to schedule `~pyscope.scheduling.Field` objects
+            in a `~pyscope.scheduling.Schedule`.
+        pyscope.scheduling.UnallocatedBlock : A subclass of `~pyscope.scheduling._Block` that is used to represent unallocated time in a
+            `~pyscope.scheduling.Schedule`.
         pyscope.telrun.InstrumentConfiguration : A class that represents the configuration of the telescope.
-        pyscope.telrun.Field : A class that represents a field to observe.
+        pyscope.scheduling.Field : A class that represents a field to observe.
         """
         logger.debug(
             "_Block(config=%s, observer=%s, name=%s, description=%s, **kwargs=%s)"
             % (config, observer, name, description, kwargs)
         )
-        self.config = config
+        self._uuid = uuid4()
         self.observer = observer
         self.name = name
         self.description = description
+        self.config = config
         self.kwargs = kwargs
-        self._uuid = uuid4()
         self._start_time = None
         self._end_time = None
 
@@ -77,7 +77,7 @@ class _Block:
         cls, string, config=None, observer=None, name="", description="", **kwargs
     ):
         """
-        Create a new `~pyscope.telrun._Block` from a string representation. Additional arguments can be provided to override
+        Create a new `~pyscope.scheduling._Block` from a string representation. Additional arguments can be provided to override
         the parsed values.
 
         Parameters
@@ -86,7 +86,7 @@ class _Block:
 
         config : `~pyscope.telrun.InstrumentConfiguration`, default: `None`
 
-        observer : `~pyscope.telrun.Observer`, default: `None`
+        observer : `~pyscope.scheduling.Observer`, default: `None`
 
         name : `str`, default : ""
 
@@ -96,7 +96,7 @@ class _Block:
 
         Returns
         -------
-        block : `~pyscope.telrun._Block`
+        block : `~pyscope.scheduling._Block`
 
         """
         logger.debug(
@@ -159,7 +159,7 @@ class _Block:
 
     def __str__(self):
         """
-        A `str` representation of the `~pyscope.telrun._Block`.
+        A `str` representation of the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -181,7 +181,7 @@ class _Block:
 
     def __repr__(self):
         """
-        A `str` representation of the `~pyscope.telrun._Block`.
+        A `str` representation of the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -193,7 +193,7 @@ class _Block:
     @property
     def config(self):
         """
-        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.telrun._Block`.
+        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -205,7 +205,7 @@ class _Block:
     @config.setter
     def config(self, value):
         """
-        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.telrun._Block`.
+        The default `~pyscope.telrun.InstrumentConfiguration` for the `~pyscope.scheduling._Block`.
 
         Parameters
         ----------
@@ -228,11 +228,11 @@ class _Block:
     @property
     def observer(self):
         """
-        The `~pyscope.telrun.Observer` associated with the `~pyscope.telrun._Block`.
+        The `~pyscope.scheduling.Observer` associated with the `~pyscope.scheduling._Block`.
 
         Returns
         -------
-        observer : `~pyscope.telrun.Observer`
+        observer : `~pyscope.scheduling.Observer`
         """
         logger.debug("_Block().observer == %s" % self._observer)
         return self._observer
@@ -240,11 +240,11 @@ class _Block:
     @observer.setter
     def observer(self, value):
         """
-        The `~pyscope.telrun.Observer` associated with the `~pyscope.telrun._Block`.
+        The `~pyscope.scheduling.Observer` associated with the `~pyscope.scheduling._Block`.
 
         Parameters
         ----------
-        value : `~pyscope.telrun.Observer`
+        value : `~pyscope.scheduling.Observer`
         """
         logger.debug("_Block().observer = %s" % value)
         if (
@@ -262,7 +262,7 @@ class _Block:
     @property
     def name(self):
         """
-        A user-defined `str` name for the `~pyscope.telrun._Block`.
+        A user-defined `str` name for the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -275,7 +275,7 @@ class _Block:
     @name.setter
     def name(self, value):
         """
-        A user-defined `str` name for the `~pyscope.telrun._Block`.
+        A user-defined `str` name for the `~pyscope.scheduling._Block`.
 
         Parameters
         ----------
@@ -291,7 +291,7 @@ class _Block:
     @property
     def description(self):
         """
-        A user-defined `str` description for the `~pyscope.telrun._Block`.
+        A user-defined `str` description for the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -303,7 +303,7 @@ class _Block:
     @description.setter
     def description(self, value):
         """
-        A user-defined `str` description for the `~pyscope.telrun._Block`.
+        A user-defined `str` description for the `~pyscope.scheduling._Block`.
 
         Parameters
         ----------
@@ -320,7 +320,7 @@ class _Block:
     @property
     def kwargs(self):
         """
-        Additional user-defined keyword arguments in a `dict` for the `~pyscope.telrun._Block`.
+        Additional user-defined keyword arguments in a `dict` for the `~pyscope.scheduling._Block`.
 
         Returns
         -------
@@ -333,7 +333,7 @@ class _Block:
     @kwargs.setter
     def kwargs(self, value):
         """
-        Additional user-defined keyword arguments for the `~pyscope.telrun._Block`.
+        Additional user-defined keyword arguments for the `~pyscope.scheduling._Block`.
 
         Parameters
         ----------
@@ -350,12 +350,12 @@ class _Block:
     @property
     def ID(self):
         """
-        A `~uuid.UUID` that uniquely identifies the `~pyscope.telrun._Block`.
+        A `~uuid.UUID` that uniquely identifies the `~pyscope.scheduling._Block`.
 
         Returns
         -------
         ID : `~uuid.UUID`
-            The unique identifier for the `~pyscope.telrun._Block`.
+            The unique identifier for the `~pyscope.scheduling._Block`.
         """
         logger.debug("_Block().ID == %s" % self._uuid)
         return self._uuid
@@ -363,12 +363,12 @@ class _Block:
     @property
     def start_time(self):
         """
-        The `~astropy.time.Time` that represents the start of the `~pyscope.telrun._Block`.
+        The `~astropy.time.Time` that represents the start of the `~pyscope.scheduling._Block`.
 
         Returns
         -------
         start_time : `astropy.time.Time`
-            The start time of the `~pyscope.telrun._Block`.
+            The start time of the `~pyscope.scheduling._Block`.
         """
         logger.debug("_Block().start_time == %s" % self._start_time)
         return self._start_time
@@ -376,12 +376,12 @@ class _Block:
     @property
     def end_time(self):
         """
-        The `~astropy.time.Time` that represents the end of the `~pyscope.telrun._Block`.
+        The `~astropy.time.Time` that represents the end of the `~pyscope.scheduling._Block`.
 
         Returns
         -------
         end_time : `astropy.time.Time`
-            The end time of the `~pyscope.telrun._Block`.
+            The end time of the `~pyscope.scheduling._Block`.
         """
         logger.debug("_Block().end_time == %s" % self._end_time)
         return self._end_time

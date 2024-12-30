@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class AirmassCondition(BoundaryCondition):
-    def __init__(self, airmass_limit=3, formula="Schoenberg1929", weight=1, **kwargs):
+    def __init__(self, airmass_limit=3, formula="Schoenberg1929", weight=1):
         """
         A condition that penalizes targets for higher airmass values up to a limit.
 
@@ -56,9 +56,6 @@ class AirmassCondition(BoundaryCondition):
         weight : `float`, default : 1
             The weight of the condition in the final score. The default is 1.
 
-        **kwargs : `dict`, default : {}
-            Additional keyword arguments to pass to the `~pyscope.telrun.BoundaryCondition` constructor for storage in the `~pyscope.telrun.BoundaryCondition.kwargs` attribute.
-
         References
         ----------
         .. [1] `Schoenberg, E. 1929. Theoretische Photometrie, Über die Extinktion des Lichtes in der Erdatmosphäre. In Handbuch der Astrophysik. Band II, erste Hälfte. Berlin: Springer. <https://ia904707.us.archive.org/25/items/in.ernet.dli.2015.377128/2015.377128.Handbuch-Der.pdf>`_
@@ -77,7 +74,7 @@ class AirmassCondition(BoundaryCondition):
 
         """
         logger.debug("AirmassCondition(airmass_limit=%s, formula=%s, weight=%s)")
-        super().__init__(func=self._func, lqs_func=self._lqs_func, **kwargs)
+        super().__init__(func=self._func, lqs_func=self._lqs_func)
 
     @classmethod
     def from_string(self, string, airmass_limit=None, formula=None, weight=None):
@@ -114,7 +111,7 @@ class AirmassCondition(BoundaryCondition):
         logger.debug("AirmassCondition().__str__()")
 
     @staticmethod
-    def _func(target, time, location, formula="Schoenberg1929", **kwargs):
+    def _func(target, time, location, formula="Schoenberg1929"):
         """
         Calculate the airmass value for the target.
 
@@ -132,7 +129,7 @@ class AirmassCondition(BoundaryCondition):
         logger.debug("AirmassCondition._func(target=%s)" % target)
 
     @staticmethod
-    def _lqs_func(self, value, airmass_limit=3, **kwargs):
+    def _lqs_func(self, value, airmass_limit=3):
         """
         Calculate the linear quality score for the airmass value.
 

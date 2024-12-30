@@ -194,6 +194,7 @@ class TelrunOperator:
         self._autofocus_nsteps = 5
         self._autofocus_step_size = 500
         self._autofocus_use_current_pointing = False
+        self._autofocus_binning = 1
         self._autofocus_timeout = 180
         self._repositioning_wcs_solver = "astrometry_net_wcs"
         self._repositioning_max_stability_time = 600  # seconds
@@ -207,6 +208,7 @@ class TelrunOperator:
         self._repositioning_save_images = False
         self._repositioning_save_path = self._images_path / "repositioning"
         self._repositioning_timeout = 180
+        self._repositioning_binning = 1
         self._wcs_solver = "astrometry_net_wcs"
         self._wcs_filters = None
         self._wcs_timeout = 30
@@ -304,6 +306,9 @@ class TelrunOperator:
                 "autofocus_use_current_pointing",
                 fallback=self._autofocus_use_current_pointing,
             )
+            self._autofocus_binning = self._config.getint(
+                "autofocus", "autofocus_binning", fallback=self._autofocus_binning
+            )
             self._autofocus_timeout = self._config.getfloat(
                 "autofocus", "autofocus_timeout", fallback=self._autofocus_timeout
             )
@@ -368,6 +373,11 @@ class TelrunOperator:
                 "repositioning",
                 "repositioning_timeout",
                 fallback=self._repositioning_timeout,
+            )
+            self._repositioning_binning = self._config.getint(
+                "repositioning",
+                "repositioning_binning",
+                fallback=self._repositioning_binning,
             )
             self._wcs_solver = self._config.get(
                 "wcs", "wcs_solver", fallback=self._wcs_solver
@@ -497,6 +507,9 @@ class TelrunOperator:
         self.autofocus_use_current_pointing = kwargs.get(
             "autofocus_use_current_pointing", self._autofocus_use_current_pointing
         )
+        self.autofocus_binning = kwargs.get(
+            "autofocus_binning", self._autofocus_binning
+        )
         self.autofocus_timeout = kwargs.get(
             "autofocus_timeout", self._autofocus_timeout
         )
@@ -535,6 +548,9 @@ class TelrunOperator:
         )
         self.repositioning_timeout = kwargs.get(
             "repositioning_timeout", self._repositioning_timeout
+        )
+        self.repositioning_binning = kwargs.get(
+            "repositioning_binning", self._repositioning_binning
         )
         self.wcs_solver = kwargs.get("wcs_solver", self._wcs_solver)
         self.wcs_filters = kwargs.get("wcs_filters", self._wcs_filters)
@@ -1445,6 +1461,21 @@ class TelrunOperator:
             logger.info("Setting camera readout mode to %s" % self.default_readout)
             self.observatory.camera.ReadoutMode = self.default_readout
 
+            # TODO: Make this better - temporary fix 2024-11-15
+            # Check if focuser is outside of self.autofocus_midpoint +/- 1000
+            if (
+                self.observatory.focuser.Position < self.autofocus_midpoint - 1000
+                or self.observatory.focuser.Position > self.autofocus_midpoint + 1000
+            ):
+                logger.info(
+                    "Focuser position is outside of autofocus_midpoint +/- 1000, moving to autofocus_midpoint..."
+                )
+                self._focuser_status = "Moving"
+                self.observatory.focuser.Move(self.autofocus_midpoint)
+                while self.observatory.focuser.IsMoving:
+                    time.sleep(0.1)
+                self._focuser_status = "Idle"
+
             logger.info("Starting autofocus, ensuring tracking is on...")
             self.observatory.telescope.Tracking = True
             t = threading.Thread(
@@ -1461,6 +1492,7 @@ class TelrunOperator:
                 nsteps=self.autofocus_nsteps,
                 step_size=self.autofocus_step_size,
                 use_current_pointing=self.autofocus_use_current_pointing,
+                binning=self.autofocus_binning,
             )
             self._status_event.set()
             t.join()
@@ -1707,6 +1739,7 @@ class TelrunOperator:
                 do_initial_slew=slew,
                 readout=self.default_readout,
                 solver=self.repositioning_wcs_solver,
+                binning=self.repositioning_binning,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
@@ -2845,6 +2878,15 @@ class TelrunOperator:
         )
 
     @property
+    def autofocus_binning(self):
+        return self._autofocus_binning
+
+    @autofocus_binning.setter
+    def autofocus_binning(self, value):
+        self._autofocus_binning = int(value)
+        self._config["autofocus"]["autofocus_binning"] = str(self._autofocus_binning)
+
+    @property
     def autofocus_timeout(self):
         return self._autofocus_timeout
 
@@ -3005,6 +3047,17 @@ class TelrunOperator:
         self._repositioning_timeout = float(value)
         self._config["repositioning"]["repositioning_timeout"] = str(
             self._repositioning_timeout
+        )
+
+    @property
+    def repositioning_binning(self):
+        return self._repositioning_binning
+
+    @repositioning_binning.setter
+    def repositioning_binning(self, value):
+        self._repositioning_binning = value
+        self._config["repositioning"]["repositioning_binning"] = str(
+            self._repositioning_binning
         )
 
     @property

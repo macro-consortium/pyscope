@@ -5,6 +5,7 @@ API Reference
     :maxdepth: 3
 
     observatory
+    scheduling
     telrun
     reduction
     analysis
