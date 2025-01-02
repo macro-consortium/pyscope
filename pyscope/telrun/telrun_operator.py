@@ -2122,6 +2122,16 @@ class TelrunOperator:
                         history=hist,
                         overwrite=True,
                     )
+                    # if the length of _wcs_threads exceeds 7, join the first thread in the list
+                    if len(self._wcs_threads) > 7:
+                        logger.info(
+                            "Main thread + 7 wcs threads currently running, waiting for the first wcs thread to finish before continuing..."
+                        )
+                        self._wcs_threads[0].join()
+                        self._wcs_threads = self._wcs_threads[1:]
+                        logger.info(
+                            "Main thread + 6 wcs threads currently running, continuing..."
+                        )
                     self._wcs_threads.append(
                         threading.Thread(
                             target=self._async_wcs_solver,
@@ -2158,6 +2168,16 @@ class TelrunOperator:
                     history=hist,
                     overwrite=True,
                 )
+                # if the length of _wcs_threads exceeds 7, join the first thread in the list
+                if len(self._wcs_threads) > 7:
+                    logger.info(
+                        "Main thread + 7 wcs threads currently running, waiting for the first wcs thread to finish before continuing..."
+                    )
+                    self._wcs_threads[0].join()
+                    self._wcs_threads = self._wcs_threads[1:]
+                    logger.info(
+                        "Main thread + 6 wcs threads currently running, continuing..."
+                    )
                 self._wcs_threads.append(
                     threading.Thread(
                         target=self._async_wcs_solver,
@@ -2479,7 +2499,7 @@ class TelrunOperator:
                 # parity=2,
                 # tweak_order=3,
                 # crpix_center=True,
-                # solve_timeout=self.wcs_timeout,
+                solve_timeout=60,
             )
         elif self.wcs_solver.lower() == "maxim_pinpoint_wcs":
             from ..reduction import maxim_pinpoint_wcs

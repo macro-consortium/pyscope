@@ -753,8 +753,8 @@ def schedtel_cli(
                     if block.name == ""
                     else block.name.replace(" ", "_").replace(".", "_")
                 ),
-                start_time=block.start_time.isot.replace(":", "-").split(".")[0],
-                end_time=block.end_time.isot.replace(":", "-").split(".")[0],
+                start_time=block.start_time.isot.replace(":", "-").replace(".", "_"),
+                end_time=block.end_time.isot.replace(":", "-").replace(".", "_"),
                 duration="%i" % block.duration.to(u.second).value,
                 ra=block.target.ra.to_string(
                     sep="hms", unit="hourangle", precision=2, pad=True
