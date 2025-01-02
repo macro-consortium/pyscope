@@ -465,7 +465,7 @@ def table_to_blocks(table):
         blocks.append(
             astroplan.ObservingBlock(
                 target=astroplan.FixedTarget(row["target"]),
-                duration=row["exposure"] * row["nexp"] * u.second,
+                duration=(row["exposure"] * row["nexp"] + 5) * u.second,
                 priority=row["priority"],
                 name=row["name"],
                 configuration={

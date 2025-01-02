@@ -1455,7 +1455,7 @@ class Observatory:
             )
             return False
 
-        if self.telescope.Altitude < self.min_altitude:
+        if self.telescope.Altitude < self.min_altitude.to(u.deg).value:
             logger.exception(
                 "Telescope is below the minimum altitude of %.2f degrees"
                 % self.min_altitude.to(u.deg).value

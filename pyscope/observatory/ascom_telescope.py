@@ -26,6 +26,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         protocol : `str`, default : "http", optional
             The communication protocol to use.
         """
+        self.identifier = identifier
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -114,7 +115,18 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def FindHome(self):
         logger.debug("ASCOMTelescope.FindHome() called")
-        self._device.FindHome()
+        try:
+            if callable(self._device.FindHome):
+                logger.debug("FindHome() is callable and will be executed.")
+                self._device.FindHome()
+            else:
+                logger.debug(
+                    "FindHome() is not callable, using 'self._device.FindHome' to find home for the telescope"
+                )
+                # Handle it as a property if necessary, or simply ignore if no action is required.
+                self._device.FindHome
+        except Exception as e:
+            logger.error(f"Error in executing or accessing FindHome: {e}")
 
     def MoveAxis(self, Axis, Rate):
         """
@@ -301,7 +313,13 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
     @property
     def CanFindHome(self):
         logger.debug("ASCOMTelescope.CanFindHome property accessed")
-        return self._device.CanFindHome
+        canHome = self._device.CanFindHome
+        # If identifier contains SiTech, then return True
+        # This is a workaround for SiTech controllers that do not return CanFindHome
+        # but can actually find home
+        if self.identifier.find("SiTech") != -1:
+            canHome = True
+        return canHome
 
     @property
     def CanPark(self):
