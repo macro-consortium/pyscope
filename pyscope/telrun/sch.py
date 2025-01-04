@@ -1,6 +1,7 @@
 import datetime
 import logging
 import re
+import os
 import shlex
 
 import astroplan
