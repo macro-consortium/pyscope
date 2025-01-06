@@ -8,6 +8,9 @@ import astropy.units as u
 class ReconfigConfigs:
     """
     A class to calculate reconfiguration times of an observatory based on a configuration file.
+    While not strictly necessary to compute reconfiguration times, the location of the observatory
+    is required to calculate slew times by first finding in HA/Dec coordinates. 
+    The time of the observation is also required to calculate the HA/Dec coordinates.
 
     Attributes:
     -----------
@@ -53,7 +56,7 @@ class ReconfigConfigs:
         self.focuser = Focuser(config)
         self.other = AuxiliarySystems(config)
 
-    def calc_reconfig_time_blocks(self, first_block, second_block, simultaneous=False):
+    def calc_reconfig_time_blocks(self, first_block, second_block, location, simultaneous=False):
         """Calculate the reconfiguration time for the observatory between two blocks
 
         Parameters
@@ -64,12 +67,12 @@ class ReconfigConfigs:
         """
         # Calculate the reconfiguration time for the telescope
         reconfig_time = self.calc_reconfig_time(
-            first_block.coords,
-            second_block.coords,
-            obs_location=first_block.location,
-            obs_time=first_block.time,
-            current_filter_pos=first_block.filter_pos,
-            target_filter_pos=second_block.filter_pos,
+            first_block["target"],
+            second_block["target"],
+            obs_location=location,
+            obs_time=first_block["start_time"],
+            current_filter_pos=first_block["filter"],
+            target_filter_pos=second_block["filter"],
             simultaneous=simultaneous,
         )
 
@@ -99,13 +102,13 @@ class ReconfigConfigs:
         """
         # Calculate the slew time for the telescope
         slew_time = self.telescope.calc_slew_time_skycoord(
-            current_coords, target_coords, obs_location=obs_location, obs_time=obs_time
+            current_coords, target_coords, obs_location=obs_location, obs_time=obs_time, return_quantity=True
         )
 
         # Calculate the filter wheel change time
         filter_change_time = 0.0 * u.s
         if current_filter_pos is not None and target_filter_pos is not None:
-            filter_change_time = self.filter_wheels[1].calculate_filter_change_time(
+            filter_change_time = self.filter_wheels['1'].calculate_filter_change_time(
                 current_filter_pos, target_filter_pos
             )
 
@@ -117,6 +120,13 @@ class ReconfigConfigs:
 
         # Calculate other overhead time
         other_overhead_time = 0.0 * u.s
+
+        # Print the reconfiguration times for each component
+        print(f"Slew Time: {slew_time}")
+        print(f"Filter Change Time: {filter_change_time}")
+        print(f"Camera Overhead Time: {camera_overhead_time}")
+        print(f"Focuser Move Time: {focuser_move_time}")
+        print(f"Other Overhead Time: {other_overhead_time}")
 
         # Calculate the total reconfiguration time
         if simultaneous:
@@ -149,6 +159,8 @@ class FilterWheel:
         self.pos_const = config.getfloat(section, "pos_const", fallback=0.0) * u.s
         self.pos_lin = config.getfloat(section, "pos_lin", fallback=0.0) * u.s
         self.num_positions = config.getint(section, "num_positions", fallback=5)
+        self.filter_names = config.get(section, "filter_names", fallback="").split(",")
+        self.filter_offsets = config.get(section, "filter_offsets", fallback="").split(",")
 
     def calculate_filter_change_time(self, current_pos, target_pos):
         """Calculate the time to change the filter wheel position
@@ -163,6 +175,14 @@ class FilterWheel:
         filter_change_time (float): The time to change the filter wheel position in seconds
         """
         filter_change_time = 0.0 * u.s
+
+        try:
+            current_pos = int(current_pos)
+            target_pos = int(target_pos)
+        except ValueError:
+            current_pos = self.filter_names.index(current_pos)
+            target_pos = self.filter_names.index(target_pos)
+
 
         if self.unidirectional:
             # Calculate the time to move to the target position
@@ -308,9 +328,9 @@ class Telescope:
         obs_time=None,
         return_quantity=False,
     ):
-        """Calculate the slew time for the telescope to move from the current to target coordinates
+        """Calculate the slew time for the telescope to move from the current to target coordinates.
         Exception if location and time are not provided (required for HA/Dec calculations) -
-        Should throw a warning in that case, and return the slew time in RA/Dec coordinates
+        should throw a warning instead in that case, and return the slew time in RA/Dec coordinates
         with the caveat that the slew time may not be accurate, as it may assume the telescope
         will travel in a straight line between the two points (possibly through the Earth).
 
