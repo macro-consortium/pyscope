@@ -216,8 +216,8 @@ class TelrunOperator:
         # Load config file if there
         if (self._config_path / "telrun.cfg").exists():
             logger.info(
-                "Using config file to initialize telrun: %s"
-                % (self._config_path / "telrun.cfg")
+                "Using config file to initialize telrun: %s",
+                (self._config_path / "telrun.cfg")
             )
             try:
                 self._config.read(self._config_path / "telrun.cfg")
@@ -656,7 +656,7 @@ class TelrunOperator:
             # Check for new schedule
             logger.debug("Checking for new schedule...")
             potential_schedules = glob.glob(
-                self.schedules_path + "telrun_????-??-??T??-??-??.ecsv"
+                self._schedules_path + "telrun_????-??-??T??-??-??.ecsv"
             )
             if len(potential_schedules) < 1:
                 logger.debug(
@@ -688,18 +688,18 @@ class TelrunOperator:
             logger.debug("Newest schedule: %s" % fname)
 
             # Compare to current schedule filename
-            if not os.path.exists(self.schedules_path + fname):
+            if not os.path.exists(self._schedules_path + fname):
                 logger.exception("Schedule file error, waiting for new schedule...")
                 time.sleep(1)
                 continue
             schedule = table.Table.read(
-                self.schedules_path + fname, format="ascii.ecsv"
+                self._schedules_path + fname, format="ascii.ecsv"
             )
             if len(schedule) < 1:
                 logger.exception("Schedule file empty, waiting for new schedule...")
                 time.sleep(1)
                 continue
-            if self.schedules_path / fname == self._schedule_fname:
+            if self._schedules_path / fname == self._schedule_fname:
                 logger.debug("Schedule already loaded, waiting for new schedule...")
                 time.sleep(1)
                 continue
@@ -718,7 +718,7 @@ class TelrunOperator:
             logger.info("Starting new schedule execution thread...")
             self._execution_thread = threading.Thread(
                 target=self.execute_schedule,
-                args=(self.schedules_path / fname,),
+                args=(self._schedules_path / fname,),
                 daemon=True,
                 name="Telrun Schedule Execution Thread",
             )
