@@ -9,7 +9,7 @@ class ReconfigConfigs:
     """
     A class to calculate reconfiguration times of an observatory based on a configuration file.
     While not strictly necessary to compute reconfiguration times, the location of the observatory
-    is required to calculate slew times by first finding in HA/Dec coordinates. 
+    is required to calculate slew times by first finding in HA/Dec coordinates.
     The time of the observation is also required to calculate the HA/Dec coordinates.
 
     Attributes:
@@ -56,7 +56,9 @@ class ReconfigConfigs:
         self.focuser = Focuser(config)
         self.other = AuxiliarySystems(config)
 
-    def calc_reconfig_time_blocks(self, first_block, second_block, location, simultaneous=False):
+    def calc_reconfig_time_blocks(
+        self, first_block, second_block, location, simultaneous=False
+    ):
         """Calculate the reconfiguration time for the observatory between two blocks
 
         Parameters
@@ -102,13 +104,17 @@ class ReconfigConfigs:
         """
         # Calculate the slew time for the telescope
         slew_time = self.telescope.calc_slew_time_skycoord(
-            current_coords, target_coords, obs_location=obs_location, obs_time=obs_time, return_quantity=True
+            current_coords,
+            target_coords,
+            obs_location=obs_location,
+            obs_time=obs_time,
+            return_quantity=True,
         )
 
         # Calculate the filter wheel change time
         filter_change_time = 0.0 * u.s
         if current_filter_pos is not None and target_filter_pos is not None:
-            filter_change_time = self.filter_wheels['1'].calculate_filter_change_time(
+            filter_change_time = self.filter_wheels["1"].calculate_filter_change_time(
                 current_filter_pos, target_filter_pos
             )
 
@@ -160,7 +166,9 @@ class FilterWheel:
         self.pos_lin = config.getfloat(section, "pos_lin", fallback=0.0) * u.s
         self.num_positions = config.getint(section, "num_positions", fallback=5)
         self.filter_names = config.get(section, "filter_names", fallback="").split(",")
-        self.filter_offsets = config.get(section, "filter_offsets", fallback="").split(",")
+        self.filter_offsets = config.get(section, "filter_offsets", fallback="").split(
+            ","
+        )
 
     def calculate_filter_change_time(self, current_pos, target_pos):
         """Calculate the time to change the filter wheel position
@@ -182,7 +190,6 @@ class FilterWheel:
         except ValueError:
             current_pos = self.filter_names.index(current_pos)
             target_pos = self.filter_names.index(target_pos)
-
 
         if self.unidirectional:
             # Calculate the time to move to the target position
