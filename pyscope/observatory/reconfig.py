@@ -42,7 +42,6 @@ class ReconfigConfigs:
 
         # Initialize the filter wheel(s)
         self.filter_wheels = {}
-        print(f"Config sections: {config.sections()}")
         for section in config.sections():
             if section.startswith("filter_wheel_"):
                 wheel_id = section.split("_")[-1]
@@ -142,6 +141,7 @@ class ReconfigConfigs:
 
 class FilterWheel:
     """A class to store filter wheel configuration parameters and calculate filter change times"""
+
     def __init__(self, config, section):
         self.unidirectional = config.getboolean(
             section, "unidirectional", fallback=True
@@ -184,6 +184,7 @@ class FilterWheel:
 
 class Telescope:
     """A class to store telescope configuration parameters and calculate slew times"""
+
     def __init__(self, config):
         self.type = config.get("telescope", "type", fallback="equatorial").lower()
         self.GEM = config.getboolean("telescope", "GEM", fallback=True)
@@ -393,11 +394,11 @@ class Camera:
         )
 
     def calc_camera_time(self, exptime):
-        '''Calculate the time to capture an image with the camera'''
+        """Calculate the time to capture an image with the camera"""
         return exptime * u.s + self.download_time + self.readout_time
 
     def calc_camera_overhead_time(self):
-        '''Calculate the overhead time for the camera'''
+        """Calculate the overhead time for the camera"""
         return self.download_time + self.readout_time
 
 
@@ -417,11 +418,12 @@ class Focuser:
         )
 
     def calc_focuser_time(self, current_pos, target_pos):
-        '''Calculate the time to move the focuser from the current to target position'''
+        """Calculate the time to move the focuser from the current to target position"""
 
     def calc_focuser_accel_distance(self):
-        '''Calculate the distance the focuser will travel while accelerating to
-        the maximum slew speed'''
+        """Calculate the distance the focuser will travel while accelerating to
+        the maximum slew speed"""
+
 
 class AuxiliarySystems:
     """A class to store other configuration parameters"""
