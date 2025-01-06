@@ -58,6 +58,8 @@ from .pwi_autofocus import PWIAutofocus
 
 from .zwo_camera import ZWOCamera
 
+from .reconfig import ReconfigConfigs
+
 # from .skyx import SkyX
 
 from .collect_calibration_set import collect_calibration_set
@@ -90,10 +92,12 @@ __all__ = [
     "PWI4Autofocus",
     "PWI4Focuser",
     "PWIAutofocus",
+    "ReconfigConfigs",
     "Rotator",
     "SafetyMonitor",
     "Switch",
     "Telescope",
     "collect_calibration_set",
     "SimulatorServer",
+    "ZWOCamera",
 ]
