@@ -223,7 +223,7 @@ class TelrunOperator:
                 self._config.read(self._config_path / "telrun.cfg")
             except:
                 raise TelrunException(
-                    "Could not read config file: %s" % self._config_path
+                    f"Could not read config file: {self._config_path}"
                 )
             self._queue_fname = self._config.get(
                 "telrun",
@@ -427,7 +427,7 @@ class TelrunOperator:
                 "queue_fname", self._queue_fname
             )
             if not self._queue_fname.exists():
-                logger.warning("Queue file %s does not exist, setting to None" % qf)
+                logger.warning("Queue file %s does not exist, setting to None", qf)
                 self._queue_fname = None
         else:
             self._queue_fname = None
@@ -636,7 +636,7 @@ class TelrunOperator:
             self.save_config("telrun.cfg")
 
     def save_config(self, filename):
-        logger.debug("Saving config to %s" % filename)
+        logger.debug("Saving config to %s", filename)
         self.observatory.save_config(
             self._config_path / "observatory.cfg", overwrite=True
         )
@@ -685,7 +685,7 @@ class TelrunOperator:
             fname = (
                 "telrun_" + potential_times[-1].strftime("%Y-%m-%d_%H-%M-%S") + ".ecsv"
             )
-            logger.debug("Newest schedule: %s" % fname)
+            logger.debug("Newest schedule: %s", fname)
 
             # Compare to current schedule filename
             if not os.path.exists(self._schedules_path + fname):
@@ -726,7 +726,7 @@ class TelrunOperator:
             logger.info("Started.")
 
     def execute_schedule(self, schedule):
-        logger.info("Executing schedule: %s" % schedule)
+        logger.info("Executing schedule: %s", schedule)
         try:
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         except:
@@ -756,7 +756,7 @@ class TelrunOperator:
             logger.exception("Schedule failed validation, exiting...")
             return
 
-        logger.info("Saving schedule to file: %s" % self._schedule_fname)
+        logger.info("Saving schedule to file: %s", self._schedule_fname)
         self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
 
         # Sort schedule by start time
