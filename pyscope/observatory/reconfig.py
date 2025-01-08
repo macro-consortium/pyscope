@@ -57,7 +57,7 @@ class ReconfigConfigs:
         self.other = AuxiliarySystems(config)
 
     def calc_reconfig_time_blocks(
-        self, first_block, second_block, location, simultaneous=False
+        self, first_block, second_block, location, simultaneous=False, verbose=False
     ):
         """Calculate the reconfiguration time for the observatory between two blocks
 
@@ -76,6 +76,7 @@ class ReconfigConfigs:
             current_filter_pos=first_block["filter"],
             target_filter_pos=second_block["filter"],
             simultaneous=simultaneous,
+            verbose=verbose
         )
 
         return reconfig_time
@@ -89,6 +90,7 @@ class ReconfigConfigs:
         current_filter_pos=None,
         target_filter_pos=None,
         simultaneous=False,
+        verbose=False
     ):
         """Calculate the reconfiguration time for the observatory
 
@@ -113,8 +115,12 @@ class ReconfigConfigs:
 
         # Calculate the filter wheel change time
         filter_change_time = 0.0 * u.s
+        filter_offset = 0.0
         if current_filter_pos is not None and target_filter_pos is not None:
             filter_change_time = self.filter_wheels["1"].calculate_filter_change_time(
+                current_filter_pos, target_filter_pos
+            )
+            filter_offset = self.filter_wheels["1"].filter_offset_dist(
                 current_filter_pos, target_filter_pos
             )
 
@@ -122,17 +128,19 @@ class ReconfigConfigs:
         camera_overhead_time = self.camera.download_time + self.camera.readout_time
 
         # Calculate focuser overhead time
-        focuser_move_time = 0.0 * u.s
+        focuser_move_time = self.focuser.calc_focuser_move_time(filter_offset, verbose=verbose)
 
         # Calculate other overhead time
         other_overhead_time = 0.0 * u.s
 
         # Print the reconfiguration times for each component
-        print(f"Slew Time: {slew_time}")
-        print(f"Filter Change Time: {filter_change_time}")
-        print(f"Camera Overhead Time: {camera_overhead_time}")
-        print(f"Focuser Move Time: {focuser_move_time}")
-        print(f"Other Overhead Time: {other_overhead_time}")
+        if verbose:
+            print("Reconfiguration Times:")
+            print(f"Slew Time: {slew_time}")
+            print(f"Filter Change Time: {filter_change_time}")
+            print(f"Camera Overhead Time: {camera_overhead_time}")
+            print(f"Focuser Move Time: {focuser_move_time}")
+            print(f"Other Overhead Time: {other_overhead_time}")
 
         # Calculate the total reconfiguration time
         if simultaneous:
@@ -207,6 +215,33 @@ class FilterWheel:
             )
 
         return filter_change_time
+
+    def filter_offset_dist(self, current_pos, target_pos):
+        """Calculate the filter offset distance between two filter wheel positions
+
+        Parameters
+        ----------
+        current_pos (int): The current filter wheel position
+        target_pos (int): The target filter wheel position
+
+        Returns
+        -------
+        filter_offset_dist (float): The filter offset distance in microns
+        """
+        try:
+            current_pos = int(current_pos)
+            target_pos = int(target_pos)
+        except ValueError:
+            current_pos = self.filter_names.index(current_pos)
+            target_pos = self.filter_names.index(target_pos)
+
+        current_offset = float(self.filter_offsets[current_pos])
+        target_offset = float(self.filter_offsets[target_pos])
+
+        filter_offset_dist = target_offset - current_offset
+
+        # Below should return units of the focuser units, rather than just a float
+        return filter_offset_dist
 
 
 class Telescope:
@@ -434,22 +469,72 @@ class Focuser:
 
     def __init__(self, config):
         self.units = config.get("focuser", "units", fallback="steps")
-        self.speed = config.getfloat("focuser", "speed", fallback=0.0)
-        self.acceleration = config.getfloat("focuser", "acceleration", fallback=0.0)
-        self.jerk = config.getfloat("focuser", "jerk", fallback=0.0)
+        if "micron" in self.units:
+            self.units = "micron"
+        self.speed = config.getfloat("focuser", "speed", fallback=0.0) / u.s
+        self.acceleration = (
+            config.getfloat("focuser", "acceleration", fallback=0.0) / u.s / u.s
+        )
         self.backlash_comp_distance = config.getfloat(
             "focuser", "backlash_comp_distance", fallback=0.0
         )
-        self.backlash_comp_speed = config.getfloat(
-            "focuser", "backlash_comp_speed", fallback=0.0
+        self.backlash_comp_time = (
+            config.getfloat("focuser", "backlash_comp_time", fallback=0.0) * u.s
         )
 
-    def calc_focuser_time(self, current_pos, target_pos):
-        """Calculate the time to move the focuser from the current to target position"""
+        self.update_move_units()
+
+        self.accel_distance = self.calc_focuser_accel_distance()
+
+    def update_move_units(self):
+        """Update the units for the focuser speed and acceleration."""
+        self.speed *= u.Unit(self.units)
+        self.acceleration *= u.Unit(self.units)
+        self.backlash_comp_distance *= u.Unit(self.units)
+
+    def calc_focuser_move_time(self, position_offset, verbose=False):
+        """Calculate the time to move the focuser to the target offset"""
+
+        # If position offset is not a quantity with units, convert to the correct units
+        if not isinstance(position_offset, u.Quantity):
+            position_offset = position_offset * u.Unit(self.units)
+        if verbose:
+            print(f"Focuser position offset: {position_offset}")
+        
+        if position_offset == 0:
+            return 0.0 * u.s
+
+        # This doesn't work right with moves smaller than the backlash compensation distance
+        move_distance = abs(position_offset)
+        if self.backlash_comp_distance > 0:
+            if position_offset > self.backlash_comp_distance:
+                move_distance += self.backlash_comp_distance
+        elif self.backlash_comp_distance < 0:
+            if position_offset > self.backlash_comp_distance:
+                move_distance += self.backlash_comp_distance
+
+        if verbose:
+            print(f"Move distance with backlash compensation: {move_distance}")
+
+        if move_distance > 2 * self.accel_distance:
+            remaining_distance = move_distance - 2 * self.accel_distance
+            move_time = (2 * self.speed / self.acceleration) + (
+                remaining_distance / self.speed
+            )
+        else:
+            move_time = (2 * move_distance / self.acceleration) ** 0.5
+
+        move_time += self.backlash_comp_time
+
+        return move_time
 
     def calc_focuser_accel_distance(self):
         """Calculate the distance the focuser will travel while accelerating to
         the maximum slew speed"""
+        accel_time = self.speed / self.acceleration
+        accel_distance = 0.5 * self.acceleration * accel_time**2
+
+        return accel_distance
 
 
 class AuxiliarySystems:

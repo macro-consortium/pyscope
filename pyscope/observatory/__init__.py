@@ -48,6 +48,7 @@ from .ip_cover_calibrator import IPCoverCalibrator
 from .maxim import Maxim
 from .pwi4_autofocus import PWI4Autofocus
 from .pwi4_focuser import PWI4Focuser
+from .dlipower_switch import DLIPowerSwitch
 
 from .simulator_server import SimulatorServer
 
@@ -79,6 +80,7 @@ __all__ = [
     "Camera",
     "CoverCalibrator",
     "Device",
+    "DLIPowerSwitch",
     "Dome",
     "FilterWheel",
     "Focuser",
