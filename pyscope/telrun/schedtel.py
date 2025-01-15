@@ -692,16 +692,19 @@ def schedtel_cli(
                 try:
                     transition_time = reconfig_file.calc_reconfig_time(
                         block_group[0]["target"], schedule[-1]["target"], location)
-                    transition_time /= 86400
-                    block_group[0]["start_time"] = schedule[-1]["end_time"] + transition_time
+                    total_time = transition_time + block_group[0]["duration"] 
+                    total_time /= 86400
+                    block_group[0]["start_time"] = schedule[-1]["end_time"] + total_time 
                 except:
                     block_group[0]["start_time"] = start_time
 
+            # Calculate end time from transition times
             for i, block in enumerate(block_group):    
                 print (block)
                 current_obj = block["target"]
     
                 if i == len(block_group) - 1:
+                    block["end_time"] = block["start_time"] + block["duration"]
                     return schedule
                 else:
                     next_block = block_group[i + 1]
@@ -709,8 +712,9 @@ def schedtel_cli(
                 
                 transition_time = reconfig_file.calc_reconfig_time_blocks(
                     block, next_block, location)
-                transition_time /= 86400
-                block["end_time"] = block["start_time"] + transition_time
+                total_time = transition_time + block["duration"]
+                total_time /= 86400
+                block["end_time"] = block["start_time"] + total_time
                 next_block["start_time"] = block["end_time"]
                 schedule.append(block)              
                 
