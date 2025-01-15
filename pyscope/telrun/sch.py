@@ -844,12 +844,10 @@ def read(
                 else:
                     final_fname = f"{fname}"
                 blocks.append(
-                    astroplan.ObservingBlock(
-                        target=obj,
-                        duration=temp_dur,
-                        priority=priority,
-                        name=source_name,
-                        configuration={
+                    {
+                            "ID": astrotime.Time.now().mjd,
+                            "name": source_name,
+                            "priority": priority,
                             "observer": observers,
                             "code": code,
                             "title": title,
@@ -869,20 +867,23 @@ def read(
                             "pm_dec": pm_dec,
                             "comment": comment,
                             "sch": filename.split("/")[-1].split(".")[0],
-                            "ID": astrotime.Time.now().mjd,
                             "status": "U",
                             "message": "Unscheduled",
                             "sched_time": None,
-                        },
-                        constraints=constraints[j],
-                    )
-                )
-                logger.debug(
-                    f"""Created ObservingBlock: {blocks[-1].target},
-                                {blocks[-1].duration}, {blocks[-1].priority},
-                                {blocks[-1].name}, {blocks[-1].constraints},
-                                {blocks[-1].configuration}"""
-                )
+                            "duration": temp_dur,
+                            "target" : obj,
+                            "target_ra": obj.ra.deg,
+                            "target_dec": obj.dec.deg,
+                            "constraints": constraints[j],
+                            "start_time": None,
+                            "end_time": None
+                        })
+                # logger.debug(
+                #     f"""Created ObservingBlock: {blocks[-1].target},
+                #                 {blocks[-1].duration}, {blocks[-1].priority},
+                #                 {blocks[-1].name}, {blocks[-1].constraints},
+                #                 {blocks[-1].configuration}"""
+                # )
 
     return blocks
 
@@ -896,7 +897,7 @@ def write(observing_blocks, filename=None):
         if type(block) is not astroplan.scheduling.ObservingBlock:
             logger.exception("observing_blocks must be a list of ObservingBlocks")
             return
-        codes.append(block.configuration["code"])
+        codes.append(block["code"])
 
     unique_codes = list(set(codes))
 
@@ -906,28 +907,28 @@ def write(observing_blocks, filename=None):
         blocks = [
             block
             for block in observing_blocks
-            if block.configuration["code"] == unique_code
+            if block["code"] == unique_code
         ]
 
-        if [block.configuration["title"] for block in blocks].count(
+        if [block["title"] for block in blocks].count(
             blocks[0].configuration["title"]
         ) != len(blocks):
             logger.warning(
                 f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({blocks[0].configuration['title']})"
             )
             blocks = [
-                block.configuration.update("title", blocks[0].configuration["title"])
+                block.update("title", blocks[0].configuration["title"])
                 for block in blocks
             ]
 
-        if [block.configuration["observer"] for block in blocks].count(
+        if [block["observer"] for block in blocks].count(
             blocks[0].configuration["observer"]
         ) != len(blocks):
             logger.warning(
                 f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({blocks[0].configuration['observer']})"
             )
             blocks = [
-                block.configuration.update(
+                block.update(
                     "observer", blocks[0].configuration["observer"]
                 )
                 for block in blocks
@@ -963,75 +964,75 @@ def write(observing_blocks, filename=None):
                         write_string += f'source "{block.name}"\n'
                 except:
                     pass
-                write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=4)}\n"
+                write_string += f"ra {block['target'].ra.to_string('hourangle', sep='hms', precision=4)}\n"
                 write_string += (
-                    f"dec {block.target.dec.to_string('deg', sep='dms', precision=3)}\n"
+                    f"dec {block['target'].dec.to_string('deg', sep='dms', precision=3)}\n"
                 )
                 try:
                     write_string += f"priority {block.priority}\n"
                 except:
                     pass
                 try:
-                    if block.configuration["filename"] != "":
+                    if block["filename"] != "":
                         write_string += 'filename "{0}"\n'.format(
-                            block.configuration["filename"]
+                            block["filename"]
                         )
                 except:
                     pass
                 try:
                     if (
-                        block.configuration["pm_ra_cosdec"].value != 0
-                        or block.configuration["pm_dec"].value != 0
+                        block["pm_ra_cosdec"].value != 0
+                        or block["pm_dec"].value != 0
                     ):
                         write_string += f"nonsidereal true\n"
-                        write_string += f"pm_ra_cosdec {block.configuration['pm_ra_cosdec'].to(u.arcsec/u.hour).value}\n"
-                        write_string += f"pm_dec {block.configuration['pm_dec'].to(u.arcsec/u.hour).value}\n"
+                        write_string += f"pm_ra_cosdec {block['pm_ra_cosdec'].to(u.arcsec/u.hour).value}\n"
+                        write_string += f"pm_dec {block['pm_dec'].to(u.arcsec/u.hour).value}\n"
                     else:
                         write_string += f"nonsidereal false\n"
                 except:
                     pass
                 try:
-                    if block.configuration["shutter_state"]:
+                    if block["shutter_state"]:
                         write_string += f"shutter_state open\n"
                     else:
                         write_string += f"shutter_state closed\n"
                 except:
                     pass
-                write_string += f"exposure {block.configuration['exposure']}\n"
-                write_string += f"nexp {block.configuration['nexp']}\n"
+                write_string += f"exposure {block['exposure']}\n"
+                write_string += f"nexp {block['nexp']}\n"
                 try:
-                    if block.configuration["do_not_interrupt"]:
+                    if block["do_not_interrupt"]:
                         write_string += f"do_not_interrupt true\n"
                     else:
                         write_string += f"do_not_interrupt false\n"
                 except:
                     pass
                 try:
-                    write_string += f"readout {block.configuration['readout']}\n"
+                    write_string += f"readout {block['readout']}\n"
                 except:
                     pass
                 try:
-                    write_string += f"binning {block.configuration['binning'][0]}x{block.configuration['binning'][1]}\n"
+                    write_string += f"binning {block['binning'][0]}x{block['binning'][1]}\n"
                 except:
                     pass
-                write_string += f"filter {block.configuration['filter']}\n"
+                write_string += f"filter {block['filter']}\n"
                 try:
-                    if block.configuration["repositioning"] is True:
+                    if block["repositioning"] is True:
                         write_string += f"repositioning true\n"
-                    elif type(block.configuration["repositioning"]) is tuple:
-                        write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]}\n"
+                    elif type(block["repositioning"]) is tuple:
+                        write_string += f"repositioning {block['repositioning'][0]}x{block['repositioning'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"frame_position {block.configuration['frame_position'][0]}x{block.configuration['frame_position'][1]}\n"
+                    write_string += f"frame_position {block['frame_position'][0]}x{block['frame_position'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"frame_size {block.configuration['frame_size'][0]}x{block.configuration['frame_size'][1]}\n"
+                    write_string += f"frame_size {block['frame_size'][0]}x{block['frame_size'][1]}\n"
                 except:
                     pass
                 try:
-                    write_string += f"utstart {block.start_time.isot}\n"
+                    write_string += f"utstart {block["start_time"].isot}\n"
                 except:
                     try:
                         if block.constraints is not None:
@@ -1074,9 +1075,9 @@ def write(observing_blocks, filename=None):
                     except:
                         pass
                 try:
-                    if block.configuration["comment"] != "":
+                    if block["comment"] != "":
                         write_string += 'comment "{comment} -- written by pyscope v{version}"\n'.format(
-                            comment=block.configuration["comment"], version=__version__
+                            comment=block["comment"], version=__version__
                         )
                     else:
                         write_string += f'comment "written by pyscope v{__version__}"\n'
