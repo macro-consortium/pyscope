@@ -102,6 +102,8 @@ class ReconfigConfigs:
         target_filter_pos (int): The target filter wheel position
         simultaneous (bool): Whether to perform the reconfiguration tasks simultaneously
         """
+        # If obs_location is not an EarthLocation, convert it to one
+
         # Calculate the slew time for the telescope
         slew_time = self.telescope.calc_slew_time_skycoord(
             current_coords,
