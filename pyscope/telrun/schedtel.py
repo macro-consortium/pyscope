@@ -717,7 +717,6 @@ def schedtel_cli(
                 block["end_time"] = block["start_time"] + total_time
                 next_block["start_time"] = block["end_time"]
                 schedule.append(block)              
-                
                 if block["end_time"] > end_time:
                     break
         return schedule

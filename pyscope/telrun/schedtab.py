@@ -297,111 +297,112 @@ def blocks_to_table(observing_blocks):
         mask=open_slots_mask,
     )
 
-    # Turn the constraints into a list of dicts
-    constraints = np.full(
-        (
-            len(observing_blocks),
-            np.max(
-                [
-                    (
-                        len(block)
-                        if "target" in block and block is not None
-                        else 0
-                    )
-                    for block in observing_blocks
-                ]
-            ),
-        ),
-        dict(),
-    )
-    for block_num, block in enumerate(observing_blocks):
-        constraint_list = np.full(
-            np.max(
-                [
-                    (
-                        len(block)
-                        if "target" in block and block is not None
-                        else 0
-                    )
-                    for block in observing_blocks
-                ]
-            ),
-            dict(),
-        )
-        if "target" in block and block is not None:
-            for constraint_num, constraint in enumerate(block):
-                if type(constraint) is astroplan.TimeConstraint:
-                    constraint_dict = {
-                        "type": "TimeConstraint",
-                        "min": (
-                            constraint.min.isot if constraint.min is not None else None
-                        ),
-                        "max": (
-                            constraint.max.isot if constraint.max is not None else None
-                        ),
-                    }
-                elif type(constraint) is astroplan.AtNightConstraint:
-                    constraint_dict = {
-                        "type": "AtNightConstraint",
-                        "max_solar_altitude": (
-                            constraint.max_solar_altitude.to(u.deg).value
-                            if constraint.max_solar_altitude is not None
-                            else 0
-                        ),
-                    }
-                elif type(constraint) is astroplan.AltitudeConstraint:
-                    constraint_dict = {
-                        "type": "AltitudeConstraint",
-                        "min": (
-                            constraint.min.to(u.deg).value
-                            if constraint.min is not None
-                            else 0
-                        ),
-                        "max": (
-                            constraint.max.to(u.deg).value
-                            if constraint.max is not None
-                            else 90
-                        ),
-                        "boolean_constraint": constraint.boolean_constraint,
-                    }
-                elif type(constraint) is astroplan.AirmassConstraint:
-                    constraint_dict = {
-                        "type": "AirmassConstraint",
-                        "min": constraint.min if constraint.min is not None else 0,
-                        "max": constraint.max if constraint.max is not None else 100,
-                        "boolean_constraint": (
-                            constraint.boolean_constraint
-                            if constraint.boolean_constraint is not None
-                            else False
-                        ),
-                    }
-                elif type(constraint) is astroplan.MoonSeparationConstraint:
-                    constraint_dict = {
-                        "type": "MoonSeparationConstraint",
-                        "min": (
-                            constraint.min.to(u.deg).value
-                            if constraint.min is not None
-                            else 0
-                        ),
-                        "max": (
-                            constraint.max.to(u.deg).value
-                            if constraint.max is not None
-                            else 360
-                        ),
-                    }
-                elif constraint is None:
-                    continue
-                else:
-                    logger.warning(
-                        f"Constraint {constraint} is not supported and will be ignored"
-                    )
-                    continue
-                constraint_list[constraint_num] = constraint_dict
-        constraints[block_num] = constraint_list
+    # # Turn the constraints into a list of dicts
+    # constraints = np.full(
+    #     (
+    #         len(observing_blocks),
+    #         np.max(
+    #             [
+    #                 (
+    #                     len(block)
+    #                     if "target" in block and block is not None
+    #                     else 0
+    #                 )
+    #                 for block in observing_blocks
+    #             ]
+    #         ),
+    #     ),
+    #     dict(),
+    # )
+    # for block_num, block in enumerate(observing_blocks):
+    #     constraint_list = np.full(
+    #         np.max(
+    #             [
+    #                 (
+    #                     len(block)
+    #                     if "target" in block and block is not None
+    #                     else 0
+    #                 )
+    #                 for block in observing_blocks
+    #             ]
+    #         ),
+    #         dict(),
+    #     )
+    #     if "target" in block and block is not None:
+    #         for constraint_num, constraint in enumerate(block):
+    #             if type(constraint) is astroplan.TimeConstraint:
+    #                 constraint_dict = {
+    #                     "type": "TimeConstraint",
+    #                     "min": (
+    #                         constraint.min.isot if constraint.min is not None else None
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.isot if constraint.max is not None else None
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.AtNightConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AtNightConstraint",
+    #                     "max_solar_altitude": (
+    #                         constraint.max_solar_altitude.to(u.deg).value
+    #                         if constraint.max_solar_altitude is not None
+    #                         else 0
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.AltitudeConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AltitudeConstraint",
+    #                     "min": (
+    #                         constraint.min.to(u.deg).value
+    #                         if constraint.min is not None
+    #                         else 0
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.to(u.deg).value
+    #                         if constraint.max is not None
+    #                         else 90
+    #                     ),
+    #                     "boolean_constraint": constraint.boolean_constraint,
+    #                 }
+    #             elif type(constraint) is astroplan.AirmassConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AirmassConstraint",
+    #                     "min": constraint.min if constraint.min is not None else 0,
+    #                     "max": constraint.max if constraint.max is not None else 100,
+    #                     "boolean_constraint": (
+    #                         constraint.boolean_constraint
+    #                         if constraint.boolean_constraint is not None
+    #                         else False
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.MoonSeparationConstraint:
+    #                 constraint_dict = {
+    #                     "type": "MoonSeparationConstraint",
+    #                     "min": (
+    #                         constraint.min.to(u.deg).value
+    #                         if constraint.min is not None
+    #                         else 0
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.to(u.deg).value
+    #                         if constraint.max is not None
+    #                         else 360
+    #                     ),
+    #                 }
+    #             elif constraint is None:
+    #                 continue
+    #             else:
+    #                 logger.warning(
+    #                     f"Constraint {constraint} is not supported and will be ignored"
+    #                 )
+    #                 continue
+    
+    #             constraint_list[constraint_num] = constraint_dict
+    #     constraints[block_num] = constraint_list
 
-    t["constraints"] = np.ma.array(
-        constraints, mask=_mask_expander(constraints, open_slots_mask)
-    )
+    # t["constraints"] = np.ma.array(
+    #     constraints, mask=_mask_expander(constraints, open_slots_mask)
+    # )
 
     t.add_index("ID", unique=True)
 

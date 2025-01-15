@@ -911,25 +911,25 @@ def write(observing_blocks, filename=None):
         ]
 
         if [block["title"] for block in blocks].count(
-            blocks[0].configuration["title"]
+            blocks[0]["title"]
         ) != len(blocks):
             logger.warning(
-                f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({blocks[0].configuration['title']})"
+                f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({blocks[0]['title']})"
             )
             blocks = [
-                block.update("title", blocks[0].configuration["title"])
+                block.update("title", blocks[0]["title"])
                 for block in blocks
             ]
 
         if [block["observer"] for block in blocks].count(
-            blocks[0].configuration["observer"]
+            blocks[0]["observer"]
         ) != len(blocks):
             logger.warning(
-                f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({blocks[0].configuration['observer']})"
+                f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({blocks[0]['observer']})"
             )
             blocks = [
                 block.update(
-                    "observer", blocks[0].configuration["observer"]
+                    "observer", blocks[0]["observer"]
                 )
                 for block in blocks
             ]
@@ -947,11 +947,11 @@ def write(observing_blocks, filename=None):
             f.write(f"# By pyscope version {__version__}\n")
             f.write("\n")
 
-            f.write('title "{0}"\n'.format(blocks[0].configuration["title"]))
-            if type(blocks[0].configuration["observer"]) is not list:
-                observers = [blocks[0].configuration["observer"]]
+            f.write('title "{0}"\n'.format(blocks[0]["title"]))
+            if type(blocks[0]["observer"]) is not list:
+                observers = [blocks[0]["observer"]]
             else:
-                observers = blocks[0].configuration["observer"]
+                observers = blocks[0]["observer"]
             for observer in observers:
                 f.write(f'observer "{observer}"\n')
             f.write(f"code {unique_code}\n")
@@ -1035,13 +1035,13 @@ def write(observing_blocks, filename=None):
                     write_string += f"utstart {block["start_time"].isot}\n"
                 except:
                     try:
-                        if block.constraints is not None:
-                            if type(block.constraints) is not list:
-                                block.constraints = [block.constraints]
+                        if block["constraints"] is not None:
+                            if type(block["constraints"]) is not list:
+                                block["constraints"] = [block["constraints"]]
                             for (
                                 constraint
                             ) in (
-                                block.constraints
+                                block["constraints"]
                             ):  # TODO: Add in support for all constraints
                                 possible_min_times = []
                                 possible_max_times = []
