@@ -70,7 +70,10 @@ class ReconfigConfigs:
         """
         # Calculate the reconfiguration time for the telescope
         # Should we reposition?
-        repositioning = not (second_block["repositioning"].data == [0,0]).all()
+        try:
+            repositioning = not (second_block["repositioning"] == (0,0))
+        except AttributeError:
+            repositioning = not (second_block["repositioning"].data == [0,0]).all()
 
         reconfig_time = self.calc_reconfig_time(
             first_block["target"],
@@ -153,9 +156,6 @@ class ReconfigConfigs:
         if repositioning:
             other_overhead_time += self.aux.repositioning_time
         
-        
-
-
         # Print the reconfiguration times for each component
         if verbose:
             print("Reconfiguration Times:")
