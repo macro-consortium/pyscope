@@ -22,7 +22,7 @@ from cmcrameri import cm as ccm
 from matplotlib import ticker
 
 from .. import utils
-from ..observatory import Observatory
+from ..observatory import Observatory, reconfig
 from . import sch, schedtab
 
 logger = logging.getLogger(__name__)
@@ -282,6 +282,7 @@ def schedtel_cli(
     yes=False,
     quiet=False,
     verbose=0,
+    reconfig_file=None,
 ):
     """
     Schedule observations for an observatory.
@@ -345,6 +346,25 @@ def schedtel_cli(
     -------
     astropy.table.Table
         Table containing the scheduled observation blocks.
+
+    Keywords
+    --------
+    title : `str`
+    observer : `str`
+    code : `str`
+    datestart : `str`
+    dateend : `str`
+    source : `str`
+    ra : `str`
+    dec : `str`
+    filter : `str`
+    exposure : `str`
+    readout : `str`
+    nexp : `str`
+    pm_ra_cosdec : `str`
+    pm_dec : `str`
+    epoch : `str`
+
     """
     # Set up logging
     if quiet:
@@ -426,6 +446,7 @@ def schedtel_cli(
             "Observatory must be, a string, Observatory object, or astroplan.Observer object."
         )
         return
+    location=observatory.location
 
     # Schedule
     tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
@@ -540,9 +561,9 @@ def schedtel_cli(
     for i in range(len(block_groups)):
         for j in range(len(block_groups[i])):
             try:
-                block_groups[i][j].configuration["ID"]
+                block_groups[i][j]["ID"]
             except:
-                block_groups[i][j].configuration["ID"] = astrotime.Time.now().mjd
+                block_groups[i][j]["ID"] = astrotime.Time.now().mjd
 
     previously_queued_blocks = None
     if queue is not None and len(block_groups) > 0:
@@ -559,9 +580,9 @@ def schedtel_cli(
 
             # Mark scheduled as X expired
             for block in queue_blocks:
-                if block.configuration["status"] != "U":
-                    block.configuration["status"] = "X"
-                    block.configuration["message"] = "Expired"
+                if block["status"] != "U":
+                    block["status"] = "X"
+                    block["message"] = "Expired"
             previously_queued_blocks = queue_blocks
 
     elif queue is not None and len(block_groups) == 0:
@@ -569,12 +590,12 @@ def schedtel_cli(
         queue_blocks = schedtab.table_to_blocks(queue)
         # Scheduled and unscheduled blocks get scheduled
         for block in queue_blocks:
-            if block.configuration["status"] in ("S", "U"):
-                block.configuration["status"] = "S"
-                block.configuration["message"] = "Scheduled"
+            if block["status"] in ("S", "U"):
+                block["status"] = "S"
+                block["message"] = "Scheduled"
             else:
-                block.configuration["status"] = "X"
-                block.configuration["message"] = "Expired"
+                block["status"] = "X"
+                block["message"] = "Expired"
         block_groups = [queue_blocks]
 
     elif queue is None and len(block_groups) > 0:
@@ -590,7 +611,7 @@ def schedtel_cli(
     # Add sched_time to all blocks
     for i in range(len(block_groups)):
         for j in range(len(block_groups[i])):
-            block_groups[i][j].configuration["sched_time"] = sched_time
+            block_groups[i][j]["sched_time"] = sched_time
 
     # Constraints
     logger.info("Defining global constraints")
@@ -626,169 +647,217 @@ def schedtel_cli(
     )
 
     # Scheduler
-    if scheduler == ("", ""):
-        logger.info("Using default scheduler: astroplan.PriorityScheduler")
-        schedule_handler = astroplan.PriorityScheduler(
-            constraints=global_constraints,
-            observer=observatory,
-            transitioner=transitioner,
-            gap_time=gap_time * u.second,
-            time_resolution=resolution * u.second,
-        )
-    else:
-        logger.info(f"Using custom scheduler: {scheduler[0]}")
-        spec = importlib.util.spec_from_file_location(
-            scheduler[0].split("/")[-1].split(".")[0], scheduler[0]
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        schedule_handler_class = getattr(module, scheduler[1])
-        if not astroplan.Scheduler in schedule_handler_class.__bases__:
-            logger.error(
-                f"Scheduler {scheduler[0]} does not inherit from astroplan.Scheduler."
-            )
-            return
-        schedule_handler = schedule_handler_class(
-            constraints=global_constraints,
-            observer=observatory,
-            transitioner=transitioner,
-            gap_time=gap_time * u.second,
-            time_resolution=resolution * u.second,
-        )
+    # if scheduler == ("", ""):
+    #     logger.info("Using default scheduler: astroplan.PriorityScheduler")
+    #     schedule_handler = astroplan.PriorityScheduler(
+    #         constraints=global_constraints,
+    #         observer=observatory,
+    #         transitioner=transitioner,
+    #         gap_time=gap_time * u.second,
+    #         time_resolution=resolution * u.second,
+    #     )
+    # else:
+        # logger.info(f"Using custom scheduler: {scheduler[0]}")
+        # spec = importlib.util.spec_from_file_location(
+        #     scheduler[0].split("/")[-1].split(".")[0], scheduler[0]
+        # )
+        # module = importlib.util.module_from_spec(spec)
+        # spec.loader.exec_module(module)
+        # schedule_handler_class = getattr(module, scheduler[1])
+        # if not astroplan.Scheduler in schedule_handler_class.__bases__:
+        #     logger.error(
+        #         f"Scheduler {scheduler[0]} does not inherit from astroplan.Scheduler."
+        #     )
+        #     return
+        # schedule_handler = schedule_handler_class(
+        #     constraints=global_constraints,
+        #     observer=observatory,
+        #     transitioner=transitioner,
+        #     gap_time=gap_time * u.second,
+        #     time_resolution=resolution * u.second,
+        # )
+    # Basic Scheduler without astroplan
+    def basic_scheduler(block_group, schedule):
+        # Set start time based on sun set angle
+        current_time = astrotime.Time.now()
+        sun_set = observatory.sun_set_time(current_time, which="next", horizon=-12 * u.deg)
+        sun_rise = observatory.sun_rise_time(current_time, which="next", horizon=-12 * u.deg)
+        start_time = sun_set.mjd
+        start_time = astrotime.Time(start_time, format="mjd")
+        print (type(start_time))
+        end_time = sun_rise.mjd
+        end_time = astrotime.Time(end_time, format="mjd")
+        for i in range(len(block_group)):
+            if block_group[0]["start_time"] is None:
+                try:
+                    transition_time = reconfig_file.calc_reconfig_time(
+                        block_group[0]["target"], schedule[-1]["target"], location)
+                    total_time = transition_time + block_group[0]["duration"] 
+                    total_time /= 86400
+                    block_group[0]["start_time"] = schedule[-1]["end_time"] + total_time 
+                except:
+                    block_group[0]["start_time"] = start_time
 
+            # Calculate end time from transition times
+            for i, block in enumerate(block_group):    
+                print (block)
+                current_obj = block["target"]
+    
+                if i == len(block_group) - 1:
+                    block["end_time"] = block["start_time"] + block["duration"]
+                    return schedule
+                else:
+                    next_block = block_group[i + 1]
+                next_obj = next_block["target"]
+                
+                transition_time = reconfig_file.calc_reconfig_time_blocks(
+                    block, next_block, location)
+                total_time = transition_time + block["duration"]
+                total_time /= 86400
+                block["end_time"] = block["start_time"] + total_time
+                next_block["start_time"] = block["end_time"]
+                schedule.append(block)              
+                if block["end_time"] > end_time:
+                    break
+        return schedule
+    
+    
     logger.info("Scheduling ObservingBlocks")
+    schedule = []
     for i in tqdm.tqdm(range(len(block_groups))):
         logger.debug("Block group %i of %i" % (i + 1, len(block_groups)))
-        schedule_handler(block_groups[i], schedule)
+    #     # schedule_handler(block_groups[i], schedule)
+        scheduled_blocks = basic_scheduler(block_groups[i], schedule)
+        # print(type(scheduled_blocks[0]['exposure']))
 
     # Flatten block_groups for comparison with scheduled ObservingBlocks
     all_blocks = [block for block_group in block_groups for block in block_group]
 
     # Get scheduled ObservingBlocks
-    scheduled_blocks = [
-        slot.block for slot in schedule.slots if hasattr(slot.block, "target")
-    ]
-    transition_blocks = [
-        slot.block
-        for slot in schedule.slots
-        if slot.block is not None and not hasattr(slot.block, "target")
-    ]
+    # scheduled_blocks = [
+    #     slot.block for slot in schedule.slots if hasattr(slot.block, "target")
+    # ]
+    # transition_blocks = [
+    #     slot.block
+    #     for slot in schedule.slots
+    #     if slot.block is not None and not hasattr(slot.block, "target")
+    # ]
 
-    unscheduled_slots = [slot for slot in schedule.slots if slot.block is None]
+    # unscheduled_slots = [slot for slot in schedule.slots if slot.block is None]
 
     # Update ephem for non-sidereal targets, update object types, set filenames
     for block_number, block in enumerate(scheduled_blocks):
-        block.configuration["status"] = "S"
-        block.configuration["message"] = "Scheduled"
+        block["status"] = "S"
+        block["message"] = "Scheduled"
 
         if (
-            block.configuration["pm_ra_cosdec"].value != 0
-            or block.configuration["pm_dec"].value != 0
-        ) and block.name != "":
-            logger.info("Updating ephemeris for '%s' at scheduled time" % block.name)
+            block["pm_ra_cosdec"].value != 0
+            or block["pm_dec"].value != 0
+        ) and block["name"] != "":
+            logger.info("Updating ephemeris for '%s' at scheduled time" % block["name"])
             try:
                 ephemerides = mpc.MPC.get_ephemeris(
-                    target=block.name,
+                    target=block["name"],
                     location=observatory.location,
-                    start=block.start_time,
+                    start=block["start_time"],
                     number=1,
                     proper_motion="sky",
                 )
                 new_ra = ephemerides["RA"][0]
                 new_dec = ephemerides["Dec"][0]
-                block.target = astroplan.FixedTarget(
+                block["target"] = astroplan.FixedTarget(
                     coord.SkyCoord(ra=new_ra, dec=new_dec)
                 )
-                block.configuration["pm_ra_cosdec"] = (
+                block["pm_ra_cosdec"] = (
                     ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
                 )
-                block.configuration["pm_dec"] = (
+                block["pm_dec"] = (
                     ephemerides["dDec"][0] * u.arcsec / u.hour
                 )
             except Exception as e1:
                 try:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, trying to find proper motions using astropy.coordinates.get_body"
+                        f"Failed to find proper motions for {block["name"]}, trying to find proper motions using astropy.coordinates.get_body"
                     )
                     pos_l = coord.get_body(
-                        block.name,
-                        block.start_time - 10 * u.minute,
+                        block["name"],
+                        block["start_time"] - 10 * u.minute,
                         location=observatory.location,
                     )
                     pos_m = coord.get_body(
-                        block.name,
-                        (block.start_time + block.end_time) / 2,
+                        block["name"],
+                        (block["start_time"] + block["end_time"]) / 2,
                         location=location,
                     )
                     pos_h = coord.get_body(
-                        block.name,
-                        block.end_time + 10 * u.minute,
+                        block["name"],
+                        block["end_time"] + 10 * u.minute,
                         location=observatory.location,
                     )
                     new_ra = pos_m.ra
                     new_dec = pos_m.dec
-                    block.target = astroplan.FixedTarget(
+                    block["target"] = astroplan.FixedTarget(
                         coord.SkyCoord(ra=new_ra, dec=new_dec)
                     )
-                    block.configuration["pm_ra_cosdec"] = (
+                    block["pm_ra_cosdec"] = (
                         (
                             pos_h.ra * np.cos(pos_h.dec.rad)
                             - pos_l.ra * np.cos(pos_l.dec.rad)
                         )
                         / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
-                    block.configuration["pm_dec"] = (
+                    block["pm_dec"] = (
                         (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, keeping old ephemerides"
+                        f"Failed to find proper motions for {block["name"]}, keeping old ephemerides"
                     )
 
-        if block.configuration["filename"] == "":
-            block.configuration["filename"] = name_format.format(
+        if block["filename"] == "":
+            block["filename"] = name_format.format(
                 index=block_number,
                 target=(
-                    block.target.to_string("hmsdms").replace(" ", "_").replace(".", "-")
-                    if block.name == ""
-                    else block.name.replace(" ", "_").replace(".", "_")
+                    block["target"].to_string("hmsdms").replace(" ", "_").replace(".", "-")
+                    if block["name"] == ""
+                    else block["name"].replace(" ", "_").replace(".", "_")
                 ),
-                start_time=block.start_time.isot.replace(":", "-").split(".")[0],
-                end_time=block.end_time.isot.replace(":", "-").split(".")[0],
-                duration="%i" % block.duration.to(u.second).value,
-                ra=block.target.ra.to_string(
+                start_time=block["start_time"].isot.replace(":", "-").split(".")[0],
+                end_time=block["end_time"].isot.replace(":", "-").split(".")[0],
+                duration="%i" % block["duration"].to(u.second).value,
+                ra=block["target"].ra.to_string(
                     sep="hms", unit="hourangle", precision=2, pad=True
                 )
                 .replace(" ", "_")
                 .replace(".", "-"),
-                dec=block.target.dec.to_string(
+                dec=block["target"].dec.to_string(
                     sep="dms", precision=3, alwayssign=True, pad=True
                 )
                 .replace(" ", "_")
                 .replace(".", "-"),
-                observer=block.configuration["observer"],
-                code=block.configuration["code"],
-                title=block.configuration["title"],
-                type=block.configuration["type"],
-                backend=block.configuration["backend"],
-                exposure=format_exptime(block.configuration["exposure"]),
-                nexp=block.configuration["nexp"],
-                repositioning=block.configuration["repositioning"],
-                shutter_state=block.configuration["shutter_state"],
-                readout=block.configuration["readout"],
-                binning=block.configuration["binning"],
-                frame_position=block.configuration["frame_position"],
-                frame_size=block.configuration["frame_size"],
-                pm_ra_cosdec=block.configuration["pm_ra_cosdec"],
-                pm_dec=block.configuration["pm_dec"],
-                comment=block.configuration["comment"],
-                sch=block.configuration["sch"],
-                ID=block.configuration["ID"],
-                status=block.configuration["status"],
-                message=block.configuration["message"],
-                sched_time=block.configuration["sched_time"],
-                name=block.name,
-                filter=block.configuration["filter"],
+                observer=block["observer"],
+                code=block["code"],
+                title=block["title"],
+                type=block["type"],
+                backend=block["backend"],
+                exposure=format_exptime(block["exposure"]),
+                nexp=block["nexp"],
+                repositioning=block["repositioning"],
+                shutter_state=block["shutter_state"],
+                readout=block["readout"],
+                binning=block["binning"],
+                frame_position=block["frame_position"],
+                frame_size=block["frame_size"],
+                pm_ra_cosdec=block["pm_ra_cosdec"],
+                pm_dec=block["pm_dec"],
+                comment=block["comment"],
+                sch=block["sch"],
+                ID=block["ID"],
+                status=block["status"],
+                message=block["message"],
+                sched_time=block["sched_time"],
+                name=block["name"],
+                filter=block["filter"],
             )
 
     # Report unscheduled or invalid blocks, and report sch files that were
@@ -796,95 +865,98 @@ def schedtel_cli(
 
     # First find unscheduled blocks
     # TODO: report reason for unscheduled blocks, use is_observable
-    unscheduled_blocks = [
-        block
-        for block in all_blocks
-        if block.configuration["ID"]
-        not in [b.configuration["ID"] for b in scheduled_blocks]
-    ]
+    # unscheduled_blocks = [
+    #     block
+    #     for block in all_blocks
+    #     if block["ID"]
+    #     not in [b["ID"] for b in scheduled_blocks]
+    # ]
 
-    # TODO: Fix this condition
-    if type(observatory) is Observatory:
-        validated_blocks = schedtab.validate(scheduled_blocks, observatory=observatory)
-    else:
-        validated_blocks = schedtab.validate(scheduled_blocks)
+    # # TODO: Fix this condition
+    # if type(observatory) is Observatory:
+    #     validated_blocks = schedtab.validate(scheduled_blocks, observatory=observatory)
+    # else:
+    #     validated_blocks = schedtab.validate(scheduled_blocks)
+    #     print(type(validated_blocks))
 
-    # Then find invalid blocks
-    invalid_blocks = [
-        block for block in validated_blocks if block.configuration["status"] == "I"
-    ]
+    # # Then find invalid blocks
+    # invalid_blocks = [
+    #     block for block in validated_blocks if block["status"] == "I"
+    # ]
 
-    if len(unscheduled_blocks) > 0 or len(invalid_blocks) > 0:
-        logger.warning("There are unscheduled or invalid blocks")
-        logger.warning("Unscheduled blocks:")
-        for block in unscheduled_blocks:
-            logger.warning(
-                f"""
-            ID = {block.configuration["ID"]}
-            Title = {block.configuration["title"]}
-            Target = {block.target.to_string("hmsdms")}
-            sch = {block.configuration["sch"]}
-            Status = {block.configuration["status"]}
+    # if len(unscheduled_blocks) > 0 or len(invalid_blocks) > 0:
+    #     logger.warning("There are unscheduled or invalid blocks")
+    #     logger.warning("Unscheduled blocks:")
+    #     for block in unscheduled_blocks:
+    #         logger.warning(
+    #             f"""
+    #         ID = {block["ID"]}
+    #         Title = {block["title"]}
+    #         Target = {block["target"].to_string("hmsdms")}
+    #         sch = {block["sch"]}
+    #         Status = {block["status"]}
 
-                """
-            )
-        logger.warning("Invalid blocks:")
-        for block in invalid_blocks:
-            logger.warning(
-                f"""
-            ID = {block.configuration["ID"]}
-            Title = {block.configuration["title"]}
-            Target = {block.target.to_string("hmsdms")}
-            sch = {block.configuration["sch"]}
-            Status = {block.configuration["status"]}
-            Message = {block.configuration["message"]}
+    #             """
+    #         )
+    #     logger.warning("Invalid blocks:")
+    #     for block in invalid_blocks:
+    #         logger.warning(
+    #             f"""
+    #         ID = {block["ID"]}
+    #         Title = {block["title"]}
+    #         Target = {block["target"].to_string("hmsdms")}
+    #         sch = {block["sch"]}
+    #         Status = {block["status"]}
+    #         Message = {block["message"]}
 
-                """
-            )
-        if not yes:
-            if click.confirm("Continue?"):
-                pass
-            else:
-                return
+    #             """
+    #         )
+    #     if not yes:
+    #         if click.confirm("Continue?"):
+    #             pass
+    #         else:
+    #             return
 
-    # Scheduled, unscheduled, invalid, transition blocks and unscheduled slots
+    # # Scheduled, unscheduled, invalid, transition blocks and unscheduled slots
 
-    # Blocks to be placed in an execution schedule
-    exec_blocks = scheduled_blocks + transition_blocks + invalid_blocks
-    if queue is None:
-        logger.info(
-            "No queue provided, including unscheduled blocks in execution schedule. Note that these blocks will not actually be executed."
-        )
-        exec_blocks += unscheduled_blocks
-    elif queue is not None:
-        exec_table = schedtab.blocks_to_table(exec_blocks)
+    # # Blocks to be placed in an execution schedule
+    # exec_blocks = scheduled_blocks + transition_blocks + invalid_blocks
+    # if queue is None:
+    #     logger.info(
+    #         "No queue provided, including unscheduled blocks in execution schedule. Note that these blocks will not actually be executed."
+    #     )
+    #     exec_blocks += unscheduled_blocks
+    # elif queue is not None:
+    #     exec_table = schedtab.blocks_to_table(exec_blocks)
 
-        # Blocks to be placed back in the queue
-        queue_blocks = scheduled_blocks + unscheduled_blocks
+    #     # Blocks to be placed back in the queue
+    #     queue_blocks = scheduled_blocks + unscheduled_blocks
 
-        # If queue and catalog are not none, this carries unscheduled blocks
-        # and all other blocks marked as expired "X"
-        if previously_queued_blocks is not None:
-            queue_blocks += previously_queued_blocks
+    #     # If queue and catalog are not none, this carries unscheduled blocks
+    #     # and all other blocks marked as expired "X"
+    #     if previously_queued_blocks is not None:
+    #         queue_blocks += previously_queued_blocks
 
-        queue_table = schedtab.blocks_to_table(queue_blocks)
+    #     queue_table = schedtab.blocks_to_table(queue_blocks)
 
-    exec_blocks = exec_blocks + unscheduled_slots
-    for block in exec_blocks:
-        try:
-            # print(block.configuration["ID"], type(block.configuration["ID"]))
-            my_id = block.configuration["ID"].mjd
-            # print(my_id, type(my_id))
-            block.configuration["ID"] = my_id
-        except:
-            pass
-    exec_table = schedtab.blocks_to_table(exec_blocks)
+    # exec_blocks = exec_blocks + unscheduled_slots
+    # for block in exec_blocks:
+    #     try:
+    #         # print(block["ID"], type(block["ID"]))
+    #         my_id = block["ID"].mjd
+    #         # print(my_id, type(my_id))
+    #         block["ID"] = my_id
+    #     except:
+    #         pass
+    # exec_table = schedtab.blocks_to_table(exec_blocks)
 
     # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = np.min(exec_table["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
+        first_time = scheduled_blocks[0]["start_time"].strftime("%Y-%m-%dT%H-%M-%S")
         filename = "telrun_" + first_time + ".ecsv"
+
+    exec_table = schedtab.blocks_to_table(scheduled_blocks)
 
     write_queue = False
     if telrun:
