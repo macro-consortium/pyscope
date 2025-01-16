@@ -722,7 +722,8 @@ def schedtel_cli(
                 next_block["start_time"] = block["end_time"]
                 schedule.append(block)              
                 if block["end_time"] > end_time:
-                    break
+                    print("End time is greater than sunrise")
+                    # return schedule
         return schedule
     
     
