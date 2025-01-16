@@ -689,18 +689,22 @@ def schedtel_cli(
         end_time = astrotime.Time(end_time, format="mjd")
         for i in range(len(block_group)):
             if block_group[0]["start_time"] is None:
+                
                 try:
-                    transition_time = reconfig_file.calc_reconfig_time(
-                        block_group[0]["target"], schedule[-1]["target"], location)
+                    print(f"Last end time: {schedule[-1]['end_time']}")
+                    block_group[0]["start_time"] = schedule[-1]["end_time"]
+                    transition_time = reconfig_file.calc_reconfig_time_blocks(
+                        block_group[0], schedule[-1], location, verbose=False)
                     total_time = transition_time + block_group[0]["duration"] 
-                    total_time /= 86400
+                    # total_time /= 86400
                     block_group[0]["start_time"] = schedule[-1]["end_time"] + total_time 
-                except:
+                except Exception as e:
+                    print(e)
                     block_group[0]["start_time"] = start_time
 
             # Calculate end time from transition times
             for i, block in enumerate(block_group):    
-                print (block)
+                # print (block)
                 current_obj = block["target"]
     
                 if i == len(block_group) - 1:
@@ -711,9 +715,9 @@ def schedtel_cli(
                 next_obj = next_block["target"]
                 
                 transition_time = reconfig_file.calc_reconfig_time_blocks(
-                    block, next_block, location)
+                    block, next_block, location, verbose=False)
                 total_time = transition_time + block["duration"]
-                total_time /= 86400
+                # total_time /= 86400
                 block["end_time"] = block["start_time"] + total_time
                 next_block["start_time"] = block["end_time"]
                 schedule.append(block)              
@@ -723,15 +727,15 @@ def schedtel_cli(
     
     
     logger.info("Scheduling ObservingBlocks")
-    schedule = []
+    scheduled_blocks = []
     for i in tqdm.tqdm(range(len(block_groups))):
         logger.debug("Block group %i of %i" % (i + 1, len(block_groups)))
     #     # schedule_handler(block_groups[i], schedule)
-        scheduled_blocks = basic_scheduler(block_groups[i], schedule)
+        scheduled_blocks = basic_scheduler(block_groups[i], scheduled_blocks)
         # print(type(scheduled_blocks[0]['exposure']))
 
     # Flatten block_groups for comparison with scheduled ObservingBlocks
-    all_blocks = [block for block_group in block_groups for block in block_group]
+    # all_blocks = [block for block_group in block_groups for block in block_group]
 
     # Get scheduled ObservingBlocks
     # scheduled_blocks = [
