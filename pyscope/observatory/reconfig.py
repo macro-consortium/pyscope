@@ -3,6 +3,7 @@
 import configparser
 from astropy.coordinates import HADec
 import astropy.units as u
+from astroplan import Observer
 
 
 class ReconfigConfigs:
@@ -103,8 +104,16 @@ class ReconfigConfigs:
         current_filter_pos (int): The current filter wheel position
         target_filter_pos (int): The target filter wheel position
         simultaneous (bool): Whether to perform the reconfiguration tasks simultaneously
+        verbose (bool): Whether to print the reconfiguration times for each component
+
+        Returns
+        -------
+        reconfig_time (float): The total reconfiguration time in seconds
         """
         # If obs_location is not an EarthLocation, convert it to one
+        if isinstance(obs_location, Observer):
+            print(f"Is Observer: {obs_location}")
+            obs_location = obs_location.location
 
         # Calculate the slew time for the telescope
         slew_time = self.telescope.calc_slew_time_skycoord(
