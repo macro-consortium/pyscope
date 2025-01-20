@@ -7,7 +7,7 @@ from ._block import _Block
 logger = logging.getLogger(__name__)
 
 
-class UnallocatedBlock(_Block):
+class UnallocableBlock(_Block):
     def __init__(
         self, start_time, end_time, config=None, name="", description="", **kwargs
     ):

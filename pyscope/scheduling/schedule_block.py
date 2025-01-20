@@ -6,105 +6,110 @@ from .field import Field
 
 logger = logging.getLogger(__name__)
 
+logger.debug("ScheduleBlock imported")
+
 
 class ScheduleBlock(_Block):
     def __init__(
         self,
-        config=None,
-        observer=None,
-        name="",
-        description="",
-        project_code="",
-        conditions=[],
-        priority=0,
-        fields=[],
-        **kwargs
+        name="",  # Str
+        description="",  # Str
+        priority=0,  # Int
+        observer=[],  # List(Observer)
+        project=None,  # Project
+        config=None,  # InstrumentConfiguration
+        conditions=[],  # List(BoundaryCondition)
+        fields=[],  # List(Field)
     ):
         """
-        A class to contain a list of `~pyscope.telrun.Field` objects to be scheduled as a single time range in the
-        observing `~pyscope.telrun.Schedule`.
+        A class to contain a list of `~pyscope.scheduling.Field` objects to be scheduled as a single time range in the
+        observing `~pyscope.scheduling.Schedule`.
 
-        The `~pyscope.telrun.ScheduleBlock` is the fundamental unit that users interact with when creating observing
-        requests. It is a container for one or more `~pyscope.telrun.Field` objects, which represent the actual
-        observing targets. The `~pyscope.telrun.ScheduleBlock` also contains metadata about the block used by the
-        `~pyscope.telrun.Scheduler` to determine the best possible schedule using the `~pyscope.telrun.BoundaryCondition`
-        objects and the priority level provided when instantiating the `~pyscope.telrun.ScheduleBlock`.
+        The `~pyscope.scheduling.ScheduleBlock` is the fundamental unit that users interact with when creating observing
+        requests. It is a container for one or more `~pyscope.scheduling.Field` objects, which represent the actual
+        observing targets. The `~pyscope.scheduling.ScheduleBlock` also contains metadata about the block used by the
+        `~pyscope.scheduling.Scheduler` to determine the best possible schedule using the `~pyscope.scheduling.BoundaryCondition`
+        objects and the priority level provided when instantiating the `~pyscope.scheduling.ScheduleBlock`.
 
-        The `~pyscope.telrun.Scheduler` can also take advantage of the `~pyscope.telrun.Field` objects themselves to make
-        scheduling decisions. This mode is optimal for a `~pyscope.telrun.ScheduleBlock` that contains only one
-        `~pyscope.telrun.Field` or multiple `~pyscope.telrun.Field` objects that have small angular separations on the
-        sky. For larger separations, it is recommended to create separate `~pyscope.telrun.ScheduleBlock` objects for
-        each `~pyscope.telrun.Field` if the indexing of the `~pyscope.telrun.Field` objects is *not* important. If the order
-        of the `~pyscope.telrun.Field` objects *is* important, then we recommend the user employs a single
-        `~pyscope.telrun.ScheduleBlock` with a user-defined `~pyscope.telrun.BoundaryCondition` that will restrict the valid
-        local sidereal time (LST) range for the start of the `~pyscope.telrun.ScheduleBlock` to ensure that the
-        `~pyscope.telrun.ScheduleBlock` is executed at the most optimal time when using a basic `~pyscope.telrun.Scheduler`
-        (more advanced scheduling algorithms may not require this).
+        The `~pyscope.scheduling.Scheduler` can also take advantage of the `~pyscope.scheduling.Field` objects themselves to make
+        scheduling decisions. This mode is optimal for a `~pyscope.scheduling.ScheduleBlock` that contains only one
+        `~pyscope.scheduling.Field` or multiple `~pyscope.scheduling.Field` objects that have small angular separations on the
+        sky. For larger separations, it is recommended to create separate `~pyscope.scheduling.ScheduleBlock` objects for
+        each `~pyscope.scheduling.Field`.
 
         Parameters
         ----------
-        config : `~pyscope.telrun.Configuration`, default : `None`
-            The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.ScheduleBlock`. This `~pyscope.telrun.Configuration` will be
-            used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun.ScheduleBlock` and
-            will act as the default `~pyscope.telrun.Configuration` for all `~pyscope.telrun.Field` objects in the
-            `~pyscope.telrun.ScheduleBlock` if a `~pyscope.telrun.Configuration` has not been provided. If a `~pyscope.telrun.Field`
-            has a different `~pyscope.telrun.Configuration`, it will override the block `~pyscope.telrun.Configuration` for the
-            duration of the `~pyscope.telrun.Field`.
-
-        observer : `~pyscope.telrun.Observer`, default : `None`
-            The `~pyscope.telrun.Observer` to use for the `~pyscope.telrun.ScheduleBlock`.
-
         name : `str`, default : ""
-            A user-defined name for the `~pyscope.telrun.ScheduleBlock`. This parameter does not change
-            the behavior of the `~pyscope.telrun.ScheduleBlock`, but it can be useful for identifying the
-            `~pyscope.telrun.ScheduleBlock` in a schedule.
+            A user-defined name for the `~pyscope.scheduling.ScheduleBlock`. This parameter does not change
+            the behavior of the `~pyscope.scheduling.ScheduleBlock`, but it can be useful for identifying the
+            `~pyscope.scheduling.ScheduleBlock` in a schedule.
 
         description : `str`, default : ""
-            A user-defined description for the `~pyscope.telrun.ScheduleBlock`. Similar to the `name`
-            parameter, this parameter does not change the behavior of the `~pyscope.telrun.ScheduleBlock`.
-
-        project_code : `str`, default : ""
-            A user-defined project code for the `~pyscope.telrun.ScheduleBlock`. This parameter does not change
-            the behavior of the `~pyscope.telrun.ScheduleBlock`, but it can be useful for identifying the
-            `~pyscope.telrun.ScheduleBlock`.
-
-        conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default : []
-            A list of `~pyscope.telrun.BoundaryCondition` objects that define the constraints for all `~pyscope.telrun.Field`
-            objects in the `~pyscope.telrun.ScheduleBlock`. The `~pyscope.telrun.Optimizer` inside the `~pyscope.telrun.Scheduler`
-            will use the `~pyscope.telrun.BoundaryCondition` objects to determine the best possible schedule.
+            A user-defined description for the `~pyscope.scheduling.ScheduleBlock`. Similar to the `name`
+            parameter, this parameter does not change the behavior of the `~pyscope.scheduling.ScheduleBlock`.
 
         priority : `int`, default : 0
-            The priority level of the `~pyscope.telrun.ScheduleBlock`. The `~pyscope.telrun.Prioritizer` inside the
-            `~pyscope.telrun.Scheduler` will use this parameter to determine the best possible schedule. The highest
+            The priority level of the `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.scheduling.Prioritizer` inside the
+            `~pyscope.scheduling.Scheduler` will use this parameter to determine the best possible schedule. The highest
             priority level is 1 and decreasing priority levels are integers above 1. The lowest priority is 0, which
-            is the default value. Tiebreakers are usually determined by the `~pyscope.telrun.Prioritizer` inside the
-            `~pyscope.telrun.Scheduler`, but some more advanced scheduling algorithms may use results from the
-            `~pyscope.telrun.Optimizer` to break ties.
+            is the default value. Tiebreakers are usually determined by the `~pyscope.scheduling.Prioritizer` inside the
+            `~pyscope.scheduling.Scheduler`, but some more advanced scheduling algorithms may use results from the
+            `~pyscope.scheduling.Optimizer` to break ties.
 
-        fields : `list` of `~pyscope.telrun.Field`, default : []
-            A list of `~pyscope.telrun.Field` objects to be scheduled in the `~pyscope.telrun.ScheduleBlock`. The
-            `~pyscope.telrun.Field` objects will be executed in the order they are provided in the list. If the
-            `~pyscope.telrun.Field` objects have different `~pyscope.telrun.Configuration` objects, the `~pyscope.telrun.Configuration`
-            object for the `~pyscope.telrun.Field` will override the block `~pyscope.telrun.Configuration` for the duration
-            of the `~pyscope.telrun.Field`.
+        observer : `list` of `~pyscope.scheduling.Observer`, default : []
+            The `~pyscope.scheduling.Observer` objects to assign this `~pyscope.scheduling.ScheduleBlock` to. This parameter
+            is useful for tracking which observers are responsible for the `~pyscope.scheduling.ScheduleBlock` and for
+            generating reports for the observers. The `~pyscope.scheduling.ScheduleBlock` can be assigned to multiple
+            observers or no observers if desiered. This parameter does not change the behavior of the
+            `~pyscope.scheduling.ScheduleBlock`.
 
-        **kwargs : `dict`, default : {}
-            A dictionary of keyword arguments that can be used to store additional information
-            about the `~pyscope.telrun.ScheduleBlock`. This information can be used to store any additional
-            information that is not covered by the `config`, `name`, or `description` parameters.
+        project : `~pyscope.scheduling.Project`, default : `None`
+            The `~pyscope.scheduling.Project` object to assign this `~pyscope.scheduling.ScheduleBlock` to. This parameter
+            does not change the behavior of the `~pyscope.scheduling.ScheduleBlock`, but it can be useful for tracking
+            which project the `~pyscope.scheduling.ScheduleBlock` is associated with and for generating reports for the
+            project. Each `~pyscope.scheduling.ScheduleBlock` can only be assigned to one `~pyscope.scheduling.Project`.
+
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
+            The `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.scheduling.ScheduleBlock`. This `~pyscope.telrun.InstrumentConfiguration` will be
+            used to set the telescope's `~pyscope.telrun.InstrumentConfiguration` at the start of the `~pyscope.scheduling.ScheduleBlock` and
+            will act as the default `~pyscope.telrun.InstrumentConfiguration` for all `~pyscope.scheduling.Field` objects in the
+            `~pyscope.scheduling.ScheduleBlock` if a `~pyscope.telrun.InstrumentConfiguration` has not been provided within the
+            `~pyscope.scheduling.Field`. If a `~pyscope.scheduling.Field` has a different `~pyscope.telrun.InstrumentConfiguration`,
+            it will override the block `~pyscope.telrun.InstrumentConfiguration` for the duration of the `~pyscope.scheduling.Field`.
+
+        conditions : `list` of `~pyscope.scheduling.BoundaryCondition`, default : []
+            A list of `~pyscope.scheduling.BoundaryCondition` objects that define the constraints for all `~pyscope.scheduling.Field`
+            objects in the `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.telrun.Optimizer` inside the `~pyscope.scheduling.Scheduler`
+            will use the `~pyscope.scheduling.BoundaryCondition` objects to determine the best possible schedule.
+
+        fields : `list` of `~pyscope.scheduling.Field`, default : []
+            A list of `~pyscope.scheduling.Field` objects to be scheduled in the `~pyscope.scheduling.ScheduleBlock`. The
+            `~pyscope.scheduling.Field` objects will be executed in the order they are provided in the list. If the
+            `~pyscope.scheduling.Field` objects have different `~pyscope.telrun.InstrumentConfiguration` objects, the `~pyscope.telrun.InstrumentConfiguration`
+            object for the `~pyscope.scheduling.Field` will override the block `~pyscope.telrun.InstrumentConfiguration` for the duration
+            of the `~pyscope.scheduling.Field`.
 
         """
         logger.debug(
-            "ScheduleBlock(config=%s, observer=%s, name=%s, description=%s, conditions=%s, priority=%s, fields=%s, **kwargs=%s)"
+            """ScheduleBlock(
+                name=%s,
+                description=%s,
+                priority=%i,
+                observer=%s,
+                project=%s,
+                config=%s,
+                conditions=%s,
+                fields=%s,
+            )"""
             % (
-                config,
-                observer,
                 name,
                 description,
-                conditions,
                 priority,
+                observer,
+                project,
+                config,
+                conditions,
                 fields,
-                kwargs,
             )
         )
 
@@ -137,13 +142,13 @@ class ScheduleBlock(_Block):
         **kwargs
     ):
         """
-        Create a new (list of) `~pyscope.telrun.ScheduleBlock` object(s) from a string representation.
+        Create a new (list of) `~pyscope.scheduling.ScheduleBlock` object(s) from a string representation.
 
         Parameters
         ----------
         string : `str`, required
 
-        config : `~pyscope.telrun.Configuration`, default : `None`
+        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
 
         observer : `~pyscope.telrun.Observer`, default : `None`
 
@@ -153,17 +158,17 @@ class ScheduleBlock(_Block):
 
         project_code : `str`, default : ""
 
-        conditions : `list` of `~pyscope.telrun.BoundaryCondition`, default : []
+        conditions : `list` of `~pyscope.scheduling.BoundaryCondition`, default : []
 
         priority : `int`, default : 0
 
-        fields : `list` of `~pyscope.telrun.Field`, default : []
+        fields : `list` of `~pyscope.scheduling.Field`, default : []
 
         **kwargs : `dict`, default : {}
 
         Returns
         -------
-        `~pyscope.telrun.ScheduleBlock` or `list` of `~pyscope.telrun.ScheduleBlock`
+        `~pyscope.scheduling.ScheduleBlock` or `list` of `~pyscope.scheduling.ScheduleBlock`
 
         """
         logger.debug(
@@ -356,12 +361,12 @@ class ScheduleBlock(_Block):
 
     def __str__(self):
         """
-        Return a string representation of the `~pyscope.telrun.ScheduleBlock`.
+        Return a string representation of the `~pyscope.scheduling.ScheduleBlock`.
 
         Returns
         -------
         `str`
-            A string representation of the `~pyscope.telrun.ScheduleBlock`.
+            A string representation of the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().__str__()")
@@ -383,12 +388,12 @@ class ScheduleBlock(_Block):
     @property
     def conditions(self):
         """
-        Get the list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
+        Get the list of `~pyscope.scheduling.BoundaryCondition` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         Returns
         -------
-        `list` of `~pyscope.telrun.BoundaryCondition`
-            The list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
+        `list` of `~pyscope.scheduling.BoundaryCondition`
+            The list of `~pyscope.scheduling.BoundaryCondition` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().conditions == %s" % self._conditions)
@@ -397,12 +402,12 @@ class ScheduleBlock(_Block):
     @conditions.setter
     def conditions(self, value):
         """
-        Set the list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
+        Set the list of `~pyscope.scheduling.BoundaryCondition` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         Parameters
         ----------
-        conditions : `list` of `~pyscope.telrun.BoundaryCondition`
-            The list of `~pyscope.telrun.BoundaryCondition` objects for the `~pyscope.telrun.ScheduleBlock`.
+        conditions : `list` of `~pyscope.scheduling.BoundaryCondition`
+            The list of `~pyscope.scheduling.BoundaryCondition` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().conditions = %s" % value)
@@ -425,12 +430,12 @@ class ScheduleBlock(_Block):
     @property
     def priority(self):
         """
-        Get the priority level of the `~pyscope.telrun.ScheduleBlock`.
+        Get the priority level of the `~pyscope.scheduling.ScheduleBlock`.
 
         Returns
         -------
         `int`
-            The priority level of the `~pyscope.telrun.ScheduleBlock`.
+            The priority level of the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().priority == %i" % self._priority)
@@ -439,12 +444,12 @@ class ScheduleBlock(_Block):
     @priority.setter
     def priority(self, value):
         """
-        Set the priority level of the `~pyscope.telrun.ScheduleBlock`.
+        Set the priority level of the `~pyscope.scheduling.ScheduleBlock`.
 
         Parameters
         ----------
         priority : `int`
-            The priority level of the `~pyscope.telrun.ScheduleBlock`.
+            The priority level of the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().priority = %i" % value)
@@ -453,12 +458,12 @@ class ScheduleBlock(_Block):
     @property
     def fields(self):
         """
-        Get the list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
+        Get the list of `~pyscope.scheduling.Field` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         Returns
         -------
-        `list` of `~pyscope.telrun.Field`
-            The list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
+        `list` of `~pyscope.scheduling.Field`
+            The list of `~pyscope.scheduling.Field` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().fields == %s" % self._fields)
@@ -467,12 +472,12 @@ class ScheduleBlock(_Block):
     @fields.setter
     def fields(self, value):
         """
-        Set the list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
+        Set the list of `~pyscope.scheduling.Field` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         Parameters
         ----------
-        fields : `list` of `~pyscope.telrun.Field`
-            The list of `~pyscope.telrun.Field` objects for the `~pyscope.telrun.ScheduleBlock`.
+        fields : `list` of `~pyscope.scheduling.Field`
+            The list of `~pyscope.scheduling.Field` objects for the `~pyscope.scheduling.ScheduleBlock`.
 
         """
         logger.debug("ScheduleBlock().fields = %s" % value)

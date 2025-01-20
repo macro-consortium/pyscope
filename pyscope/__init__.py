@@ -80,11 +80,21 @@ __version__ = "0.3.0"
 
 from . import utils
 from . import observatory
+from . import scheduling
 from . import telrun
 from . import reduction
 from . import analysis
+from . import db
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-__all__ = ["analysis", "observatory", "reduction", "scheduling", "telrun", "utils"]
+__all__ = [
+    "analysis",
+    "observatory",
+    "reduction",
+    "scheduling",
+    "telrun",
+    "utils",
+    "db",
+]

@@ -2193,10 +2193,10 @@ class TelrunOperator:
                 )
                 self._wcs_threads[-1].start()
 
-        # If multiple exposures, update filename as a list
+        """ # If multiple exposures, update filename as a list
         if block["nexp"] > 1:
             basename = block["filename"]
-            block["filename"] = [basename + "_%i" % i for i in range(block["nexp"])]
+            block["filename"] = [basename + "_%i" % i for i in range(block["nexp"])]"""
 
         # Set block status to done
         self._current_block = None

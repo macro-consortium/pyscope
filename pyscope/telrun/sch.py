@@ -1,7 +1,7 @@
 import datetime
 import logging
-import re
 import os
+import re
 import shlex
 
 import astroplan
@@ -847,7 +847,7 @@ def read(
                 blocks.append(
                     astroplan.ObservingBlock(
                         target=obj,
-                        duration=temp_dur+5*u.second,
+                        duration=temp_dur + 5 * u.second,
                         priority=priority,
                         name=source_name,
                         configuration={
