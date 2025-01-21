@@ -261,8 +261,8 @@ class _Block(MappedAsDataclass, Base):
         when creating a new block.
     """
 
-    _start_time: Mapped[datetime | None] = mapped_column(
-        "start_time", DateTime(timezone=True), init=False
+    start_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), init=False
     )
     """
     The start time of the block. This parameter is typically set by the
