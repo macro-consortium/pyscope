@@ -248,7 +248,7 @@ class _Block(MappedAsDataclass, Base):
         `~pyscope.scheduling.Observer`.
     """
 
-    config_id: Mapped[Uuid] = mapped_column(
+    config_uuid: Mapped[Uuid] = mapped_column(
         ForeignKey("instrument_configuration.uuid"), init=False
     )
     """
@@ -290,7 +290,7 @@ class _Block(MappedAsDataclass, Base):
     user for certain block types.
     """
 
-    schedule_id: Mapped[Uuid | None] = mapped_column(
+    schedule_uuid: Mapped[Uuid | None] = mapped_column(
         ForeignKey("schedule.uuid"), init=False
     )
     """
@@ -328,7 +328,7 @@ class _Block(MappedAsDataclass, Base):
     }
 
     def __post_init__(self) -> None:
-        logger.debug("_Block = %s" % self)
+        logger.debug("_Block = %s" % self.__repr__)
 
     @hybrid_property
     def mid_time(self) -> datetime:
