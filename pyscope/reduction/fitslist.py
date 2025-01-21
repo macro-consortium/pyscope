@@ -164,7 +164,53 @@ def fitslist_cli(
     offsets,
     zp_stats,
 ):
-    """List FITS files and their properties."""
+    """
+    List FITS files and their properties.
+
+    This command-line tool extracts metadata from FITS files in a specified directory
+    and presents it in a structured table. Users can filter files by various criteria
+    and save the results to a CSV file.
+
+    Parameters
+    ----------
+    `date` : `str`, optional
+        Filter by observation date. Defaults to include all dates.
+    `filt` : `str`, optional
+        Filter by filter name. Defaults to include all filters.
+    `readout` : `str`, optional
+        Filter by readout mode. Defaults to include all modes.
+    `binning` : `str`, optional
+        Filter by binning configuration. Defaults to include all configurations.
+    `exptime` : `str`, optional
+        Filter by approximate exposure time (1% tolerance). Defaults to include all exposure times.
+    `target` : `str`, optional
+        Filter by target name. Defaults to include all targets.
+    `verbose` : `int`, optional
+        Verbosity level for logging. Use `-v` for more detailed output. Defaults to `0`.
+    `fnames` : `str`, optional
+        Path to the directory containing FITS files. Defaults to `./`.
+    `save` : `bool`, optional
+        Save the output table to a file named `fitslist.csv`. Defaults to `False`.
+    `add_keys` : `str`, optional
+        Comma-separated list of additional FITS header keys to include in the output table.
+    `offsets` : `bool`, optional
+        Include RA/DEC offsets in the output table. Defaults to `False`.
+    `zp_stats` : `bool`, optional
+        Include zeropoint statistics in the output table. Defaults to `False`.
+
+    Returns
+    -------
+    `astropy.table.Table`
+        A table containing the extracted FITS metadata.
+
+    Raises
+    ------
+    `KeyError`
+        If a required FITS header key is missing.
+    `FileNotFoundError`
+        If the specified directory does not exist or is empty.
+
+    """
     # Set up logging
     logger.setLevel(int(10 * (1 - verbose)))
     logger.debug(
