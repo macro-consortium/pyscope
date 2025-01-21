@@ -10,7 +10,7 @@ addopts = [
 ]
 
 [tool.black]
-line-length = 88
+line-length = 79
 
 [tool.coverage]
     [tool.coverage.run]
