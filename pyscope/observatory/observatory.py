@@ -40,8 +40,7 @@ class Observatory:
         logger.debug("config_path: %s" % config_path)
         logger.debug("kwargs: %s" % kwargs)
 
-        # TODO: Add allowed_overwrite keys to config file and parser to check
-        # which keys can be overwritten (especially from MaxIm).
+        # TODO: Add allowed_overwrite keys to config file and parser to check which keys can be overwritten (especially from MaxIm).
         self._config = configparser.ConfigParser()
         self._config["site"] = {}
         self._config["camera"] = {}
@@ -129,18 +128,15 @@ class Observatory:
         self._maxim = None
 
         if not os.path.exists(config_path):
-            raise ObservatoryException(
-                "Config file '%s' not found" % config_path
-            )
+            raise ObservatoryException("Config file '%s' not found" % config_path)
 
         if config_path is not None:
             logger.info(
-                "Using this config file to initialize the observatory: %s"
-                % config_path
+                "Using this config file to initialize the observatory: %s" % config_path
             )
             try:
                 self._config.read(config_path)
-            except BaseException:
+            except:
                 raise ObservatoryException(
                     "Error parsing config file '%s'" % config_path
                 )
@@ -163,11 +159,7 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            if self.camera_driver.lower() in (
-                "maxim",
-                "maximdl",
-                "_maximcamera",
-            ):
+            if self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera"):
                 logger.info("Using MaxIm DL as the camera driver")
                 self._maxim = _import_driver("Maxim")
                 self._camera = self._maxim.camera
@@ -186,18 +178,14 @@ class Observatory:
                     for k, v in (
                         pair.split("=")
                         for pair in self._config.get(
-                            "cover_calibrator",
-                            "cover_calibrator_kwargs",
-                            fallback="",
+                            "cover_calibrator", "cover_calibrator_kwargs", fallback=""
                         )
                         .replace(" ", "")
                         .split(",")
                     )
                 )
                 if self._config.get(
-                    "cover_calibrator",
-                    "cover_calibrator_kwargs",
-                    fallback=None,
+                    "cover_calibrator", "cover_calibrator_kwargs", fallback=None
                 )
                 not in (None, "")
                 else None
@@ -208,17 +196,13 @@ class Observatory:
             )
 
             # Dome
-            self._dome_driver = self._config.get(
-                "dome", "dome_driver", fallback=None
-            )
+            self._dome_driver = self._config.get("dome", "dome_driver", fallback=None)
             self._dome_kwargs = (
                 dict(
                     (k, literal_eval(v))
                     for k, v in (
                         pair.split("=")
-                        for pair in self._config.get(
-                            "dome", "dome_kwargs", fallback=""
-                        )
+                        for pair in self._config.get("dome", "dome_kwargs", fallback="")
                         .replace(" ", "")
                         .split(",")
                     )
@@ -227,9 +211,7 @@ class Observatory:
                 not in (None, "")
                 else None
             )
-            self._dome = _import_driver(
-                self.dome_driver, kwargs=self.dome_kwargs
-            )
+            self._dome = _import_driver(self.dome_driver, kwargs=self.dome_kwargs)
 
             # Filter wheel
             self._filter_wheel_driver = self._config.get(
@@ -297,9 +279,7 @@ class Observatory:
 
             # Observing conditions
             self._observing_conditions_driver = self._config.get(
-                "observing_conditions",
-                "observing_conditions_driver",
-                fallback=None,
+                "observing_conditions", "observing_conditions_driver", fallback=None
             )
             self._observing_conditions_kwargs = (
                 dict(
@@ -316,9 +296,7 @@ class Observatory:
                     )
                 )
                 if self._config.get(
-                    "observing_conditions",
-                    "observing_conditions_kwargs",
-                    fallback=None,
+                    "observing_conditions", "observing_conditions_kwargs", fallback=None
                 )
                 not in (None, "")
                 else None
@@ -376,10 +354,8 @@ class Observatory:
                             kwargs=self.safety_monitor_kwargs[-1],
                         )
                     )
-                except BaseException:
-                    logger.warning(
-                        "Error parsing safety monitor config: %s" % val
-                    )
+                except:
+                    logger.warning("Error parsing safety monitor config: %s" % val)
 
             # Switch
             for val in self._config["switch"].values():
@@ -404,13 +380,11 @@ class Observatory:
                             kwargs=self.switch_kwargs[-1],
                         )
                     )
-                except BaseException:
+                except:
                     logger.warning("Error parsing switch config: %s" % val)
 
             # Telescope
-            self._telescope_driver = self._config["telescope"][
-                "telescope_driver"
-            ]
+            self._telescope_driver = self._config["telescope"]["telescope_driver"]
             self._telescope_kwargs = (
                 dict(
                     (k, literal_eval(v))
@@ -423,9 +397,7 @@ class Observatory:
                         .split(",")
                     )
                 )
-                if self._config.get(
-                    "telescope", "telescope_kwargs", fallback=None
-                )
+                if self._config.get("telescope", "telescope_kwargs", fallback=None)
                 not in (None, "")
                 else None
             )
@@ -450,9 +422,7 @@ class Observatory:
                         .split(",")
                     )
                 )
-                if self._config.get(
-                    "autofocus", "autofocus_kwargs", fallback=None
-                )
+                if self._config.get("autofocus", "autofocus_kwargs", fallback=None)
                 not in (None, "")
                 else None
             )
@@ -498,21 +468,13 @@ class Observatory:
         self._camera_driver = self._camera.__class__.__name__
         self._camera_kwargs = kwargs.get("camera_kwargs", self._camera_kwargs)
         self._config["camera"]["camera_driver"] = self._camera_driver
-        self._config["camera"]["camera_kwargs"] = _kwargs_to_config(
-            self._camera_kwargs
-        )
+        self._config["camera"]["camera_kwargs"] = _kwargs_to_config(self._camera_kwargs)
 
         # Cover calibrator
-        self._cover_calibrator = kwargs.get(
-            "cover_calibrator", self._cover_calibrator
-        )
+        self._cover_calibrator = kwargs.get("cover_calibrator", self._cover_calibrator)
         if self._cover_calibrator is not None:
-            _check_class_inheritance(
-                type(self._cover_calibrator), "CoverCalibrator"
-            )
-            self._cover_calibrator_driver = (
-                self._cover_calibrator.__class__.__name__
-            )
+            _check_class_inheritance(type(self._cover_calibrator), "CoverCalibrator")
+            self._cover_calibrator_driver = self._cover_calibrator.__class__.__name__
             self._cover_calibrator_kwargs = kwargs.get(
                 "cover_calibrator_kwargs", self._cover_calibrator_kwargs
             )
@@ -530,9 +492,7 @@ class Observatory:
             self._dome_driver = self._dome.__class__.__name__
             self._dome_kwargs = kwargs.get("dome_kwargs", self._dome_kwargs)
             self._config["dome"]["dome_driver"] = self._dome_driver
-            self._config["dome"]["dome_kwargs"] = _kwargs_to_config(
-                self._dome_kwargs
-            )
+            self._config["dome"]["dome_kwargs"] = _kwargs_to_config(self._dome_kwargs)
 
         # Filter wheel
         self._filter_wheel = kwargs.get("filter_wheel", self._filter_wheel)
@@ -545,8 +505,8 @@ class Observatory:
             self._config["filter_wheel"][
                 "filter_wheel_driver"
             ] = self._filter_wheel_driver
-            self._config["filter_wheel"]["filter_wheel_kwargs"] = (
-                _kwargs_to_config(self._filter_wheel_kwargs)
+            self._config["filter_wheel"]["filter_wheel_kwargs"] = _kwargs_to_config(
+                self._filter_wheel_kwargs
             )
 
         # Focuser
@@ -554,9 +514,7 @@ class Observatory:
         if self._focuser is not None:
             _check_class_inheritance(type(self._focuser), "Focuser")
             self._focuser_driver = self._focuser.__class__.__name__
-            self._focuser_kwargs = kwargs.get(
-                "focuser_kwargs", self._focuser_kwargs
-            )
+            self._focuser_kwargs = kwargs.get("focuser_kwargs", self._focuser_kwargs)
             self._config["focuser"]["focuser_driver"] = self._focuser_driver
             self._config["focuser"]["focuser_kwargs"] = _kwargs_to_config(
                 self._focuser_kwargs
@@ -574,24 +532,21 @@ class Observatory:
                 self._observing_conditions.__class__.__name__
             )
             self._observing_conditions_kwargs = kwargs.get(
-                "observing_conditions_kwargs",
-                self._observing_conditions_kwargs,
+                "observing_conditions_kwargs", self._observing_conditions_kwargs
             )
             self._config["observing_conditions"][
                 "observing_conditions_driver"
             ] = self._observing_conditions_driver
-            self._config["observing_conditions"][
-                "observing_conditions_kwargs"
-            ] = _kwargs_to_config(self._observing_conditions_kwargs)
+            self._config["observing_conditions"]["observing_conditions_kwargs"] = (
+                _kwargs_to_config(self._observing_conditions_kwargs)
+            )
 
         # Rotator
         self._rotator = kwargs.get("rotator", self._rotator)
         if self._rotator is not None:
             _check_class_inheritance(type(self._rotator), "Rotator")
             self._rotator_driver = self._rotator.__class__.__name__
-            self._rotator_kwargs = kwargs.get(
-                "rotator_kwargs", self._rotator_kwargs
-            )
+            self._rotator_kwargs = kwargs.get("rotator_kwargs", self._rotator_kwargs)
             self._config["rotator"]["rotator_driver"] = self._rotator_driver
             self._config["rotator"]["rotator_kwargs"] = _kwargs_to_config(
                 self._rotator_kwargs
@@ -602,12 +557,8 @@ class Observatory:
         if type(kwarg) not in (iter, list, tuple):
             self._safety_monitor = kwarg
             if self._safety_monitor is not None:
-                _check_class_inheritance(
-                    type(self._safety_monitor), "SafetyMonitor"
-                )
-                self._safety_monitor_driver = (
-                    self._safety_monitor.__class__.__name__
-                )
+                _check_class_inheritance(type(self._safety_monitor), "SafetyMonitor")
+                self._safety_monitor_driver = self._safety_monitor.__class__.__name__
                 self._safety_monitor_kwargs = kwargs.get(
                     "safety_monitor_kwargs", self._safety_monitor_kwargs
                 )
@@ -620,20 +571,14 @@ class Observatory:
             self._safety_monitor = kwarg
             for i, safety_monitor in enumerate(self._safety_monitor):
                 if safety_monitor is not None:
-                    _check_class_inheritance(
-                        type(safety_monitor), "SafetyMonitor"
-                    )
-                    self._safety_monitor_driver[i] = (
-                        safety_monitor.__class__.__name__
-                    )
+                    _check_class_inheritance(type(safety_monitor), "SafetyMonitor")
+                    self._safety_monitor_driver[i] = safety_monitor.__class__.__name__
                     self._safety_monitor_kwargs[i] = (
                         kwargs.get(
-                            "safety_monitor_kwargs",
-                            self._safety_monitor_kwargs,
+                            "safety_monitor_kwargs", self._safety_monitor_kwargs
                         )[i]
                         if kwargs.get(
-                            "safety_monitor_kwargs",
-                            self._safety_monitor_kwargs[i],
+                            "safety_monitor_kwargs", self._safety_monitor_kwargs[i]
                         )
                         is not None
                         else None
@@ -651,13 +596,9 @@ class Observatory:
             if self._switch is not None:
                 _check_class_inheritance(type(self._switch), "Switch")
                 self._switch_driver = self._switch.__class__.__name__
-                self._switch_kwargs = kwargs.get(
-                    "switch_kwargs", self._switch_kwargs
-                )
+                self._switch_kwargs = kwargs.get("switch_kwargs", self._switch_kwargs)
                 self._config["switch"]["driver_0"] = (
-                    self._switch_driver
-                    + ","
-                    + _kwargs_to_config(self._switch_kwargs)
+                    self._switch_driver + "," + _kwargs_to_config(self._switch_kwargs)
                 )
         else:
             self._switch = kwarg
@@ -681,9 +622,7 @@ class Observatory:
         self._telescope = kwargs.get("telescope", self._telescope)
         _check_class_inheritance(type(self._telescope), "Telescope")
         self._telescope_driver = self._telescope.__class__.__name__
-        self._telescope_kwargs = kwargs.get(
-            "telescope_kwargs", self._telescope_kwargs
-        )
+        self._telescope_kwargs = kwargs.get("telescope_kwargs", self._telescope_kwargs)
         self._config["telescope"]["telescope_driver"] = self._telescope_driver
         self._config["telescope"]["telescope_kwargs"] = _kwargs_to_config(
             self._telescope_kwargs
@@ -697,9 +636,7 @@ class Observatory:
             self._autofocus_kwargs = kwargs.get(
                 "autofocus_kwargs", self._autofocus_kwargs
             )
-            self._config["autofocus"][
-                "autofocus_driver"
-            ] = self._autofocus_driver
+            self._config["autofocus"]["autofocus_driver"] = self._autofocus_driver
             self._config["autofocus"]["autofocus_kwargs"] = _kwargs_to_config(
                 self._autofocus_kwargs
             )
@@ -742,10 +679,7 @@ class Observatory:
             logger.info("Camera connected")
         else:
             logger.warning("Camera failed to connect")
-        if (
-            self.camera.CanSetCCDTemperature
-            and self.cooler_setpoint is not None
-        ):
+        if self.camera.CanSetCCDTemperature and self.cooler_setpoint is not None:
             logger.info("Turning cooler on")
             self.camera.CoolerOn = True
 
@@ -795,13 +729,10 @@ class Observatory:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = True
                 if safety_monitor.Connected:
-                    logger.info(
-                        "Safety monitor %s connected" % safety_monitor.Name
-                    )
+                    logger.info("Safety monitor %s connected" % safety_monitor.Name)
                 else:
                     logger.warning(
-                        "Safety monitor %s failed to connect"
-                        % safety_monitor.Name
+                        "Safety monitor %s failed to connect" % safety_monitor.Name
                     )
 
         if self.switch is not None:
@@ -822,7 +753,7 @@ class Observatory:
         try:
             self.telescope.Unpark()
             logger.info("Telescope unparked")
-        except BaseException:
+        except:
             self.telescope.Unpark
             logger.info("Telescope unparked")
 
@@ -887,13 +818,10 @@ class Observatory:
             for safety_monitor in self.safety_monitor:
                 safety_monitor.Connected = False
                 if not safety_monitor.Connected:
-                    logger.info(
-                        "Safety monitor %s disconnected" % safety_monitor.Name
-                    )
+                    logger.info("Safety monitor %s disconnected" % safety_monitor.Name)
                 else:
                     logger.warning(
-                        "Safety monitor %s failed to disconnect"
-                        % safety_monitor.Name
+                        "Safety monitor %s failed to disconnect" % safety_monitor.Name
                     )
 
         if self.switch is not None:
@@ -902,9 +830,7 @@ class Observatory:
                 if not switch.Connected:
                     logger.info("Switch %s disconnected" % switch.Name)
                 else:
-                    logger.warning(
-                        "Switch %s failed to disconnect" % switch.Name
-                    )
+                    logger.warning("Switch %s failed to disconnect" % switch.Name)
 
         self.telescope.Connected = False
         if not self.telescope.Connected:
@@ -924,18 +850,16 @@ class Observatory:
             try:
                 self.camera.AbortExposure()
                 logger.info("Camera exposure aborted")
-            except BaseException:
+            except:
                 logger.exception("Error aborting exposure during shutdown")
 
-        logger.info(
-            "Attempting to take a dark exposure to close camera shutter..."
-        )
+        logger.info("Attempting to take a dark exposure to close camera shutter...")
         try:
             self.camera.StartExposure(0, False)
             while self.camera.ImageReady is False:
                 time.sleep(0.1)
             logger.info("Dark exposure complete")
-        except BaseException:
+        except:
             logger.exception("Error closing camera shutter during shutdown")
 
         if self.cover_calibrator is not None:
@@ -944,18 +868,16 @@ class Observatory:
                 try:
                     self.cover_calibrator.CalibratorOff()
                     logger.info("Cover calibrator turned off")
-                except BaseException:
+                except:
                     logger.exception(
                         "Error turning off cover calibrator during shutdown"
                     )
             if self.cover_calibrator.CoverState != "NotPresent":
-                logger.info(
-                    "Attempting to halt any cover calibrator shutter motion..."
-                )
+                logger.info("Attempting to halt any cover calibrator shutter motion...")
                 try:
                     self.cover_calibrator.HaltCover()
                     logger.info("Cover calibrator shutter motion halted")
-                except BaseException:
+                except:
                     logger.exception(
                         "Error closing cover calibrator shutter during shutdown"
                     )
@@ -963,7 +885,7 @@ class Observatory:
                 try:
                     self.cover_calibrator.CloseCover()
                     logger.info("Cover calibrator shutter closed")
-                except BaseException:
+                except:
                     logger.exception(
                         "Error closing cover calibrator shutter during shutdown"
                     )
@@ -973,14 +895,14 @@ class Observatory:
             try:
                 self.dome.AbortSlew()
                 logger.info("Dome motion aborted")
-            except BaseException:
+            except:
                 logger.exception("Error aborting dome motion during shutdown")
 
             logger.info("Attempting to park dome...")
             try:
                 self.dome.Park()
                 logger.info("Dome parked")
-            except BaseException:
+            except:
                 logger.exception("Error parking dome during shutdown")
 
             if self.dome.CanSetShutter:
@@ -988,34 +910,30 @@ class Observatory:
                 try:
                     self.dome.CloseShutter()
                     logger.info("Dome shutter closed")
-                except BaseException:
-                    logger.exception(
-                        "Error closing dome shutter during shutdown"
-                    )
+                except:
+                    logger.exception("Error closing dome shutter during shutdown")
 
         if self.focuser is not None:
             logger.info("Aborting any in-progress focuser motion...")
             try:
                 self.focuser.Halt()
                 logger.info("Focuser motion aborted")
-            except BaseException:
-                logger.exception(
-                    "Error aborting focuser motion during shutdown"
-                )
+            except:
+                logger.exception("Error aborting focuser motion during shutdown")
 
         if self.rotator is not None:
             logger.info("Aborting any in-progress rotator motion...")
             try:
                 self.rotator.Halt()
                 logger.info("Rotator motion aborted")
-            except BaseException:
+            except:
                 logger.exception("Error stopping rotator during shutdown")
 
         logger.info("Aborting any in-progress telescope slews...")
         try:
             self.telescope.AbortSlew()
             logger.info("Telescope slew aborted")
-        except BaseException:
+        except:
             logger.exception("Error aborting slew during shutdown")
 
         logger.info("Attempting to turn off telescope tracking...")
@@ -1024,24 +942,22 @@ class Observatory:
             self.telescope.RightAscensionRate = 0
             self.telescope.Tracking = False
             logger.info("Telescope tracking turned off")
-        except BaseException:
-            logger.exception(
-                "Error turning off telescope tracking during shutdown"
-            )
+        except:
+            logger.exception("Error turning off telescope tracking during shutdown")
 
         if self.telescope.CanPark:
             logger.info("Attempting to park telescope...")
             try:
                 self.telescope.Park()
                 logger.info("Telescope parked")
-            except BaseException:
+            except:
                 logger.exception("Error parking telescope during shutdown")
         elif self.telescope.CanFindHome:
             logger.info("Attempting to find home position...")
             try:
                 self.telescope.FindHome()
                 logger.info("Telescope home position found")
-            except BaseException:
+            except:
                 logger.exception("Error finding home position during shutdown")
 
         return True
@@ -1055,9 +971,7 @@ class Observatory:
             t = self.observatory_time
         else:
             t = astrotime.Time(t)
-        return t.sidereal_time("apparent", self.observatory_location).to(
-            "hourangle"
-        )
+        return t.sidereal_time("apparent", self.observatory_location).to("hourangle")
 
     def sun_altaz(self, t=None):
         """Returns the altitude of the sun"""
@@ -1128,13 +1042,7 @@ class Observatory:
     #         coord.AltAz(obstime=t, location=self.observatory_location)
     #     )
     def get_object_altaz(
-        self,
-        obj=None,
-        ra=None,
-        dec=None,
-        unit=("hr", "deg"),
-        frame="icrs",
-        t=None,
+        self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
     ):
         logger.debug(
             f"Called with obj={obj}, ra={ra}, dec={dec}, unit={unit}, frame={frame}, time={t}"
@@ -1146,13 +1054,8 @@ class Observatory:
 
         if obj is None:
             try:
-                ra_unit, dec_unit = (
-                    u.hourangle if unit[0] == "hr" else u.deg,
-                    u.deg,
-                )
-                obj = SkyCoord(
-                    ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame
-                )
+                ra_unit, dec_unit = (u.hourangle if unit[0] == "hr" else u.deg, u.deg)
+                obj = SkyCoord(ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame)
             except ValueError as e:
                 logger.error(f"Invalid coordinate values or units: {e}")
                 return None
@@ -1166,9 +1069,7 @@ class Observatory:
                 logger.error(f"Invalid time value: {e}")
                 return None
 
-        altaz_frame = coord.AltAz(
-            obstime=t, location=self.observatory_location
-        )
+        altaz_frame = coord.AltAz(obstime=t, location=self.observatory_location)
         try:
             altaz = obj.transform_to(altaz_frame)
         except Exception as e:
@@ -1178,13 +1079,7 @@ class Observatory:
         return altaz
 
     def get_object_slew(
-        self,
-        obj=None,
-        ra=None,
-        dec=None,
-        unit=("hr", "deg"),
-        frame="icrs",
-        t=None,
+        self, obj=None, ra=None, dec=None, unit=("hr", "deg"), frame="icrs", t=None
     ):
         """Determines the slew coordinates of the requested object at the requested time"""
 
@@ -1198,8 +1093,7 @@ class Observatory:
         t = astrotime.Time(t)
 
         eq_system = self.telescope.EquatorialSystem
-        # eq_system = 1 # TODO: Remove this line, this is a temp. fix for our
-        # SiTech mount
+        # eq_system = 1 # TODO: Remove this line, this is a temp. fix for our SiTech mount
         if eq_system == 0:
             logger.warning(
                 "Telescope equatorial system is not set, assuming Topocentric"
@@ -1232,14 +1126,12 @@ class Observatory:
                 ra=self.telescope.RightAscension,
                 dec=self.telescope.Declination,
                 frame=coord.TETE(
-                    obstime=self.observatory_time,
-                    location=self.observatory_location,
+                    obstime=self.observatory_time, location=self.observatory_location
                 ),
             )
         elif eq_system == 2:
             obj = self._parse_obj_ra_dec(
-                ra=self.telescope.RightAscension,
-                dec=self.telescope.Declination,
+                ra=self.telescope.RightAscension, dec=self.telescope.Declination
             )
         elif eq_system == 3:
             obj = self._parse_obj_ra_dec(
@@ -1300,16 +1192,10 @@ class Observatory:
         hdr["BZERO"] = (32768, "physical=BZERO + BSCALE*array_value")
         if maxim:
             hdr["SWUPDATE"] = ("pyscope", "Software used to update file")
-            hdr["SWVERSIO"] = (
-                __version__,
-                "Version of software used to update file",
-            )
+            hdr["SWVERSIO"] = (__version__, "Version of software used to update file")
         else:
             hdr["SWCREATE"] = ("pyscope", "Software used to create file")
-            hdr["SWVERSIO"] = (
-                __version__,
-                "Version of software used to create file",
-            )
+            hdr["SWVERSIO"] = (__version__, "Version of software used to create file")
         hdr["ROWORDER"] = ("TOP-DOWN", "Row order of image")
 
         if frametyp is not None:
@@ -1336,17 +1222,14 @@ class Observatory:
 
         return hdr
 
-    def safe_update_header(
-        self, hdr, hdr_dict, maxim=False, allowed_overwrite=[]
-    ):
+    def safe_update_header(self, hdr, hdr_dict, maxim=False, allowed_overwrite=[]):
         """Safely updates the header information"""
         logger.debug(f"Observatory.safe_update_header called")
         if maxim:
             # Only keep the allowed_overwrite keys in the hdr_dict
             # First get keys in existing header
             existing_keys = hdr.keys()
-            # If the key is in the existing header, and not in the
-            # allowed_overwrite list, remove it
+            # If the key is in the existing header, and not in the allowed_overwrite list, remove it
             for key in existing_keys:
                 if key not in allowed_overwrite:
                     hdr_dict.pop(key, None)
@@ -1355,15 +1238,13 @@ class Observatory:
 
         # convert masked values to None and lists to strings
         for key, value in hdr_dict.items():
-            if isinstance(value[0], np.ma.core.MaskedConstant):
+            if type(value[0]) == np.ma.core.MaskedConstant:
                 hdr_dict[key] = (None, value[1])
-            if isinstance(value[0], list):
+            if type(value[0]) == list:
                 hdr_dict[key] = (str(value[0]), value[1])
 
         # remove values = () from the dictionary
-        hdr_dict = {
-            k: v for k, v in hdr_dict.items() if v != () and v[0] != ()
-        }
+        hdr_dict = {k: v for k, v in hdr_dict.items() if v != () and v[0] != ()}
 
         # remove any keys that are not strings
         hdr_dict = {k: v for k, v in hdr_dict.items() if type(k) is str}
@@ -1398,11 +1279,7 @@ class Observatory:
             logger.exception("Image is not ready, cannot be saved")
             return False
 
-        maxim = self.camera_driver.lower() in (
-            "maxim",
-            "maximdl",
-            "_maximcamera",
-        )
+        maxim = self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera")
         # print(self.camera_driver.lower())
 
         # If camera driver is Maxim, use Maxim to save the image
@@ -1425,9 +1302,7 @@ class Observatory:
                 "INSTRUME",
                 "OBSERVER",
             ]
-            logger.info(
-                f"Overwrite allowed for header keys {allowed_overwrite}"
-            )
+            logger.info(f"Overwrite allowed for header keys {allowed_overwrite}")
             self.camera.VerifyLatestExposure()
             # TODO: Below should be updated to the filepath we want to save to
             filepath = os.path.join(os.getcwd(), filename)
@@ -1435,12 +1310,7 @@ class Observatory:
             img_array = fits.getdata(filename)
         try:
             hdr = self.generate_header_info(
-                filename,
-                frametyp,
-                custom_header,
-                history,
-                maxim,
-                allowed_overwrite,
+                filename, frametyp, custom_header, history, maxim, allowed_overwrite
             )
             # update RADECSYS key to RADECSYSa
             if "RADECSYS" in hdr:
@@ -1463,20 +1333,16 @@ class Observatory:
         if filter_name is None:
             try:
                 filter_name = self.filters[filter_index]
-                logger.info(
-                    "Filter %s found at index %i" % (filter_name, filter_index)
-                )
-            except BaseException:
+                logger.info("Filter %s found at index %i" % (filter_name, filter_index))
+            except:
                 raise ObservatoryException(
                     "Filter %s not found in filter list" % filter_name
                 )
         elif filter_index is None:
             try:
                 filter_index = self.filters.index(filter_name)
-                logger.info(
-                    "Filter %s found at index %i" % (filter_name, filter_index)
-                )
-            except BaseException:
+                logger.info("Filter %s found at index %i" % (filter_name, filter_index))
+            except:
                 raise ObservatoryException(
                     "Filter %s not found in filter list" % filter_name
                 )
@@ -1492,16 +1358,11 @@ class Observatory:
             raise ObservatoryException("There is no filter wheel.")
 
         if self.focuser is not None:
-            if (
-                self.focuser.Connected
-                and self.filter_focus_offsets[filter_name] != 0
-            ):
+            if self.focuser.Connected and self.filter_focus_offsets[filter_name] != 0:
                 self._current_focus_offset = (
-                    self.filter_focus_offsets[filter_name]
-                    - self.current_focus_offset
+                    self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
-                # TODO: fix this if self.current_focus_offset <
-                # self.focuser.MaxIncrement:
+                # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
                 if self.focuser.Absolute:
                     if (
                         self.focuser.Position + self.current_focus_offset
@@ -1511,16 +1372,10 @@ class Observatory:
                     ):
                         logger.info(
                             "Focuser moving to position %i"
-                            % (
-                                self.focuser.Position
-                                + self.current_focus_offset
-                            )
+                            % (self.focuser.Position + self.current_focus_offset)
                         )
                         self.focuser.Move(
-                            int(
-                                self.focuser.Position
-                                + self.current_focus_offset
-                            )
+                            int(self.focuser.Position + self.current_focus_offset)
                         )
                         while self.focuser.IsMoving:
                             time.sleep(0.1)
@@ -1540,13 +1395,8 @@ class Observatory:
                         time.sleep(0.1)
                     logger.info("Focuser moved")
                     return True
-            elif (
-                self.focuser.Connected
-                and self.filter_focus_offsets[filter_name] == 0
-            ):
-                logger.info(
-                    "No configured focus offset for filter %s" % filter_name
-                )
+            elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
+                logger.info("No configured focus offset for filter %s" % filter_name)
                 logger.info("Checking if focuser is moving...")
                 time.sleep(1)
                 if self.focuser.IsMoving:
@@ -1627,8 +1477,7 @@ class Observatory:
 
         if track and self.telescope.CanSetTracking:
             logger.info("Turning on sidereal tracking...")
-            # self.telescope.TrackingRate = self.telescope.TrackingRates[0] # !
-            # FIX THIS
+            # self.telescope.TrackingRate = self.telescope.TrackingRates[0] # ! FIX THIS
             self.telescope.Tracking = True
             logger.info("Sidereal tracking is on.")
         else:
@@ -1636,8 +1485,7 @@ class Observatory:
 
         logger.info("Attempting to slew to coordinates...")
         logger.info(
-            "Slewing to RA %.5f and Dec %.5f"
-            % (slew_obj.ra.hour, slew_obj.dec.deg)
+            "Slewing to RA %.5f and Dec %.5f" % (slew_obj.ra.hour, slew_obj.dec.deg)
         )
         if self.telescope.CanSlew:
             if self.telescope.CanSlewAsync:
@@ -1645,20 +1493,14 @@ class Observatory:
                     slew_obj.ra.hour, slew_obj.dec.deg
                 )
             else:
-                self.telescope.SlewToCoordinates(
-                    slew_obj.ra.hour, slew_obj.dec.deg
-                )
+                self.telescope.SlewToCoordinates(slew_obj.ra.hour, slew_obj.dec.deg)
         elif self.telescope.CanSlewAltAz:
             if self.telescope.CanSlewAltAzAsync:
-                self.telescope.SlewToAltAzAsync(
-                    altaz_obj.alt.deg, altaz_obj.az.deg
-                )
+                self.telescope.SlewToAltAzAsync(altaz_obj.alt.deg, altaz_obj.az.deg)
             else:
                 self.telescope.SlewToAltAz(altaz_obj.alt.deg, altaz_obj.az.deg)
         else:
-            raise ObservatoryException(
-                "The telescope cannot slew to coordinates."
-            )
+            raise ObservatoryException("The telescope cannot slew to coordinates.")
 
         if control_dome and self.dome is not None:
             if self.dome.ShutterStatus == "Closed" and self.dome.CanSetShutter:
@@ -1697,9 +1539,7 @@ class Observatory:
                 )
                 control_rotator = False
 
-            logger.info(
-                "Rotating the rotator to hour angle %.2f" % rotation_angle
-            )
+            logger.info("Rotating the rotator to hour angle %.2f" % rotation_angle)
             self.rotator.MoveAbsolute(rotation_angle)
             logger.info("Rotated.")
 
@@ -1721,9 +1561,7 @@ class Observatory:
         """Starts the observing conditions updating thread"""
 
         if self.observing_conditions is None:
-            raise ObservatoryException(
-                "There is no observing conditions object."
-            )
+            raise ObservatoryException("There is no observing conditions object.")
 
         logger.info("Starting observing conditions thread...")
         self._observing_conditions_event = threading.Event()
@@ -1828,8 +1666,7 @@ class Observatory:
 
         obj = self.get_current_object().transform_to(
             coord.AltAz(
-                obstime=astrotime.Time.now(),
-                location=self.observatory_location,
+                obstime=astrotime.Time.now(), location=self.observatory_location
             )
         )
 
@@ -1869,11 +1706,7 @@ class Observatory:
         deg = np.pi / 180
 
         command = (
-            -(
-                np.cos(obj.az.rad)
-                * np.cos(self.latitude.rad)
-                / np.cos(obj.alt.rad)
-            )
+            -(np.cos(obj.az.rad) * np.cos(self.latitude.rad) / np.cos(obj.alt.rad))
             * SR
             / deg
             * wait_time
@@ -1891,11 +1724,7 @@ class Observatory:
             )
 
             command = (
-                -(
-                    np.cos(obj.az.rad)
-                    * np.cos(self.latitude.rad)
-                    / np.cos(obj.alt.rad)
-                )
+                -(np.cos(obj.az.rad) * np.cos(self.latitude.rad) / np.cos(obj.alt.rad))
                 * SR
                 / deg
                 * wait_time
@@ -2090,9 +1919,7 @@ class Observatory:
             logger.info(f"Best focus position is {result} +/- {result_err}")
 
             if result < test_positions[0] or result > test_positions[-1]:
-                logger.warning(
-                    "Best focus position is outside the test range."
-                )
+                logger.warning("Best focus position is outside the test range.")
                 logger.warning(
                     "Using the midpoint of the test range as the best focus position."
                 )
@@ -2258,9 +2085,7 @@ class Observatory:
                     ra_hours = coord.Angle(slew_obj.ra.hour, unit=u.hour)
                     dec_degrees = coord.Angle(
                         slew_obj.dec.deg, unit=u.deg
-                    ) + coord.Angle(initial_offset_dec, unit=u.arcsec).to(
-                        u.deg
-                    )
+                    ) + coord.Angle(initial_offset_dec, unit=u.arcsec).to(u.deg)
                     self.slew_to_coordinates(
                         ra=ra_hours.hour,
                         dec=dec_degrees.deg,
@@ -2302,16 +2127,15 @@ class Observatory:
             temp_image = Path(
                 tempfile.gettempdir()
                 + "%s.fts"
-                % astrotime.Time(
-                    self.observatory_time, format="fits"
-                ).value.replace(":", "-")
+                % astrotime.Time(self.observatory_time, format="fits").value.replace(
+                    ":", "-"
+                )
             )
             self.save_last_image(temp_image, overwrite=True)
 
             logger.info("Searching for a WCS solution")
             logger.info(
-                "Pixel scale is %.2f arcseconds per pixel"
-                % self.pixel_scale[0]
+                "Pixel scale is %.2f arcseconds per pixel" % self.pixel_scale[0]
             )
             if solver.lower() == "astrometry_net_wcs":
                 from ..reduction import astrometry_net_wcs
@@ -2358,27 +2182,22 @@ class Observatory:
                 w = astropywcs.WCS(hdr)
 
                 center_coord = w.pixel_to_world(
-                    int(self.camera.CameraXSize / 2),
-                    int(self.camera.CameraYSize / 2),
+                    int(self.camera.CameraXSize / 2), int(self.camera.CameraYSize / 2)
                 )
                 logger.debug(
-                    "Center of the image is at %s"
-                    % center_coord.to_string("hmsdms")
+                    "Center of the image is at %s" % center_coord.to_string("hmsdms")
                 )
 
                 target_coord = w.pixel_to_world(target_x_pixel, target_y_pixel)
                 target_pixel_ra = target_coord.ra.hour
                 target_pixel_dec = target_coord.dec.deg
-                logger.debug(
-                    "Target is at %s" % target_coord.to_string("hmsdms")
-                )
+                logger.debug("Target is at %s" % target_coord.to_string("hmsdms"))
 
                 pixels = w.world_to_pixel(obj)
                 obj_x_pixel = pixels[0]
                 obj_y_pixel = pixels[1]
                 logger.debug(
-                    "Object is at pixel (%.2f, %.2f)"
-                    % (obj_x_pixel, obj_y_pixel)
+                    "Object is at pixel (%.2f, %.2f)" % (obj_x_pixel, obj_y_pixel)
                 )
             except Exception as e:
                 logger.warning(e)
@@ -2391,9 +2210,7 @@ class Observatory:
             error_dec = obj.dec.deg - target_pixel_dec
             error_x_pixels = obj_x_pixel - target_x_pixel
             error_y_pixels = obj_y_pixel - target_y_pixel
-            logger.info(
-                "Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600)
-            )
+            logger.info("Error in RA is %.2f arcseconds" % (error_ra * 15 * 3600))
             logger.info("Error in Dec is %.2f arcseconds" % (error_dec * 3600))
             logger.info("Error in x pixels is %.2f" % error_x_pixels)
             logger.info("Error in y pixels is %.2f" % error_y_pixels)
@@ -2416,9 +2233,7 @@ class Observatory:
             )
             return False
 
-        logger.info(
-            "Target is now in position after %d attempts" % (attempt + 1)
-        )
+        logger.info("Target is now in position after %d attempts" % (attempt + 1))
 
         return True
 
@@ -2469,9 +2284,7 @@ class Observatory:
             self.telescope.FindHome()
             logger.info("Homing complete")
 
-        logger.info(
-            "Slewing to point at cover calibrator or specified sky location"
-        )
+        logger.info("Slewing to point at cover calibrator or specified sky location")
 
         logger.info("Turning off tracking for slew")
         if self.telescope.CanSetTracking:
@@ -2524,9 +2337,7 @@ class Observatory:
             self.camera.Gain = gain
             logger.info("Camera gain set")
 
-        for filt, filt_exp, idx in zip(
-            filters, filter_exposures, range(len(filters))
-        ):
+        for filt, filt_exp, idx in zip(filters, filter_exposures, range(len(filters))):
 
             # skip filters with 0 exposure time
             if filt_exp == 0:
@@ -2549,9 +2360,7 @@ class Observatory:
                     self.cover_calibrator.CalibratorOn(filter_brightness[idx])
                     logger.info("Cover calibrator on")
             else:
-                logger.warning(
-                    "Cover calibrator not available, assuming sky flats"
-                )
+                logger.warning("Cover calibrator not available, assuming sky flats")
 
             # loop through options
             for readout in readouts:
@@ -2562,18 +2371,10 @@ class Observatory:
                         self.camera.BinX = binning.split("x")[0]
                         self.camera.BinY = binning.split("x")[1]
 
-                    iter_save_path = (
-                        save_path
-                        / (
-                            f"flats_{filt}_{
-                            self.camera.BinX}x{
-                            self.camera.BinY}_Readout{
-                            self.camera.ReadoutMode}"
-                            + f"_{filt_exp}s"
-                        )
-                        .replace(".", "p")
-                        .replace(" ", "")
-                    )
+                    iter_save_path = save_path / (
+                        f"flats_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{filt_exp}s"
+                    ).replace(".", "p").replace(" ", "")
                     if not iter_save_path.exists():
                         iter_save_path.mkdir()
 
@@ -2591,26 +2392,17 @@ class Observatory:
                                     "Cooler is not at setpoint, waiting 10 seconds..."
                                 )
                                 time.sleep(10)
-                        if self.filter_wheel.Position != self.filters.index(
-                            filt
-                        ):
-                            logger.info(
-                                "Setting the filter wheel to %s" % filt
-                            )
-                            self.filter_wheel.Position = self.filters.index(
+                        if self.filter_wheel.Position != self.filters.index(filt):
+                            logger.info("Setting the filter wheel to %s" % filt)
+                            self.filter_wheel.Position = self.filters.index(filt)
+                            while self.filter_wheel.Position != self.filters.index(
                                 filt
-                            )
-                            while (
-                                self.filter_wheel.Position
-                                != self.filters.index(filt)
                             ):
                                 time.sleep(0.1)
                             logger.info("Filter wheel in position")
 
                         if dither_radius > 0:
-                            logger.info(
-                                "Dithering by %i arcseconds" % dither_radius
-                            )
+                            logger.info("Dithering by %i arcseconds" % dither_radius)
                             self.dither_mount(
                                 dither_radius,
                                 center_pos=dither_center,
@@ -2619,32 +2411,19 @@ class Observatory:
                         logger.info("Starting %s exposure" % real_exp)
                         self.camera.StartExposure(real_exp, True)
 
-                        iter_save_name = (
-                            iter_save_path
-                            / (
-                                f"flat_{filt}_{
-                                self.camera.BinX}x{
-                                self.camera.BinY}_Readout{
-                                self.camera.ReadoutMode}"
-                                + f"_{real_exp}s"
-                            )
-                            .replace(".", "p")
-                            .replace(" ", "")
-                        )
+                        iter_save_name = iter_save_path / (
+                            f"flat_{filt}_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{real_exp}s"
+                        ).replace(".", "p").replace(" ", "")
                         if type(filter_brightness) is list:
                             iter_save_name = Path(
                                 (
                                     str(iter_save_name)
-                                    + (
-                                        f"_Bright{filter_brightness[idx]}"
-                                        + f"_{j}.fts"
-                                    )
+                                    + (f"_Bright{filter_brightness[idx]}" + f"_{j}.fts")
                                 )
                             )
                         else:
-                            iter_save_name = Path(
-                                (str(iter_save_name) + f"_{j}.fts")
-                            )
+                            iter_save_name = Path((str(iter_save_name) + f"_{j}.fts"))
                         while not self.camera.ImageReady:
                             time.sleep(1)
 
@@ -2692,20 +2471,12 @@ class Observatory:
                 logger.info("Cover closed")
 
                 if final_telescope_position == "no change":
-                    logger.info(
-                        "No change to telescope position requested, exiting"
-                    )
-                elif (
-                    final_telescope_position == "home"
-                    and self.telescope.CanFindHome
-                ):
+                    logger.info("No change to telescope position requested, exiting")
+                elif final_telescope_position == "home" and self.telescope.CanFindHome:
                     logger.info("Homing the telescope")
                     self.telescope.FindHome()
                     logger.info("Homing complete")
-                elif (
-                    final_telescope_position == "park"
-                    and self.telescope.CanPark
-                ):
+                elif final_telescope_position == "park" and self.telescope.CanPark:
                     logger.info("Parking the telescope")
                     self.telescope.Park()
                     logger.info("Parking complete")
@@ -2747,31 +2518,15 @@ class Observatory:
                     if binning is not None:
                         self.camera.BinX = binning.split("x")[0]
                         self.camera.BinY = binning.split("x")[1]
-                    iter_save_path = (
-                        save_path
-                        / (
-                            f"darks_{
-                            self.camera.BinX}x{
-                            self.camera.BinY}_Readout{
-                            self.camera.ReadoutMode}"
-                            + f"_{exposure}s"
-                        )
-                        .replace(".", "p")
-                        .replace(" ", "")
-                    )
+                    iter_save_path = save_path / (
+                        f"darks_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                        + f"_{exposure}s"
+                    ).replace(".", "p").replace(" ", "")
                     if exposure == 0:
-                        iter_save_path = (
-                            save_path
-                            / (
-                                f"biases_{
-                                self.camera.BinX}x{
-                                self.camera.BinY}_Readout{
-                                self.camera.ReadoutMode}"
-                                + f"_{exposure}s"
-                            )
-                            .replace(".", "p")
-                            .replace(" ", "")
-                        )
+                        iter_save_path = save_path / (
+                            f"biases_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
+                            + f"_{exposure}s"
+                        ).replace(".", "p").replace(" ", "")
                     if not iter_save_path.exists():
                         iter_save_path.mkdir()
                     for j in tqdm.tqdm(range(repeat)):
@@ -2790,10 +2545,7 @@ class Observatory:
                         self.camera.StartExposure(exposure, False)
                         iter_save_name = iter_save_path / (
                             (
-                                f"dark_{
-                                    self.camera.BinX}x{
-                                    self.camera.BinY}_Readout{
-                                    self.camera.ReadoutMode}"
+                                f"dark_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
                                 + f"_{exposure}s_{j}"
                             )
                             .replace(".", "p")
@@ -2803,10 +2555,7 @@ class Observatory:
                         if exposure == 0:
                             iter_save_name = iter_save_path / (
                                 (
-                                    f"bias_{
-                                        self.camera.BinX}x{
-                                        self.camera.BinY}_Readout{
-                                        self.camera.ReadoutMode}"
+                                    f"bias_{self.camera.BinX}x{self.camera.BinY}_Readout{self.camera.ReadoutMode}"
                                     + f"_{exposure}s_{j}"
                                 )
                                 .replace(".", "p")
@@ -2835,13 +2584,7 @@ class Observatory:
             self._config.write(configfile)
 
     def _parse_obj_ra_dec(
-        self,
-        obj=None,
-        ra=None,
-        dec=None,
-        unit=("hour", "deg"),
-        frame="icrs",
-        t=None,
+        self, obj=None, ra=None, dec=None, unit=("hour", "deg"), frame="icrs", t=None
     ):
         logger.debug(
             f"""Observatory._parse_obj_ra_dec({obj}, {ra}, {dec}, {unit}, {frame}, {t}) called"""
@@ -2850,7 +2593,7 @@ class Observatory:
         if type(obj) is str:
             try:
                 obj = coord.SkyCoord.from_name(obj)
-            except BaseException:
+            except:
                 try:
                     if t is None:
                         t = self.observatory_time
@@ -2871,10 +2614,10 @@ class Observatory:
                         pm_dec=eph["dDec"],
                         frame="icrs",
                     )
-                except BaseException:
+                except:
                     try:
                         obj = coord.get_body(obj, t, self.observatory_location)
-                    except BaseException:
+                    except:
                         raise ObservatoryException(
                             "The requested object could not be found using "
                             + "Sesame resolver, the Minor Planet Center Query, or the astropy.coordinates get_body function."
@@ -2884,17 +2627,13 @@ class Observatory:
         elif ra is not None and dec is not None:
             obj = coord.SkyCoord(ra=ra, dec=dec, unit=unit, frame=frame)
         else:
-            raise Exception(
-                "Either the object, the ra, or the dec must be specified."
-            )
+            raise Exception("Either the object, the ra, or the dec must be specified.")
         return obj.transform_to("icrs")
 
     def _read_out_kwargs(self, dictionary):
         logger.debug("Observatory._read_out_kwargs() called")
         self.site_name = dictionary.get("site_name", self.site_name)
-        self.instrument_name = dictionary.get(
-            "instrument_name", self.instrument_name
-        )
+        self.instrument_name = dictionary.get("instrument_name", self.instrument_name)
         self.instrument_description = dictionary.get(
             "instrument_description", self.instrument_description
         )
@@ -2903,9 +2642,7 @@ class Observatory:
         self.elevation = dictionary.get("elevation", self.elevation)
         self.diameter = dictionary.get("diameter", self.diameter)
         self.focal_length = dictionary.get("focal_length", self.focal_length)
-        self.max_dimension = dictionary.get(
-            "max_dimension", self.max_dimension
-        )
+        self.max_dimension = dictionary.get("max_dimension", self.max_dimension)
         self.cover_calibrator_alt = dictionary.get(
             "cover_calibrator_alt", self.cover_calibrator_alt
         )
@@ -2960,7 +2697,7 @@ class Observatory:
         logger.debug("Observatory.camera_info() called")
         try:
             self.camera.Connected = True
-        except BaseException:
+        except:
             return {"CONNECT": (False, "Camera connection")}
         info = {
             "CAMCON": (True, "Camera connection"),
@@ -3025,21 +2762,12 @@ class Observatory:
                 None,
                 "Exposure time resolution [seconds]",
             ),
-            "MAXBINSX": (
-                self.camera.MaxBinX,
-                "Maximum binning factor in width",
-            ),
-            "MAXBINSY": (
-                self.camera.MaxBinY,
-                "Maximum binning factor in height",
-            ),
+            "MAXBINSX": (self.camera.MaxBinX, "Maximum binning factor in width"),
+            "MAXBINSY": (self.camera.MaxBinY, "Maximum binning factor in height"),
             "CANASBIN": (self.camera.CanAsymmetricBin, "Can asymmetric bin"),
             "CANABRT": (self.camera.CanAbortExposure, "Can abort exposures"),
             "CANSTP": (self.camera.CanStopExposure, "Can stop exposures"),
-            "CANCOOLP": (
-                self.camera.CanGetCoolerPower,
-                "Can get cooler power",
-            ),
+            "CANCOOLP": (self.camera.CanGetCoolerPower, "Can get cooler power"),
             "CANSETTE": (
                 self.camera.CanSetCCDTemperature,
                 "Can camera set temperature",
@@ -3060,17 +2788,11 @@ class Observatory:
             "CAMSUPAC": (None, "Camera supported actions"),
         }
         try:
-            info["PCNTCOMP"] = (
-                self.camera.PercentCompleted,
-                info["PCNTCOMP"][1],
-            )
-        except BaseException:
+            info["PCNTCOMP"] = (self.camera.PercentCompleted, info["PCNTCOMP"][1])
+        except:
             pass
         try:
-            info["DATE-OBS"] = (
-                self.camera.LastExposureStartTime,
-                info["DATE-OBS"][1],
-            )
+            info["DATE-OBS"] = (self.camera.LastExposureStartTime, info["DATE-OBS"][1])
             info["JD"] = (
                 astrotime.Time(self.camera.LastExposureStartTime).jd,
                 info["JD"][1],
@@ -3083,25 +2805,22 @@ class Observatory:
                 astrotime.Time(self.camera.LastExposureStartTime).mjd,
                 info["MJD-OBS"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
             last_exposure_duration = self.camera.LastExposureDuration
             info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
             info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
-        except BaseException:
+        except:
             logger.debug("Could not get last exposure duration")
             pass
         try:
             info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["SUBEXP"] = (
-                self.camera.SubExposureDuration,
-                info["SUBEXP"][1],
-            )
-        except BaseException:
+            info["SUBEXP"] = (self.camera.SubExposureDuration, info["SUBEXP"][1])
+        except:
             pass
         info["CANFASTR"] = (self.camera.CanFastReadout, info["CANFASTR"][1])
         if self.camera.CanFastReadout:
@@ -3122,38 +2841,23 @@ class Observatory:
                 ][self.camera.SensorType],
                 info["SENSTYP"][1],
             )
-            if self.camera.SensorType not in (0, 1):
-                info["BAYERPAT"] = (
-                    self.camera.SensorType,
-                    info["BAYERPAT"][1],
-                )
-                info["BAYOFFX"] = (
-                    self.camera.BayerOffsetX,
-                    info["BAYOFFX"][1],
-                )
-                info["BAYOFFY"] = (
-                    self.camera.BayerOffsetY,
-                    info["BAYOFFY"][1],
-                )
+            if not self.camera.SensorType in (0, 1):
+                info["BAYERPAT"] = (self.camera.SensorType, info["BAYERPAT"][1])
+                info["BAYOFFX"] = (self.camera.BayerOffsetX, info["BAYOFFX"][1])
+                info["BAYOFFY"] = (self.camera.BayerOffsetY, info["BAYOFFY"][1])
         try:
-            info["HSINKT"] = (
-                self.camera.HeatSinkTemperature,
-                info["HSINKT"][1],
-            )
-        except BaseException:
+            info["HSINKT"] = (self.camera.HeatSinkTemperature, info["HSINKT"][1])
+        except:
             pass
         try:
             info["GAINS"] = (self.camera.Gains, info["GAINS"][1])
-            info["GAIN"] = (
-                self.camera.Gains[self.camera.Gain],
-                info["GAIN"][1],
-            )
-        except BaseException:
+            info["GAIN"] = (self.camera.Gains[self.camera.Gain], info["GAIN"][1])
+        except:
             try:
                 info["GAINMIN"] = (self.camera.GainMin, info["GAINMIN"][1])
                 info["GAINMAX"] = (self.camera.GainMax, info["GAINMAX"][1])
                 info["GAIN"] = (self.camera.Gain, info["GAIN"][1])
-            except BaseException:
+            except:
                 pass
         try:
             info["OFFSETS"] = (self.camera.Offsets, info["OFFSETS"][1])
@@ -3161,101 +2865,71 @@ class Observatory:
                 self.camera.Offsets[self.camera.Offset],
                 info["OFFSET"][1],
             )
-        except BaseException:
+        except:
             try:
                 info["OFFSETMN"] = (self.camera.OffsetMin, info["OFFSETMN"][1])
                 info["OFFSETMX"] = (self.camera.OffsetMax, info["OFFSETMX"][1])
                 info["OFFSET"] = (self.camera.Offset, info["OFFSET"][1])
-            except BaseException:
+            except:
                 pass
         info["CANPULSE"] = (self.camera.CanPulseGuide, info["CANPULSE"][1])
         if self.camera.CanPulseGuide:
-            info["PULSGUID"] = (
-                self.camera.IsPulseGuiding,
-                info["PULSGUID"][1],
-            )
+            info["PULSGUID"] = (self.camera.IsPulseGuiding, info["PULSGUID"][1])
         try:
             info["COOLERON"] = (self.camera.CoolerOn, info["COOLERON"][1])
-        except BaseException:
+        except:
             pass
         info["CANCOOLP"] = (self.camera.CanGetCoolerPower, info["CANCOOLP"][1])
         if self.camera.CanGetCoolerPower:
             info["COOLPOWR"] = (self.camera.CoolerPower, info["COOLPOWR"][1])
-        info["CANSETTE"] = (
-            self.camera.CanSetCCDTemperature,
-            info["CANSETTE"][1],
-        )
+        info["CANSETTE"] = (self.camera.CanSetCCDTemperature, info["CANSETTE"][1])
         if self.camera.CanSetCCDTemperature:
-            info["SET-TEMP"] = (
-                self.camera.SetCCDTemperature,
-                info["SET-TEMP"][1],
-            )
+            info["SET-TEMP"] = (self.camera.SetCCDTemperature, info["SET-TEMP"][1])
         try:
-            info["CCD-TEMP"] = (
-                self.camera.CCDTemperature,
-                info["CCD-TEMP"][1],
-            )
-            info["CMOS-TMP"] = (
-                self.camera.CMOSTemperature,
-                info["CMOS-TMP"][1],
-            )
-        except BaseException:
+            info["CCD-TEMP"] = (self.camera.CCDTemperature, info["CCD-TEMP"][1])
+            info["CMOS-TMP"] = (self.camera.CMOSTemperature, info["CMOS-TMP"][1])
+        except:
             pass
         try:
-            info["CANINTF"] = (
-                self.camera.InterfaceVersion,
-                info["CANINTF"][1],
-            )
-        except BaseException:
+            info["CANINTF"] = (self.camera.InterfaceVersion, info["CANINTF"][1])
+        except:
             pass
         try:
             info["SENSOR"] = (self.camera.SensorName, info["SENSOR"][1])
-        except BaseException:
+        except:
             pass
         try:
             info["MINEXP"] = (self.camera.ExposureMin, info["MINEXP"][1])
             info["MAXEXP"] = (self.camera.ExposureMax, info["MAXEXP"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["EXPRESL"] = (
-                self.camera.ExposureResolution,
-                info["EXPRESL"][1],
-            )
-        except BaseException:
+            info["EXPRESL"] = (self.camera.ExposureResolution, info["EXPRESL"][1])
+        except:
             pass
         try:
-            info["FULLWELL"] = (
-                self.camera.FullWellCapacity,
-                info["FULLWELL"][1],
-            )
-        except BaseException:
+            info["FULLWELL"] = (self.camera.FullWellCapacity, info["FULLWELL"][1])
+        except:
             pass
         try:
             info["MAXADU"] = (self.camera.MaxADU, info["MAXADU"][1])
-        except BaseException:
+        except:
             pass
         try:
             info["E-ADU"] = (self.camera.ElectronsPerADU, info["E-ADU"][1])
-        except BaseException:
+        except:
             pass
         try:
             info["EGAIN"] = (self.camera.Gain, info["EGAIN"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["CANFASTR"] = (
-                self.camera.CanFastReadout,
-                info["CANFASTR"][1],
-            )
-        except BaseException:
+            info["CANFASTR"] = (self.camera.CanFastReadout, info["CANFASTR"][1])
+        except:
             pass
         try:
-            info["CAMSUPAC"] = (
-                str(self.camera.SupportedActions),
-                info["CAMSUPAC"][1],
-            )
-        except BaseException:
+            info["CAMSUPAC"] = (str(self.camera.SupportedActions), info["CAMSUPAC"][1])
+        except:
             pass
 
         return info
@@ -3266,14 +2940,11 @@ class Observatory:
         if self.cover_calibrator is not None:
             try:
                 self.cover_calibrator.Connected = True
-            except BaseException:
+            except:
                 return {"CCALCONN": (False, "Cover calibrator connected")}
             info = {
                 "CCALCONN": (True, "Cover calibrator connected"),
-                "CALSTATE": (
-                    self.cover_calibrator.CalibratorState,
-                    "Calibrator state",
-                ),
+                "CALSTATE": (self.cover_calibrator.CalibratorState, "Calibrator state"),
                 "COVSTATE": (self.cover_calibrator.CoverState, "Cover state"),
                 "BRIGHT": (None, "Brightness of cover calibrator"),
                 # "CCNAME": (self.cover_calibrator.Name, "Cover calibrator name"),
@@ -3304,11 +2975,8 @@ class Observatory:
                 # ),
             }
             try:
-                info["BRIGHT"] = (
-                    self.cover_calibrator.Brightness,
-                    info["BRIGHT"][1],
-                )
-            except BaseException:
+                info["BRIGHT"] = (self.cover_calibrator.Brightness, info["BRIGHT"][1])
+            except:
                 pass
             return info
         else:
@@ -3320,7 +2988,7 @@ class Observatory:
         if self.dome is not None:
             try:
                 self.dome.Connected = True
-            except BaseException:
+            except:
                 return {"DOMECONN": (False, "Dome connected")}
             info = {
                 "DOMECONN": (True, "Dome connected"),
@@ -3334,15 +3002,9 @@ class Observatory:
                 "DOMENAME": (self.dome.Name, "Dome name"),
                 "DOMDRVER": (self.dome.DriverVersion, "Dome driver version"),
                 "DOMEDRV": (str(self.dome.DriverInfo), "Dome driver info"),
-                "DOMEINTF": (
-                    self.dome.InterfaceVersion,
-                    "Dome interface version",
-                ),
+                "DOMEINTF": (self.dome.InterfaceVersion, "Dome interface version"),
                 "DOMEDESC": (self.dome.Description, "Dome description"),
-                "DOMECALT": (
-                    self.dome.CanSetAltitude,
-                    "Can dome set altitude",
-                ),
+                "DOMECALT": (self.dome.CanSetAltitude, "Can dome set altitude"),
                 "DOMECAZ": (self.dome.CanSetAzimuth, "Can dome set azimuth"),
                 "DOMECSHT": (self.dome.CanSetShutter, "Can dome set shutter"),
                 "DOMECSLV": (self.dome.CanSlave, "Can dome slave to mount"),
@@ -3353,37 +3015,31 @@ class Observatory:
                 "DCANHOME": (self.dome.CanFindHome, "Can dome home"),
                 "DCANPARK": (self.dome.CanPark, "Can dome park"),
                 "DCANSPRK": (self.dome.CanSetPark, "Can dome set park"),
-                "DOMSUPAC": (
-                    str(self.dome.SupportedActions),
-                    "Dome supported actions",
-                ),
+                "DOMSUPAC": (str(self.dome.SupportedActions), "Dome supported actions"),
             }
             try:
                 info["DOMEALT"] = (self.dome.Altitude, info["DOMEALT"][1])
-            except BaseException:
+            except:
                 pass
             try:
                 info["DOMEAZ"] = (self.dome.Azimuth, info["DOMEAZ"][1])
-            except BaseException:
+            except:
                 pass
             try:
-                info["DOMESHUT"] = (
-                    self.dome.ShutterStatus,
-                    info["DOMESHUT"][1],
-                )
-            except BaseException:
+                info["DOMESHUT"] = (self.dome.ShutterStatus, info["DOMESHUT"][1])
+            except:
                 pass
             try:
                 info["DOMESLAV"] = (self.dome.Slaved, info["DOMESLAV"][1])
-            except BaseException:
+            except:
                 pass
             try:
                 info["DOMEHOME"] = (self.dome.AtHome, info["DOMEHOME"][1])
-            except BaseException:
+            except:
                 pass
             try:
                 info["DOMEPARK"] = (self.dome.AtPark, info["DOMEPARK"][1])
-            except BaseException:
+            except:
                 pass
             return info
         else:
@@ -3395,7 +3051,7 @@ class Observatory:
         if self.filter_wheel is not None:
             try:
                 self.filter_wheel.Connected = True
-            except BaseException:
+            except:
                 return {"FWCONN": (False, "Filter wheel connected")}
             info = {
                 "FWCONN": (True, "Filter wheel connected"),
@@ -3426,10 +3082,7 @@ class Observatory:
                     "Filter wheel interface version",
                 ),
                 "FWDESC": (None, "Filter wheel description"),
-                "FWALLNAM": (
-                    str(self.filter_wheel.Names),
-                    "Filter wheel names",
-                ),
+                "FWALLNAM": (str(self.filter_wheel.Names), "Filter wheel names"),
                 "FWALLOFF": (
                     None,
                     "Filter wheel focus offsets",
@@ -3444,49 +3097,49 @@ class Observatory:
                     self.filter_wheel.FocusOffsets[self.filter_wheel.Position],
                     info["FOCOFFCG"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWDRVER"] = (
                     self.filter_wheel.DriverVersion,
                     info["FWDRVER"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWDRV"] = (
                     str(self.filter_wheel.DriverInfo),
                     info["FWDRV"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWINTF"] = (
                     self.filter_wheel.InterfaceVersion,
                     info["FWINTF"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWDESC"] = (
                     self.filter_wheel.Description,
                     info["FWDESC"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWSUPAC"] = (
                     str(self.filter_wheel.SupportedActions),
                     info["FWSUPAC"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["FWALLOFF"] = (
                     str(self.filter_wheel.FocusOffsets),
                     info["FWALLOFF"][1],
                 )
-            except BaseException:
+            except:
                 pass
             return info
         else:
@@ -3498,7 +3151,7 @@ class Observatory:
         if self.focuser is not None:
             try:
                 self.focuser.Connected = True
-            except BaseException:
+            except:
                 return {"FOCCONN": (False, "Focuser connected")}
             info = {
                 "FOCCONN": (True, "Focuser connected"),
@@ -3507,18 +3160,9 @@ class Observatory:
                 "TEMPCOMP": (None, "Focuser temperature compensation"),
                 "FOCTEMP": (None, "Focuser temperature"),
                 "FOCNAME": (self.focuser.Name, "Focuser name"),
-                "FOCDRVER": (
-                    self.focuser.DriverVersion,
-                    "Focuser driver version",
-                ),
-                "FOCDRV": (
-                    str(self.focuser.DriverInfo),
-                    "Focuser driver info",
-                ),
-                "FOCINTF": (
-                    self.focuser.InterfaceVersion,
-                    "Focuser interface version",
-                ),
+                "FOCDRVER": (self.focuser.DriverVersion, "Focuser driver version"),
+                "FOCDRV": (str(self.focuser.DriverInfo), "Focuser driver info"),
+                "FOCINTF": (self.focuser.InterfaceVersion, "Focuser interface version"),
                 "FOCDESC": (self.focuser.Description, "Focuser description"),
                 "FOCSTEP": (None, "Focuser step size"),
                 "FOCABSOL": (
@@ -3533,34 +3177,28 @@ class Observatory:
                 ),
             }
             try:
-                info["FOCMAXIN"] = (
-                    self.focuser.MaxIncrement,
-                    info["FOCMAXIN"][1],
-                )
-            except BaseException:
+                info["FOCMAXIN"] = (self.focuser.MaxIncrement, info["FOCMAXIN"][1])
+            except:
                 pass
             try:
                 info["FOCMAXST"] = (self.focuser.MaxStep, info["FOCMAXST"][1])
-            except BaseException:
+            except:
                 pass
             try:
                 info["FOCPOS"] = (self.focuser.Position, info["FOCPOS"][1])
-            except BaseException:
+            except:
                 pass
             try:
                 info["TEMPCOMP"] = (self.focuser.TempComp, info["TEMPCOMP"][1])
-            except BaseException:
+            except:
                 pass
             try:
-                info["FOCTEMP"] = (
-                    self.focuser.Temperature,
-                    info["FOCTEMP"][1],
-                )
-            except BaseException:
+                info["FOCTEMP"] = (self.focuser.Temperature, info["FOCTEMP"][1])
+            except:
                 pass
             try:
                 info["FOCSTEP"] = (self.focuser.StepSize, info["FOCSTEP"][1])
-            except BaseException:
+            except:
                 pass
             return info
         else:
@@ -3572,18 +3210,9 @@ class Observatory:
         info = {
             "OBSNAME": (self.site_name, "Observatory name"),
             "OBSINSTN": (self.instrument_name, "Instrument name"),
-            "OBSINSTD": (
-                self.instrument_description,
-                "Instrument description",
-            ),
-            "OBSLAT": (
-                self.latitude.to_string(sep="dms"),
-                "Observatory latitude",
-            ),
-            "OBSLONG": (
-                self.longitude.to_string(sep="dms"),
-                "Observatory longitude",
-            ),
+            "OBSINSTD": (self.instrument_description, "Instrument description"),
+            "OBSLAT": (self.latitude.to_string(sep="dms"), "Observatory latitude"),
+            "OBSLONG": (self.longitude.to_string(sep="dms"), "Observatory longitude"),
             "OBSELEV": (self.elevation, "Observatory altitude"),
             "OBSDIA": (self.diameter, "Observatory diameter"),
             "OBSFL": (self.focal_length, "Observatory focal length"),
@@ -3598,7 +3227,7 @@ class Observatory:
         if self.observing_conditions is not None:
             try:
                 self.observing_conditions.Connected = True
-            except BaseException:
+            except:
                 return {"WXCONN": (False, "Observing conditions connected")}
             info = {
                 "WXCONN": (True, "Observing conditions connected"),
@@ -3607,106 +3236,52 @@ class Observatory:
                     "Observing conditions average period",
                 ),
                 "WXCLD": (None, "Observing conditions cloud cover"),
-                "WXCLDUPD": (
-                    None,
-                    "Observing conditions cloud cover last updated",
-                ),
-                "WCCLDD": (
-                    None,
-                    "Observing conditions cloud cover sensor description",
-                ),
+                "WXCLDUPD": (None, "Observing conditions cloud cover last updated"),
+                "WCCLDD": (None, "Observing conditions cloud cover sensor description"),
                 "WXDEW": (None, "Observing conditions dew point"),
-                "WXDEWUPD": (
-                    None,
-                    "Observing conditions dew point last updated",
-                ),
-                "WXDEWD": (
-                    None,
-                    "Observing conditions dew point sensor description",
-                ),
+                "WXDEWUPD": (None, "Observing conditions dew point last updated"),
+                "WXDEWD": (None, "Observing conditions dew point sensor description"),
                 "WXHUM": (None, "Observing conditions humidity"),
-                "WXHUMUPD": (
-                    None,
-                    "Observing conditions humidity last updated",
-                ),
-                "WXHUMD": (
-                    None,
-                    "Observing conditions humidity sensor description",
-                ),
+                "WXHUMUPD": (None, "Observing conditions humidity last updated"),
+                "WXHUMD": (None, "Observing conditions humidity sensor description"),
                 "WXPRES": (None, "Observing conditions pressure"),
-                "WXPREUPD": (
-                    None,
-                    "Observing conditions pressure last updated",
-                ),
-                "WXPRESD": (
-                    None,
-                    "Observing conditions pressure sensor description",
-                ),
+                "WXPREUPD": (None, "Observing conditions pressure last updated"),
+                "WXPRESD": (None, "Observing conditions pressure sensor description"),
                 "WXRAIN": (None, "Observing conditions rain rate"),
-                "WXRAIUPD": (
-                    None,
-                    "Observing conditions rain rate last updated",
-                ),
-                "WXRAIND": (
-                    None,
-                    "Observing conditions rain rate sensor description",
-                ),
+                "WXRAIUPD": (None, "Observing conditions rain rate last updated"),
+                "WXRAIND": (None, "Observing conditions rain rate sensor description"),
                 "WXSKY": (None, "Observing conditions sky brightness"),
-                "WXSKYUPD": (
-                    None,
-                    "Observing conditions sky brightness last updated",
-                ),
+                "WXSKYUPD": (None, "Observing conditions sky brightness last updated"),
                 "WXSKYD": (
                     None,
                     "Observing conditions sky brightness sensor description",
                 ),
                 "WXSKYQ": (None, "Observing conditions sky quality"),
-                "WXSKYQUP": (
-                    None,
-                    "Observing conditions sky quality last updated",
-                ),
+                "WXSKYQUP": (None, "Observing conditions sky quality last updated"),
                 "WXSKYQD": (
                     None,
                     "Observing conditions sky quality sensor description",
                 ),
                 "WXSKYTMP": (None, "Observing conditions sky temperature"),
-                "WXSKTUPD": (
-                    None,
-                    "Observing conditions sky temperature last updated",
-                ),
+                "WXSKTUPD": (None, "Observing conditions sky temperature last updated"),
                 "WXSKTD": (
                     None,
                     "Observing conditions sky temperature sensor description",
                 ),
                 "WXFWHM": (None, "Observing conditions seeing"),
                 "WXFWHUP": (None, "Observing conditions seeing last updated"),
-                "WXFWHMD": (
-                    None,
-                    "Observing conditions seeing sensor description",
-                ),
+                "WXFWHMD": (None, "Observing conditions seeing sensor description"),
                 "WXTEMP": (None, "Observing conditions temperature"),
-                "WXTEMUPD": (
-                    None,
-                    "Observing conditions temperature last updated",
-                ),
+                "WXTEMUPD": (None, "Observing conditions temperature last updated"),
                 "WXTEMPD": (
                     None,
                     "Observing conditions temperature sensor description",
                 ),
                 "WXWIND": (None, "Observing conditions wind speed"),
-                "WXWINUPD": (
-                    None,
-                    "Observing conditions wind speed last updated",
-                ),
-                "WXWINDD": (
-                    None,
-                    "Observing conditions wind speed sensor description",
-                ),
+                "WXWINUPD": (None, "Observing conditions wind speed last updated"),
+                "WXWINDD": (None, "Observing conditions wind speed sensor description"),
                 "WXWINDIR": (None, "Observing conditions wind direction"),
-                "WXWDIRUP": (
-                    None,
-                    "Observing conditions wind direction last updated",
-                ),
+                "WXWDIRUP": (None, "Observing conditions wind direction last updated"),
                 "WXWDIRD": (
                     None,
                     "Observing conditions wind direction sensor description",
@@ -3715,18 +3290,9 @@ class Observatory:
                     None,
                     "Observing conditions wind gust over last two minutes",
                 ),
-                "WXWGDUPD": (
-                    None,
-                    "Observing conditions wind gust last updated",
-                ),
-                "WXWGDSTD": (
-                    None,
-                    "Observing conditions wind gust sensor description",
-                ),
-                "WXNAME": (
-                    self.observing_conditions.Name,
-                    "Observing conditions name",
-                ),
+                "WXWGDUPD": (None, "Observing conditions wind gust last updated"),
+                "WXWGDSTD": (None, "Observing conditions wind gust sensor description"),
+                "WXNAME": (self.observing_conditions.Name, "Observing conditions name"),
                 "WXDRVER": (
                     self.observing_conditions.DriverVersion,
                     "Observing conditions driver version",
@@ -3745,27 +3311,19 @@ class Observatory:
                 ),
             }
             try:
-                info["WXCLD"] = (
-                    self.observing_conditions.CloudCover,
-                    info["WXCLD"][1],
-                )
+                info["WXCLD"] = (self.observing_conditions.CloudCover, info["WXCLD"][1])
                 info["WXCLDUPD"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "CloudCover"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("CloudCover"),
                     info["WXCLDUPD"][1],
                 )
                 info["WXCLDD"] = (
                     self.observing_conditions.SensorDescription("CloudCover"),
                     info["WXCLDD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
-                info["WXDEW"] = (
-                    self.observing_conditions.DewPoint,
-                    info["WXDEW"][1],
-                )
+                info["WXDEW"] = (self.observing_conditions.DewPoint, info["WXDEW"][1])
                 info["WXDEWUPD"] = (
                     self.observing_conditions.TimeSinceLastUpdate("DewPoint"),
                     info["WXDEWUPD"][1],
@@ -3774,13 +3332,10 @@ class Observatory:
                     self.observing_conditions.SensorDescription("DewPoint"),
                     info["WXDEWD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
-                info["WXHUM"] = (
-                    self.observing_conditions.Humidity,
-                    info["WXHUM"][1],
-                )
+                info["WXHUM"] = (self.observing_conditions.Humidity, info["WXHUM"][1])
                 info["WXHUMUPD"] = (
                     self.observing_conditions.TimeSinceLastUpdate("Humidity"),
                     info["WXHUMUPD"][1],
@@ -3789,13 +3344,10 @@ class Observatory:
                     self.observing_conditions.SensorDescription("Humidity"),
                     info["WXHUMD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
-                info["WXPRES"] = (
-                    self.observing_conditions.Pressure,
-                    info["WXPRES"][1],
-                )
+                info["WXPRES"] = (self.observing_conditions.Pressure, info["WXPRES"][1])
                 info["WXPREUPD"] = (
                     self.observing_conditions.TimeSinceLastUpdate("Pressure"),
                     info["WXPREUPD"][1],
@@ -3804,13 +3356,10 @@ class Observatory:
                     self.observing_conditions.SensorDescription("Pressure"),
                     info["WXPRESD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
-                info["WXRAIN"] = (
-                    self.observing_conditions.RainRate,
-                    info["WXRAIN"][1],
-                )
+                info["WXRAIN"] = (self.observing_conditions.RainRate, info["WXRAIN"][1])
                 info["WXRAIUPD"] = (
                     self.observing_conditions.TimeSinceLastUpdate("RainRate"),
                     info["WXRAIUPD"][1],
@@ -3819,7 +3368,7 @@ class Observatory:
                     self.observing_conditions.SensorDescription("RainRate"),
                     info["WXRAIND"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXSKY"] = (
@@ -3827,18 +3376,14 @@ class Observatory:
                     info["WXSKY"][1],
                 )
                 info["WXSKYUPD"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "SkyBrightness"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("SkyBrightness"),
                     info["WXSKYUPD"][1],
                 )
                 info["WXSKYD"] = (
-                    self.observing_conditions.SensorDescription(
-                        "SkyBrightness"
-                    ),
+                    self.observing_conditions.SensorDescription("SkyBrightness"),
                     info["WXSKYD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXSKYQ"] = (
@@ -3846,16 +3391,14 @@ class Observatory:
                     info["WXSKYQ"][1],
                 )
                 info["WXSKYQUP"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "SkyQuality"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("SkyQuality"),
                     info["WXSKYQUP"][1],
                 )
                 info["WXSKYQD"] = (
                     self.observing_conditions.SensorDescription("SkyQuality"),
                     info["WXSKYQD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXSKYTMP"] = (
@@ -3863,18 +3406,14 @@ class Observatory:
                     info["WXSKYTMP"][1],
                 )
                 info["WXSKTUPD"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "SkyTemperature"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("SkyTemperature"),
                     info["WXSKTUPD"][1],
                 )
                 info["WXSKTD"] = (
-                    self.observing_conditions.SensorDescription(
-                        "SkyTemperature"
-                    ),
+                    self.observing_conditions.SensorDescription("SkyTemperature"),
                     info["WXSKTD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXFWHM"] = (
@@ -3889,7 +3428,7 @@ class Observatory:
                     self.observing_conditions.SensorDescription("WindSpeed"),
                     info["WXFWHMD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXTEMP"] = (
@@ -3897,16 +3436,14 @@ class Observatory:
                     info["WXTEMP"][1],
                 )
                 info["WXTEMUPD"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "Temperature"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("Temperature"),
                     info["WXTEMUPD"][1],
                 )
                 info["WXTEMPD"] = (
                     self.observing_conditions.SensorDescription("Temperature"),
                     info["WXTEMPD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXWIND"] = (
@@ -3921,7 +3458,7 @@ class Observatory:
                     self.observing_conditions.SensorDescription("WindSpeed"),
                     info["WXWINDD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXWINDIR"] = (
@@ -3929,18 +3466,14 @@ class Observatory:
                     info["WXWINDIR"][1],
                 )
                 info["WXWDIRUP"] = (
-                    self.observing_conditions.TimeSinceLastUpdate(
-                        "WindDirection"
-                    ),
+                    self.observing_conditions.TimeSinceLastUpdate("WindDirection"),
                     info["WXWDIRUP"][1],
                 )
                 info["WXWDIRD"] = (
-                    self.observing_conditions.SensorDescription(
-                        "WindDirection"
-                    ),
+                    self.observing_conditions.SensorDescription("WindDirection"),
                     info["WXWDIRD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXWDGST"] = (
@@ -3955,14 +3488,14 @@ class Observatory:
                     self.observing_conditions.SensorDescription("WindGust"),
                     info["WXWGDSTD"][1],
                 )
-            except BaseException:
+            except:
                 pass
             try:
                 info["WXAVGTIM"] = (
                     self.observing_conditions.AveragePeriod,
                     info["WXAVGTIM"][1],
                 )
-            except BaseException:
+            except:
                 pass
             return info
         else:
@@ -3974,7 +3507,7 @@ class Observatory:
         if self.rotator is not None:
             try:
                 self.rotator.Connected = True
-            except BaseException:
+            except:
                 return {"ROTCONN": (False, "Rotator connected")}
             info = {
                 "ROTCONN": (True, "Rotator connected"),
@@ -3983,21 +3516,12 @@ class Observatory:
                     self.rotator.MechanicalPosition,
                     "Rotator mechanical position",
                 ),
-                "ROTTARGP": (
-                    self.rotator.TargetPosition,
-                    "Rotator target position",
-                ),
+                "ROTTARGP": (self.rotator.TargetPosition, "Rotator target position"),
                 "ROTMOV": (self.rotator.IsMoving, "Rotator moving"),
                 "ROTREVSE": (self.rotator.Reverse, "Rotator reverse"),
                 "ROTNAME": (self.rotator.Name, "Rotator name"),
-                "ROTDRVER": (
-                    self.rotator.DriverVersion,
-                    "Rotator driver version",
-                ),
-                "ROTDRV": (
-                    str(self.rotator.DriverInfo),
-                    "Rotator driver name",
-                ),
+                "ROTDRVER": (self.rotator.DriverVersion, "Rotator driver version"),
+                "ROTDRV": (str(self.rotator.DriverInfo), "Rotator driver name"),
                 "ROTINTFC": (
                     self.rotator.InterfaceVersion,
                     "Rotator interface version",
@@ -4012,7 +3536,7 @@ class Observatory:
             }
             try:
                 info["ROTSTEP"] = (self.rotator.StepSize, info["ROTSTEP"][1])
-            except BaseException:
+            except:
                 pass
             return info
         else:
@@ -4058,10 +3582,8 @@ class Observatory:
                             "Safety monitor supported actions",
                         ),
                     }
-                except BaseException:
-                    info = {
-                        "SM%iCONN" % i: (False, "Safety monitor connected")
-                    }
+                except:
+                    info = {"SM%iCONN" % i: (False, "Safety monitor connected")}
 
                 all_info.append(info)
         else:
@@ -4085,10 +3607,7 @@ class Observatory:
                     try:
                         info = {
                             ("SW%iCONN" % i): (True, "Switch connected"),
-                            ("SW%iNAME" % i): (
-                                self.switch[i].Name,
-                                "Switch name",
-                            ),
+                            ("SW%iNAME" % i): (self.switch[i].Name, "Switch name"),
                             ("SW%iDRVER" % i): (
                                 self.switch[i].DriverVersion,
                                 "Switch driver version",
@@ -4130,13 +3649,11 @@ class Observatory:
                                 )
                                 info[("SW%iSW%iMN" % (i, j))] = (
                                     self.switch[i].MinSwitchValue(j),
-                                    "Switch %i Device %i minimum value"
-                                    % (i, j),
+                                    "Switch %i Device %i minimum value" % (i, j),
                                 )
                                 info[("SW%iSW%iMX" % (i, j))] = (
                                     self.switch[i].MaxSwitchValue(j),
-                                    "Switch %i Device %i maximum value"
-                                    % (i, j),
+                                    "Switch %i Device %i maximum value" % (i, j),
                                 )
                                 info[("SW%iSW%iST" % (i, j))] = (
                                     self.switch[i].SwitchStep(j),
@@ -4147,10 +3664,8 @@ class Observatory:
                                     f"Sub-switch {j} of switch {i} gave the following error: {e}"
                                 )
                     except Exception as e:
-                        logger.debug(
-                            f"Switch {i} gives the following error: {e}"
-                        )
-                except BaseException:
+                        logger.debug(f"Switch {i} gives the following error: {e}")
+                except:
                     info = {("SW%iCONN" % i): (False, "Switch connected")}
 
                 all_info.append(info)
@@ -4169,18 +3684,12 @@ class Observatory:
         logger.debug("Observatory.telescope_info() called")
         try:
             self.telescope.Connected = True
-        except BaseException:
+        except:
             return {"TELCONN": (False, "Telescope connected")}
         info = {
             "TELCONN": (True, "Telescope connected"),
-            "TELHOME": (
-                self.telescope.AtHome,
-                "Is telescope at home position",
-            ),
-            "TELPARK": (
-                self.telescope.AtPark,
-                "Is telescope at park position",
-            ),
+            "TELHOME": (self.telescope.AtHome, "Is telescope at home position"),
+            "TELPARK": (self.telescope.AtPark, "Is telescope at park position"),
             "TELALT": (None, "Telescope altitude [degrees]"),
             "TELAZ": (
                 None,
@@ -4233,14 +3742,8 @@ class Observatory:
                 "Telescope DEC tracking offset [arcseconds per sidereal second]",
             ),
             "TELPULSE": (None, "Is telescope pulse guiding"),
-            "TELGUIDR": (
-                None,
-                "Telescope pulse guiding RA rate [degrees/sec]",
-            ),
-            "TELGUIDD": (
-                None,
-                "Telescope pulse guiding DEC rate [arcseconds/sec]",
-            ),
+            "TELGUIDR": (None, "Telescope pulse guiding RA rate [degrees/sec]"),
+            "TELGUIDD": (None, "Telescope pulse guiding DEC rate [arcseconds/sec]"),
             "TELDOREF": (None, "Does telescope do refraction"),
             "TELLST": (
                 self.telescope.SiderealTime,
@@ -4248,18 +3751,9 @@ class Observatory:
             ),
             "TELUT": (None, "Telescope UTC date"),
             "TELNAME": (self.telescope.Name, "Telescope name"),
-            "TELDRVER": (
-                self.telescope.DriverVersion,
-                "Telescope driver version",
-            ),
-            "TELDRV": (
-                str(self.telescope.DriverInfo),
-                "Telescope driver name",
-            ),
-            "TELINTF": (
-                self.telescope.InterfaceVersion,
-                "Telescope interface version",
-            ),
+            "TELDRVER": (self.telescope.DriverVersion, "Telescope driver version"),
+            "TELDRV": (str(self.telescope.DriverInfo), "Telescope driver name"),
+            "TELINTF": (self.telescope.InterfaceVersion, "Telescope interface version"),
             "TELDESC": (self.telescope.Description, "Telescope description"),
             "TELAPAR": (None, "Telescope aperture area [m^2]"),
             "TELDIAM": (None, "Telescope aperture diameter [m]"),
@@ -4269,34 +3763,21 @@ class Observatory:
             "TELLONG": (None, "Telescope longitude [degrees]"),
             "TELALN": (None, "Telescope alignment mode"),
             "TELEQSYS": (
-                [
-                    "equOther",
-                    "equTopocentric",
-                    "equJ2000",
-                    "equJ2050",
-                    "equB1950",
-                ][self.telescope.EquatorialSystem],
+                ["equOther", "equTopocentric", "equJ2000", "equJ2050", "equB1950"][
+                    self.telescope.EquatorialSystem
+                ],
                 "Telescope equatorial coordinate system",
             ),
-            "TELCANHM": (
-                self.telescope.CanFindHome,
-                "Can telescope find home",
-            ),
+            "TELCANHM": (self.telescope.CanFindHome, "Can telescope find home"),
             "TELCANPA": (self.telescope.CanPark, "Can telescope park"),
             "TELCANUN": (self.telescope.CanUnpark, "Can telescope unpark"),
-            "TELCANPP": (
-                self.telescope.CanSetPark,
-                "Can telescope set park position",
-            ),
+            "TELCANPP": (self.telescope.CanSetPark, "Can telescope set park position"),
             # "TELCANPG": (self.telescope.CanPulseGuide, "Can telescope pulse guide"),
             "TELCANGR": (
                 self.telescope.CanSetGuideRates,
                 "Can telescope set guide rates",
             ),
-            "TELCANTR": (
-                self.telescope.CanSetTracking,
-                "Can telescope set tracking",
-            ),
+            "TELCANTR": (self.telescope.CanSetTracking, "Can telescope set tracking"),
             "TELCANSR": (
                 self.telescope.CanSetRightAscensionRate,
                 "Can telescope set RA offset rate",
@@ -4305,10 +3786,7 @@ class Observatory:
                 self.telescope.CanSetDeclinationRate,
                 "Can telescope set DEC offset rate",
             ),
-            "TELCANSP": (
-                self.telescope.CanSetPierSide,
-                "Can telescope set pier side",
-            ),
+            "TELCANSP": (self.telescope.CanSetPierSide, "Can telescope set pier side"),
             "TELCANSL": (
                 self.telescope.CanSlew,
                 "Can telescope slew to equatorial coordinates",
@@ -4333,10 +3811,7 @@ class Observatory:
                 self.telescope.CanSyncAltAz,
                 "Can telescope sync to alt-azimuth coordinates",
             ),
-            "TELTRCKS": (
-                str(self.telescope.TrackingRates),
-                "Telescope tracking rates",
-            ),
+            "TELTRCKS": (str(self.telescope.TrackingRates), "Telescope tracking rates"),
             "TELSUPAC": (
                 None,
                 "Telescope supported actions",
@@ -4354,37 +3829,27 @@ class Observatory:
         )
         try:
             info["TELALT"] = (self.telescope.Altitude, info["TELALT"][1])
-        except BaseException:
+        except:
             pass
         try:
             info["TELAZ"] = (self.telescope.Azimuth, info["TELAZ"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["TARGRA"] = (
-                self.telescope.TargetRightAscension,
-                info["TARGRA"][1],
-            )
-        except BaseException:
+            info["TARGRA"] = (self.telescope.TargetRightAscension, info["TARGRA"][1])
+        except:
             pass
         try:
-            info["TARGDEC"] = (
-                self.telescope.TargetDeclination,
-                info["TARGDEC"][1],
-            )
-        except BaseException:
+            info["TARGDEC"] = (self.telescope.TargetDeclination, info["TARGDEC"][1])
+        except:
             pass
         obj = self.get_current_object()
         info["TELRAIC"] = (obj.ra.to_string(unit=u.hour), info["TELRAIC"][1])
-        info["TELDECIC"] = (
-            obj.dec.to_string(unit=u.degree),
-            info["TELDECIC"][1],
-        )
+        info["TELDECIC"] = (obj.dec.to_string(unit=u.degree), info["TELDECIC"][1])
         info["OBJCTALT"] = (
             obj.transform_to(
                 coord.AltAz(
-                    obstime=self.observatory_time,
-                    location=self.observatory_location,
+                    obstime=self.observatory_time, location=self.observatory_location
                 )
             )
             .alt.to(u.degree)
@@ -4394,8 +3859,7 @@ class Observatory:
         info["OBJCTAZ"] = (
             obj.transform_to(
                 coord.AltAz(
-                    obstime=self.observatory_time,
-                    location=self.observatory_location,
+                    obstime=self.observatory_time, location=self.observatory_location
                 )
             )
             .az.to(u.degree)
@@ -4418,9 +3882,7 @@ class Observatory:
         )
         info["MOONANGL"] = (
             coord.get_body(
-                "moon",
-                self.observatory_time,
-                location=self.observatory_location,
+                "moon", self.observatory_time, location=self.observatory_location
             )
             .separation(obj)
             .to(u.degree)
@@ -4433,76 +3895,59 @@ class Observatory:
         )
         try:
             info["TELSLEW"] = (self.telescope.Slewing, info["TELSLEW"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["TELSETT"] = (
-                self.telescope.SlewSettleTime,
-                info["TELSETT"][1],
-            )
-        except BaseException:
+            info["TELSETT"] = (self.telescope.SlewSettleTime, info["TELSETT"][1])
+        except:
             pass
         try:
             info["TELPIER"] = (
-                ["pierEast", "pierWest", "pierUnknown"][
-                    self.telescope.SideOfPier
-                ],
+                ["pierEast", "pierWest", "pierUnknown"][self.telescope.SideOfPier],
                 info["TELPIER"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
             info["TELTRACK"] = (self.telescope.Tracking, info["TELTRACK"][1])
-        except BaseException:
+        except:
             pass
         try:
             info["TELTRKRT"] = (
                 self.telescope.TrackingRates[self.telescope.TrackingRate],
                 info["TELTRKRT"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
-            info["TELOFFRA"] = (
-                self.telescope.RightAscensionRate,
-                info["TELOFFRA"][1],
-            )
-        except BaseException:
+            info["TELOFFRA"] = (self.telescope.RightAscensionRate, info["TELOFFRA"][1])
+        except:
             pass
         try:
-            info["TELOFFDC"] = (
-                self.telescope.DeclinationRate,
-                info["TELOFFDC"][1],
-            )
-        except BaseException:
+            info["TELOFFDC"] = (self.telescope.DeclinationRate, info["TELOFFDC"][1])
+        except:
             pass
         try:
-            info["TELPULSE"] = (
-                self.telescope.IsPulseGuiding,
-                info["TELPULSE"][1],
-            )
-        except BaseException:
+            info["TELPULSE"] = (self.telescope.IsPulseGuiding, info["TELPULSE"][1])
+        except:
             pass
         try:
             info["TELGUIDR"] = (
                 self.telescope.GuideRateRightAscension,
                 info["TELGUIDR"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
             info["TELGUIDD"] = (
                 self.telescope.GuideRateDeclination,
                 info["TELGUIDD"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
-            info["TELDOREF"] = (
-                self.telescope.DoesRefraction,
-                info["TELDOREF"][1],
-            )
-        except BaseException:
+            info["TELDOREF"] = (self.telescope.DoesRefraction, info["TELDOREF"][1])
+        except:
             pass
         try:
             info["TELUT"] = (
@@ -4510,56 +3955,45 @@ class Observatory:
                 self.observatory_time.strftime("%Y-%m-%dT%H:%M:%S"),
                 info["TELUT"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
             info["TELAPAR"] = (self.telescope.ApertureArea, info["TELAPAR"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["TELDIAM"] = (
-                self.telescope.ApertureDiameter,
-                info["TELDIAM"][1],
-            )
-        except BaseException:
+            info["TELDIAM"] = (self.telescope.ApertureDiameter, info["TELDIAM"][1])
+        except:
             pass
         try:
             info["TELFOCL"] = (self.telescope.FocalLength, info["TELFOCL"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["TELELEV"] = (
-                self.telescope.SiteElevation,
-                info["TELELEV"][1],
-            )
-        except BaseException:
+            info["TELELEV"] = (self.telescope.SiteElevation, info["TELELEV"][1])
+        except:
             pass
         try:
             info["TELLAT"] = (self.telescope.SiteLatitude, info["TELLAT"][1])
-        except BaseException:
+        except:
             pass
         try:
-            info["TELLONG"] = (
-                self.telescope.SiteLongitude,
-                info["TELLONG"][1],
-            )
-        except BaseException:
+            info["TELLONG"] = (self.telescope.SiteLongitude, info["TELLONG"][1])
+        except:
             pass
         try:
             info["TELALN"] = (
-                ["AltAz", "Polar", "GermanPolar"][
-                    self.telescope.AlignmentMode
-                ],
+                ["AltAz", "Polar", "GermanPolar"][self.telescope.AlignmentMode],
                 info["TELALN"][1],
             )
-        except BaseException:
+        except:
             pass
         try:
             info["TELSUPAC"] = (
                 str(self.telescope.SupportedActions),
                 info["TELSUPAC"][1],
             )
-        except BaseException:
+        except:
             pass
         return info
 
@@ -4632,9 +4066,7 @@ class Observatory:
     @instrument_name.setter
     def instrument_name(self, value):
         logger.debug(f"Observatory.instrument_name = {value} called")
-        self._instrument_name = (
-            value if value is not None or value != "" else None
-        )
+        self._instrument_name = value if value is not None or value != "" else None
         self._config["site"]["instrument_name"] = (
             self._instrument_name if self._instrument_name is not None else ""
         )
@@ -4671,10 +4103,8 @@ class Observatory:
         try:
             if self.telescope.Connected:
                 self.telescope.SiteLatitude = self._latitude.deg
-        except BaseException:
-            logger.warning(
-                "Telescope not connected, cannot set the driver's latitude"
-            )
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's latitude")
 
         self._config["site"]["latitude"] = (
             self._latitude.to_string(unit=u.degree, sep="dms", precision=5)
@@ -4698,10 +4128,8 @@ class Observatory:
         try:
             if self.telescope.Connected:
                 self.telescope.SiteLongitude = self._longitude.deg
-        except BaseException:
-            logger.warning(
-                "Telescope not connected, cannot set the driver's longitude"
-            )
+        except:
+            logger.warning("Telescope not connected, cannot set the driver's longitude")
 
         self._config["site"]["longitude"] = (
             self._longitude.to_string(unit=u.degree, sep="dms", precision=5)
@@ -4778,31 +4206,22 @@ class Observatory:
     def cooler_setpoint(self, value):
         logger.debug(f"Observatory.cooler_setpoint = {value} called")
         if value is not None:
-            self._cooler_setpoint = (
-                value if value is not None or value != "" else None
-            )
+            self._cooler_setpoint = value if value is not None or value != "" else None
             self._config["camera"]["cooler_setpoint"] = (
-                str(self._cooler_setpoint)
-                if self._cooler_setpoint is not None
-                else ""
+                str(self._cooler_setpoint) if self._cooler_setpoint is not None else ""
             )
         else:
             self._cooler_setpoint = None
             self._config["camera"]["cooler_setpoint"] = ""
         try:
-            if (
-                self.camera.CanSetCCDTemperature
-                and self._cooler_setpoint is not None
-            ):
+            if self.camera.CanSetCCDTemperature and self._cooler_setpoint is not None:
                 self.camera.SetCCDTemperature = self._cooler_setpoint
                 logger.info(f"CCD Temp Set to {self._cooler_setpoint}")
             else:
                 self._cooler_setpoint = None
                 self._config["camera"]["cooler_setpoint"] = ""
-                logger.warning(
-                    "Camera does not support setting the CCD temperature"
-                )
-        except BaseException:
+                logger.warning("Camera does not support setting the CCD temperature")
+        except:
             pass
 
     @property
@@ -4817,9 +4236,7 @@ class Observatory:
             max(float(value), 0) if value is not None or value != "" else None
         )
         self._config["camera"]["cooler_tolerance"] = (
-            str(self._cooler_tolerance)
-            if self._cooler_tolerance is not None
-            else ""
+            str(self._cooler_tolerance) if self._cooler_tolerance is not None else ""
         )
 
     @property
@@ -4870,9 +4287,7 @@ class Observatory:
     def cover_calibrator_alt(self, value):
         logger.debug(f"Observatory.cover_calibrator_alt = {value} called")
         self._cover_calibrator_alt = (
-            min(max(float(value), 0), 90)
-            if value is not None and value != ""
-            else None
+            min(max(float(value), 0), 90) if value is not None and value != "" else None
         )
         self._config["cover_calibrator"]["cover_calibrator_alt"] = (
             str(self._cover_calibrator_alt)
@@ -5045,14 +4460,12 @@ class Observatory:
             bool(value) if value is not None or value != "" else None
         )
         self._config["rotator"]["rotator_reverse"] = (
-            str(self._rotator_reverse)
-            if self._rotator_reverse is not None
-            else ""
+            str(self._rotator_reverse) if self._rotator_reverse is not None else ""
         )
         try:
             if self.rotator is not None:
                 self.rotator.Reverse = self._rotator_reverse
-        except BaseException:
+        except:
             logger.warning(
                 "Rotator not connected, you should reconnect to the rotator and then set the reverse property"
             )
@@ -5069,9 +4482,7 @@ class Observatory:
             float(value) if value is not None or value != "" else None
         )
         self._config["rotator"]["rotator_min_angle"] = (
-            str(self._rotator_min_angle)
-            if self._rotator_min_angle is not None
-            else ""
+            str(self._rotator_min_angle) if self._rotator_min_angle is not None else ""
         )
 
     @property
@@ -5086,9 +4497,7 @@ class Observatory:
             float(value) if value is not None or value != "" else None
         )
         self._config["rotator"]["rotator_max_angle"] = (
-            str(self._rotator_max_angle)
-            if self._rotator_max_angle is not None
-            else ""
+            str(self._rotator_max_angle) if self._rotator_max_angle is not None else ""
         )
 
     @property
@@ -5220,9 +4629,7 @@ class Observatory:
     @slew_rate.setter
     def slew_rate(self, value):
         logger.debug(f"Observatory.slew_rate = {value} called")
-        self._slew_rate = (
-            float(value) if value is not None or value != "" else None
-        )
+        self._slew_rate = float(value) if value is not None or value != "" else None
         self._config["scheduling"]["slew_rate"] = (
             str(self._slew_rate) if self._slew_rate is not None else ""
         )
@@ -5273,12 +4680,10 @@ def _import_driver(driver, kwargs=None):
 
     try:
         device_class = getattr(observatory, driver)
-    except BaseException:
+    except:
         try:
             module_name = kwargs.values()[0].split("/")[-1].split(".")[0]
-            spec = importlib.util.spec_from_file_location(
-                module_name, kwargs[0]
-            )
+            spec = importlib.util.spec_from_file_location(module_name, kwargs[0])
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
@@ -5288,7 +4693,7 @@ def _import_driver(driver, kwargs=None):
                 kwargs = kwargs[1:]
             else:
                 kwargs = None
-        except BaseException:
+        except:
             return None
 
     if kwargs is None:
@@ -5306,6 +4711,5 @@ def _check_class_inheritance(device_class, device):
         )
     else:
         logger.debug(
-            "Driver %s inherits from the required _abstract classes"
-            % device_class
+            "Driver %s inherits from the required _abstract classes" % device_class
         )
