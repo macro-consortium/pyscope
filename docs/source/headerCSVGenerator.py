@@ -58,11 +58,15 @@ class HeaderCSVGenerator:
 
         # Encase any references to self. in quotes
         for i, property in enumerate(info_dict):
-            info_dict[i] = re.sub(r"self\.([a-zA-Z0-9_.\[\]]+)", r'"\1"', property)
+            info_dict[i] = re.sub(
+                r"self\.([a-zA-Z0-9_.\[\]]+)", r'"\1"', property
+            )
 
         # Find references to str()
         for i, property in enumerate(info_dict):
-            info_dict[i] = re.sub(r"(str\(([a-zA-Z\"\_\.\[\]]+)\))", r"\2", property)
+            info_dict[i] = re.sub(
+                r"(str\(([a-zA-Z\"\_\.\[\]]+)\))", r"\2", property
+            )
 
         # Replace any references to self.etc. with None
         for i, property in enumerate(info_dict):
@@ -113,6 +117,8 @@ class HeaderCSVGenerator:
         with open(filename, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             # Write header
-            writer.writerow(["Header Key", "Header Value", "Header Description"])
+            writer.writerow(
+                ["Header Key", "Header Value", "Header Description"]
+            )
             for key, value in master_dict.items():
                 writer.writerow([key, value[0], value[1]])

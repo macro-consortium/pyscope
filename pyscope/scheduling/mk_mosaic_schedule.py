@@ -92,7 +92,12 @@ logger = logging.getLogger(__name__)
     help="Readout mode as specified by the camera.",
 )
 @click.option(
-    "-b", "--binning", type=str, default="1x1", show_default=True, help="Binning mode."
+    "-b",
+    "--binning",
+    type=str,
+    default="1x1",
+    show_default=True,
+    help="Binning mode.",
 )
 @click.option(
     "-u",
@@ -249,7 +254,11 @@ def mk_mosaic_schedule_cli(
     else:
         center = coord.SkyCoord.from_name(source)
     logger.debug(
-        f"Resolved coordinates: {center.to_string('hmsdms', sep=':', precision=1)}"
+        f"Resolved coordinates: {
+            center.to_string(
+                'hmsdms',
+                sep=':',
+                precision=1)}"
     )
 
     # Generate grid
@@ -281,8 +290,12 @@ def mk_mosaic_schedule_cli(
                 constraints = [
                     [
                         astroplan.constraints.TimeConstraint(
-                            utstart + (j + k * len(j)) * exp * u.second - schederr,
-                            utstart + (j + k * len(j)) * exp * u.second + schederr,
+                            utstart
+                            + (j + k * len(j)) * exp * u.second
+                            - schederr,
+                            utstart
+                            + (j + k * len(j)) * exp * u.second
+                            + schederr,
                         )
                     ]
                     for k in range(n_exp)
@@ -307,7 +320,9 @@ def mk_mosaic_schedule_cli(
                             "binning": binning.split("x"),
                             "comment": comment,
                         },
-                        constraints=constraints[j] if constraints is not None else None,
+                        constraints=(
+                            constraints[j] if constraints is not None else None
+                        ),
                         name=f"{source}_{i}_{j}",
                     )
                 )
@@ -334,11 +349,14 @@ def mk_mosaic_schedule_cli(
                     decimal=True,
                 ).split()
                 f.write(
-                    f"""sou {block.name} ra {ra_str} dec {dec_str} repe {n_exp} uts {utstart} rea {readout} bin {binning} com {comment}\n"""
+                    f"""sou {
+                        block.name} ra {ra_str} dec {dec_str} repe {n_exp} uts {utstart} rea {readout} bin {binning} com {comment}\n"""
                 )
 
     if verbose > -1:
-        logger.info("============================================================")
+        logger.info(
+            "============================================================"
+        )
         logger.info("Mosaic of %s" % source)
         logger.info(
             "%i filters, %.0f minutes per filter sequence"
@@ -354,7 +372,9 @@ def mk_mosaic_schedule_cli(
             % (len(obsblocks), len(filters) * sum(exp_times) * n_exp / 3600.0)
         )
         logger.info("Output file: %s" % write)
-        logger.info("============================================================")
+        logger.info(
+            "============================================================"
+        )
 
 
 mk_mosaic_schedule = mk_mosaic_schedule_cli.callback

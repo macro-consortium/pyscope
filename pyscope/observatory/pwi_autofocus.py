@@ -73,7 +73,8 @@ class PWIAutofocus(Autofocus):
 
             if time.time() > t:
                 raise Exception(
-                    "Autofocus took longer than %g seconds to complete" % timeout
+                    "Autofocus took longer than %g seconds to complete"
+                    % timeout
                 )
 
         if self._com_object.Success:

@@ -173,7 +173,16 @@ class ScheduleBlock(_Block):
         """
         logger.debug(
             "ScheduleBlock.from_string(string=%s, config=%s, name=%s, description=%s, conditions=%s, priority=%s, fields=%s, **kwargs=%s)"
-            % (string, config, name, description, conditions, priority, fields, kwargs)
+            % (
+                string,
+                config,
+                name,
+                description,
+                conditions,
+                priority,
+                fields,
+                kwargs,
+            )
         )
 
         n_blocks = string.count(
@@ -213,7 +222,9 @@ class ScheduleBlock(_Block):
             priority = int(block_info.split("\nPriority: ")[1].split("\n")[0])
             logger.debug("priority=%i" % priority)
 
-            project_code = block_info.split("\nProject Code: ")[1].split("\n")[0]
+            project_code = block_info.split("\nProject Code: ")[1].split("\n")[
+                0
+            ]
 
             conditions_info = block_info.split(
                 "\n********** Start Conditions **********"
@@ -241,16 +252,22 @@ class ScheduleBlock(_Block):
                     0
                 ]
                 logger.debug("condition_info=%s" % condition_info)
-                condition_type = condition_info.split("\nType: ")[1].split("\n")[0]
+                condition_type = condition_info.split("\nType: ")[1].split(
+                    "\n"
+                )[0]
                 condition_kwargs = ast.literal_eval(
                     condition_info.split("\nType: %s\n" % condition_type)[1]
                 )
                 try:
-                    condition_class = getattr(sys.modules[__name__], condition_type)
-                except:
+                    condition_class = getattr(
+                        sys.modules[__name__], condition_type
+                    )
+                except BaseException:
                     try:
                         module_name = (
-                            condition_kwargs.values()[0].split("/")[-1].split(".")[0]
+                            condition_kwargs.values()[0]
+                            .split("/")[-1]
+                            .split(".")[0]
                         )
                         spec = importlib.util.spec_from_file_location(
                             module_name, condition_kwargs[0]
@@ -264,7 +281,7 @@ class ScheduleBlock(_Block):
                             condition_kwargs = condition_kwargs[1:]
                         else:
                             condition_kwargs = None
-                    except:
+                    except BaseException:
                         return None
 
                 if condition_kwargs is None:
@@ -277,9 +294,9 @@ class ScheduleBlock(_Block):
                 conditions.append(condition)
                 logger.debug("condition=%s" % condition)
 
-            fields_info = block_info.split("\n********** Start Fields **********")[
-                1
-            ].split("\n********** End Fields **********")[0]
+            fields_info = block_info.split(
+                "\n********** Start Fields **********"
+            )[1].split("\n********** End Fields **********")[0]
             n_fields = fields_info.count(
                 "******************** Start Field ********************"
             )
@@ -297,7 +314,9 @@ class ScheduleBlock(_Block):
                 logger.debug("Start j=%i" % j)
                 field_info = fields_info.split(
                     "\n******************** Start Field ********************"
-                )[j + 1].split("\n******************** End Field ********************")[
+                )[j + 1].split(
+                    "\n******************** End Field ********************"
+                )[
                     0
                 ]
                 logger.debug("field_info=%s" % field_info)
@@ -307,10 +326,12 @@ class ScheduleBlock(_Block):
                 )
                 try:
                     field_class = getattr(sys.modules[__name__], field_type)
-                except:
+                except BaseException:
                     try:
                         module_name = (
-                            field_kwargs.values()[0].split("/")[-1].split(".")[0]
+                            field_kwargs.values()[0]
+                            .split("/")[-1]
+                            .split(".")[0]
                         )
                         spec = importlib.util.spec_from_file_location(
                             module_name, field_kwargs[0]
@@ -324,7 +345,7 @@ class ScheduleBlock(_Block):
                             field_kwargs = field_kwargs[1:]
                         else:
                             field_kwargs = None
-                    except:
+                    except BaseException:
                         return None
 
                 if field_kwargs is None:
@@ -422,7 +443,12 @@ class ScheduleBlock(_Block):
             ):
                 raise TypeError(
                     "conditions must be a list of BoundaryCondition objects. Got %s, %s instead for %s (number %i)"
-                    % (condition.__class__, condition.__class__.__bases__, condition, i)
+                    % (
+                        condition.__class__,
+                        condition.__class__.__bases__,
+                        condition,
+                        i,
+                    )
                 )
 
         self._conditions = value

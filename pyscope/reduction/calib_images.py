@@ -94,7 +94,9 @@ logger = logging.getLogger(__name__)
     help="Print verbose output. 1=verbose. 2=more verbose.",
 )
 @click.argument(
-    "fnames", nargs=-1, type=click.Path(exists=True, file_okay=True, resolve_path=True)
+    "fnames",
+    nargs=-1,
+    type=click.Path(exists=True, file_okay=True, resolve_path=True),
 )
 @click.version_option()
 def calib_images_cli(
@@ -246,7 +248,8 @@ def calib_images_cli(
         for calimg in calimages:
             # find flat_frame, dark_frame, bias_frame, flat_dark_frame
             hdrf = fits.getheader(calimg, 0)
-            # if the corresponding header values match, then set the appropriate frame
+            # if the corresponding header values match, then set the
+            # appropriate frame
             if (
                 "master_flat" in calimg.name
                 and "master_flat_dark" not in calimg.name
@@ -318,7 +321,9 @@ def calib_images_cli(
                 )
                 return 0
         elif dark_frame is None or bias_frame is None or flat_frame is None:
-            logger.exception("calib-images: No matching calibration frames found.")
+            logger.exception(
+                "calib-images: No matching calibration frames found."
+            )
             return 0
 
         # After gethering all the required parameters, run ccd_calib
@@ -341,7 +346,7 @@ def calib_images_cli(
             logger.info("Calculating zero-point magnitudes...")
             try:
                 calc_zmag.calc_zmag(images=(fname,))
-            except:
+            except BaseException:
                 logger.exception(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")

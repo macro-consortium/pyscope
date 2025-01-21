@@ -12,17 +12,17 @@ from astropy.table import Table
 
 logger = logging.getLogger(__name__)
 
-### --- Constants ---
+# --- Constants ---
 micron = 1e-6
 deg = np.pi / 180.0
 arcmin = deg / 60.0
 arcsec = deg / 3600.0
 date = time.Time("2003-11-11")
 # extra_keys = []
-### --- End of Constants ---
+# --- End of Constants ---
 
 
-### --- Phillip's Functions ---
+# --- Phillip's Functions ---
 def get_offsets(hdr):
     """
     Input : FITS header
@@ -118,7 +118,7 @@ def zp_stats(filter, mode, zp_stats_list):
     return zp_med, zp_std
 
 
-### --- End of Phillip's Functions ---
+# --- End of Phillip's Functions ---
 
 
 @click.command(
@@ -128,7 +128,9 @@ def zp_stats(filter, mode, zp_stats_list):
 )
 @click.option("-d", "--date", default="", help="Date [default all].")
 @click.option("-f", "--filt", default="", help="Filter name [default all].")
-@click.option("-r", "--readout", default="", help="Readout mode [default all].")
+@click.option(
+    "-r", "--readout", default="", help="Readout mode [default all]."
+)
 @click.option("-b", "--binning", default="", help="Binning [default all].")
 @click.option(
     "-e",
@@ -140,12 +142,21 @@ def zp_stats(filter, mode, zp_stats_list):
 )
 @click.option("-t", "--target", default="", help="Target name [default all].")
 @click.option(
-    "-v", "--verbose", count=True, type=click.IntRange(0, 1), help="Verbose output."
+    "-v",
+    "--verbose",
+    count=True,
+    type=click.IntRange(0, 1),
+    help="Verbose output.",
 )
-@click.option("-k", "--add_keys", default="", help="Additional header keys to print.")
 @click.option(
-    "-n", "--fnames", default="./", type=click.Path(exists=True, file_okay=False)
-)  ##need default = "?"
+    "-k", "--add_keys", default="", help="Additional header keys to print."
+)
+@click.option(
+    "-n",
+    "--fnames",
+    default="./",
+    type=click.Path(exists=True, file_okay=False),
+)  # need default = "?"
 @click.option("-s", "--save", is_flag=True, help="Save output to a file")
 @click.option("-o", "--offsets", is_flag=True, help="Save output to a file")
 @click.option("-z", "--zp_stats", is_flag=True, help="Save output to a file")
@@ -249,7 +260,7 @@ def fitslist_cli(
     for ftsfile in ftsfiles:
         try:
             header = fits.getheader(ftsfile)
-        except:
+        except BaseException:
             logger.warning(f"Could not open {ftsfile}.")
             continue
 
@@ -313,7 +324,9 @@ def fitslist_cli(
                     except KeyError:
                         target_name = ""
         if target_name not in target.split(",") or target == "":
-            logger.debug(f"Target {target_name} not in {target}. Skipping {ftsfile}.")
+            logger.debug(
+                f"Target {target_name} not in {target}. Skipping {ftsfile}."
+            )
             target_name = "n/a"
 
         # Actual coordinates
@@ -432,7 +445,7 @@ def fitslist_cli(
             ]
         )
 
-    ##switch to astropy table which can be saved to a file
+    # switch to astropy table which can be saved to a file
     standard_names = [
         "FITS file",
         "Target",

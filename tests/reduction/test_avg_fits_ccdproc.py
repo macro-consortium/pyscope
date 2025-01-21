@@ -25,7 +25,9 @@ def test_avg_fits_ccdproc(tmp_path):
     print(f"creating test FITS files in {tmp_path}")
     for i in range(1, 11):
         data = np.ones((10, 10), dtype=np.float64)
-        fits.writeto(f"{tmp_path}/avg_fits_test_{i}.fits", data * i, overwrite=True)
+        fits.writeto(
+            f"{tmp_path}/avg_fits_test_{i}.fits", data * i, overwrite=True
+        )
         # print(data * i)
 
     files = glob.glob(f"{tmp_path}/avg_fits_test_*.fits")

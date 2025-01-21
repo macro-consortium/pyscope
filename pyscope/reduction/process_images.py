@@ -59,7 +59,9 @@ fh = logging.FileHandler(OBSERVATORY_HOME / "logs/process-images.log")
 fh.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-fmt = logging.Formatter("Process-images: %(asctime)s:%(levelname)s:%(message)s")
+fmt = logging.Formatter(
+    "Process-images: %(asctime)s:%(levelname)s:%(message)s"
+)
 fh.setFormatter(fmt)
 ch.setFormatter(fmt)
 logger.addHandler(fh)
@@ -142,7 +144,7 @@ def store_image(img, dest, update_db=False):
     if not target.exists() or target.stat().st_mtime < img.stat().st_mtime:
         try:
             shutil.copy(img, target)
-        except:
+        except BaseException:
             logger.exception(f"Unable to store {target}")
             return False
         else:
@@ -174,7 +176,7 @@ def process_image(img):
     logger.info(f"Processing {img}...")
     try:
         data, hdr = fits.getdata(img), fits.getheader(img, 0)
-    except:
+    except BaseException:
         sort_image(img, img.parent / "failed")
         logger.exception(f"Corrupt FITS file {img}")
         img.unlink()
@@ -200,7 +202,7 @@ def process_image(img):
                 verbose=0,
                 fnames=(img,),
             )
-        except:
+        except BaseException:
             sort_image(img, img.parent / "failed")
             logger.exception(
                 f"calib_images failed on image {img}: no matching calibration frames maybe?"
@@ -241,16 +243,19 @@ if __name__ == "__main__":
             process_image(img)
 
         for img in done:
-            # if the image has not been modified in MAXTIME seconds and has a date older than MAXAGE, remove it
+            # if the image has not been modified in MAXTIME seconds and has a
+            # date older than MAXAGE, remove it
             if img.exists() and time.time() - img.stat().st_mtime > MAXMTIME:
                 try:
                     img_isodate = fits.getval(img, "DATE-OBS")[:10]
-                except:
+                except BaseException:
                     continue
                 yyyy, mm, dd = [int(s) for s in img_isodate.split("-")]
                 age = (
                     time.time()
-                    - dt.datetime(yyyy, mm, dd, tzinfo=dt.timezone.utc).timestamp()
+                    - dt.datetime(
+                        yyyy, mm, dd, tzinfo=dt.timezone.utc
+                    ).timestamp()
                 )
                 if age > MAXAGE:
                     img.unlink()

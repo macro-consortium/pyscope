@@ -17,7 +17,8 @@ def test__forceaync():
     async def main():
         import asyncio
 
-        # if it were to execute sequentially, it would take 10 seconds, in this case we expect to see only 1 second
+        # if it were to execute sequentially, it would take 10 seconds, in this
+        # case we expect to see only 1 second
         futures = list(map(lambda x: t(), range(10)))
         return await asyncio.gather(*futures)
 

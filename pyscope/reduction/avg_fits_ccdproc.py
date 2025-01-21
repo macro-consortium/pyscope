@@ -199,7 +199,9 @@ TODO: fix click options
     show_default=True,
     help="Print verbose output.",
 )
-@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
+)
 @click.version_option()
 def avg_fits_ccdproc_cli(
     mode,
@@ -299,7 +301,7 @@ def avg_fits_ccdproc_cli(
     if verbose:
         logger.setLevel(logging.DEBUG)
 
-    if unit == None:
+    if unit is None:
         if "BUNIT" in fits.open(fnames[0])[0].header:
             unit = fits.open(fnames[0])[0].header["BUNIT"]
         else:
@@ -368,7 +370,9 @@ def avg_fits_ccdproc_cli(
     hdr.add_comment(f"Sigma clip high thresh: {sigma_clip_high_thresh}")
     hdr.add_comment(f"Sigma clip func: {sigma_clip_func}")
     hdr.add_comment(f"Sigma clip dev func: {sigma_clip_dev_func}")
-    hdr.add_comment(f"Combine uncertainty func: {combine_uncertainty_function}")
+    hdr.add_comment(
+        f"Combine uncertainty func: {combine_uncertainty_function}"
+    )
     hdr.add_comment(f"Overwrite output: {overwrite_output}")
 
     fits.writeto(outfile, image_avg, hdr, overwrite=True)

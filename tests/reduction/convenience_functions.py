@@ -55,7 +55,8 @@ def show_image(
     # So, calculate the size of the figure in pixels, block_reduce to
     # roughly that,and display the block reduced image.
 
-    # Thanks, https://stackoverflow.com/questions/29702424/how-to-get-matplotlib-figure-size
+    # Thanks,
+    # https://stackoverflow.com/questions/29702424/how-to-get-matplotlib-figure-size
     fig_size_pix = fig.get_size_inches() * fig.dpi
 
     ratio = (image.shape // fig_size_pix).max()
@@ -121,7 +122,10 @@ def show_image(
 
     if not show_ticks:
         ax.tick_params(
-            labelbottom=False, labelleft=False, labelright=False, labeltop=False
+            labelbottom=False,
+            labelleft=False,
+            labelright=False,
+            labeltop=False,
         )
 
 
@@ -165,7 +169,9 @@ def image_snippet(
         if the slice is near the edge.
     """
     if pad_black:
-        sub_image = Cutout2D(image, center, width, mode="partial", fill_value=0)
+        sub_image = Cutout2D(
+            image, center, width, mode="partial", fill_value=0
+        )
     else:
         # Return a smaller subimage if extent goes out side image
         sub_image = Cutout2D(image, center, width, mode="trim")
@@ -185,7 +191,9 @@ def _mid(sl):
     return (sl.start + sl.stop) // 2
 
 
-def display_cosmic_rays(cosmic_rays, images, titles=None, only_display_rays=None):
+def display_cosmic_rays(
+    cosmic_rays, images, titles=None, only_display_rays=None
+):
     """
     Display cutouts of the region around each cosmic ray and the other images
     passed in.
@@ -212,7 +220,9 @@ def display_cosmic_rays(cosmic_rays, images, titles=None, only_display_rays=None
     # Check whether the first image is actually a mask.
 
     if not ((images[0] == 0) | (images[0] == 1)).all():
-        raise ValueError("The first image must be a mask with " "values of zero or one")
+        raise ValueError(
+            "The first image must be a mask with " "values of zero or one"
+        )
 
     if only_display_rays is None:
         n_rows = len(cosmic_rays.slices)
@@ -251,7 +261,9 @@ def display_cosmic_rays(cosmic_rays, images, titles=None, only_display_rays=None
             title = plot_info[1]
             is_mask = column == 0
             ax = axes[display_row, column]
-            image_snippet(image, (x, y), width=80, axis=ax, fig=fig, is_mask=is_mask)
+            image_snippet(
+                image, (x, y), width=80, axis=ax, fig=fig, is_mask=is_mask
+            )
             if is_mask:
                 ax.annotate(
                     "Cosmic ray {}".format(row),

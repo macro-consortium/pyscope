@@ -4,9 +4,9 @@ import time
 
 import astropy.coordinates as coord
 
-logger = logging.getLogger(__name__)
-
 from ..utils import _force_async
+
+logger = logging.getLogger(__name__)
 
 
 class PinpointWCS(WCS):

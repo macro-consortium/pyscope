@@ -19,7 +19,9 @@ class ZWOCamera(Camera):
         logger.debug(f"ZWOCamera.__init__({device_number})")
 
         if platform.system() != "Windows":
-            raise ImportError("ZWO ASI Camera SDK is only supported on Windows")
+            raise ImportError(
+                "ZWO ASI Camera SDK is only supported on Windows"
+            )
         else:
             import zwoasi as asi
 
@@ -75,7 +77,7 @@ class ZWOCamera(Camera):
                 self._image_data_type = np.uint16
             else:
                 self._image_data_type = np.uint32
-        except:
+        except BaseException:
             self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
@@ -105,7 +107,9 @@ class ZWOCamera(Camera):
         whbi_old = self._device.get_roi_format()
         whbi_new = [width, height, bins, image_type]
         if whbi_old != whbi_new:
-            self._device.set_roi(startX, startY, width, height, bins, image_type)
+            self._device.set_roi(
+                startX, startY, width, height, bins, image_type
+            )
 
         self._last_exposure_duration = Duration
         self._last_exposure_start_time = str(Time.now())
@@ -253,7 +257,11 @@ class ZWOCamera(Camera):
     @property
     def ElectronsPerADU(self):
         logger.debug(f"ASCOMCamera.ElectronsPerADU() property called")
-        return self._device.get_camera_property()["ElecPerADU"] * self.BinX * self.BinY
+        return (
+            self._device.get_camera_property()["ElecPerADU"]
+            * self.BinX
+            * self.BinY
+        )
 
     @property
     def Exposure(self):
@@ -441,7 +449,7 @@ class ZWOCamera(Camera):
         support the property """
         return (
             last_time
-            if last_time != "" and last_time != None
+            if last_time != "" and last_time is not None
             else self._last_exposure_start_time
         )
 
@@ -452,7 +460,9 @@ class ZWOCamera(Camera):
 
     @LastInputExposureDuration.setter
     def LastInputExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.LastInputExposureDuration property set to {value}"
+        )
         self._last_exposure_duration = value
 
     @property
@@ -604,5 +614,7 @@ class ZWOCamera(Camera):
 
     @SubExposureDuration.setter
     def SubExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.SubExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.SubExposureDuration property set to {value}"
+        )
         pass

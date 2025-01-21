@@ -33,7 +33,9 @@ class PWI4Focuser(Focuser):
         return True
 
     def Halt(self, return_status=False):
-        logger.debug("PWI4Focuser.Halt(return_status={}) called".format(return_status))
+        logger.debug(
+            "PWI4Focuser.Halt(return_status={}) called".format(return_status)
+        )
         if return_status:
             return self._app.focuser_stop()
         else:

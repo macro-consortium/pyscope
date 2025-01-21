@@ -9,7 +9,13 @@ logger = logging.getLogger(__name__)
 
 class UnallocableBlock(_Block):
     def __init__(
-        self, start_time, end_time, config=None, name="", description="", **kwargs
+        self,
+        start_time,
+        end_time,
+        config=None,
+        name="",
+        description="",
+        **kwargs
     ):
         """
         A block of time that is not allocated to any fields.
@@ -46,7 +52,11 @@ class UnallocableBlock(_Block):
             % (start_time, end_time, config, name, description, kwargs)
         )
         super().__init__(
-            config=config, observer=None, name=name, description=description, **kwargs
+            config=config,
+            observer=None,
+            name=name,
+            description=description,
+            **kwargs
         )
         self.start_time = start_time
         self.end_time = end_time
@@ -88,7 +98,9 @@ class UnallocableBlock(_Block):
             "******************** End UnallocatedBlock ********************"
         )
         if n_blocks != end_blocks:
-            raise ValueError("UnallocatedBlock string representation is malformed.")
+            raise ValueError(
+                "UnallocatedBlock string representation is malformed."
+            )
         logger.debug("n_blocks=%i" % n_blocks)
         blocks = []
         for i in range(n_blocks):
@@ -103,10 +115,16 @@ class UnallocableBlock(_Block):
             logger.debug("block_info=%s" % block_info)
 
             block = super().from_string(
-                block_info, config=config, name=name, description=description, **kwargs
+                block_info,
+                config=config,
+                name=name,
+                description=description,
+                **kwargs
             )
             block._start_time = (
-                Time(start_time) if start_time is not None else block._start_time
+                Time(start_time)
+                if start_time is not None
+                else block._start_time
             )
             block._end_time = (
                 Time(end_time) if end_time is not None else block._end_time

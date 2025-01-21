@@ -29,7 +29,9 @@ def test_setswitch(device, disconnect):
 def test_setswitchvalue(device, disconnect):
     for i in range(device.MaxSwitch):
         for j in range(
-            device.MinSwitchValue(i), device.MaxSwitchValue(i) + 1, device.SwitchStep(i)
+            device.MinSwitchValue(i),
+            device.MaxSwitchValue(i) + 1,
+            device.SwitchStep(i),
         ):
             if device.CanWrite(i):
                 device.SetSwitchValue(i, j)

@@ -202,7 +202,9 @@ class CoordinateCondition(BoundaryCondition):
             The type of coordinate system to use.
 
         """
-        logger.debug("CoordinateCondition().coord_type == %s" % self._coord_type)
+        logger.debug(
+            "CoordinateCondition().coord_type == %s" % self._coord_type
+        )
         return self._coord_type
 
     @property
@@ -259,7 +261,9 @@ class CoordinateCondition(BoundaryCondition):
             The type of scoring function to use.
 
         """
-        logger.debug("CoordinateCondition().score_type == %s" % self._score_type)
+        logger.debug(
+            "CoordinateCondition().score_type == %s" % self._score_type
+        )
         return self._score_type
 
     @property

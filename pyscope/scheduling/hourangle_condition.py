@@ -163,7 +163,9 @@ class HourAngleCondition(BoundaryCondition):
             The minimum hour angle at which the target can be observed
 
         """
-        logger.debug("HourAngleCondition().min_hour_angle == %s" % self._min_hour_angle)
+        logger.debug(
+            "HourAngleCondition().min_hour_angle == %s" % self._min_hour_angle
+        )
         return self._min_hour_angle
 
     @property
@@ -177,7 +179,9 @@ class HourAngleCondition(BoundaryCondition):
             The maximum hour angle at which the target can be observed
 
         """
-        logger.debug("HourAngleCondition().max_hour_angle == %s" % self._max_hour_angle)
+        logger.debug(
+            "HourAngleCondition().max_hour_angle == %s" % self._max_hour_angle
+        )
         return self._max_hour_angle
 
     @property
@@ -193,7 +197,9 @@ class HourAngleCondition(BoundaryCondition):
             The type of scoring function to use.
 
         """
-        logger.debug("HourAngleCondition().score_type == %s" % self._score_type)
+        logger.debug(
+            "HourAngleCondition().score_type == %s" % self._score_type
+        )
         return self._score_type
 
     @property

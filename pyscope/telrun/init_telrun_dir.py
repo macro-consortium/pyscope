@@ -94,7 +94,9 @@ def init_telrun_dir_cli(path="./telhome/"):
         logger.info("Creating config directory")
         (path / "config").mkdir()
 
-    cfg_templates = Path(os.path.dirname(__file__)).resolve() / "../bin/cfg_templates/"
+    cfg_templates = (
+        Path(os.path.dirname(__file__)).resolve() / "../bin/cfg_templates/"
+    )
     bin_scripts = Path(os.path.dirname(__file__)).resolve() / "../bin/scripts/"
 
     logger.info("Creating empty config files")
@@ -149,7 +151,9 @@ def init_telrun_dir_cli(path="./telhome/"):
     if not (path / "images" / "autofocus").exists():
         (path / "images" / "autofocus").mkdir()
     else:
-        logger.warning("%s already exists, skipping" % (path / "images" / "autofocus"))
+        logger.warning(
+            "%s already exists, skipping" % (path / "images" / "autofocus")
+        )
 
     if not (path / "images" / "calibrations").exists():
         (path / "images" / "calibrations").mkdir()
@@ -176,12 +180,16 @@ def init_telrun_dir_cli(path="./telhome/"):
     if not (path / "images" / "recenter").exists():
         (path / "images" / "recenter").mkdir()
     else:
-        logger.warning("%s already exists, skipping" % (path / "images" / "recenter"))
+        logger.warning(
+            "%s already exists, skipping" % (path / "images" / "recenter")
+        )
 
     if not (path / "images" / "reduced").exists():
         (path / "images" / "reduced").mkdir()
     else:
-        logger.warning("%s already exists, skipping" % (path / "images" / "reduced"))
+        logger.warning(
+            "%s already exists, skipping" % (path / "images" / "reduced")
+        )
 
     logger.info("Creating logs directory")
     if not (path / "logs").exists():
@@ -205,13 +213,16 @@ def init_telrun_dir_cli(path="./telhome/"):
     if not (path / "schedules" / "execute").exists():
         (path / "schedules" / "execute").mkdir()
     else:
-        logger.warning("%s already exists, skipping" % (path / "schedules" / "execute"))
+        logger.warning(
+            "%s already exists, skipping" % (path / "schedules" / "execute")
+        )
 
     if not (path / "schedules" / "schedule.cat").exists():
         (path / "schedules" / "schedule.cat").touch()
     else:
         logger.warning(
-            "%s already exists, skipping" % (path / "schedules" / "schedule.cat")
+            "%s already exists, skipping"
+            % (path / "schedules" / "schedule.cat")
         )
 
     # TODO: call init_queue here

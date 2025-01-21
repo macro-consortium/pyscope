@@ -14,7 +14,12 @@ class SNRCondition(BoundaryCondition):
 
     @classmethod
     def from_string(
-        cls, string, min_snr=None, max_snr=None, score_type=None, inclusive=None
+        cls,
+        string,
+        min_snr=None,
+        max_snr=None,
+        score_type=None,
+        inclusive=None,
     ):
         pass
 
