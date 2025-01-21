@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from ._docstring_inheritee import _DocstringInheritee
+from ..utils._docstring_inheritee import _DocstringInheritee
 
 
 class Device(ABC, metaclass=_DocstringInheritee):

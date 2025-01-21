@@ -13,7 +13,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from ._docstring_inheritee import _DocstringInheritee
 from ._pwi4 import _PWI4
 
 from .device import Device

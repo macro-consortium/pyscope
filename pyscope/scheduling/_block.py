@@ -85,14 +85,41 @@ class _Block(MappedAsDataclass, Base):
     uuid: Mapped[Uuid] = mapped_column(
         Uuid, primary_key=True, nullable=False, init=False, default_factory=uuid4
     )
+    """
+    The universally unique identifier (UUID) for the block and the primary
+    key for the block table. This UUID is generated automatically by the
+    `~uuid.uuid4` function when a new block is created.
+    """
+
     version_id: Mapped[int] = mapped_column(Integer, nullable=False, init=False)
+    """
+    The version ID for the block. This version ID is used to track changes
+    to the block and is automatically updated by the database when the
+    block is modified. The version ID is used to implement optimistic
+    concurrency control to prevent multiple users from updating the same block
+    simultaneously. If a user attempts to update a block with an outdated
+    version ID, the block is considered stale and the update is rejected,
+    forcing the user to reload the block and try again.
+    """
+
     block_type: Mapped[str] = mapped_column(String, nullable=False, init=False)
+    """
+    The type of block. This parameter is used to implement polymorphism
+    in the block table. The `block_type` parameter is set automatically
+    by the block subclass when a new block is created.
+    """
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         init=False,
         default=datetime.now(tz=timezone.utc),
     )
+    """
+    The creation time of the block. This parameter is set automatically
+    when a new block is created.
+    """
+
     last_modified_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -100,42 +127,133 @@ class _Block(MappedAsDataclass, Base):
         default=datetime.now(tz=timezone.utc),
         onupdate=datetime.now(tz=timezone.utc),
     )
+    """
+    The last modification time of the block. This parameter is set
+    automatically when the block is created and updated whenever the
+    block is modified.
+    """
+
     queued_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), init=False
     )
+    """
+    The time that the block was requested to be scheduled. This parameter
+    is set automatically when the block is added to a `~pyscope.scheduling.Schedule`
+    and is commonly used to track the order in which block objects were added
+    for some prioritization schemes.
+    """
+
     scheduled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), init=False
     )
+    """
+    The time that the block was scheduled. This parameter is set automatically
+    when the block is scheduled by the `~pyscope.scheduling.Scheduler`.
+    """
 
     status: Mapped[Status] = mapped_column(
         Enum, nullable=False, init=False, default=Status.UNSCHEDULED
     )
+    """
+    The status of the block. This parameter is used to track the state of
+    the block and is set automatically at various stages of the scheduling
+    and execution process. The `status` parameter is an `~enum.Enum` with the following possible
+    values:
+    - `~pyscope.scheduling.Status.UNSCHEDULED` : The block has not been scheduled.
+    - `~pyscope.scheduling.Status.EXPIRED` : The block has expired and cannot be scheduled.
+    - `~pyscope.scheduling.Status.INVALID` : The block is invalid and cannot be scheduled.
+    - `~pyscope.scheduling.Status.QUEUED` : The block is queued for scheduling.
+    - `~pyscope.scheduling.Status.SCHEDULED` : The block has been assigned a start time and is therefore scheduled.
+    - `~pyscope.scheduling.Status.FAILED` : The block failed to execute.
+    - `~pyscope.scheduling.Status.CANCELLED` : The block was cancelled before execution began.
+    - `~pyscope.scheduling.Status.IN_PROGRESS` : The block is currently executing.
+    - `~pyscope.scheduling.Status.COMPLETED` : The block has completed execution.
+    """
 
     name: Mapped[str | None] = mapped_column(String)
+    """
+    A user-defined name for the block. This parameter does not change
+    the behavior of the block, but it can be useful for identifying the
+    block in a schedule.
+    """
+
     description: Mapped[str | None] = mapped_column(String)
+    """
+    A user-defined description for the block. Similar to the `name`
+    parameter, this parameter does not change the behavior of the block.
+    """
 
     observer: Mapped[List[Observer]] = relationship(
         secondary=observer_association_table
     )
+    """
+    The list of `~pyscope.scheduling.Observer` objects associated with the block. A
+    block can be associated with just an `~pyscope.scheduling.Observer` or multiple
+    `~pyscope.scheduling.Observer` objects. These `~pyscope.scheduling.Observer` objects are used to track
+    the users or user groups that are responsible for the block.
+
+    .. attention::
+        All block objects must be associated with at least one `~pyscope.scheduling.Observer`.
+    """
 
     config_id: Mapped[Uuid] = mapped_column(
         ForeignKey("instrument_configuration.uuid"), init=False
     )
+    """
+    The UUID for the `~pyscope.telrun.InstrumentConfiguration` used as the
+    default configuration for the block. See the `config` parameter for more information.
+    """
+
     config: Mapped[InstrumentConfiguration] = relationship(back_populates="blocks")
+    """
+    The `~pyscope.telrun.InstrumentConfiguration` used as the default configuration for the block.
+    A default `~pyscope.telrun.InstrumentConfiguration` must be provided when creating a new block.
+
+    .. attention::
+        A default `~pyscope.telrun.InstrumentConfiguration` must be provided when creating a new block.
+    """
 
     start_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), init=False
     )
+    """
+    The start time of the block. This parameter is typically set by the `~pyscope.scheduling.Scheduler`
+    when the block is scheduled but can be manually set by the user for certain block types.
+    """
+
     duration: Mapped[timedelta | None] = mapped_column(
         Interval, default=timedelta(), init=False
     )
+    """The duration of the block. Typically computed by the `~pyscope.scheduling.Scheduler` using
+    the `~pyscope.scheduling.TelrunModel`, it can also be manually set by the user for certain block types."""
 
     schedule_id: Mapped[Uuid | None] = mapped_column(
         ForeignKey("schedule.uuid"), init=False
     )
-    schedule: Mapped[Schedule | None] = relationship(back_populates="blocks")
+    """
+    The UUID for the `~pyscope.scheduling.Schedule` that the block is associated with. See the `schedule`
+    parameter for more information.
+    """
 
-    execution: Mapped[Execution | None] = relationship(back_populates="block")
+    schedule: Mapped[Schedule | None] = relationship(back_populates="blocks")
+    """
+    The `~pyscope.scheduling.Schedule` that the block has been added to.
+
+    .. note::
+        A block can be associated with only one `~pyscope.scheduling.Schedule` and if associated,
+        does not necessarily imply that the block has been scheduled. When first added to a
+        `~pyscope.scheduling.Schedule`, the block must be queued and then scheduled by the
+        `~pyscope.scheduling.Scheduler`.
+    """
+
+    execution_block: Mapped[ExecutionBlock | None] = relationship(
+        back_populates="block"
+    )
+    """
+    The `~pyscope.telrun.ExecutionBlock` associated with the block. The `~pyscope.telrun.ExecutionBlock`
+    is generated by `~pyscope.telrun.TelrunOperator` and contains information, statuses, and logs related to the execution
+    of the block for review by the requesting user and debugging purposes by the observatory staff.
+    """
 
     __mapper_args__ = {
         "version_id_col": version_id,
@@ -148,8 +266,16 @@ class _Block(MappedAsDataclass, Base):
 
     @hybrid_property
     def mid_time(self) -> datetime:
+        """
+        The midpoint time of the block. Automatically computed as the start time plus
+        half the duration of the block.
+        """
         return self.start_time + self.duration / 2
 
     @hybrid_property
     def end_time(self) -> datetime:
+        """
+        The end time of the block. Automatically computed as the start time plus
+        the duration of the block.
+        """
         return self.start_time + self.duration
