@@ -191,23 +191,33 @@ class _Block(MappedAsDataclass, Base):
     the block and is set automatically at various stages of the scheduling
     and execution process. The `status` parameter is an `~enum.Enum` with the
     following possible values:
-    - `~pyscope.scheduling.Status.UNSCHEDULED` : The block has not been
-        scheduled.
-    - `~pyscope.scheduling.Status.EXPIRED` : The block has expired and cannot
-        be scheduled.
-    - `~pyscope.scheduling.Status.INVALID` : The block is invalid and cannot
-        be scheduled.
-    - `~pyscope.scheduling.Status.QUEUED` : The block is queued for
-        scheduling.
-    - `~pyscope.scheduling.Status.SCHEDULED` : The block has been assigned a
-        start time and is therefore scheduled.
-    - `~pyscope.scheduling.Status.FAILED` : The block failed to execute.
-    - `~pyscope.scheduling.Status.CANCELLED` : The block was cancelled before
-        execution began.
-    - `~pyscope.scheduling.Status.IN_PROGRESS` : The block is currently
-        executing.
-    - `~pyscope.scheduling.Status.COMPLETED` : The block has completed
-        execution.
+
+    * `~pyscope.scheduling.Status.UNSCHEDULED` : The block has not been
+      scheduled.
+
+    * `~pyscope.scheduling.Status.EXPIRED` : The block has expired and cannot
+      be scheduled.
+
+    * `~pyscope.scheduling.Status.INVALID` : The block is invalid and cannot
+      be scheduled.
+
+    * `~pyscope.scheduling.Status.QUEUED` : The block is queued for
+      scheduling.
+
+    * `~pyscope.scheduling.Status.SCHEDULED` : The block has been assigned a
+      start time and is therefore scheduled.
+
+    * `~pyscope.scheduling.Status.FAILED` : The block failed to execute.
+
+    * `~pyscope.scheduling.Status.CANCELLED` : The block was cancelled before
+      execution began.
+
+    * `~pyscope.scheduling.Status.IN_PROGRESS` : The block is currently
+      executing.
+
+    * `~pyscope.scheduling.Status.COMPLETED` : The block has completed
+      execution.
+
     """
 
     name: Mapped[str | None] = mapped_column(String)
