@@ -1,3 +1,4 @@
+# isort:skip_file
 import inspect
 import os
 import pathlib
@@ -5,17 +6,16 @@ import subprocess
 import sys
 from urllib.parse import quote
 
-import headerCSVGenerator
 from packaging.version import parse
 from sphinx_astropy.conf.v2 import *
 
-import pyscope
-
 sys.path.insert(0, pathlib.Path(__file__).parents[0].resolve().as_posix())
 
+import headerCSVGenerator
 
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 
+import pyscope
 
 project = "pyscope"
 copyright = "2024, Walter W. Golay"
@@ -37,7 +37,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/WWGolay/pyscope",
+            "url": "https://github.com/macro-consortium/pyscope",
             "icon": "fa-brands fa-square-github",
         },
         {
@@ -158,7 +158,7 @@ def linkcode_resolve(domain, info):
         pass
 
     return (
-        "https://github.com/WWGolay/pyscope/blob"
+        "https://github.com/macro-consortium/pyscope/blob"
         f"/{linkcode_revision}/{fn}{linespec}"
     )
 
