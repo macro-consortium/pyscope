@@ -79,22 +79,22 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     Parameters
     ----------
-    source : str, optional
+    source : `str`, optional
         Source name.
 
-    date : str [YYYY-MM-DD], optional
+    date : `str` [YYYY-MM-DD], optional
         Date of observation. If none is given, the current date at the observatory is used.
 
-    observatory : str or `~pyscope.observatory.Observatory`, default='./config/observatory.cfg'
+    observatory : `str` or `~pyscope.observatory.Observatory`, default='./config/observatory.cfg'
         Observatory configuration file or `~pyscope.observatory.Observatory` object.
 
-    verbose : int, {-1, 0, 1}, default=-1
+    verbose : `int`, {-1, 0, 1}, default=-1
         Verbosity level. 0: no debug messages, 1: debug messages. Default set to -1
         for API use and 0 for CLI use.
 
     Returns
     -------
-    events: list
+    events: `list` of `tuple`
         List of tuples containing the event name and a `~astropy.time.Time` object.
 
     Raises
