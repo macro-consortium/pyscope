@@ -2,12 +2,10 @@ import logging
 
 from astropy.time import Time
 
-from ._block import _Block
-
 logger = logging.getLogger(__name__)
 
 
-class UnallocableBlock(_Block):
+class UnallocableBlock:
     def __init__(
         self,
         start_time,

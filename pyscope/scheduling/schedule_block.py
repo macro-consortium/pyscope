@@ -1,6 +1,5 @@
 import logging
 
-from ._block import _Block
 from .boundary_condition import BoundaryCondition
 from .field import Field
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.debug("ScheduleBlock imported")
 
 
-class ScheduleBlock(_Block):
+class ScheduleBlock:
     def __init__(
         self,
         name="",  # Str
