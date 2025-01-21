@@ -226,75 +226,74 @@ def avg_fits_ccdproc_cli(
     unit="adu",
     verbose=False,
 ):
-    """Combines images using ccdproc.combine method.
+    """
+    Combine multiple images into a single averaged image using `ccdproc`.
+
+    This function uses the `ccdproc.combine` method to combine a set of FITS images
+    into a single output image, supporting various combination methods like "median",
+    "average", and "sum". The output file is saved in the specified format, with
+    optional data scaling, weighting, and clipping algorithms.
 
     Parameters
     ----------
-    outfile : str
-        path to save combined image.
+    outfile : `str`
+        Path to save the combined image.
+    fnames : `list` of `str`
+        List of FITS file paths to be combined.
+    method : `str`, optional
+        Method used for combining images. Options are:
+        - `"average"`
+        - `"median"` (default)
+        - `"sum"`
+    datatype : `str`, optional
+        Data type for the intermediate and resulting combined image.
+        Options include:
+        - `"int16"`
+        - `"float32"` (default: `"uint16"`).
+    weights : `numpy.ndarray`, optional
+        Array of weights to use when combining images. Dimensions must match the data arrays.
+    scale : `callable` or `numpy.ndarray`, optional
+        Scaling factors for combining images. Can be a function applied to each image
+        or an array matching the number of images.
+    mem_limit : `float`, optional
+        Maximum memory (in bytes) allowed during combination (default: `16e9`).
+    clip_extrema : `bool`, optional
+        If `True`, masks the lowest `nlow` and highest `nhigh` values for each pixel
+        before combining.
+    nlow : `int`, optional
+        Number of low pixel values to reject when `clip_extrema=True` (default: 1).
+    nhigh : `int`, optional
+        Number of high pixel values to reject when `clip_extrema=True` (default: 1).
+    minmax_clip : `bool`, optional
+        If `True`, masks all pixels below `minmax_clip_min` or above `minmax_clip_max`.
+    minmax_clip_min : `float`, optional
+        Minimum pixel value for masking when `minmax_clip=True`.
+    minmax_clip_max : `float`, optional
+        Maximum pixel value for masking when `minmax_clip=True`.
+    sigma_clip : `bool`, optional
+        If `True`, performs sigma clipping based on deviation thresholds.
+    sigma_clip_low_thresh : `float`, optional
+        Threshold for rejecting pixels below the baseline value (default: 3).
+    sigma_clip_high_thresh : `float`, optional
+        Threshold for rejecting pixels above the baseline value (default: 3).
+    sigma_clip_func : `callable`, optional
+        Function used to calculate the baseline value for sigma clipping (default: `median`).
+    sigma_clip_dev_func : `callable`, optional
+        Function used to calculate deviations for sigma clipping (default: `std`).
+    combine_uncertainty_function : `callable`, optional
+        Custom function to compute uncertainties during combination.
+    overwrite_output : `bool`, optional
+        If `True`, overwrites the output file if it exists (default: `False`).
+    unit : `str`, optional
+        Unit of the CCD data (e.g., `"adu"`, `"counts"`, `"photon"`) (default: `"adu"`).
+    verbose : `bool`, optional
+        If `True`, enables verbose logging for debugging.
 
-    fnames : list
-        list of image paths to combine.
+    Returns
+    -------
+    `None`
+        The function writes the combined image to disk and does not return any value.
 
-    method="median" : str, optional
-        method to use for averaging images. Options are "median", "average", "sum"
-
-    datatype : np.datatype, optional
-        intermediate and resulting dtype for combined CCDs, by default np.uint16
-
-    weights : np.ndarray, optional
-        Weights to be used when combining images. An array with the weight values. The dimensions should match the the dimensions of the data arrays being combined., by default None
-
-    scale : callable or np.ndarray, optional
-        Scaling factor to be used when combining images. Images are multiplied by scaling prior to combining them. Scaling may be either a function, which will be applied to each image to determine the scaling factor, or a list or array whose length is the number of images in the Combiner, by default None
-
-    mem_limit : float, optional
-        Maximum memory which should be used while combining (in bytes), by default 16000000000.0
-
-    clip_extrema : bool, optional
-        Set to True if you want to mask pixels using an IRAF-like minmax clipping algorithm. The algorithm will mask the lowest nlow values and the highest nhigh values before combining the values to make up a single pixel in the resulting image. For example, the image will be a combination of Nimages-low-nhigh pixel values instead of the combination of Nimages. Parameters below are valid only when clip_extrema is set to True, by default False
-
-    nlow : int, optional
-        Number of low values to reject from the combination, by default 1
-
-    nhigh : int, optional
-        Number of high values to reject from the combination, by default 1
-
-    minmax_clip : bool, optional
-        Set to True if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining, by default False
-
-    minmax_clip_min : float, optional
-        All pixels with values below min_clip will be masked, by default None
-
-    minmax_clip_max : flaot, optional
-        All pixels with values above min_clip will be masked, by default None
-
-    sigma_clip : bool, optional
-        Set to True if you want to reject pixels which have deviations greater than those set by the threshold values. The algorithm will first calculated a baseline value using the function specified in func and deviation based on sigma_clip_dev_func and the input data array. Any pixel with a deviation from the baseline value greater than that set by sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected, by default False
-
-    sigma_clip_low_thresh : int, optional
-        Threshold for rejecting pixels that deviate below the baseline value. If negative value, then will be convert to a positive value. If None, no rejection will be done based on low_thresh, by default 3
-
-    sigma_clip_high_thresh : int, optional
-        Threshold for rejecting pixels that deviate above the baseline value. If None, no rejection will be done based on high_thresh, by default 3
-
-    sigma_clip_func : callable, optional
-        The statistic or callable function/object used to compute the center value for the clipping. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanmean) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'median', by default None
-
-    sigma_clip_dev_func : callable, optional
-        The statistic or callable function/object used to compute the standard deviation about the center value. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanstd) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'std', by default None
-
-    combine_uncertainty_function : callable, optional
-        If None use the default uncertainty func when using average, median or sum combine, otherwise use the function provided, by default None
-
-    overwrite_output : bool, optional
-        If output_file is specified, this is passed to the astropy.nddata.fits_ccddata_writer under the keyword overwrite; has no effect otherwise., by default False
-
-    unit : str, optional
-        unit for CCDData objects, by default 'adu'
-
-    verbose : bool, optional
-        verbosity of logger, by default False
     """
 
     if verbose:
