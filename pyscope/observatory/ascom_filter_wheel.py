@@ -8,6 +8,23 @@ logger = logging.getLogger(__name__)
 
 class ASCOMFilterWheel(ASCOMDevice, FilterWheel):
     def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        """
+        ASCOM implementation of the FilterWheel abstract base class.
+
+        This class provides the functionality to control an ASCOM-compatible filter wheel device,
+        including properties for focus offsets, filter names, and the current filter position.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The unique device identifier. This can be the ProgID for COM devices or the device number for Alpaca devices.
+        alpaca : `bool`, default : `False`, optional
+            Whether the device is an Alpaca device.
+        device_number : `int`, default : 0, optional
+            The device number for Alpaca devices.
+        protocol : `str`, default : "http", optional
+            The communication protocol to use for Alpaca devices.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,
