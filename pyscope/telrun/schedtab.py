@@ -18,7 +18,7 @@ def blocks_to_table(observing_blocks):
 
     Parameters
     ----------
-    observing_blocks : list
+    observing_blocks : `list`
         A list of observing blocks.
 
     Returns
@@ -93,7 +93,7 @@ def blocks_to_table(observing_blocks):
         ),
         format="mjd",
     )
-
+    # print(f"Target to hmsdms: {block.target.to_string('hmsdms')}")
     t["target"] = coord.SkyCoord(
         [
             (
@@ -465,7 +465,7 @@ def table_to_blocks(table):
         blocks.append(
             astroplan.ObservingBlock(
                 target=astroplan.FixedTarget(row["target"]),
-                duration=row["exposure"] * row["nexp"] * u.second,
+                duration=(row["exposure"] * row["nexp"] + 5) * u.second,
                 priority=row["priority"],
                 name=row["name"],
                 configuration={

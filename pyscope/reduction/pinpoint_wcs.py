@@ -39,6 +39,47 @@ class PinpointWCS(WCS):
         catalog=3,
         catalog_path="C:\\GSC11",
     ):
+        """
+        Solve the WCS of a FITS image using PinPoint.
+
+        This method uses PinPoint to attach to a FITS file, solve for its astrometry based
+        on provided or inferred RA/DEC and scale estimates, and update the FITS file with the
+        resulting WCS solution.
+
+        Parameters
+        ----------
+        filepath : `str`
+            Path to the FITS file to solve.
+        scale_est : `float`
+            Estimate of the plate scale in arcseconds per pixel.
+        ra_key : `str`, optional
+            Header key for right ascension. Defaults to `"RA"`.
+        dec_key : `str`, optional
+            Header key for declination. Defaults to `"DEC"`.
+        ra : `float`, optional
+            Right ascension in the specified units. If not provided, uses the FITS header value.
+        dec : `float`, optional
+            Declination in the specified units. If not provided, uses the FITS header value.
+        ra_dec_units : `tuple` of `str`, optional
+            Units for RA and DEC. Defaults to `("hour", "deg")`.
+        solve_timeout : `int`, optional
+            Timeout in seconds for the plate-solving process. Defaults to `60`.
+        catalog : `int`, optional
+            Catalog index to use in PinPoint. Defaults to `3`.
+        catalog_path : `str`, optional
+            Path to the catalog files. Defaults to `"C:\\GSC11"`.
+
+        Returns
+        -------
+        `bool`
+            `True` if the plate-solving process completes successfully.
+
+        Raises
+        ------
+        `Exception`
+            If the system is not Windows or the plate-solving process times out.
+
+        """
         logger.debug(
             f"""PinpointWCS.Solve(
             {filepath}, {scale_est}, {ra_key}, {dec_key}, {ra}, {dec},

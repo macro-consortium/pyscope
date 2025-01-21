@@ -58,6 +58,7 @@ intersphinx_mapping["astroquery"] = (
     None,
 )
 intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/", None)
+intersphinx_mapping["sqlalchemy"] = ("https://docs.sqlalchemy.org/en/20/", None)
 
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
