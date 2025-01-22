@@ -32,8 +32,8 @@ from .status import Status
 logger = logging.getLogger(__name__)
 logger.debug("_block.py")
 
-observer_association_table = Table(
-    "observer_association_table",
+observer_block_association_table = Table(
+    "observer_block_association_table",
     Base.metadata,
     Column("block_uuid", ForeignKey("block.uuid")),
     Column("observer_uuid", ForeignKey("observer.uuid")),
@@ -234,7 +234,7 @@ class _Block(MappedAsDataclass, Base):
     """
 
     observer: Mapped[List[Observer]] = relationship(
-        secondary=observer_association_table
+        secondary=observer_block_association_table
     )
     """
     The list of `~pyscope.scheduling.Observer` objects associated with the
@@ -298,7 +298,9 @@ class _Block(MappedAsDataclass, Base):
     associated with. See the `schedule` parameter for more information.
     """
 
-    schedule: Mapped[Schedule | None] = relationship(back_populates="blocks")
+    schedule: Mapped[Schedule | None] = relationship(
+        back_populates="blocks", kw_only=True
+    )
     """
     The `~pyscope.scheduling.Schedule` that the block has been added to.
 
