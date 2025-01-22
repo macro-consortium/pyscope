@@ -70,7 +70,7 @@ class CalibrationBlock(_Block):
         `~pyscope.telrun.InstrumentConfiguration` for the duration of the
         `~pyscope.scheduling.Field`.
 
-    start_time : `~datetime.datetime', required
+    start_time : `~datetime.datetime`, required
         The start time of the `~pyscope.scheduling.CalibrationBlock`. Typically
         these blocks are constructed by the observatory manager, who must
         specify the start time of the block.
