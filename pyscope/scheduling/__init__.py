@@ -18,7 +18,7 @@ from .flat_field import FlatField
 from .dark_field import DarkField
 from .autofocus_field import AutofocusField
 from .light_field import LightField
-from .field import Field
+from ._field import _Field
 from .status import Status
 from .snr_condition import SNRCondition
 from .time_condition import TimeCondition
@@ -34,6 +34,7 @@ from .lqs_minmax import LQSMinMax
 from .lqs_inequality import LQSInequality
 from .lqs_gauss import LQSGauss
 from .lqs import LQS
+from .target import Target
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,8 @@ __all__ = [
     "MoonCondition",
     "TimeCondition",
     "SNRCondition",
-    "Field",
+    "Target",
+    "_Field",
     "LightField",
     "AutofocusField",
     "DarkField",

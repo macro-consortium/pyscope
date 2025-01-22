@@ -3,12 +3,12 @@ from pathlib import Path
 
 from astropy import units as u
 
-from .field import Field
+from ._field import _Field
 
 logger = logging.getLogger(__name__)
 
 
-class LightField(Field):
+class LightField:
     @u.quantity_input(exp="s")
     def __init__(
         self,

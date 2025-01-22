@@ -20,7 +20,7 @@ class UnallocableBlock(_Block):
     `~pyscope.scheduling.Schedule` that is not available for scheduling. This
     could be used for maintenance tasks, calibration tasks, or other
     observatory tasks that are not associated with a specific
-    `~pyscope.scheduling.Field`. Commonly, this block type is used to remove
+    `~pyscope.scheduling._Field`. Commonly, this block type is used to remove
     the day time from the schedule for ease of computing statistics and
     logs detailing schedule efficiency.
 

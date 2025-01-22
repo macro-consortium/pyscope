@@ -77,12 +77,12 @@ class _Block(MappedAsDataclass, Base):
         `~pyscope.telrun.InstrumentConfiguration` will be
         used to set the telescope's `~pyscope.telrun.InstrumentConfiguration`
         at the start of the `~pyscope.scheduling._Block` and will act as the
-        default for all `~pyscope.scheduling.Field` objects in the
+        default for all `~pyscope.scheduling._Field` objects in the
         `~pyscope.scheduling._Block` if one has not been provided. If a
-        `~pyscope.scheduling.Field` has a different
+        `~pyscope.scheduling._Field` has a different
         `~pyscope.telrun.InstrumentConfiguration`, it will override the block
         `~pyscope.telrun.InstrumentConfiguration` for the duration of the
-        `~pyscope.scheduling.Field`.
+        `~pyscope.scheduling._Field`.
 
     schedule : `~pyscope.scheduling.Schedule`, default : `None`
         The `~pyscope.scheduling.Schedule` that the
@@ -96,14 +96,14 @@ class _Block(MappedAsDataclass, Base):
     --------
     pyscope.scheduling.ScheduleBlock : A subclass of
         `~pyscope.scheduling._Block` that is used to schedule
-        `~pyscope.scheduling.Field` objects in a
+        `~pyscope.scheduling._Field` objects in a
         `~pyscope.scheduling.Schedule`.
     pyscope.scheduling.UnallocableBlock : A subclass of
         `~pyscope.scheduling._Block` that is used to represent unallocated
         time in a `~pyscope.scheduling.Schedule`.
     pyscope.telrun.InstrumentConfiguration : A class that represents the
         configuration of the telescope.
-    pyscope.scheduling.Field : A class that represents a field to observe.
+    pyscope.scheduling._Field : A class that represents a field to observe.
     """
 
     __tablename__ = "block"

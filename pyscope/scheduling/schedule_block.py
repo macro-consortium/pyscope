@@ -194,7 +194,7 @@ class ScheduleBlock(_Block):
     )
     """
     A list of `~pyscope.scheduling.BoundaryCondition` objects that define the
-    constraints for all `~pyscope.scheduling.Field` objects in the
+    constraints for all `~pyscope.scheduling._Field` objects in the
     `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.telrun.Optimizer` inside
     the `~pyscope.scheduling.Scheduler` will use the
     `~pyscope.scheduling.BoundaryCondition` objects to determine the best
