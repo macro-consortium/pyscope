@@ -16,9 +16,9 @@ from .schedule_block import ScheduleBlock
 from ._block import _Block
 from .flat_field import FlatField
 from .dark_field import DarkField
+from .repositioning_field import RepositioningField
 from .autofocus_field import AutofocusField
-from .light_field import LightField
-from ._field import _Field
+from .field import Field
 from .status import Status
 from .snr_condition import SNRCondition
 from .time_condition import TimeCondition
@@ -50,8 +50,8 @@ __all__ = [
     "TimeCondition",
     "SNRCondition",
     "Target",
-    "_Field",
-    "LightField",
+    "Field",
+    "RepositioningField",
     "AutofocusField",
     "DarkField",
     "FlatField",

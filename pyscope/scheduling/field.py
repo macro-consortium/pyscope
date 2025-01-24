@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Uuid
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import (
     Mapped,
     MappedAsDataclass,
@@ -16,11 +16,57 @@ from sqlalchemy.orm import (
 from ..db import Base
 
 logger = logging.getLogger(__name__)
-logger.debug("_field.py")
+logger.debug("field.py")
 
 
-class _Field(MappedAsDataclass, Base):
-    """ """
+class Field(MappedAsDataclass, Base):
+    """
+    Contains an individual `~pyscope.scheduling.Target` and the associated
+    `~pyscope.telrun.InstrumentConfiguration` to observe the target.
+
+    The `~pyscope.scheduling.Field` is the fundamental unit of observation in
+    the `~pyscope.scheduling.ScheduleBlock`. It contains the target to observe
+    and the configuration to use when observing the target. The field also
+    contains the number of iterations to perform on the target. This is useful
+    for repeating the observation of a target multiple times.
+
+    Parameters
+    ----------
+    target : `~pyscope.scheduling.Target`, required
+        The target to observe. The target contains the data needed to determine
+        the position of the target in the sky.
+
+    exp : `float`, required
+        The exposure time in seconds for each iteration of the field.
+
+    config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
+        The instrument configuration to use when observing the target. If
+        `None`, the default configuration from the
+        `~pyscope.scheduling.ObservingBlock` will be used.
+
+    niter : `int`, default : 1
+        The number of iterations of this field to perform. This parameter is
+        used to repeat the observation of the field multiple times. For
+        example, if an observer wanted to use multiple exposures to observe a
+        field, they could set this parameter to take those data in a single
+        field instead of creating multiple fields for the same target.
+
+    sleep_on_finish : `float`, default : 0
+        The amount of time to sleep after the field is completed. This is useful
+        for setting a short delay for specific cadence requirements.
+
+    See Also
+    --------
+    pyscope.scheduling.RepositioningField : A special type of
+        `~pyscope.scheduling.Field` that is used to iteratively reposition the
+        pointing by placing the target at a specific location on the detector.
+    pyscope.scheduling.AutofocusField : A special type of
+        `~pyscope.scheduling.Field` that is used to focus the telescope.
+    pyscope.scheduling.DarkField : A special type of
+        `~pyscope.scheduling.Field` that is used to capture dark frames.
+    pyscope.scheduling.FlatField : A special type of
+        `~pyscope.scheduling.Field` that is used to capture flat fields.
+    """
 
     __tablename__ = "field"
 
@@ -97,6 +143,11 @@ class _Field(MappedAsDataclass, Base):
     needed to determine the position of the target in the sky.
     """
 
+    exp: Mapped[float] = mapped_column(Float, nullable=False)
+    """
+    The exposure time in seconds for each iteration of the field.
+    """
+
     config_uuid: Mapped[Uuid] = mapped_column(
         ForeignKey("instrument_configuration.uuid"),
         nullable=True,
@@ -132,11 +183,19 @@ class _Field(MappedAsDataclass, Base):
     multiple fields for the same target.
     """
 
+    sleep_on_finish: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0
+    )
+    """
+    The amount of time to sleep after the field is completed. This is useful
+    for setting a short delay for specific cadence requirements.
+    """
+
     __mapper_args__ = {
         "version_id_col": version_id,
         "polymorphic_on": field_type,
         "polymorphic_identity": "field",
     }
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         logger.debug("_Field = %s" % self.__repr__)

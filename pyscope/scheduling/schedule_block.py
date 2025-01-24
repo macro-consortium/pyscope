@@ -31,19 +31,19 @@ field_sb_association_table = Table(
     "field_sb_association_table",
     Base.metadata,
     Column("schedule_block_uuid", ForeignKey("schedule_block.uuid")),
-    Column("field_uuid", ForeignKey("light_field.uuid")),
+    Column("field_uuid", ForeignKey("field.uuid")),
 )
 
 
 class ScheduleBlock(_Block):
     """
-    A class to contain a list of `~pyscope.scheduling.LightField` objects to be
+    A class to contain a list of `~pyscope.scheduling.Field` objects to be
     scheduled as a single time range in the observing
     `~pyscope.scheduling.Schedule`.
 
     The `~pyscope.scheduling.ScheduleBlock` is the fundamental unit that users
     interact with when creating observing requests. It is a container for one
-    or more `~pyscope.scheduling.LightField` objects, which represent the actual
+    or more `~pyscope.scheduling.Field` objects, which represent the actual
     observing targets. The `~pyscope.scheduling.ScheduleBlock` also contains
     metadata about the block used by the `~pyscope.scheduling.Scheduler` to
     determine the best possible schedule using the
@@ -51,13 +51,13 @@ class ScheduleBlock(_Block):
     provided when instantiating the `~pyscope.scheduling.ScheduleBlock`.
 
     The `~pyscope.scheduling.Scheduler` can also take advantage of the
-    `~pyscope.scheduling.LightField` objects themselves to make scheduling
+    `~pyscope.scheduling.Field` objects themselves to make scheduling
     decisions. This mode is optimal for a `~pyscope.scheduling.ScheduleBlock`
-    that contains only one `~pyscope.scheduling.LightField` or multiple
-    `~pyscope.scheduling.LightField` objects that have small angular separations on
+    that contains only one `~pyscope.scheduling.Field` or multiple
+    `~pyscope.scheduling.Field` objects that have small angular separations on
     the sky. For larger separations, it is recommended to create separate
     `~pyscope.scheduling.ScheduleBlock` objects for each
-    `~pyscope.scheduling.LightField`.
+    `~pyscope.scheduling.Field`.
 
     Parameters
     ----------
@@ -84,12 +84,12 @@ class ScheduleBlock(_Block):
         `~pyscope.telrun.InstrumentConfiguration` will be
         used to set the telescope's `~pyscope.telrun.InstrumentConfiguration`
         at the start of the `~pyscope.scheduling.ScheduleBlock` and will act as
-        the default for all `~pyscope.scheduling.LightField` objects in the
+        the default for all `~pyscope.scheduling.Field` objects in the
         `~pyscope.scheduling.ScheduleBlock` if one has not been provided. If a
-        `~pyscope.scheduling.LightField` has a different
+        `~pyscope.scheduling.Field` has a different
         `~pyscope.telrun.InstrumentConfiguration`, it will override the block
         `~pyscope.telrun.InstrumentConfiguration` for the duration of the
-        `~pyscope.scheduling.LightField`.
+        `~pyscope.scheduling.Field`.
 
     schedule : `~pyscope.scheduling.Schedule`, default : `None`
         The `~pyscope.scheduling.Schedule` that the
@@ -124,26 +124,26 @@ class ScheduleBlock(_Block):
 
     conditions : `list` of `~pyscope.scheduling.BoundaryCondition`, default : []
         A list of `~pyscope.scheduling.BoundaryCondition` objects that define
-        the constraints for all `~pyscope.scheduling.LightField` objects in the
+        the constraints for all `~pyscope.scheduling.Field` objects in the
         `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.telrun.Optimizer`
         inside the `~pyscope.scheduling.Scheduler` will use the
         `~pyscope.scheduling.BoundaryCondition` objects to determine the best
         possible schedule.
 
-    fields : `list` of `~pyscope.scheduling.LightField`, default : []
-        A list of `~pyscope.scheduling.LightField` objects to be scheduled in
+    fields : `list` of `~pyscope.scheduling.Field`, default : []
+        A list of `~pyscope.scheduling.Field` objects to be scheduled in
         the `~pyscope.scheduling.ScheduleBlock`. The
-        `~pyscope.scheduling.LightField` bjects will be executed in the order
-        they are provided in the list. If the `~pyscope.scheduling.LightField`
+        `~pyscope.scheduling.Field` bjects will be executed in the order
+        they are provided in the list. If the `~pyscope.scheduling.Field`
         objects have different `~pyscope.telrun.InstrumentConfiguration`
         objects, the `~pyscope.telrun.InstrumentConfiguration` object for the
-        `~pyscope.scheduling.LightField` will override the block
+        `~pyscope.scheduling.Field` will override the block
         `~pyscope.telrun.InstrumentConfiguration` for the duration
-        of the `~pyscope.scheduling.LightField`.
+        of the `~pyscope.scheduling.Field`.
 
         .. note::
             A `~pyscope.scheduling.ScheduleBlock' can only contain
-            `~pyscope.scheduling.LightField` objects. If you want to schedule
+            `~pyscope.scheduling.Field` objects. If you want to schedule
             a `~pyscope.scheduling.DarkField`, `~pyscope.scheduling.FlatField`,
             or an `~pyscope.scheduling.AutoFocusField`, you must use a
             `~pyscope.scheduling.CalibrationBlock`.
@@ -194,19 +194,19 @@ class ScheduleBlock(_Block):
     )
     """
     A list of `~pyscope.scheduling.BoundaryCondition` objects that define the
-    constraints for all `~pyscope.scheduling._Field` objects in the
+    constraints for all `~pyscope.scheduling.Field` objects in the
     `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.telrun.Optimizer` inside
     the `~pyscope.scheduling.Scheduler` will use the
     `~pyscope.scheduling.BoundaryCondition` objects to determine the best
     possible time to observe this `~pyscope.scheduling.ScheduleBlock`.
     """
 
-    fields: Mapped[List[LightField | None]] = relationship(
+    fields: Mapped[List[Field | None]] = relationship(
         secondary=field_sb_association_table, kw_only=True
     )
     """
-    A list of `~pyscope.scheduling.LightField` objects to be scheduled in the
-    `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.scheduling.LightField`
+    A list of `~pyscope.scheduling.Field` objects to be scheduled in the
+    `~pyscope.scheduling.ScheduleBlock`. The `~pyscope.scheduling.Field`
     objects will be executed in the order they are provided in the list.
     """
 

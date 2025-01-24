@@ -27,14 +27,13 @@ field_cb_association_table = Table(
 
 class CalibrationBlock(_Block):
     """
-    Contains `~pyscope.scheduling._Field` objects that are used for collecting
+    Contains `~pyscope.scheduling.Field` objects that are used for collecting
     calibration data or performing calibration tasks.
 
     The `~pyscope.scheduling.CalibrationBlock` is distinguished from the
     `~pyscope.scheduling.ScheduleBlock` in that it is always scheduled first in
     the observing `~pyscope.scheduling.Schedule` and can contain several
-    `~pyscope.scheduling._Field` types beyond the
-    `~pyscope.scheduling.LightField`, including the
+    `~pyscope.scheduling.Field` types, including the
     `~pyscope.scheduling.DarkField`, `~pyscope.scheduling.FlatField`, and
     `~pyscope.scheduling.AutofocusField`.
 
@@ -63,12 +62,12 @@ class CalibrationBlock(_Block):
         `~pyscope.telrun.InstrumentConfiguration` will be
         used to set the telescope's `~pyscope.telrun.InstrumentConfiguration`
         at the start of the `~pyscope.scheduling.CalibrationBlock` and will act as
-        the default for all `~pyscope.scheduling._Field` objects in the
+        the default for all `~pyscope.scheduling.Field` objects in the
         `~pyscope.scheduling.CalibrationBlock` if one has not been provided. If a
-        `~pyscope.scheduling._Field` has a different
+        `~pyscope.scheduling.Field` has a different
         `~pyscope.telrun.InstrumentConfiguration`, it will override the block
         `~pyscope.telrun.InstrumentConfiguration` for the duration of the
-        `~pyscope.scheduling._Field`.
+        `~pyscope.scheduling.Field`.
 
     start_time : `~datetime.datetime`, required
         The start time of the `~pyscope.scheduling.CalibrationBlock`. Typically
@@ -80,10 +79,10 @@ class CalibrationBlock(_Block):
         duration may be manually set by the observatory manager. If the
         duration is not set, the `~pyscope.scheduling.Scheduler` will
         automatically compute the duration based on the
-        `~pyscope.scheduling.TelrunModel` and the `~pyscope.scheduling._Field`
+        `~pyscope.scheduling.TelrunModel` and the `~pyscope.scheduling.Field`
         objects in the `~pyscope.scheduling.CalibrationBlock`. The manual
         option is useful for blocking out time for calibration tasks that
-        are not associated with any specific `~pyscope.scheduling._Field`.
+        are not associated with any specific `~pyscope.scheduling.Field`.
 
     schedule : `~pyscope.scheduling.Schedule`, default : `None`
         The `~pyscope.scheduling.Schedule` that the
@@ -94,16 +93,16 @@ class CalibrationBlock(_Block):
         `~pyscope.scheduling.CalibrationBlock` to a
         `~pyscope.scheduling.Schedule`.
 
-    fields : `list` of `~pyscope.scheduling._Field`, default : []
-        A list of `~pyscope.scheduling._Field` objects to be scheduled in
+    fields : `list` of `~pyscope.scheduling.Field`, default : []
+        A list of `~pyscope.scheduling.Field` objects to be scheduled in
         the `~pyscope.scheduling.CalibrationBlock`. The
-        `~pyscope.scheduling._Field` bjects will be executed in the order
-        they are provided in the list. If the `~pyscope.scheduling._Field`
+        `~pyscope.scheduling.Field` bjects will be executed in the order
+        they are provided in the list. If the `~pyscope.scheduling.Field`
         objects have different `~pyscope.telrun.InstrumentConfiguration`
         objects, the `~pyscope.telrun.InstrumentConfiguration` object for the
-        `~pyscope.scheduling._Field` will override the block
+        `~pyscope.scheduling.Field` will override the block
         `~pyscope.telrun.InstrumentConfiguration` for the duration
-        of the `~pyscope.scheduling._Field`.
+        of the `~pyscope.scheduling.Field`.
 
     """
 
@@ -136,9 +135,9 @@ class CalibrationBlock(_Block):
         secondary=field_cb_association_table, kw_only=True
     )
     """
-    The list of `~pyscope.scheduling._Field` objects that are associated with
+    The list of `~pyscope.scheduling.Field` objects that are associated with
     the `~pyscope.scheduling.CalibrationBlock`. These
-    `~pyscope.scheduling._Field` objects will be executed in the order they are
+    `~pyscope.scheduling.Field` objects will be executed in the order they are
     listed in the `fields` attribute. Unlike other block types, the
     `~pyscope.scheduling.CalibrationBlock` does not have a `priority` attribute
     as they are always scheduled first. Additionally, the `fields` attribute
@@ -150,5 +149,5 @@ class CalibrationBlock(_Block):
         "polymorphic_identity": "calibration_block",
     }
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         logger.debug("CalibrationBlock = %s" % self.__repr__)
