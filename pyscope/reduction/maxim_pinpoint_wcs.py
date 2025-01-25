@@ -77,7 +77,8 @@ def maxim_pinpoint_wcs_cli(filepath):
         logger.info(f"Closed image: {c}")
     except Exception as e:
         logger.error(f"Solve failed: {e}, saving unsolved image")
-
+    
+    maxim.Close
     return succeeded
 
 

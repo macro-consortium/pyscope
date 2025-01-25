@@ -26,7 +26,6 @@ from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
 
-
 class TelrunOperator:
     def __init__(self, telhome="./", gui=True, **kwargs):
         """

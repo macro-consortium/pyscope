@@ -36,6 +36,16 @@ class FilterWheel(ABC, metaclass=_DocstringInheritee):
 
     @property
     @abstractmethod
+    def Name(self):
+        """
+        Name of the filter wheel. (`str`)
+
+        Value is typically the model name of the device, as recognized by the device driver.
+        """
+        pass
+    
+    @property
+    @abstractmethod
     def Names(self):
         """
         Name of each filter in the wheel. (`list` of `str`)
