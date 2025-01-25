@@ -1087,7 +1087,7 @@ class Observatory:
         if obj is None:
             try:
                 ra_unit, dec_unit = (u.hourangle if unit[0] == "hr" else u.deg, u.deg)
-                obj = SkyCoord(ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame)
+                obj = coord.SkyCoord(ra=ra, dec=dec, unit=(ra_unit, dec_unit), frame=frame)
             except ValueError as e:
                 logger.error(f"Invalid coordinate values or units: {e}")
                 return None
