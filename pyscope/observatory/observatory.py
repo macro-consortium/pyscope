@@ -217,7 +217,9 @@ class Observatory:
             self._filter_wheel_driver = self._config.get(
                 "filter_wheel", "filter_wheel_driver", fallback=None
             )
-            self._filter_wheel_kwargs = (
+            
+            self._filter_wheel_kwargs = {}
+            self._filter_wheel_kwargs = self._filter_wheel_kwargs|(
                 dict(
                     (k, literal_eval(v))
                     for k, v in (
@@ -233,8 +235,35 @@ class Observatory:
                     "filter_wheel", "filter_wheel_kwargs", fallback=None
                 )
                 not in (None, "")
-                else None
+                else {}
+            )|(
+                dict(
+                    filters=self._config.get("filter_wheel", "filters", fallback="")
+                    .replace(" ", "")
+                    .split(",")
+                )
+                if self._config.get(
+                    "filter_wheel", "filters", fallback=None
+                )
+                not in (None, "")
+                else {}
+            )|(
+                dict(
+                    filter_focus_offsets=[int(x) for x in
+                    self._config.get("filter_wheel", "filter_focus_offsets", fallback="")
+                    .replace(" ", "")
+                    .split(",")
+                    ]
+                )
+                if self._config.get(
+                    "filter_wheel", "filter_focus_offsets", fallback=None
+                )
+                not in (None, "")
+                else {}
             )
+            if not self._filter_wheel_kwargs:
+                self._filter_wheel_kwargs = None
+
             if self.filter_wheel_driver.lower() in (
                 "maxim",
                 "maximdl",
@@ -505,9 +534,10 @@ class Observatory:
             self._config["filter_wheel"][
                 "filter_wheel_driver"
             ] = self._filter_wheel_driver
-            self._config["filter_wheel"]["filter_wheel_kwargs"] = _kwargs_to_config(
-                self._filter_wheel_kwargs
-            )
+            # TODO: re-enable after fixing kwargs to pass names and offsets without appending to the kwargs
+            #self._config["filter_wheel"]["filter_wheel_kwargs"] = _kwargs_to_config(
+            #    self._filter_wheel_kwargs
+            #)
 
         # Focuser
         self._focuser = kwargs.get("focuser", self._focuser)
@@ -656,7 +686,7 @@ class Observatory:
 
         self.camera.StartExposure = NewStartExposure
 
-        self._current_focus_offset = 0
+        self._current_focus_offset = self.filter_focus_offsets[self.filters[self.filter_wheel.Position]]
 
         # Threads
         self._observing_conditions_thread = None
@@ -701,6 +731,8 @@ class Observatory:
             self.filter_wheel.Connected = True
             if self.filter_wheel.Connected:
                 logger.info("Filter wheel connected")
+                logger.info(f"Initial filter: {self.filters[self.filter_wheel.Position]} (position {self.filter_wheel.Position})")
+                logger.info(f"Initial focus offset: {self._current_focus_offset}")
             else:
                 logger.warning("Filter wheel failed to connect")
 
@@ -1358,28 +1390,88 @@ class Observatory:
             raise ObservatoryException("There is no filter wheel.")
 
         if self.focuser is not None:
-            if self.focuser.Connected and self.filter_focus_offsets[filter_name] != 0:
-                self._current_focus_offset = (
+            if self._maxim._filter_wheel is not None: # MaxIm will use its own list of filter offsets, so handle this case separately
+                if self.focuser.Connected and self.filter_focus_offsets[filter_name] != 0:
+                    self._current_focus_offset = (
+                        self.filter_focus_offsets[filter_name] - self.current_focus_offset
+                    )
+                    # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
+                    if self.focuser.Absolute:
+                        if (
+                            self.focuser.Position + self.current_focus_offset
+                            > 0
+                            # and self.focuser.Position + self.current_focus_offset
+                            # < self.focuser.MaxStep
+                        ):
+                            logger.info(
+                                "Focuser moving to position %i"
+                                % (self.focuser.Position + self.current_focus_offset)
+                            )
+                            self.focuser.Move(
+                                int(self.focuser.Position + self.current_focus_offset)
+                            )
+                            while self.focuser.IsMoving:
+                                time.sleep(0.1)
+                            logger.info("Focuser moved")
+                            return True
+                        else:
+                            raise ObservatoryException(
+                                "Focuser cannot move to the requested position."
+                            )
+                    else:
+                        logger.info(
+                            "Focuser moving to relative position %i"
+                            % self.current_focus_offset
+                        )
+                        self.focuser.Move(int(self.current_focus_offset))
+                        while self.focuser.IsMoving:
+                            time.sleep(0.1)
+                        logger.info("Focuser moved")
+                        return True
+                elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
+                    logger.info("No configured focus offset for filter %s" % filter_name)
+                    logger.info("Checking if focuser is moving...")
+                    time.sleep(1)
+                    if self.focuser.IsMoving:
+                        logger.info("Focuser is moving, waiting...")
+                        while self.focuser.IsMoving:
+                            time.sleep(0.1)
+                        logger.info("Focuser stopped.")
+                    logger.info("Focuser at postion %i" % self.focuser.Position)
+                    return True
+                
+            elif self.focuser.Connected:
+                focuser_move_distance = (
                     self.filter_focus_offsets[filter_name] - self.current_focus_offset
                 )
+                logger.info("Current focus offset: %i" % self.current_focus_offset)
+                logger.info("Target focus offset: %i" % self.filter_focus_offsets[filter_name])
+                #logger.info("Focuser move distance: %i" % focuser_move_distance)
                 # TODO: fix this if self.current_focus_offset < self.focuser.MaxIncrement:
+                if focuser_move_distance == 0:
+                    logger.info("No focuser adjustment needed")
+                    return True
                 if self.focuser.Absolute:
                     if (
-                        self.focuser.Position + self.current_focus_offset
+                        self.focuser.Position + focuser_move_distance
                         > 0
                         # and self.focuser.Position + self.current_focus_offset
                         # < self.focuser.MaxStep
                     ):
+                        #logger.info("Current focuser position: %i" % self.focuser.Position)
                         logger.info(
                             "Focuser moving to position %i"
-                            % (self.focuser.Position + self.current_focus_offset)
+                            % (round(self.focuser.Position) + focuser_move_distance)
                         )
                         self.focuser.Move(
-                            int(self.focuser.Position + self.current_focus_offset)
+                            int(round(self.focuser.Position) + focuser_move_distance)
                         )
                         while self.focuser.IsMoving:
                             time.sleep(0.1)
+                        self._current_focus_offset = self.filter_focus_offsets[filter_name]
                         logger.info("Focuser moved")
+                        #logger.info("New focuser position: %i" % self.focuser.Position)
+                        logger.info("New focus offset: %i" % self.current_focus_offset)
                         return True
                     else:
                         raise ObservatoryException(
@@ -1388,24 +1480,13 @@ class Observatory:
                 else:
                     logger.info(
                         "Focuser moving to relative position %i"
-                        % self.current_focus_offset
+                        % focuser_move_distance
                     )
-                    self.focuser.Move(int(self.current_focus_offset))
+                    self.focuser.Move(int(focuser_move_distance))
                     while self.focuser.IsMoving:
                         time.sleep(0.1)
                     logger.info("Focuser moved")
                     return True
-            elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
-                logger.info("No configured focus offset for filter %s" % filter_name)
-                logger.info("Checking if focuser is moving...")
-                time.sleep(1)
-                if self.focuser.IsMoving:
-                    logger.info("Focuser is moving, waiting...")
-                    while self.focuser.IsMoving:
-                        time.sleep(0.1)
-                    logger.info("Focuser stopped.")
-                logger.info("Focuser at postion %i" % self.focuser.Position)
-                return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
         else:
@@ -3056,7 +3137,7 @@ class Observatory:
             info = {
                 "FWCONN": (True, "Filter wheel connected"),
                 "FWPOS": (self.filter_wheel.Position, "Filter wheel position"),
-                "FWNAME": (
+                "FILTNAME": (
                     self.filter_wheel.Names[self.filter_wheel.Position],
                     "Filter wheel name (from filter wheel object configuration)",
                 ),
@@ -3082,7 +3163,7 @@ class Observatory:
                     "Filter wheel interface version",
                 ),
                 "FWDESC": (None, "Filter wheel description"),
-                "FWALLNAM": (str(self.filter_wheel.Names), "Filter wheel names"),
+                "FWALLNAM": (str(self.filter_wheel.Names), "Filter wheel position names"),
                 "FWALLOFF": (
                     None,
                     "Filter wheel focus offsets",

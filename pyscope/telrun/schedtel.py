@@ -718,7 +718,7 @@ def schedtel_cli(
                     pos_m = coord.get_body(
                         block.name,
                         (block.start_time + block.end_time) / 2,
-                        location=location,
+                        location=observatory.location,
                     )
                     pos_h = coord.get_body(
                         block.name,

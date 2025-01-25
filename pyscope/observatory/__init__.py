@@ -59,6 +59,7 @@ from .pwi_autofocus import PWIAutofocus
 from .zwo_camera import ZWOCamera
 
 from .reconfig import ReconfigConfigs
+from .zwo_filter_wheel import ZWOFilterWheel
 
 # from .skyx import SkyX
 
@@ -100,4 +101,5 @@ __all__ = [
     "collect_calibration_set",
     "SimulatorServer",
     "ZWOCamera",
+    "ZWOFilterWheel",
 ]
