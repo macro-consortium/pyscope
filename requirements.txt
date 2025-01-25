@@ -6,6 +6,7 @@ astroscrappy == 1.2.0
 ccdproc == 2.4.2
 click == 8.1.7
 cmcrameri == 1.9
+dlipower >= 1.0.176
 markdown == 3.6
 matplotlib == 3.9.1
 numpy == 2.1.2
