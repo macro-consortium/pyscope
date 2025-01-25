@@ -8,6 +8,23 @@ logger = logging.getLogger(__name__)
 
 class ASCOMRotator(ASCOMDevice, Rotator):
     def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        """
+        ASCOM implementation of the Rotator base class.
+
+        The class provides an interface to control an ASCOM-compatible rotator device, including methods for
+        moving, halting, and properties for determining the current position and movement state of the rotator.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier.
+        alpaca : `bool`, default : `False`, optional
+            Whether the device is an Alpaca device.
+        device_number : `int`, default : 0, optional
+            The device number.
+        protocol : `str`, default : "http", optional
+            The protocol to use for communication with the device.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,

@@ -15,7 +15,6 @@ from tkinter import font
 
 import astroplan
 import numpy as np
-import tksheet
 from astropy import coordinates as coord
 from astropy import table
 from astropy import time as astrotime
@@ -26,7 +25,6 @@ from ..observatory import Observatory
 from . import TelrunException, init_telrun_dir, schedtab
 
 logger = logging.getLogger(__name__)
-
 
 class TelrunOperator:
     def __init__(self, telhome="./", gui=True, **kwargs):
@@ -44,7 +42,7 @@ class TelrunOperator:
 
         Parameters
         ----------
-        telhome : str, optional
+        telhome : `str`, optional
             The path to the TelrunOperator home directory. The default is the current working directory.
             Telhome must have a specific directory structure, which is created if it does not exist. The
             directory structure and some relevant files are as follows::
@@ -85,8 +83,8 @@ class TelrunOperator:
                 observing blocks. The `images/` directory structure is dictated by the `~pyscope.reduction` scripts,
                 which are used for rapid image calibration and reduction.
 
-        gui : bool, optional
-            Whether to start the GUI. Default is True.
+        gui : `bool`, optional
+            Whether to start the GUI. Default is `True`.
 
         **kwargs
             Keyword arguments to pass to the TelrunOperator constructor. More details in Other Parameters
@@ -195,6 +193,7 @@ class TelrunOperator:
         self._autofocus_nsteps = 5
         self._autofocus_step_size = 500
         self._autofocus_use_current_pointing = False
+        self._autofocus_binning = 1
         self._autofocus_timeout = 180
         self._repositioning_wcs_solver = "astrometry_net_wcs"
         self._repositioning_max_stability_time = 600  # seconds
@@ -208,6 +207,7 @@ class TelrunOperator:
         self._repositioning_save_images = False
         self._repositioning_save_path = self._images_path / "repositioning"
         self._repositioning_timeout = 180
+        self._repositioning_binning = 1
         self._wcs_solver = "astrometry_net_wcs"
         self._wcs_filters = None
         self._wcs_timeout = 30
@@ -215,14 +215,14 @@ class TelrunOperator:
         # Load config file if there
         if (self._config_path / "telrun.cfg").exists():
             logger.info(
-                "Using config file to initialize telrun: %s"
-                % (self._config_path / "telrun.cfg")
+                "Using config file to initialize telrun: %s",
+                (self._config_path / "telrun.cfg")
             )
             try:
                 self._config.read(self._config_path / "telrun.cfg")
             except:
                 raise TelrunException(
-                    "Could not read config file: %s" % self._config_path
+                    f"Could not read config file: {self._config_path}"
                 )
             self._queue_fname = self._config.get(
                 "telrun",
@@ -305,6 +305,9 @@ class TelrunOperator:
                 "autofocus_use_current_pointing",
                 fallback=self._autofocus_use_current_pointing,
             )
+            self._autofocus_binning = self._config.getint(
+                "autofocus", "autofocus_binning", fallback=self._autofocus_binning
+            )
             self._autofocus_timeout = self._config.getfloat(
                 "autofocus", "autofocus_timeout", fallback=self._autofocus_timeout
             )
@@ -370,6 +373,11 @@ class TelrunOperator:
                 "repositioning_timeout",
                 fallback=self._repositioning_timeout,
             )
+            self._repositioning_binning = self._config.getint(
+                "repositioning",
+                "repositioning_binning",
+                fallback=self._repositioning_binning,
+            )
             self._wcs_solver = self._config.get(
                 "wcs", "wcs_solver", fallback=self._wcs_solver
             )
@@ -418,7 +426,7 @@ class TelrunOperator:
                 "queue_fname", self._queue_fname
             )
             if not self._queue_fname.exists():
-                logger.warning("Queue file %s does not exist, setting to None" % qf)
+                logger.warning("Queue file %s does not exist, setting to None", qf)
                 self._queue_fname = None
         else:
             self._queue_fname = None
@@ -498,6 +506,9 @@ class TelrunOperator:
         self.autofocus_use_current_pointing = kwargs.get(
             "autofocus_use_current_pointing", self._autofocus_use_current_pointing
         )
+        self.autofocus_binning = kwargs.get(
+            "autofocus_binning", self._autofocus_binning
+        )
         self.autofocus_timeout = kwargs.get(
             "autofocus_timeout", self._autofocus_timeout
         )
@@ -536,6 +547,9 @@ class TelrunOperator:
         )
         self.repositioning_timeout = kwargs.get(
             "repositioning_timeout", self._repositioning_timeout
+        )
+        self.repositioning_binning = kwargs.get(
+            "repositioning_binning", self._repositioning_binning
         )
         self.wcs_solver = kwargs.get("wcs_solver", self._wcs_solver)
         self.wcs_filters = kwargs.get("wcs_filters", self._wcs_filters)
@@ -621,7 +635,7 @@ class TelrunOperator:
             self.save_config("telrun.cfg")
 
     def save_config(self, filename):
-        logger.debug("Saving config to %s" % filename)
+        logger.debug("Saving config to %s", filename)
         self.observatory.save_config(
             self._config_path / "observatory.cfg", overwrite=True
         )
@@ -641,7 +655,7 @@ class TelrunOperator:
             # Check for new schedule
             logger.debug("Checking for new schedule...")
             potential_schedules = glob.glob(
-                self.schedules_path + "telrun_????-??-??T??-??-??.ecsv"
+                self._schedules_path + "telrun_????-??-??T??-??-??.ecsv"
             )
             if len(potential_schedules) < 1:
                 logger.debug(
@@ -670,21 +684,21 @@ class TelrunOperator:
             fname = (
                 "telrun_" + potential_times[-1].strftime("%Y-%m-%d_%H-%M-%S") + ".ecsv"
             )
-            logger.debug("Newest schedule: %s" % fname)
+            logger.debug("Newest schedule: %s", fname)
 
             # Compare to current schedule filename
-            if not os.path.exists(self.schedules_path + fname):
+            if not os.path.exists(self._schedules_path + fname):
                 logger.exception("Schedule file error, waiting for new schedule...")
                 time.sleep(1)
                 continue
             schedule = table.Table.read(
-                self.schedules_path + fname, format="ascii.ecsv"
+                self._schedules_path + fname, format="ascii.ecsv"
             )
             if len(schedule) < 1:
                 logger.exception("Schedule file empty, waiting for new schedule...")
                 time.sleep(1)
                 continue
-            if self.schedules_path / fname == self._schedule_fname:
+            if self._schedules_path / fname == self._schedule_fname:
                 logger.debug("Schedule already loaded, waiting for new schedule...")
                 time.sleep(1)
                 continue
@@ -703,7 +717,7 @@ class TelrunOperator:
             logger.info("Starting new schedule execution thread...")
             self._execution_thread = threading.Thread(
                 target=self.execute_schedule,
-                args=(self.schedules_path / fname,),
+                args=(self._schedules_path / fname,),
                 daemon=True,
                 name="Telrun Schedule Execution Thread",
             )
@@ -711,7 +725,7 @@ class TelrunOperator:
             logger.info("Started.")
 
     def execute_schedule(self, schedule):
-        logger.info("Executing schedule: %s" % schedule)
+        logger.info("Executing schedule: %s", schedule)
         try:
             schedule = table.Table.read(schedule, format="ascii.ecsv")
         except:
@@ -741,7 +755,7 @@ class TelrunOperator:
             logger.exception("Schedule failed validation, exiting...")
             return
 
-        logger.info("Saving schedule to file: %s" % self._schedule_fname)
+        logger.info("Saving schedule to file: %s", self._schedule_fname)
         self._schedule.write(self._schedule_fname, format="ascii.ecsv", overwrite=True)
 
         # Sort schedule by start time
@@ -1449,10 +1463,8 @@ class TelrunOperator:
             # TODO: Make this better - temporary fix 2024-11-15
             # Check if focuser is outside of self.autofocus_midpoint +/- 1000
             if (
-                self.observatory.focuser.Position
-                < self.autofocus_midpoint - 1000
-                or self.observatory.focuser.Position
-                > self.autofocus_midpoint + 1000
+                self.observatory.focuser.Position < self.autofocus_midpoint - 1000
+                or self.observatory.focuser.Position > self.autofocus_midpoint + 1000
             ):
                 logger.info(
                     "Focuser position is outside of autofocus_midpoint +/- 1000, moving to autofocus_midpoint..."
@@ -1479,6 +1491,7 @@ class TelrunOperator:
                 nsteps=self.autofocus_nsteps,
                 step_size=self.autofocus_step_size,
                 use_current_pointing=self.autofocus_use_current_pointing,
+                binning=self.autofocus_binning,
             )
             self._status_event.set()
             t.join()
@@ -1725,6 +1738,7 @@ class TelrunOperator:
                 do_initial_slew=slew,
                 readout=self.default_readout,
                 solver=self.repositioning_wcs_solver,
+                binning=self.repositioning_binning,
             )
             self._camera_status = "Idle"
             self._telescope_status = "Idle"
@@ -2863,6 +2877,15 @@ class TelrunOperator:
         )
 
     @property
+    def autofocus_binning(self):
+        return self._autofocus_binning
+
+    @autofocus_binning.setter
+    def autofocus_binning(self, value):
+        self._autofocus_binning = int(value)
+        self._config["autofocus"]["autofocus_binning"] = str(self._autofocus_binning)
+
+    @property
     def autofocus_timeout(self):
         return self._autofocus_timeout
 
@@ -3023,6 +3046,17 @@ class TelrunOperator:
         self._repositioning_timeout = float(value)
         self._config["repositioning"]["repositioning_timeout"] = str(
             self._repositioning_timeout
+        )
+
+    @property
+    def repositioning_binning(self):
+        return self._repositioning_binning
+
+    @repositioning_binning.setter
+    def repositioning_binning(self, value):
+        self._repositioning_binning = value
+        self._config["repositioning"]["repositioning_binning"] = str(
+            self._repositioning_binning
         )
 
     @property

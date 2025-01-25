@@ -67,15 +67,25 @@ logger.addHandler(ch)
 
 
 def runcmd(cmd, **kwargs):
-    """run a subprocess"""
+    """Run a subprocess"""
     return subprocess.run(
         cmd, shell=True, capture_output=True, encoding="ascii", **kwargs
     )
 
 
 def isCalibrated(img):
-    """returns True if calibration was started,
-    False otherwise
+    """
+    Checks if a FITS image has calibration started.
+
+    Parameters
+    ----------
+    img : `pathlib.Path`
+        Path to the FITS image file.
+
+    Returns
+    -------
+    bool
+        `True` if the FITS header contains the `CALSTART` keyword, `False` otherwise.
     """
     try:
         fits.getval(img, "CALSTART")
@@ -86,8 +96,8 @@ def isCalibrated(img):
 
 
 def isSuccessfullyCalibrated(img):
-    """returns True if calibration was completed successfully,
-    False otherwise
+    """Returns `True` if calibration was completed successfully,
+    `False` otherwise
     """
     try:
         fits.getval(img, "CALSTAT")
@@ -98,7 +108,7 @@ def isSuccessfullyCalibrated(img):
 
 
 def sort_image(img, dest):
-    """copy image to a directory, create it if needed"""
+    """Copy image to a directory, create it if needed"""
     if not dest.exists():
         dest.mkdir(mode=0o775, parents=True)
     target = dest / img.name
@@ -106,11 +116,25 @@ def sort_image(img, dest):
 
 
 def store_image(img, dest, update_db=False):
-    """store copy of image in long-term archive directory :dest
-    check that the target is older or doesn't exist
-    log errors
-    future: use s3cmd library to interact with object storage more efficiently
-    future: update_db=True adds image info to database
+    """
+    Archives a FITS image in a long-term storage directory.
+
+    Copies the file to the specified directory if the target does not exist or
+    is older than the source. Logs errors during the copy process.
+
+    Parameters
+    ----------
+    img : `pathlib.Path`
+        Path to the FITS image file.
+    dest : `pathlib.Path`
+        Destination directory for storing the image.
+    update_db : `bool`, optional
+        If `True`, updates the database with image metadata. (Future implementation)
+
+    Returns
+    -------
+    bool
+        `True` if the file is successfully copied, `False` otherwise.
     """
     if not dest.exists():
         dest.mkdir(mode=0o775, parents=True)
@@ -127,9 +151,25 @@ def store_image(img, dest, update_db=False):
 
 
 def process_image(img):
-    """process a single image
-    calibrate if needed
-    move to reduced or failed depending on status
+    """
+    Processes a single FITS image by calibrating and classifying it based on the outcome.
+
+    The function begins by reading the FITS file data and header. If the image has not
+    already been calibrated, it applies calibration using the `calib_images` function.
+    Once calibrated, the image is moved to a `reduced` directory if the calibration is
+    successful or a `failed` directory if calibration fails. Regardless of the outcome,
+    the image is archived in a long-term storage directory for later use. Finally, the
+    image is removed from the landing directory to complete the process.
+
+    Parameters
+    ----------
+    img : `pathlib.Path`
+        Path to the FITS image file to process.
+
+    Raises
+    ------
+    Exception
+        If the image is corrupt or calibration fails.
     """
     logger.info(f"Processing {img}...")
     try:

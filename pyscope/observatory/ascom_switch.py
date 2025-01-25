@@ -8,6 +8,23 @@ logger = logging.getLogger(__name__)
 
 class ASCOMSwitch(ASCOMDevice, Switch):
     def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+        """
+        ASCOM implementation of the Switch base class.
+
+        The class provides an interface to ASCOM-compatible switch devices, including methods for
+        getting and setting switch values, and getting switch names and descriptions.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier.
+        alpaca : `bool`, default : `False`, optional
+            Whether the device is an Alpaca device.
+        device_number : `int`, default : 0, optional
+            The device number.
+        protocol : `str`, default : "http", optional
+            The protocol to use for communication with the device.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,

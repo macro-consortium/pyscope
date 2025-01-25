@@ -18,7 +18,7 @@ def blocks_to_table(observing_blocks):
 
     Parameters
     ----------
-    observing_blocks : list
+    observing_blocks : `list`
         A list of observing blocks.
 
     Returns
@@ -93,7 +93,7 @@ def blocks_to_table(observing_blocks):
         ),
         format="mjd",
     )
-
+    # print(f"Target to hmsdms: {block.target.to_string('hmsdms')}")
     t["target"] = coord.SkyCoord(
         [
             (
@@ -615,12 +615,12 @@ def validate(schedule_table, observatory=None):
             #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
             #         )
             case "exposure" | "pm_ra_cosdec" | "pm_dec":
-                if not np.issubdtype(column.dtype, np.dtype("float64")):
+                if not np.issubdtype(column.dtype, np.floating):
                     logger.error(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{column.name}' must be of a float type, not {column.dtype}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{column.name}' must be of a float type, not {column.dtype}"
                     )
             case "shutter_state":
                 if column.dtype != bool:

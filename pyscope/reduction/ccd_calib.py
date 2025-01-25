@@ -96,13 +96,65 @@ def ccd_calib_cli(
     pedestal=1000,
 ):
     """
-    Calibrate CCD or CMOS images using master dark, bias, and flat frames. The calibrated images are saved
-    with the suffix '_cal' appended to the original filename. This script may be used to pre-calibrate flats
-    before combining them into a master flat frame. \b
+    Calibrate astronomical images using master calibration frames.
 
+    The `ccd_calib_cli` function applies bias, dark, and flat corrections to raw CCD or CMOS images
+    to produce calibrated versions. Calibrated images are saved with the suffix `_cal` appended
+    to the original filename unless the `--in-place` option is used, which overwrites the raw files.
+    The calibration process supports additional features like hot pixel removal and bad column correction.
 
+    Parameters
+    ----------
+    fnames : `list` of `str`
+        List of filenames to calibrate.
+    dark_frame : `str`, optional
+        Path to master dark frame. If the camera type is `cmos`, the exposure time of the
+        dark frame must match the exposure time of the target images.
+    bias_frame : `str`, optional
+        Path to master bias frame. Ignored if the camera type is `cmos`.
+    flat_frame : `str`, optional
+        Path to master flat frame. The script assumes the master flat frame has already been
+        bias and dark corrected. The flat frame is normalized by the mean of the entire image
+        before being applied to the target images.
+    camera_type : `str`, optional
+        Camera type. Must be either `ccd` or `cmos`. Defaults to `"ccd"`.
+    astro_scrappy : `tuple` of (`int`, `int`), optional
+        Number of hot pixel removal iterations and estimated camera read noise (in
+        root-electrons per pixel per second). Defaults to `(1, 3)`.
+    bad_columns : `str`, optional
+        Comma-separated list of bad columns to fix by averaging the value of each pixel
+        in the adjacent column. Defaults to `""`.
+    in_place : `bool`, optional
+        If `True`, overwrites the input files with the calibrated images. Defaults to `False`.
+    pedestal : `int`, optional
+        Pedestal value to add to calibrated images after processing to prevent negative
+        pixel values. Defaults to `1000`.
+    verbose : `int`, optional
+        Verbosity level for logging output:
+        - `0`: Warnings only (default).
+        - `1`: Informational messages.
+        - `2`: Debug-level messages.
 
+    Returns
+    -------
+    `None`
+        The function does not return any value. It writes calibrated images to disk.
+
+    Raises
+    ------
+    `FileNotFoundError`
+        Raised if any of the specified input files do not exist.
+    `ValueError`
+        Raised if the calibration frames (e.g., `dark_frame`, `bias_frame`, `flat_frame`) do not
+        match the target images in terms of critical metadata, such as:
+        - Exposure time
+        - Binning (X and Y)
+        - Readout mode
+    `KeyError`
+        Raised if required header keywords (e.g., `IMAGETYP`, `FILTER`, `EXPTIME`, `GAIN`) are
+        missing from the calibration frames or the raw image files.
     """
+
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)
     elif verbose == 1:
@@ -116,6 +168,7 @@ def ccd_calib_cli(
 
     logger.info("Loading calibration frames...")
 
+    camera_type = camera_type.lower()
     if camera_type == "ccd":
         if bias_frame is not None:
             logger.info(f"Loading bias frame: {bias_frame}")
@@ -467,8 +520,8 @@ def ccd_calib_cli(
             logger.info("Applying the flat frame...")
             cal_image = np.divide(cal_image, flat)
 
-        logger.info("Flooring the calibrated image...")
-        cal_image = np.floor(cal_image)
+        #logger.info("Flooring the calibrated image...")
+        #cal_image = np.floor(cal_image)
 
         logger.info(f"Adding pedestal of {pedestal}")
         hdr["PEDESTAL"] = pedestal
@@ -494,9 +547,9 @@ def ccd_calib_cli(
                     cal_image[:, badcol - 1] + cal_image[:, badcol + 1]
                 ) / 2
 
-        logger.info("Clipping to uint16 range...")
-        cal_image = np.clip(cal_image, 0, 65535)
-        cal_image = cal_image.astype(np.uint16)
+        #logger.info("Clipping to uint32 range...")
+        #cal_image = np.clip(cal_image, 0, 65535)
+        #cal_image = cal_image.astype(np.uint32)
 
         logger.info("Writing calibrated status to header...")
         hdr["CALSTAT"] = True
@@ -506,7 +559,10 @@ def ccd_calib_cli(
         else:
             logger.info(f"Writing calibrated image to {fname}")
             fits.writeto(
-                fname.split(".")[:-1][0] + "_cal.fts", cal_image, hdr, overwrite=True
+                str(fname).split(".")[:-1][0] + "_cal.fts",
+                cal_image,
+                hdr,
+                overwrite=True,
             )
 
         logger.info("Done!")
