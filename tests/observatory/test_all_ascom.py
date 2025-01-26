@@ -59,7 +59,9 @@ class TestAllASCOMClasses:
         assert issubclass(cls_name, ASCOMDevice)
 
     def test_hardware_parent(self, cls_name):
-        assert issubclass(cls_name, eval(cls_name.__name__.replace("ASCOM", "")))
+        assert issubclass(
+            cls_name, eval(cls_name.__name__.replace("ASCOM", ""))
+        )
 
     """def test_docstrings(self, cls_name):
         for name in cls_name.__dict__:

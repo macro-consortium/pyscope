@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
         """
         ASCOM implementation of the base class.
 
@@ -57,7 +59,9 @@ class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
 
     @AveragePeriod.setter
     def AveragePeriod(self, value):
-        logger.debug(f"ASCOMObservingConditions.AveragePeriod property set to {value}")
+        logger.debug(
+            f"ASCOMObservingConditions.AveragePeriod property set to {value}"
+        )
         self._device.AveragePeriod = value
 
     @property

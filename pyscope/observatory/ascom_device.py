@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMDevice(Device):
-    def __init__(self, identifier, alpaca=False, device_type="Device", **kwargs):
+    def __init__(
+        self, identifier, alpaca=False, device_type="Device", **kwargs
+    ):
         """
         Represents a generic ASCOM device.
 
@@ -26,7 +28,9 @@ class ASCOMDevice(Device):
         **kwargs : `dict`, optional
             Additional keyword arguments to pass to the device constructor.
         """
-        logger.debug(f"ASCOMDevice.__init__({identifier}, alpaca={alpaca}, {kwargs})")
+        logger.debug(
+            f"ASCOMDevice.__init__({identifier}, alpaca={alpaca}, {kwargs})"
+        )
         self._identifier = identifier
         self._device = None
 
@@ -35,7 +39,8 @@ class ASCOMDevice(Device):
 
             self._device = getattr(
                 getattr(
-                    __import__("alpaca." + device_type.lower()), device_type.lower()
+                    __import__("alpaca." + device_type.lower()),
+                    device_type.lower(),
                 ),
                 device_type,
             )(self._identifier, **kwargs)
@@ -44,7 +49,9 @@ class ASCOMDevice(Device):
 
             self._device = Dispatch(self._identifier)
         else:
-            raise ObservatoryException("If you are not on Windows, you must use Alpaca")
+            raise ObservatoryException(
+                "If you are not on Windows, you must use Alpaca"
+            )
 
     def Action(self, ActionName, *ActionParameters):  # pragma: no cover
         """

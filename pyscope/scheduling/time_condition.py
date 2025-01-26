@@ -84,7 +84,15 @@ class TimeCondition(BoundaryCondition):
         """
         logger.debug(
             "TimeCondition.from_string(string=%s, time_type=%s, min_time=%s, max_time=%s, score_type=%s, inclusive=%s, ref_time=%s)"
-            % (string, time_type, min_time, max_time, score_type, inclusive, ref_time)
+            % (
+                string,
+                time_type,
+                min_time,
+                max_time,
+                score_type,
+                inclusive,
+                ref_time,
+            )
         )
 
     def __str__(self):

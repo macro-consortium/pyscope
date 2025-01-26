@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 from .option import Option
 from .instrument_configuration import InstrumentConfiguration
+from .execution_block import ExecutionBlock
 
 from .telrun_exception import TelrunException
 from .init_telrun_dir import init_telrun_dir
@@ -22,6 +23,7 @@ from .telrun_operator import TelrunOperator
 __all__ = [
     "Option",
     "InstrumentConfiguration",
+    "ExecutionBlock",
     "TelrunException",
     "init_telrun_dir",
     "rst",

@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
                 https://pyscope.readthedocs.io/ for more
                 information."""
 )
-@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
+)
 @click.option(
     "-p",
     "--pre-normalize",
@@ -126,7 +128,9 @@ def avg_fits_cli(
         frametyp = first_hdr["FRAMETYP"]
         logger.debug(f"FRAMETYP: {frametyp}")
     except KeyError:
-        logger.error("FRAMETYP keyword not found in header. Trying image type.")
+        logger.error(
+            "FRAMETYP keyword not found in header. Trying image type."
+        )
         frametyp = first_hdr["IMAGETYP"]
         logger.debug(f"IMAGETYP: {frametyp}")
     binx = first_hdr["XBINNING"]
@@ -149,24 +153,37 @@ def avg_fits_cli(
         # check for matches in header
         try:
             if hdr["FRAMETYP"] != frametyp:
-                logger.warning(f"FRAMETYP mismatch: {hdr['FRAMETYP']} != {frametyp}")
+                logger.warning(
+                    f"FRAMETYP mismatch: {
+                        hdr['FRAMETYP']} != {frametyp}"
+                )
         except KeyError:
-            logger.error("FRAMETYP keyword not found in header. Trying image type.")
+            logger.error(
+                "FRAMETYP keyword not found in header. Trying image type."
+            )
             if hdr["IMAGETYP"] != frametyp:
-                logger.warning(f"IMAGETYP mismatch: {hdr['IMAGETYP']} != {frametyp}")
+                logger.warning(
+                    f"IMAGETYP mismatch: {
+                        hdr['IMAGETYP']} != {frametyp}"
+                )
         if hdr["XBINNING"] != binx:
             logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
         if hdr["YBINNING"] != biny:
             logger.warning(f"BINY mismatch: {hdr['BINY']} != {biny}")
         if hdr["READOUTM"] != readout:
-            logger.warning(f"READOUTM mismatch: {hdr['READOUTM']} != {readout}")
+            logger.warning(
+                f"READOUTM mismatch: {
+                    hdr['READOUTM']} != {readout}"
+            )
         if hdr["EXPTIME"] != exptime and not pre_normalize:
             logger.warning(
-                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+                f"EXPTIME mismatch: {
+                    hdr['EXPTIME']} != {exptime} in image {fname}"
             )
         elif hdr["EXPTIME"] != exptime and pre_normalize:
             logger.info(
-                f"EXPTIME mismatch: {hdr['EXPTIME']} != {exptime} in image {fname}"
+                f"EXPTIME mismatch: {
+                    hdr['EXPTIME']} != {exptime} in image {fname}"
             )
             logger.info("pre_normalize is True so ignoring EXPTIME mismatch.")
         if hdr["GAIN"] != gain:
@@ -174,7 +191,10 @@ def avg_fits_cli(
 
         # check for pedestal
         if "PEDESTAL" in hdr.keys():
-            logger.info(f"Found pedestal of {hdr['PEDESTAL']}. Subtracting pedestal.")
+            logger.info(
+                f"Found pedestal of {
+                    hdr['PEDESTAL']}. Subtracting pedestal."
+            )
             image -= hdr["PEDESTAL"]
         images.append(image)
     images = np.array(images)
@@ -190,7 +210,9 @@ def avg_fits_cli(
         logger.info("pre_normalize is True so setting datatype to float64")
         datatype = np.float64
 
-        logger.info("pre-normalized is True, removing pedestal keyword from header.")
+        logger.info(
+            "pre-normalized is True, removing pedestal keyword from header."
+        )
         if "PEDESTAL" in first_hdr:
             logger.info("Removing PEDESTAL keyword rom header.")
             del first_hdr["PEDESTAL"]
@@ -210,7 +232,9 @@ def avg_fits_cli(
     logger.info(f"Data type of averaged image: {image_avg.dtype}")
 
     if outfile is None:
-        logger.debug("No output file specified. Using default naming convention.")
+        logger.debug(
+            "No output file specified. Using default naming convention."
+        )
         outfile = f"{fnames[0]}_avg.fts"
 
     logger.info(f"Saving averaged image to {outfile}")

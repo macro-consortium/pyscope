@@ -81,7 +81,7 @@ class IPCoverCalibrator(CoverCalibrator):
 
         try:
             s.send(my_bytes)
-        except:
+        except BaseException:
             return False
         finally:
             data = s.recv(self.buffer_size)

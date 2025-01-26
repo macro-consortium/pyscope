@@ -1,189 +1,108 @@
-import logging
+from __future__ import annotations
 
-from astropy.time import Time
+import logging
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import DateTime, ForeignKey, Interval, Uuid
+from sqlalchemy.orm import Mapped, mapped_column
 
 from ._block import _Block
 
 logger = logging.getLogger(__name__)
+logger.debug("unallocable_block.py")
 
 
-class UnallocatedBlock(_Block):
-    def __init__(
-        self, start_time, end_time, config=None, name="", description="", **kwargs
-    ):
-        """
-        A block of time that is not allocated to any fields.
+class UnallocableBlock(_Block):
+    """
+    A time range that is not allocable for scheduling.
 
-        Parameters
-        ----------
-        start_time : `~astropy.time.Time`, required
-            The start time of the `~pyscope.telrun.UnallocatedBlock`.
+    The `~pyscope.scheduling.UnallocableBlock` is used to block out time in the
+    `~pyscope.scheduling.Schedule` that is not available for scheduling. This
+    could be used for maintenance tasks, calibration tasks, or other
+    observatory tasks that are not associated with a specific
+    `~pyscope.scheduling.Field`. Commonly, this block type is used to remove
+    the day time from the schedule for ease of computing statistics and
+    logs detailing schedule efficiency.
 
-        end_time : `~astropy.time.Time`, required
-            The end time of the `~pyscope.telrun.UnallocatedBlock`.
+    Parameters
+    ----------
+    name : `str`, default : ""
+        A user-defined name for the `~pyscope.scheduling.UnallocableBlock`. This
+        parameter does not change the behavior of the
+        `~pyscope.scheduling.UnallocableBlock`, but it can be useful for
+        identifying the `~pyscope.scheduling.UnallocableBlock` in a schedule.
 
-        config : `~pyscope.telrun.Configuration`, default : `None`
-            The `~pyscope.telrun.Configuration` to use for the `~pyscope.telrun.UnallocatedBlock`. This `~pyscope.telrun.Configuration` will be
-            used to set the telescope's `~pyscope.telrun.Configuration` at the start of the `~pyscope.telrun.UnallocatedBlock`.
+    description : `str`, default : ""
+        A user-defined description for the
+        `~pyscope.scheduling.UnallocableBlock`. Similar to the `name` parameter,
+        this parameter does not change the behavior of the
+        `~pyscope.scheduling.UnallocableBlock`.
 
-        name : `str`, default : ""
-            A user-defined name for the `~pyscope.telrun.UnallocatedBlock`. This parameter does not change
-            the behavior of the `~pyscope.telrun.UnallocatedBlock`, but it can be useful for identifying the
-            `~pyscope.telrun.UnallocatedBlock` in a schedule.
+    observer : `~pyscope.scheduling.Observer`, required
+        Associate this `~pyscope.scheduling.UnallocableBlock` with an
+        `~pyscope.scheduling.Observer`. The `~pyscope.scheduling.Observer` is
+        a bookkeeping object for an `~pyscope.observatory.Observatory` with
+        multiple users/user groups. Typically, this is set to the observatory
+        manager or the observatory itself.
 
-        description : `str`, default : ""
-            A user-defined description for the `~pyscope.telrun.UnallocatedBlock`. Similar to the `name`
-            parameter, this parameter does not change the behavior of the `~pyscope.telrun.UnallocatedBlock`.
+    config : `~pyscope.telrun.InstrumentConfiguration`, required
+        The `~pyscope.telrun.InstrumentConfiguration` to use for the
+        `~pyscope.scheduling.UnallocableBlock`. This
+        `~pyscope.telrun.InstrumentConfiguration` will be
+        used to set the telescope's `~pyscope.telrun.InstrumentConfiguration`
+        at the start of the `~pyscope.scheduling.UnallocableBlock`. Typically,
+        this is set to the default instrument configuration for the observatory
+        or a "park" position.
 
-        **kwargs : `dict`, default : {}
-            A dictionary of keyword arguments that can be used to store additional information
-            about the `~pyscope.telrun.UnallocatedBlock`. This information can be used to store any additional
-            information that is not covered by the `configuration`, `name`, or `description` parameters
+    start_time : `~datetime.datetime`, required
+        The start time of the `~pyscope.scheduling.UnallocableBlock`. Typically
+        these blocks are constructed by the observatory manager, who must
+        specify the start time of the block.
 
-        """
-        logger.debug(
-            "UnallocatedBlock(start_time=%s, end_time=%s, config=%s, name=%s, description=%s, **kwargs=%s)"
-            % (start_time, end_time, config, name, description, kwargs)
-        )
-        super().__init__(
-            config=config, observer=None, name=name, description=description, **kwargs
-        )
-        self.start_time = start_time
-        self.end_time = end_time
-        logger.debug("UnallocatedBlock() = %s" % self)
+    duration : `~datetime.timedelta`, default=timedelta()
+        The duration of the `~pyscope.scheduling.UnallocableBlock`. The
+        duration may be manually set by the observatory manager.
 
-    @classmethod
-    def from_string(
-        cls,
-        string,
-        start_time=None,
-        end_time=None,
-        config=None,
-        name=None,
-        description=None,
-        **kwargs
-    ):
-        """
-        Create a new `~pyscope.telrun.UnallocatedBlock` object from a string representation.
+    schedule : `~pyscope.scheduling.Schedule`, default : `None`
+        The `~pyscope.scheduling.Schedule` that the
+        `~pyscope.scheduling.UnallocableBlock` is associated with.
+        This parameter is set automatically when the
+        `~pyscope.scheduling.UnallocableBlock` is added to a
+        `~pyscope.scheduling.Schedule` and is essentially a
+        convenience parameter for quickly adding a
+        `~pyscope.scheduling.UnallocableBlock` to a
+        `~pyscope.scheduling.Schedule`.
 
-        Parameters
-        ----------
-        string : `str`, required
-            The string representation of the `~pyscope.telrun.UnallocatedBlock`.
+    """
 
-        Returns
-        -------
-        `~pyscope.telrun.UnallocatedBlock`
-            A new `~pyscope.telrun.UnallocatedBlock` object created from the string representation.
-        """
-        logger.debug(
-            "UnallocatedBlock.from_string(string=%s, config=%s, name=%s, description=%s, start_time=%s, end_time=%s, **kwargs=%s)"
-            % (string, config, name, description, start_time, end_time, kwargs)
-        )
+    __tablename__ = "unallocable_block"
 
-        n_blocks = string.count(
-            "******************** Start UnallocatedBlock ********************"
-        )
-        end_blocks = string.count(
-            "******************** End UnallocatedBlock ********************"
-        )
-        if n_blocks != end_blocks:
-            raise ValueError("UnallocatedBlock string representation is malformed.")
-        logger.debug("n_blocks=%i" % n_blocks)
-        blocks = []
-        for i in range(n_blocks):
-            logger.debug("i=%i" % i)
-            block_info = string.split(
-                "******************** Start UnallocatedBlock ********************"
-            )[i + 1].split(
-                "******************** End UnallocatedBlock ********************"
-            )[
-                0
-            ]
-            logger.debug("block_info=%s" % block_info)
+    uuid: Mapped[Uuid] = mapped_column(
+        ForeignKey("block.uuid"), primary_key=True, init=False
+    )
 
-            block = super().from_string(
-                block_info, config=config, name=name, description=description, **kwargs
-            )
-            block._start_time = (
-                Time(start_time) if start_time is not None else block._start_time
-            )
-            block._end_time = (
-                Time(end_time) if end_time is not None else block._end_time
-            )
-            logger.debug("block=%s" % block)
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), init=True
+    )
+    """
+    The start time of the block. This parameter is typically set by the
+    `~pyscope.scheduling.Scheduler` when the block is scheduled but can be
+    manually set by the user for certain block types.
+    """
 
-            blocks.append(block)
+    duration: Mapped[timedelta | None] = mapped_column(
+        Interval, default=timedelta(), init=True
+    )
+    """
+    The duration of the block. Typically computed by the
+    `~pyscope.scheduling.Scheduler` using the
+    `~pyscope.scheduling.TelrunModel`, it can also be manually set by the
+    user for certain block types.
+    """
 
-        logger.debug("UnallocatedBlock.from_string() = %s" % blocks)
-        if len(blocks) == 1:
-            return blocks[0]
-        return blocks
+    __mapper_args__ = {
+        "polymorphic_identity": "unallocable_block",
+    }
 
-    def __str__(self):
-        """
-        Return a string representation of the `~pyscope.telrun.UnallocatedBlock`.
-
-        Returns
-        -------
-        `str`
-            A string representation of the `~pyscope.telrun.UnallocatedBlock`.
-        """
-        logger.debug("UnallocatedBlock().__str__()")
-        s = "\n******************** Start UnallocatedBlock ********************\n"
-        s += super().__str__()
-        s += "\n******************** End UnallocatedBlock ********************"
-        logger.debug("UnallocatedBlock().__str__() = %s" % s)
-        return s
-
-    @property
-    def start_time(self):
-        """
-        The start time of the `~pyscope.telrun.UnallocatedBlock`.
-
-        Returns
-        -------
-        `~astropy.time.Time`
-            The start time of the `~pyscope.telrun.UnallocatedBlock`.
-        """
-        logger.debug("UnallocatedBlock().start_time == %s" % self._start_time)
-        return self._start_time
-
-    @start_time.setter
-    def start_time(self, value):
-        """
-        The start time of the `~pyscope.telrun.UnallocatedBlock`.
-
-        Parameters
-        ----------
-        value : `~astropy.time.Time`, required
-            The start time of the `~pyscope.telrun.UnallocatedBlock`.
-        """
-        logger.debug("UnallocatedBlock().start_time = %s" % value)
-        self._start_time = Time(value)
-
-    @property
-    def end_time(self):
-        """
-        The end time of the `~pyscope.telrun.UnallocatedBlock`.
-
-        Returns
-        -------
-        `~astropy.time.Time`
-            The end time of the `~pyscope.telrun.UnallocatedBlock`.
-        """
-        logger.debug("UnallocatedBlock().end_time == %s" % self._end_time)
-        return self._end_time
-
-    @end_time.setter
-    def end_time(self, value):
-        """
-        The end time of the `~pyscope.telrun.UnallocatedBlock`.
-
-        Parameters
-        ----------
-        value : `~astropy.time.Time`, required
-            The end time of the `~pyscope.telrun.UnallocatedBlock`.
-        """
-        logger.debug("UnallocatedBlock().end_time = %s" % value)
-        self._end_time = Time(value)
+    def __post_init__(self) -> None:
+        logger.debug("UnallocableBlock = %s" % self.__repr__)

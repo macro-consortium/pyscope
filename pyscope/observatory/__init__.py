@@ -7,13 +7,12 @@ Operations include managing telescopes, cameras, focuser, filter wheels, domes, 
 devices commonly found in an observatory setup.
 """
 
-# isort: skip_file
+# isort:skip_file
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-from ._docstring_inheritee import _DocstringInheritee
 from ._pwi4 import _PWI4
 
 from .device import Device

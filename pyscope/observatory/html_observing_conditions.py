@@ -376,7 +376,9 @@ class HTMLObservingConditions(ObservingConditions):
                 self._last_updated = last_updated
 
     def SensorDescription(self, PropertyName):
-        logger.debug("HTMLObservingConditions.SensorDescription({PropertyName}) called")
+        logger.debug(
+            "HTMLObservingConditions.SensorDescription({PropertyName}) called"
+        )
         return str(eval(f"self._{PropertyName.lower()}_keyword"))
 
     def TimeSinceLastUpdate(self, PropertyName):
@@ -444,7 +446,9 @@ class HTMLObservingConditions(ObservingConditions):
     @property
     def InterfaceVersion(self):
         """Version of the interface supported by the driver. (`int`)"""
-        logger.debug("HTMLObservingConditions.InterfaceVersion property called")
+        logger.debug(
+            "HTMLObservingConditions.InterfaceVersion property called"
+        )
         return 1
 
     @property

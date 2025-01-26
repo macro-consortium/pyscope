@@ -5,7 +5,9 @@ import pytest
 from pyscope.observatory import IPCoverCalibrator
 
 
-@pytest.mark.skipif(platform.node() != "TCC1-MACRO", reason="Only run on TCC1-MACRO")
+@pytest.mark.skipif(
+    platform.node() != "TCC1-MACRO", reason="Only run on TCC1-MACRO"
+)
 def test_IPCoverCalibrator():
     c = IPCoverCalibrator("192.168.2.22", 2101, 1024)
 

@@ -46,7 +46,10 @@ def test_observatory(tmp_path):
     while not obs.camera.ImageReady:
         time.sleep(0.1)
     obs.save_last_image(
-        str(tmp_path) + "last_image.fts", frametyp="light", do_fwhm=True, overwrite=True
+        str(tmp_path) + "last_image.fts",
+        frametyp="light",
+        do_fwhm=True,
+        overwrite=True,
     )
     obs.stop_derotation_thread()
 
