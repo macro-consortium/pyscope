@@ -70,6 +70,9 @@ logger = logging.getLogger(__name__)
     default=0,
     help="Print verbose output. Use multiple times for more verbosity.",
 )
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
+)
 @click.version_option()
 def avg_fits_cli(
     fnames,
@@ -119,8 +122,47 @@ def avg_fits_cli(
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    logger.debug(
-        f"Called avg_fits_cli(fname={fnames}, mode={mode}, datatype={datatype}, outfile={outfile}, verbose={verbose})"
+    if unit is None:
+        if "BUNIT" in fits.open(fnames[0])[0].header:
+            unit = fits.open(fnames[0])[0].header["BUNIT"]
+        else:
+            unit = "adu"
+
+    logger.debug(f"avg_fits(mode={mode}, outfile={outfile}, fnames={fnames})")
+
+    logger.info("Loading images...")
+
+    images = np.array([fits.open(fname)[0].data for fname in fnames])
+
+    images = images.astype(datatype)
+
+    logger.info(f"Loaded {len(images)} images")
+
+    logger.info("Averaging images...")
+
+    logger.debug("Calculating combined image...")
+    image_avg = ccdproc.combine(
+        img_list=fnames,
+        method=method,
+        dtype=datatype,
+        weights=weights,
+        scale=scale,
+        mem_limit=mem_limit,
+        clip_extrema=clip_extrema,
+        nlow=nlow,
+        nhigh=nhigh,
+        minmax_clip=minmax_clip,
+        minmax_clip_min=minmax_clip_min,
+        minmax_clip_max=minmax_clip_max,
+        sigma_clip=sigma_clip,
+        sigma_clip_low_thresh=sigma_clip_low_thresh,
+        sigma_clip_high_thresh=sigma_clip_high_thresh,
+        sigma_clip_func=sigma_clip_func,
+        sigma_clip_dev_func=sigma_clip_dev_func,
+        combine_uncertainty_function=combine_uncertainty_function,
+        overwrite_output=overwrite_output,
+        format="fits",
+        unit=unit,
     )
 
     first_hdr = fits.getheader(fnames[0])
@@ -238,9 +280,34 @@ def avg_fits_cli(
         outfile = f"{fnames[0]}_avg.fts"
 
     logger.info(f"Saving averaged image to {outfile}")
-    first_hdr.add_comment(f"Averaged {len(images)} images using pyscope")
-    first_hdr.add_comment(f"Average mode: {mode}")
-    fits.writeto(outfile, image_avg, first_hdr, overwrite=True)
+
+    with fits.open(fnames[-1]) as hdul:
+        hdr = hdul[0].header
+
+    hdr.add_comment(f"Averaged {len(images)} images using pyscope")
+    hdr.add_comment(f"Average mode: {mode}")
+    hdr.add_comment(f"Unit: {unit}")
+    hdr.add_comment(f"Data type: {datatype}")
+    hdr.add_comment(f"Weights: {weights}")
+    hdr.add_comment(f"Scale: {scale}")
+    hdr.add_comment(f"Memory limit: {mem_limit}")
+    hdr.add_comment(f"Clip extrema: {clip_extrema}")
+    hdr.add_comment(f"nLow: {nlow}")
+    hdr.add_comment(f"nHigh: {nhigh}")
+    hdr.add_comment(f"Minmax clip: {minmax_clip}")
+    hdr.add_comment(f"Minmax clip min: {minmax_clip_min}")
+    hdr.add_comment(f"Minmax clip max: {minmax_clip_max}")
+    hdr.add_comment(f"Sigma clip: {sigma_clip}")
+    hdr.add_comment(f"Sigma clip low thresh: {sigma_clip_low_thresh}")
+    hdr.add_comment(f"Sigma clip high thresh: {sigma_clip_high_thresh}")
+    hdr.add_comment(f"Sigma clip func: {sigma_clip_func}")
+    hdr.add_comment(f"Sigma clip dev func: {sigma_clip_dev_func}")
+    hdr.add_comment(
+        f"Combine uncertainty func: {combine_uncertainty_function}"
+    )
+    hdr.add_comment(f"Overwrite output: {overwrite_output}")
+
+    fits.writeto(outfile, image_avg, hdr, overwrite=True)
 
     logger.info("Done!")
 
