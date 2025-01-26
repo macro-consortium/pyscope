@@ -1,5 +1,7 @@
 import logging
 
+import click
+
 logger = logging.getLogger(__name__)
 
 

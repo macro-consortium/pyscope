@@ -74,7 +74,7 @@ logger = logging.getLogger(__name__)
     "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
 )
 @click.version_option()
-def avg_fits_cli(
+def avg_fits_ccdproc_cli(
     fnames,
     pre_normalize=False,
     mode="0",
@@ -312,4 +312,4 @@ def avg_fits_cli(
     logger.info("Done!")
 
 
-avg_fits = avg_fits_cli.callback
+avg_fits_ccdproc = avg_fits_ccdproc_cli.callback
