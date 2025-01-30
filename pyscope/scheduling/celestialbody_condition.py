@@ -7,26 +7,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class CelestialBodyCondition(BoundaryCondition):
-    def __init__(
-        self,
-        body_name,
-        min_sep=0 * u.deg,
-        max_sep=180 * u.deg,
-        min_alt=-90 * u.deg,
-        max_alt=90 * u.deg,
-        score_type="boolean",
-        inclusive=True,
-    ):
-        """ """
-        pass
-
-    @classmethod
-    def from_string(cls, string):
-        pass
-
-    def __str__(self):
-        pass
+class CelestialBodyCondition:
 
     @staticmethod
     def _func(self, target, observer, time):

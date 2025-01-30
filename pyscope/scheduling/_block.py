@@ -19,12 +19,7 @@ from sqlalchemy import (
     type_coerce,
 )
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import (
-    Mapped,
-    MappedAsDataclass,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
 from .status import Status
@@ -40,7 +35,7 @@ observer_block_association_table = Table(
 )
 
 
-class _Block(MappedAsDataclass, Base):
+class _Block(Base):
     """
     Represents a time range in a `~pyscope.scheduling.Schedule` attributed to
     an `~pyscope.scheduling.Observer`.
@@ -104,65 +99,6 @@ class _Block(MappedAsDataclass, Base):
     pyscope.telrun.InstrumentConfiguration : A class that represents the
         configuration of the telescope.
     pyscope.scheduling.Field : A class that represents a field to observe.
-    """
-
-    __tablename__ = "block"
-
-    uuid: Mapped[Uuid] = mapped_column(
-        Uuid,
-        primary_key=True,
-        nullable=False,
-        init=False,
-        default_factory=uuid4,
-    )
-    """
-    The universally unique identifier (UUID) for the block and the primary
-    key for the block table. This UUID is generated automatically by the
-    `~uuid.uuid4` function when a new block is created.
-    """
-
-    version_id: Mapped[int] = mapped_column(
-        Integer, nullable=False, init=False
-    )
-    """
-    The version ID for the block. This version ID is used to track changes
-    to the block and is automatically updated by the database when the
-    block is modified. The version ID is used to implement optimistic
-    concurrency control to prevent multiple users from updating the same block
-    simultaneously. If a user attempts to update a block with an outdated
-    version ID, the block is considered stale and the update is rejected,
-    forcing the user to reload the block and try again.
-    """
-
-    block_type: Mapped[str] = mapped_column(String, nullable=False, init=False)
-    """
-    The type of block. This parameter is used to implement polymorphism
-    in the block table. The `block_type` parameter is set automatically
-    by the block subclass when a new block is created.
-    """
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        init=False,
-        default=datetime.now(tz=timezone.utc),
-    )
-    """
-    The creation time of the block. This parameter is set automatically
-    when a new block is created.
-    """
-
-    last_modified_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        init=False,
-        default=datetime.now(tz=timezone.utc),
-        onupdate=datetime.now(tz=timezone.utc),
-    )
-    """
-    The last modification time of the block. This parameter is set
-    automatically when the block is created and updated whenever the
-    block is modified.
     """
 
     queued_at: Mapped[datetime | None] = mapped_column(
@@ -323,11 +259,7 @@ class _Block(MappedAsDataclass, Base):
     user and debugging purposes by the observatory staff.
     """
 
-    __mapper_args__ = {
-        "version_id_col": version_id,
-        "polymorphic_on": "block_type",
-        "polymorphic_identity": "block",
-    }
+    __mapper_args__ = {"polymorphic_identity": "block"}
 
     def __post_init__(self) -> None:
         logger.debug("_Block = %s" % self.__repr__)

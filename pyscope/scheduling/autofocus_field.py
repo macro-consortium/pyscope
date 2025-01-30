@@ -61,12 +61,6 @@ class AutofocusField(Field):
         The number of steps to move the focus position at each autofocus step.
     """
 
-    __tablename__ = "autofocus_field"
-
-    uuid: Mapped[Uuid] = mapped_column(
-        ForeignKey("field.uuid"), primary_key=True, nullable=False, init=False
-    )
-
     midpoint: Mapped[int] = mapped_column(Integer, default=0)
     """
     The absolute step number at which to center the autofocus sequence.

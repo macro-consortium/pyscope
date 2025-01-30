@@ -106,12 +106,6 @@ class CalibrationBlock(_Block):
 
     """
 
-    __tablename__ = "calibration_block"
-
-    uuid: Mapped[Uuid] = mapped_column(
-        ForeignKey("block.uuid"), primary_key=True, init=False
-    )
-
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), init=True
     )

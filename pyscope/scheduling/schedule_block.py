@@ -150,13 +150,13 @@ class ScheduleBlock(_Block):
 
     """
 
-    __tablename__ = "schedule_block"
+    '''__tablename__ = "schedule_block"'''
 
-    uuid: Mapped[Uuid] = mapped_column(
+    """uuid: Mapped[Uuid] = mapped_column(
         ForeignKey("block.uuid"),
         primary_key=True,
         init=False,
-    )
+    )"""
 
     priority: Mapped[int] = mapped_column(Integer, default=0)
     """

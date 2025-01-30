@@ -72,12 +72,6 @@ class RepositioningField(Field):
 
     """
 
-    __tablename__ = "repositioning_field"
-
-    uuid: Mapped[Uuid] = mapped_column(
-        ForeignKey("field.uuid"), primary_key=True, nullable=False, init=False
-    )
-
     detector_coords: Mapped[Tuple[float, float]] = mapped_column(
         Integer, nullable=False, kw_only=True
     )
