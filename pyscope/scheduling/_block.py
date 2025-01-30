@@ -315,3 +315,18 @@ class _Block(Base):
         cls, value: DateTime
     ) -> List[Tuple[DateTime, DateTime]]:
         return [(cls.start_time, type_coerce(value - cls.duration, DateTime))]
+
+
+'''
+_Block.__annotations__["uuid"] = Mapped[Uuid]
+_Block.uuid.__doc__ = \
+    """
+    The universally unique identifier (UUID) for the database entry
+    corresponding to the object. This UUID is generated automatically with
+    `uuid.uuid4` when the object is created and is used to uniquely
+    identify the object in the database. The UUID is a primary key for
+    the table and is required to be unique for each entry. The UUID is
+    not intended to be used as a human-readable identifier and should
+    not be relied upon for that purpose.
+    """
+'''

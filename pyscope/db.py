@@ -75,7 +75,7 @@ class Base(DeclarativeBase, MappedAsDataclass):
     attempting to update it again.
 
     For more information, see the
-    [SQLAlchemy documentation](https://docs.sqlalchemy.org/en/20/orm/versioning.html)
+    `SQLAlchemy documentation <https://docs.sqlalchemy.org/en/20/orm/versioning.html>`__
     on versioning.
     """
 
@@ -128,6 +128,9 @@ class Base(DeclarativeBase, MappedAsDataclass):
     that identifies the new class.
 
     For more information, see the
-    [SQLAlchemy documentation](https://docs.sqlalchemy.org/en/20/orm/inheritance.html)
+    `SQLAlchemy documentation <https://docs.sqlalchemy.org/en/20/orm/inheritance.html)>`__
     on inheritance.
     """
+
+
+Base.__init__.__doc__ = ""
