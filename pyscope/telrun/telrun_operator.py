@@ -1475,6 +1475,12 @@ class TelrunOperator:
                 while self.observatory.focuser.IsMoving:
                     time.sleep(0.1)
                 self._focuser_status = "Idle"
+            
+            # If current focus position is within the above range of the autofocus midpoint,
+            # then keep the previous focus position to start with, otherwise
+            # use the autofocus midpoint as the starting position.
+            # The above range should handle the case where the focuser is outside of the range
+            current_focus = self.observatory.focuser.Position
 
             logger.info("Starting autofocus, ensuring tracking is on...")
             self.observatory.telescope.Tracking = True
@@ -1488,7 +1494,7 @@ class TelrunOperator:
             self._autofocus_status = "Running"
             self._best_focus_result = self.observatory.run_autofocus(
                 exposure=self.autofocus_exposure,
-                midpoint=self.autofocus_midpoint,
+                midpoint=current_focus,
                 nsteps=self.autofocus_nsteps,
                 step_size=self.autofocus_step_size,
                 use_current_pointing=self.autofocus_use_current_pointing,
