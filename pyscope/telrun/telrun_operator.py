@@ -769,6 +769,7 @@ class TelrunOperator:
             self._telescope_status = "Idle"
             logger.info("Found.")
 
+
         # Wait for sunset?
         while (
             self.observatory.sun_altaz()[0] > self.max_solar_elev and self.wait_for_sun
@@ -1461,13 +1462,13 @@ class TelrunOperator:
             self.observatory.camera.ReadoutMode = self.default_readout
 
             # TODO: Make this better - temporary fix 2024-11-15
-            # Check if focuser is outside of self.autofocus_midpoint +/- 1000
+            # Check if focuser is outside of self.autofocus_midpoint +/- 2000
             if (
-                self.observatory.focuser.Position < self.autofocus_midpoint - 1000
-                or self.observatory.focuser.Position > self.autofocus_midpoint + 1000
+                self.observatory.focuser.Position < self.autofocus_midpoint - 2000
+                or self.observatory.focuser.Position > self.autofocus_midpoint + 2000
             ):
                 logger.info(
-                    "Focuser position is outside of autofocus_midpoint +/- 1000, moving to autofocus_midpoint..."
+                    "Focuser position is outside of autofocus_midpoint +/- 2000, moving to autofocus_midpoint..."
                 )
                 self._focuser_status = "Moving"
                 self.observatory.focuser.Move(self.autofocus_midpoint)
