@@ -54,6 +54,101 @@ class HTMLObservingConditions(ObservingConditions):
         last_updated_units="",
         last_updated_numeric=True,
     ):
+        """
+        This class provides an interface to gathering observing condition data via HTML.
+
+        The class is designed to be used with an HTML page that contains observing conditions data,
+        sensor descriptions, and time since last update.
+
+        Parameters
+        ----------
+        url : `str`
+            The URL of the HTML page that contains the observing conditions data.
+        cloud_cover_keyword : `str`, default : "CLOUDCOVER", optional
+            The keyword that identifies the cloud cover data.
+        cloud_cover_units : `str`, default : "%", optional
+            The units of the cloud cover data.
+        cloud_cover_numeric : `bool`, default : `True`, optional
+            Whether the cloud cover data is numeric.
+        dew_point_keyword : `str`, default : "DEWPOINT", optional
+            The keyword that identifies the dew point data.
+        dew_point_units : `str`, default : "F", optional
+            The units of the dew point data.
+        dew_point_numeric : `bool`, default : `True`, optional
+            Whether the dew point data is numeric.
+        humidity_keyword : `str`, default : "HUMIDITY", optional
+            The keyword that identifies the humidity data.
+        humidity_units : `str`, default : "%", optional
+            The units of the humidity data.
+        humidity_numeric : `bool`, default : `True`, optional
+            Whether the humidity data is numeric.
+        pressure_keyword : `str`, default : "PRESSURE", optional
+            The keyword that identifies the pressure data.
+        pressure_units : `str`, default : "inHg", optional
+            The units of the pressure data.
+        pressure_numeric : `bool`, default : `True`, optional
+            Whether the pressure data is numeric.
+        rain_rate_keyword : `str`, default : "RAINRATE", optional
+            The keyword that identifies the rain rate data.
+        rain_rate_units : `str`, default : "inhr", optional
+            The units of the rain rate data.
+        rain_rate_numeric : `bool`, default : `True`, optional
+            Whether the rain rate data is numeric.
+        sky_brightness_keyword : `str`, default : "SKYBRIGHTNESS", optional
+            The keyword that identifies the sky brightness data.
+        sky_brightness_units : `str`, default : "magdeg2", optional
+            The units of the sky brightness data.
+        sky_brightness_numeric : `bool`, default : `True`, optional
+            Whether the sky brightness data is numeric.
+        sky_quality_keyword : `str`, default : "SKYQUALITY", optional
+            The keyword that identifies the sky quality data.
+        sky_quality_units : `str`, default : "", optional
+            The units of the sky quality data.
+        sky_quality_numeric : `bool`, default : `True`, optional
+            Whether the sky quality data is numeric.
+        sky_temperature_keyword : `str`, default : "SKYTEMPERATURE", optional
+            The keyword that identifies the sky temperature data.
+        sky_temperature_units : `str`, default : "F", optional
+            The units of the sky temperature data.
+        sky_temperature_numeric : `bool`, default : `True`, optional
+            Whether the sky temperature data is numeric.
+        star_fwhm_keyword : `str`, default : "STARFWHM", optional
+            The keyword that identifies the star FWHM data.
+        star_fwhm_units : `str`, default : "arcsec", optional
+            The units of the star FWHM data.
+        star_fwhm_numeric : `bool`, default : `True`, optional
+            Whether the star FWHM data is numeric.
+        temperature_keyword : `str`, default : "TEMPERATURE", optional
+            The keyword that identifies the temperature data.
+        temperature_units : `str`, default : "F", optional
+            The units of the temperature data.
+        temperature_numeric : `bool`, default : `True`, optional
+            Whether the temperature data is numeric.
+        wind_direction_keyword : `str`, default : "WINDDIRECTION", optional
+            The keyword that identifies the wind direction data.
+        wind_direction_units : `str`, default : "EofN", optional
+            The units of the wind direction data.
+        wind_direction_numeric : `bool`, default : `True`, optional
+            Whether the wind direction data is numeric.
+        wind_gust_keyword : `str`, default : "WINDGUST", optional
+            The keyword that identifies the wind gust data.
+        wind_gust_units : `str`, default : "mph", optional
+            The units of the wind gust data.
+        wind_gust_numeric : `bool`, default : `True`, optional
+            Whether the wind gust data is numeric.
+        wind_speed_keyword : `str`, default : "WINDSPEED", optional
+            The keyword that identifies the wind speed data.
+        wind_speed_units : `str`, default : "mph", optional
+            The units of the wind speed data.
+        wind_speed_numeric : `bool`, default : `True`, optional
+            Whether the wind speed data is numeric.
+        last_updated_keyword : `str`, default : "LASTUPDATED", optional
+            The keyword that identifies the last updated data.
+        last_updated_units : `str`, default : "", optional
+            The units of the last updated data.
+        last_updated_numeric : `bool`, default : `True`, optional
+            Whether the last updated data is numeric.
+        """
         logger.debug(
             f"""HTMLObservingConditions.__init__(
                     {url},
@@ -281,7 +376,9 @@ class HTMLObservingConditions(ObservingConditions):
                 self._last_updated = last_updated
 
     def SensorDescription(self, PropertyName):
-        logger.debug("HTMLObservingConditions.SensorDescription({PropertyName}) called")
+        logger.debug(
+            "HTMLObservingConditions.SensorDescription({PropertyName}) called"
+        )
         return str(eval(f"self._{PropertyName.lower()}_keyword"))
 
     def TimeSinceLastUpdate(self, PropertyName):
@@ -320,16 +417,19 @@ class HTMLObservingConditions(ObservingConditions):
 
     @property
     def Description(self):
+        """Description of the driver. (`str`)"""
         logger.debug("HTMLObservingConditions.Description property called")
         return "HTML Observing Conditions Driver"
 
     @property
     def DriverVersion(self):
+        """Version of the driver. (`str`)"""
         logger.debug("HTMLObservingConditions.DriverVersion property called")
         return None
 
     @property
     def DriverInfo(self):
+        """Provides information about the driver. (`str`)"""
         logger.debug("HTMLObservingConditions.DriverInfo property called")
         return "HTML Observing Conditions Driver"
 
@@ -345,11 +445,15 @@ class HTMLObservingConditions(ObservingConditions):
 
     @property
     def InterfaceVersion(self):
-        logger.debug("HTMLObservingConditions.InterfaceVersion property called")
+        """Version of the interface supported by the driver. (`int`)"""
+        logger.debug(
+            "HTMLObservingConditions.InterfaceVersion property called"
+        )
         return 1
 
     @property
     def Name(self):
+        """Name/url of the driver. (`str`)"""
         logger.debug("HTMLObservingConditions.Name property called")
         return self._url
 
@@ -405,5 +509,6 @@ class HTMLObservingConditions(ObservingConditions):
 
     @property
     def LastUpdated(self):
+        """Time of last update of conditions. (`str`)"""
         logger.debug("HTMLObservingConditions.LastUpdated property called")
         return self._last_updated

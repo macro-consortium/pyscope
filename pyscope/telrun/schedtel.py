@@ -49,7 +49,9 @@ C = completed
 @click.option(
     "-c",
     "--catalog",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
     help="""The catalog of .sch files to be scheduled. The catalog can be a
     single .sch file or a .cat file containing a list of .sch files. If no
     catalog is provided, then the function searches for a schedule.cat file
@@ -60,7 +62,11 @@ C = completed
     "-q",
     "--queue",
     type=click.Path(
-        exists=True, resolve_path=True, dir_okay=False, readable=True, writable=True
+        exists=True,
+        resolve_path=True,
+        dir_okay=False,
+        readable=True,
+        writable=True,
     ),
     help="""A queue table of requested observations (.ecsv). If a catalog is provided
     and -t is set, then the catalog is parsed and the queue is updated with those entries.
@@ -120,7 +126,9 @@ C = completed
     "-o",
     "--observatory",
     "observatory",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
     help="""The observatory configuration file. If no observatory configuration
     file is provided, then the function searches for an observatory.cfg file
     in the $TELHOME/config/ directory, then searches in the current working
@@ -253,10 +261,20 @@ C = completed
     to file even if there are unscheduled or invalid blocks.""",
 )
 @click.option(
-    "-q", "--quiet", is_flag=True, default=False, show_default=True, help="Quiet output"
+    "-q",
+    "--quiet",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Quiet output",
 )
 @click.option(
-    "-v", "--verbose", default=0, show_default=True, count=True, help="Verbose output"
+    "-v",
+    "--verbose",
+    default=0,
+    show_default=True,
+    count=True,
+    help="Verbose output",
 )
 @click.version_option()
 def schedtel_cli(
@@ -283,6 +301,69 @@ def schedtel_cli(
     quiet=False,
     verbose=0,
 ):
+    """
+    Schedule observations for an observatory.
+
+    This function creates an observation schedule based on input catalogs or
+    queues. It applies constraints such as airmass, elevation, and moon separation,
+    and outputs a schedule file. Optionally, it generates visualizations like Gantt
+    charts or sky charts.
+
+    Parameters
+    ----------
+    catalog : `str`, optional
+        Path to a `.sch` file or `.cat` file containing observation blocks. If not provided,
+        defaults to `schedule.cat` in `$TELHOME/schedules/`.
+    queue : `str`, optional
+        Path to a queue file (`.ecsv`) with observation requests. If a catalog is provided,
+        entries from the catalog are added to the queue.
+    add_only : `bool`, optional
+        If True, adds catalog entries to the queue without scheduling.
+    ignore_order : `bool`, optional
+        Ignores the order of `.sch` files in the catalog, scheduling all blocks as a single group.
+    date : `str`, optional
+        Local date of the night to be scheduled (`YYYY-MM-DD`). Defaults to the current date.
+    length : `int`, optional
+        Length of the schedule in days. Defaults to `1`.
+    observatory : `str`, optional
+        Path to an observatory configuration file. Defaults to `observatory.cfg` in `$TELHOME/config/`.
+    max_altitude : `float`, optional
+        Maximum solar altitude for nighttime scheduling. Defaults to `-12` degrees (nautical twilight).
+    elevation : `float`, optional
+        Minimum target elevation in degrees. Defaults to `30`.
+    airmass : `float`, optional
+        Maximum target airmass. Defaults to `3`.
+    moon_separation : `float`, optional
+        Minimum angular separation between the Moon and targets in degrees. Defaults to `30`.
+    scheduler : `tuple`, optional
+        Custom scheduler class and module. Defaults to `astroplan.PriorityScheduler`.
+    gap_time : `float`, optional
+        Maximum transition time between observation blocks in seconds. Defaults to `60`.
+    resolution : `float`, optional
+        Time resolution for scheduling in seconds. Defaults to `5`.
+    name_format : `str`, optional
+        Format string for scheduled image names. Defaults to
+        `"{code}_{target}_{filter}_{exposure}s_{start_time}"`.
+    filename : `str`, optional
+        Output file name. If not specified, defaults to a file named with the UTC date
+        of the first observation in the current working directory.
+    telrun : `bool`, optional
+        If True, places the output file in the `$TELRUN_EXECUTE` directory or a default
+        `schedules/execute/` directory.
+    plot : `int`, optional
+        Type of plot to generate (1: Gantt, 2: Airmass, 3: Sky). Defaults to no plot.
+    yes : `bool`, optional
+        Automatically answers yes to prompts about unscheduled or invalid blocks.
+    quiet : `bool`, optional
+        Suppresses logging output.
+    verbose : `int`, optional
+        Controls logging verbosity. Defaults to `0`.
+
+    Returns
+    -------
+    astropy.table.Table
+        Table containing the scheduled observation blocks.
+    """
     # Set up logging
     if quiet:
         level = logging.ERROR
@@ -323,7 +404,7 @@ def schedtel_cli(
             logger.info(
                 "No observatory provided, using observatory.cfg from $TELHOME environment variable"
             )
-        except:
+        except BaseException:
             observatory = os.getcwd() + "/config/observatory.cfg"
             logger.info(
                 "No observatory provided, using ./config/observatory.cfg from current working directory"
@@ -333,7 +414,9 @@ def schedtel_cli(
     if type(observatory) is str:
         obs_cfg = configparser.ConfigParser()
         obs_cfg.read(observatory)
-        slew_rate = obs_cfg["scheduling"].getfloat("slew_rate") * u.deg / u.second
+        slew_rate = (
+            obs_cfg["scheduling"].getfloat("slew_rate") * u.deg / u.second
+        )
         instrument_reconfig_times = json.loads(
             obs_cfg["scheduling"].get("instrument_reconfig_times")
         )
@@ -365,7 +448,9 @@ def schedtel_cli(
         return
 
     # Schedule
-    tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
+    tz = timezonefinder.TimezoneFinder().timezone_at(
+        lng=obs_lon.deg, lat=obs_lat.deg
+    )
     tz = zoneinfo.ZoneInfo(tz)
     logger.debug(f"tz = {tz}")
 
@@ -374,10 +459,14 @@ def schedtel_cli(
         date = datetime.datetime.now()
     else:
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
-    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+    date = datetime.datetime(
+        date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+    )
 
     t0 = astrotime.Time(
-        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        datetime.datetime(
+            date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+        ),
         format="datetime",
     )
     t1 = t0 + length * u.day
@@ -394,7 +483,7 @@ def schedtel_cli(
             logger.info(
                 "No catalog provided, using schedule.cat from $TELHOME environment variable"
             )
-        except:
+        except BaseException:
             catalog = os.getcwd() + "/schedules/schedule.cat"
             logger.info(
                 "No catalog provided, using schedule.cat from current working directory"
@@ -423,7 +512,9 @@ def schedtel_cli(
         if catalog.endswith(".cat"):
             with open(catalog, "r") as f:
                 sch_files = f.read().splitlines()
-            sch_files = ["/".join(catalog.split("/")[:-1]) + "/" + f for f in sch_files]
+            sch_files = [
+                "/".join(catalog.split("/")[:-1]) + "/" + f for f in sch_files
+            ]
             for f in sch_files:
                 if not os.path.isfile(f):
                     logger.error(
@@ -478,8 +569,10 @@ def schedtel_cli(
         for j in range(len(block_groups[i])):
             try:
                 block_groups[i][j].configuration["ID"]
-            except:
-                block_groups[i][j].configuration["ID"] = astrotime.Time.now().mjd
+            except BaseException:
+                block_groups[i][j].configuration[
+                    "ID"
+                ] = astrotime.Time.now().mjd
 
     previously_queued_blocks = None
     if queue is not None and len(block_groups) > 0:
@@ -518,7 +611,9 @@ def schedtel_cli(
         # Schedule the blocks in the catalog, but don't write to the queue
         logger.info("No queue provided")
     elif add_only:
-        logger.error("Missing catalog or queue for option -ao/--add-only, exiting")
+        logger.error(
+            "Missing catalog or queue for option -ao/--add-only, exiting"
+        )
         return
     else:
         logger.error("No catalog or queue provided")
@@ -541,7 +636,9 @@ def schedtel_cli(
     # Transitioner
     logger.info("Defining transitioner")
     if instrument_reconfig_times == {}:
-        logger.info("Using default instrument reconfiguration times of 5 seconds")
+        logger.info(
+            "Using default instrument reconfiguration times of 5 seconds"
+        )
         instrument_reconfig_times = {"filter": {"default": 5 * u.second}}
     else:
         logger.debug(
@@ -580,9 +677,10 @@ def schedtel_cli(
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         schedule_handler_class = getattr(module, scheduler[1])
-        if not astroplan.Scheduler in schedule_handler_class.__bases__:
+        if astroplan.Scheduler not in schedule_handler_class.__bases__:
             logger.error(
-                f"Scheduler {scheduler[0]} does not inherit from astroplan.Scheduler."
+                f"Scheduler {
+                    scheduler[0]} does not inherit from astroplan.Scheduler."
             )
             return
         schedule_handler = schedule_handler_class(
@@ -599,7 +697,9 @@ def schedtel_cli(
         schedule_handler(block_groups[i], schedule)
 
     # Flatten block_groups for comparison with scheduled ObservingBlocks
-    all_blocks = [block for block_group in block_groups for block in block_group]
+    all_blocks = [
+        block for block_group in block_groups for block in block_group
+    ]
 
     # Get scheduled ObservingBlocks
     scheduled_blocks = [
@@ -622,7 +722,9 @@ def schedtel_cli(
             block.configuration["pm_ra_cosdec"].value != 0
             or block.configuration["pm_dec"].value != 0
         ) and block.name != "":
-            logger.info("Updating ephemeris for '%s' at scheduled time" % block.name)
+            logger.info(
+                "Updating ephemeris for '%s' at scheduled time" % block.name
+            )
             try:
                 ephemerides = mpc.MPC.get_ephemeris(
                     target=block.name,
@@ -645,7 +747,8 @@ def schedtel_cli(
             except Exception as e1:
                 try:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, trying to find proper motions using astropy.coordinates.get_body"
+                        f"Failed to find proper motions for {
+                            block.name}, trying to find proper motions using astropy.coordinates.get_body"
                     )
                     pos_l = coord.get_body(
                         block.name,
@@ -675,23 +778,31 @@ def schedtel_cli(
                         / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                     block.configuration["pm_dec"] = (
-                        (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
+                        (pos_h.dec - pos_l.dec)
+                        / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
-                        f"Failed to find proper motions for {block.name}, keeping old ephemerides"
+                        f"Failed to find proper motions for {
+                            block.name}, keeping old ephemerides"
                     )
 
         if block.configuration["filename"] == "":
             block.configuration["filename"] = name_format.format(
                 index=block_number,
                 target=(
-                    block.target.to_string("hmsdms").replace(" ", "_").replace(".", "-")
+                    block.target.to_string("hmsdms")
+                    .replace(" ", "_")
+                    .replace(".", "-")
                     if block.name == ""
                     else block.name.replace(" ", "_").replace(".", "_")
                 ),
-                start_time=block.start_time.isot.replace(":", "-").split(".")[0],
-                end_time=block.end_time.isot.replace(":", "-").split(".")[0],
+                start_time=block.start_time.isot.replace(":", "-").replace(
+                    ".", "_"
+                ),
+                end_time=block.end_time.isot.replace(":", "-").replace(
+                    ".", "_"
+                ),
                 duration="%i" % block.duration.to(u.second).value,
                 ra=block.target.ra.to_string(
                     sep="hms", unit="hourangle", precision=2, pad=True
@@ -742,13 +853,17 @@ def schedtel_cli(
 
     # TODO: Fix this condition
     if type(observatory) is Observatory:
-        validated_blocks = schedtab.validate(scheduled_blocks, observatory=observatory)
+        validated_blocks = schedtab.validate(
+            scheduled_blocks, observatory=observatory
+        )
     else:
         validated_blocks = schedtab.validate(scheduled_blocks)
 
     # Then find invalid blocks
     invalid_blocks = [
-        block for block in validated_blocks if block.configuration["status"] == "I"
+        block
+        for block in validated_blocks
+        if block.configuration["status"] == "I"
     ]
 
     if len(unscheduled_blocks) > 0 or len(invalid_blocks) > 0:
@@ -813,14 +928,16 @@ def schedtel_cli(
             my_id = block.configuration["ID"].mjd
             # print(my_id, type(my_id))
             block.configuration["ID"] = my_id
-        except:
+        except BaseException:
             pass
     exec_table = schedtab.blocks_to_table(exec_blocks)
 
     # Write the schedule to file
     logger.info("Writing schedule to file")
     if filename is None or telrun:
-        first_time = np.min(exec_table["start_time"]).strftime("%Y-%m-%dT%H-%M-%S")
+        first_time = np.min(exec_table["start_time"]).strftime(
+            "%Y-%m-%dT%H-%M-%S"
+        )
         filename = "telrun_" + first_time + ".ecsv"
 
     write_queue = False
@@ -892,11 +1009,15 @@ def schedtel_cli(
 )
 @click.argument(
     "schedule_table",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
 )
 @click.argument(
     "observatory",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
 )
 @click.version_option()
 def plot_schedule_gantt_cli(schedule_table, observatory):
@@ -927,7 +1048,9 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
         return
     location = coord.EarthLocation(lon=obs_lon, lat=obs_lat)
 
-    tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
+    tz = timezonefinder.TimezoneFinder().timezone_at(
+        lng=obs_lon.deg, lat=obs_lat.deg
+    )
     tz = zoneinfo.ZoneInfo(tz)
     date = str(np.min(schedule_table["start_time"]).isot)
     date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
@@ -955,12 +1078,17 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
         ]
 
         for block in plot_blocks:
-            start_time = astrotime.Time(np.float64(block["start_time"].jd), format="jd")
-            end_time = astrotime.Time(np.float64(block["end_time"].jd), format="jd")
+            start_time = astrotime.Time(
+                np.float64(block["start_time"].jd), format="jd"
+            )
+            end_time = astrotime.Time(
+                np.float64(block["end_time"].jd), format="jd"
+            )
             length_min = int((end_time - start_time).sec / 60 + 1)
             times = (
                 start_time
-                + np.linspace(0, length_min, length_min, endpoint=True) * u.minute
+                + np.linspace(0, length_min, length_min, endpoint=True)
+                * u.minute
             )
             airmass = []
             for t in times:
@@ -995,26 +1123,34 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 
     twilight_times = [
         t0,
-        astrotime.Time(observatory.sun_set_time(t0, which="next"), scale="utc"),
+        astrotime.Time(
+            observatory.sun_set_time(t0, which="next"), scale="utc"
+        ),
         astrotime.Time(
             observatory.twilight_evening_civil(t0, which="next"), scale="utc"
         ),
         astrotime.Time(
-            observatory.twilight_evening_nautical(t0, which="next"), scale="utc"
+            observatory.twilight_evening_nautical(t0, which="next"),
+            scale="utc",
         ),
         astrotime.Time(
-            observatory.twilight_evening_astronomical(t0, which="next"), scale="utc"
+            observatory.twilight_evening_astronomical(t0, which="next"),
+            scale="utc",
         ),
         astrotime.Time(
-            observatory.twilight_morning_astronomical(t0, which="next"), scale="utc"
+            observatory.twilight_morning_astronomical(t0, which="next"),
+            scale="utc",
         ),
         astrotime.Time(
-            observatory.twilight_morning_nautical(t0, which="next"), scale="utc"
+            observatory.twilight_morning_nautical(t0, which="next"),
+            scale="utc",
         ),
         astrotime.Time(
             observatory.twilight_morning_civil(t0, which="next"), scale="utc"
         ),
-        astrotime.Time(observatory.sun_rise_time(t0, which="next"), scale="utc"),
+        astrotime.Time(
+            observatory.sun_rise_time(t0, which="next"), scale="utc"
+        ),
         t1,
     ]
     opacities = [0.8, 0.6, 0.4, 0.2, 0, 0.2, 0.4, 0.6, 0.8]
@@ -1090,11 +1226,15 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 )
 @click.argument(
     "schedule_table",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
 )
 @click.argument(
     "observatory",
-    type=click.Path(exists=True, resolve_path=True, dir_okay=False, readable=True),
+    type=click.Path(
+        exists=True, resolve_path=True, dir_okay=False, readable=True
+    ),
 )
 @click.version_option()
 def plot_schedule_sky_cli(schedule_table, observatory):
@@ -1145,31 +1285,42 @@ def plot_schedule_sky_cli(schedule_table, observatory):
 
     # targets = [t.to_string("hmsdms") for t in schedule_table["target"]]
 
-    fig, ax = plt.subplots(1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"})
+    fig, ax = plt.subplots(
+        1, 1, figsize=(7, 7), subplot_kw={"projection": "polar"}
+    )
     for target, target_dict in target_times.items():
         times = target_dict["times"]
         try:
-            label = target_dict["name"]
-        except:
-            label = target.to_string("hmsdms")
+            label = target_dict["name"].strip()
+        except BaseException:
+            label = target
         target = coord.SkyCoord(target, unit=(u.hourangle, u.deg))
         ax = astroplan_plots.plot_sky(
             astroplan.FixedTarget(target),
             observatory,
             times,
-            astrotime.Time(np.float64(row["start_time"].jd), format="jd"),
             ax=ax,
             style_kwargs={"label": label},
         )
 
     handles, labels = ax.get_legend_handles_labels()
-
-    # Commented out - if objects have same name, they will be combined in the legend
-    # print(labels)
     # unique = [
     #     (h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]
     # ]
     # ax.legend(*zip(*unique), loc=(1.1, 0))
+
+    # Add title to plot based on date
+    t0 = np.min(
+        schedule_table["start_time"]
+    )  # -1 corrects for UTC to local time, should be cleaned up
+    t0 = astrotime.Time(t0, format="mjd")
+    t0.format = "iso"
+
+    ax.set_title(
+        f"Observing Schedule: Night of {
+            t0.to_string().split(' ')[0]} UTC",
+        fontsize=14,
+    )
 
     ax.legend(labels, loc=(1.1, 0))
 
@@ -1181,7 +1332,9 @@ def plot_schedule_sky_cli(schedule_table, observatory):
 
 def format_exptime(exptime):
     return (
-        f"{exptime:.0f}" if exptime.is_integer() else f"{exptime:.2g}".replace(".", "-")
+        f"{exptime:.0f}"
+        if exptime.is_integer()
+        else f"{exptime:.2g}".replace(".", "-")
     )
 
 

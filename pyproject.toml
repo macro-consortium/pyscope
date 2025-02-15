@@ -10,7 +10,8 @@ addopts = [
 ]
 
 [tool.black]
-line-length = 88
+line-length = 79
+force-exclude = "pyscope/observatory/observatory.py"
 
 [tool.coverage]
     [tool.coverage.run]

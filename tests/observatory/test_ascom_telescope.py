@@ -243,4 +243,6 @@ def test_trackingrate(device, disconnect):
 def test_utcdate(device, disconnect):
     assert device.UTCDate is not None
     device.UTCDate = "2020-01-01T00:00:00"
-    assert device.UTCDate.strftime("%Y-%m-%dT%H:%M:%S") == "2020-01-01T00:00:00"
+    assert (
+        device.UTCDate.strftime("%Y-%m-%dT%H:%M:%S") == "2020-01-01T00:00:00"
+    )

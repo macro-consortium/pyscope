@@ -7,7 +7,27 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
+        """
+        ASCOM implementation of the base class.
+
+        The class provides an interface to access a set of values useful for astronomical purposes such as
+        determining if it is safe to operate the observing system, recording data, or determining
+        refraction corrections.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier.
+        alpaca : `bool`, default : `False`, optional
+            Whether the device is an Alpaca device.
+        device_number : `int`, default : 0, optional
+            The device number.
+        protocol : `str`, default : "http", optional
+            The protocol to use for communication with the device.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -39,7 +59,9 @@ class ASCOMObservingConditions(ASCOMDevice, ObservingConditions):
 
     @AveragePeriod.setter
     def AveragePeriod(self, value):
-        logger.debug(f"ASCOMObservingConditions.AveragePeriod property set to {value}")
+        logger.debug(
+            f"ASCOMObservingConditions.AveragePeriod property set to {value}"
+        )
         self._device.AveragePeriod = value
 
     @property

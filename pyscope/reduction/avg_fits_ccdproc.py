@@ -1,18 +1,15 @@
+import glob
 import logging
 import os
+import sys
+from pathlib import Path
 
-import astropy.units as u
-import ccdproc
 import click
 import numpy as np
+import tqdm
 from astropy.io import fits
-from astropy.nddata import CCDData
 
 logger = logging.getLogger(__name__)
-
-"""
-TODO: fix click options
-"""
 
 
 @click.command(
@@ -20,19 +17,25 @@ TODO: fix click options
                 https://pyscope.readthedocs.io/ for more
                 information."""
 )
-@click.option(
-    "-m" "--method",
-    type=click.Choice(["average", "median", "sum"]),
-    default="median",
-    show_default=True,
-    help="Method to use for averaging images.",
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
 )
 @click.option(
-    "-o",
-    "--outfile",
-    type=click.Path(),
-    required=True,
-    help="Path to save averaged image.",
+    "-p",
+    "--pre-normalize",
+    "pre_normalize",
+    is_flag=True,
+    default=False,
+    help="Normalize each image by its own mean before combining. This mode is most useful for combining sky flats.",
+)
+@click.option(
+    "-m",
+    "--mode",
+    type=click.Choice(["0", "1"]),
+    default="0",
+    show_choices=True,
+    show_default=True,
+    help="Mode to use for averaging images (0 = median, 1 = mean).",
 )
 @click.option(
     "-d",
@@ -49,258 +52,77 @@ TODO: fix click options
             "float64",
         ]
     ),
-    default=np.uint16,
+    default="float32",
     show_choices=True,
     show_default=True,
     help="Data type to use for averaged image.",
 )
 @click.option(
-    "-u",
-    "--unit",
-    type=click.Choice(["adu", "counts", "photon"]),
-    default=None,
-    show_choices=True,
-    show_default=True,
-    help="Unit of CCD data.",
-)
-@click.option(
-    "-w",
-    "--weights",
-    type=np.ndarray,
-    default=None,
-    show_default=True,
-    help="Weights to be used when combining images. An array with the weight values. The dimensions should match the the dimensions of the data arrays being combined.",
-)
-@click.option(
-    "-s",
-    "--scale",
-    type=click.Choice([callable, np.ndarray]),
-    default=None,
-    show_default=True,
-    help="Scaling factor to be used when combining images. Images are multiplied by scaling prior to combining them. Scaling may be either a function, which will be applied to each image to determine the scaling factor, or a list or array whose length is the number of images in the Combiner.",
-)
-@click.option(
-    "-ml",
-    "--mem_limit",
-    type=float,
-    default=16e9,
-    show_default=True,
-    help="Maximum memory which should be used while combining (in bytes).",
-)
-@click.option(
-    "-ce",
-    "--clip_extrema",
-    type=bool,
-    default=False,
-    show_default=True,
-    help="Set to True if you want to mask pixels using an IRAF-like minmax clipping algorithm. The algorithm will mask the lowest nlow values and the highest nhigh values before combining the values to make up a single pixel in the resulting image. For example, the image will be a combination of Nimages-low-nhigh pixel values instead of the combination of Nimages.",
-)
-@click.option(
-    "-nl",
-    "--nLow",
-    type=int,
-    default=1,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-nh",
-    "--nHigh",
-    type=int,
-    default=1,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-mc",
-    "--minmax_clip",
-    type=bool,
-    default=False,
-    show_default=True,
-    help="Set to True if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining.",
-)
-@click.option(
-    "-mcn",
-    "--minmax_clip_min",
-    type=click.Choice([click.FLOAT, None]),
-    default=None,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-mcx",
-    "--minmax_clip_max",
-    type=click.Choice([click.FLOAT, None]),
-    default=None,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-sc",
-    "--sigma_clip",
-    type=bool,
-    default=False,
-    show_default=True,
-    help="Set to True if you want to reject pixels which have deviations greater than those set by the threshold values. The algorithm will first calculated a baseline value using the function specified in func and deviation based on sigma_clip_dev_func and the input data array. Any pixel with a deviation from the baseline value greater than that set by sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected.",
-)
-@click.option(
-    "-sclt",
-    "--sigma_clip_low_thresh",
-    type=click.Choice([click.FLOAT, None]),
-    default=3,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-scht",
-    "--sigma_clip_high_thresh",
-    type=click.Choice([click.FLOAT, None]),
-    default=3,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-scf",
-    "--sigma_clip_func",
-    type=callable,
-    default=None,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-scdf",
-    "--sigma_clip_dev_func",
-    type=callable,
-    default=None,
-    show_default=True,
-    help="",
-)
-@click.option(
-    "-cuf",
-    "--combine_uncertainty_func",
-    type=callable,
-    default=None,
-    show_default=True,
-    help="If None use the default uncertainty func when using average, median or sum combine, otherwise use the function provided.",
-)
-@click.option(
-    "-oo",
-    "--overwrite_output",
-    type=bool,
-    default=False,
-    show_default=True,
-    help="If output_file is specified, this is passed to the astropy.nddata.fits_ccddata_writer under the keyword overwrite; has no effect otherwise.",
+    "-o",
+    "--outfile",
+    type=click.Path(),
+    help="Path to save averaged image.",
 )
 @click.option(
     "-v",
     "--verbose",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="Print verbose output.",
+    count=True,
+    default=0,
+    help="Print verbose output. Use multiple times for more verbosity.",
 )
-@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
+)
 @click.version_option()
 def avg_fits_ccdproc_cli(
-    mode,
-    outfile,
     fnames,
-    method="median",
-    datatype="uint16",
-    weights=None,
-    scale=None,
-    mem_limit=16000000000.0,
-    clip_extrema=False,
-    nlow=1,
-    nhigh=1,
-    minmax_clip=False,
-    minmax_clip_min=None,
-    minmax_clip_max=None,
-    sigma_clip=False,
-    sigma_clip_low_thresh=3,
-    sigma_clip_high_thresh=3,
-    sigma_clip_func=None,
-    sigma_clip_dev_func=None,
-    combine_uncertainty_function=None,
-    overwrite_output=False,
-    unit="adu",
-    verbose=False,
+    pre_normalize=False,
+    mode="0",
+    datatype=np.float32,
+    outfile=None,
+    verbose=0,
 ):
-    """Combines images using ccdproc.combine method.
+    """
+    Averages a list of FITS images into a single output image.
+
+    Averages multiple FITS images into a single output image, with options for pre-normalization, averaging mode, and output data type.
 
     Parameters
     ----------
-    outfile : str
-        path to save combined image.
+    fnames : list of `str`
+        Paths to FITS files to average.
+    pre_normalize : `bool`, default=`False`
+        Normalize each image by its own mean before combining.
+    mode : `str`, default=`"0"`
+        Averaging mode: `"0"` for median, `"1"` for mean.
+    datatype : `str`, default=`"float32"`
+        Data type for the averaged image. Defaults to `"float32"` unless pre-normalizing, where `"float64"` is used.
+    outfile : `str`, optional
+        Output path for the averaged image. Defaults to using the first input file name with `"_avg.fts"` appended.
+    verbose : `int`, default=`0`
+        Logging verbosity level. Use `-v` for `INFO` and `-vv` for `DEBUG`.
 
-    fnames : list
-        list of image paths to combine.
+    Returns
+    -------
+    `None`
+        The averaged FITS image is saved to the specified output file or the default location.
 
-    method="median" : str, optional
-        method to use for averaging images. Options are "median", "average", "sum"
-
-    datatype : np.datatype, optional
-        intermediate and resulting dtype for combined CCDs, by default np.uint16
-
-    weights : np.ndarray, optional
-        Weights to be used when combining images. An array with the weight values. The dimensions should match the the dimensions of the data arrays being combined., by default None
-
-    scale : callable or np.ndarray, optional
-        Scaling factor to be used when combining images. Images are multiplied by scaling prior to combining them. Scaling may be either a function, which will be applied to each image to determine the scaling factor, or a list or array whose length is the number of images in the Combiner, by default None
-
-    mem_limit : float, optional
-        Maximum memory which should be used while combining (in bytes), by default 16000000000.0
-
-    clip_extrema : bool, optional
-        Set to True if you want to mask pixels using an IRAF-like minmax clipping algorithm. The algorithm will mask the lowest nlow values and the highest nhigh values before combining the values to make up a single pixel in the resulting image. For example, the image will be a combination of Nimages-low-nhigh pixel values instead of the combination of Nimages. Parameters below are valid only when clip_extrema is set to True, by default False
-
-    nlow : int, optional
-        Number of low values to reject from the combination, by default 1
-
-    nhigh : int, optional
-        Number of high values to reject from the combination, by default 1
-
-    minmax_clip : bool, optional
-        Set to True if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining, by default False
-
-    minmax_clip_min : float, optional
-        All pixels with values below min_clip will be masked, by default None
-
-    minmax_clip_max : flaot, optional
-        All pixels with values above min_clip will be masked, by default None
-
-    sigma_clip : bool, optional
-        Set to True if you want to reject pixels which have deviations greater than those set by the threshold values. The algorithm will first calculated a baseline value using the function specified in func and deviation based on sigma_clip_dev_func and the input data array. Any pixel with a deviation from the baseline value greater than that set by sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected, by default False
-
-    sigma_clip_low_thresh : int, optional
-        Threshold for rejecting pixels that deviate below the baseline value. If negative value, then will be convert to a positive value. If None, no rejection will be done based on low_thresh, by default 3
-
-    sigma_clip_high_thresh : int, optional
-        Threshold for rejecting pixels that deviate above the baseline value. If None, no rejection will be done based on high_thresh, by default 3
-
-    sigma_clip_func : callable, optional
-        The statistic or callable function/object used to compute the center value for the clipping. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanmean) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'median', by default None
-
-    sigma_clip_dev_func : callable, optional
-        The statistic or callable function/object used to compute the standard deviation about the center value. If using a callable function/object and the axis keyword is used, then it must be able to ignore NaNs (e.g., numpy.nanstd) and it must have an axis keyword to return an array with axis dimension(s) removed. The default is 'std', by default None
-
-    combine_uncertainty_function : callable, optional
-        If None use the default uncertainty func when using average, median or sum combine, otherwise use the function provided, by default None
-
-    overwrite_output : bool, optional
-        If output_file is specified, this is passed to the astropy.nddata.fits_ccddata_writer under the keyword overwrite; has no effect otherwise., by default False
-
-    unit : str, optional
-        unit for CCDData objects, by default 'adu'
-
-    verbose : bool, optional
-        verbosity of logger, by default False
+    Raises
+    ------
+    `KeyError`
+        If required FITS header keywords (e.g., `FRAMETYP`, `EXPTIME`) are missing.
+    `ValueError`
+        If the input images have incompatible dimensions or data types.
     """
 
-    if verbose:
-        logger.setLevel(logging.DEBUG)
+    if verbose == 2:
+        logging.basicConfig(level=logging.DEBUG)
+    elif verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
-    if unit == None:
+    if unit is None:
         if "BUNIT" in fits.open(fnames[0])[0].header:
             unit = fits.open(fnames[0])[0].header["BUNIT"]
         else:
@@ -343,8 +165,119 @@ def avg_fits_ccdproc_cli(
         unit=unit,
     )
 
-    logger.debug(f"Image mean: {np.mean(image_avg.data)}")
-    logger.debug(f"Image median: {np.median(image_avg.data)}")
+    first_hdr = fits.getheader(fnames[0])
+    try:
+        frametyp = first_hdr["FRAMETYP"]
+        logger.debug(f"FRAMETYP: {frametyp}")
+    except KeyError:
+        logger.error(
+            "FRAMETYP keyword not found in header. Trying image type."
+        )
+        frametyp = first_hdr["IMAGETYP"]
+        logger.debug(f"IMAGETYP: {frametyp}")
+    binx = first_hdr["XBINNING"]
+    biny = first_hdr["YBINNING"]
+    logger.debug(f"XBINNING: {binx}, YBINNING: {biny}")
+    readout = first_hdr["READOUTM"]
+    logger.debug(f"READOUTM: {readout}")
+    exptime = first_hdr["EXPTIME"]
+    logger.debug(f"EXPTIME: {exptime}")
+    gain = first_hdr["GAIN"]
+    logger.debug(f"GAIN: {gain}")
+
+    # TODO: don't require all images to be in memory at once
+    logger.info("Loading images...")
+    images = []
+    for fname in fnames:
+        image = fits.getdata(fname).astype(np.float64)
+        hdr = fits.getheader(fname)
+
+        # check for matches in header
+        try:
+            if hdr["FRAMETYP"] != frametyp:
+                logger.warning(
+                    f"FRAMETYP mismatch: {
+                        hdr['FRAMETYP']} != {frametyp}"
+                )
+        except KeyError:
+            logger.error(
+                "FRAMETYP keyword not found in header. Trying image type."
+            )
+            if hdr["IMAGETYP"] != frametyp:
+                logger.warning(
+                    f"IMAGETYP mismatch: {
+                        hdr['IMAGETYP']} != {frametyp}"
+                )
+        if hdr["XBINNING"] != binx:
+            logger.warning(f"BINX mismatch: {hdr['BINX']} != {binx}")
+        if hdr["YBINNING"] != biny:
+            logger.warning(f"BINY mismatch: {hdr['BINY']} != {biny}")
+        if hdr["READOUTM"] != readout:
+            logger.warning(
+                f"READOUTM mismatch: {
+                    hdr['READOUTM']} != {readout}"
+            )
+        if hdr["EXPTIME"] != exptime and not pre_normalize:
+            logger.warning(
+                f"EXPTIME mismatch: {
+                    hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
+        elif hdr["EXPTIME"] != exptime and pre_normalize:
+            logger.info(
+                f"EXPTIME mismatch: {
+                    hdr['EXPTIME']} != {exptime} in image {fname}"
+            )
+            logger.info("pre_normalize is True so ignoring EXPTIME mismatch.")
+        if hdr["GAIN"] != gain:
+            logger.warning(f"GAIN mismatch: {hdr['GAIN']} != {gain}")
+
+        # check for pedestal
+        if "PEDESTAL" in hdr.keys():
+            logger.info(
+                f"Found pedestal of {
+                    hdr['PEDESTAL']}. Subtracting pedestal."
+            )
+            image -= hdr["PEDESTAL"]
+        images.append(image)
+    images = np.array(images)
+    logger.info(f"Loaded {images.shape} images")
+
+    if pre_normalize:
+        logger.info(
+            "pre_normalize is True. Normalizing each image by its own mean before combining."
+        )
+        logger.info("Normalizing images...")
+        images = images / np.mean(images, axis=(1, 2))[:, None, None]
+        logger.info("Done!")
+        logger.info("pre_normalize is True so setting datatype to float64")
+        datatype = np.float64
+
+        logger.info(
+            "pre-normalized is True, removing pedestal keyword from header."
+        )
+        if "PEDESTAL" in first_hdr:
+            logger.info("Removing PEDESTAL keyword rom header.")
+            del first_hdr["PEDESTAL"]
+
+    logger.info(f"Averaging images with mode = {mode}...")
+    if str(mode) == "0":
+        logger.debug("Calculating median...")
+        image_avg = np.median(images, axis=0)
+    elif str(mode) == "1":
+        logger.debug("Calculating mean...")
+        image_avg = np.mean(images, axis=0)
+    logger.debug(f"Averaged image mean: {np.mean(image_avg)}")
+    logger.debug(f"Averaged image median: {np.median(image_avg)}")
+
+    logger.info(f"Converting data type of averaged image to {datatype}...")
+    image_avg = image_avg.astype(datatype)
+    logger.info(f"Data type of averaged image: {image_avg.dtype}")
+
+    if outfile is None:
+        logger.debug(
+            "No output file specified. Using default naming convention."
+        )
+        outfile = f"{fnames[0]}_avg.fts"
 
     logger.info(f"Saving averaged image to {outfile}")
 
@@ -369,7 +302,9 @@ def avg_fits_ccdproc_cli(
     hdr.add_comment(f"Sigma clip high thresh: {sigma_clip_high_thresh}")
     hdr.add_comment(f"Sigma clip func: {sigma_clip_func}")
     hdr.add_comment(f"Sigma clip dev func: {sigma_clip_dev_func}")
-    hdr.add_comment(f"Combine uncertainty func: {combine_uncertainty_function}")
+    hdr.add_comment(
+        f"Combine uncertainty func: {combine_uncertainty_function}"
+    )
     hdr.add_comment(f"Overwrite output: {overwrite_output}")
 
     fits.writeto(outfile, image_avg, hdr, overwrite=True)

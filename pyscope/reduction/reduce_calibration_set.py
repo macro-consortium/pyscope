@@ -69,7 +69,33 @@ def reduce_calibration_set_cli(
     verbose=0,
 ):
     """
-    Reduce a calibration set to master frames.\b
+    Reduce a calibration set to master frames.
+
+    This function processes a calibration set of FITS images, typically used in astronomy,
+    to create master bias, dark, and flat calibration frames. The input calibration set
+    should be a directory containing subdirectories for bias, dark, and flat frames.
+    The resulting master calibration frames are saved in the same directory.
+
+    Parameters
+    ----------
+    calibration_set : `str`
+        Path to the calibration set directory.
+    camera : `str`, optional
+        Camera type, either `"ccd"` or `"cmos"`. Defaults to `"ccd"`.
+    mode : `str`, optional
+        Method to use for averaging images, either `"median"` or `"average"`.
+        Defaults to `"median"`.
+    pre_normalize : `bool`, optional
+        Pre-normalize flat images before combining. This option is useful
+        for sky flats. Defaults to `True`.
+    verbose : `int`, optional
+        Level of verbosity for output logs. Use higher values for more detailed output.
+        Defaults to `0`.
+
+    Raises
+    ------
+    `SystemExit`
+        Raised if the program encounters a critical issue and exits prematurely.
     """
 
     calibration_set = Path(calibration_set).resolve()
@@ -134,11 +160,19 @@ def reduce_calibration_set_cli(
             name_str = str(flat_set.name).split("_")
 
             matching_dark = list(
-                calibration_set.glob(f"master_dark_{name_str[2]}_{name_str[3]}*.fts")
+                calibration_set.glob(
+                    f"master_dark_{
+                        name_str[2]}_{
+                        name_str[3]}*.fts"
+                )
             )
             matching_dark = matching_dark[0] if matching_dark else None
             matching_bias = list(
-                calibration_set.glob(f"master_bias_{name_str[2]}_{name_str[3]}*.fts")
+                calibration_set.glob(
+                    f"master_bias_{
+                        name_str[2]}_{
+                        name_str[3]}*.fts"
+                )
             )
             matching_bias = matching_bias[0] if matching_bias else None
 
@@ -158,7 +192,9 @@ def reduce_calibration_set_cli(
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
-                / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),
+                / (
+                    str(flat_set.name).replace("flats", "master_flat") + ".fts"
+                ),
             )
 
         elif camera == "cmos":
@@ -167,7 +203,10 @@ def reduce_calibration_set_cli(
 
             matching_dark = list(
                 calibration_set.glob(
-                    f"master_dark_{name_str[2]}_{name_str[3]}_{name_str[4]}*.fts"
+                    f"master_dark_{
+                        name_str[2]}_{
+                        name_str[3]}_{
+                        name_str[4]}*.fts"
                 )
             )
             matching_dark = matching_dark[0] if matching_dark else None
@@ -184,7 +223,9 @@ def reduce_calibration_set_cli(
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
-                / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),
+                / (
+                    str(flat_set.name).replace("flats", "master_flat") + ".fts"
+                ),
             )
 
     logger.info("Calibration set reduction complete.")

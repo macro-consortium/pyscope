@@ -10,7 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMCamera(ASCOMDevice, Camera):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
+        """
+        Provides the `ASCOMCamera` class for controlling `ASCOM <https://ascom-standards.org/About/Overview.htm>`_-compatible cameras.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier. This can be the ProgID or the device number.
+        alpaca : `bool`, default : `False`, optional
+            Whether to use the Alpaca protocol for Alpaca-compatible devices.
+        device_number : `int`, default : 0, optional
+            The device number. This is only used if the identifier is a ProgID.
+        protocol : `str`, default : "http", optional
+            The protocol to use for Alpaca-compatible devices.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -55,10 +71,37 @@ class ASCOMCamera(ASCOMDevice, Camera):
                 self._image_data_type = np.uint16
             else:
                 self._image_data_type = np.uint32
-        except:
+        except BaseException:
             self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
+        """
+        Moves scope in the given direction for the given interval or time at the rate
+        given by the :py:attr:`ASCOMTelescope.GuideRateRightAscension` and :py:attr:`ASCOMTelescope.GuideRateDeclination` properties.
+
+        Parameters
+        ----------
+        Direction : `GuideDirections <https://ascom-standards.org/help/developer/html/T_ASCOM_DeviceInterface_GuideDirections.htm>`_
+            The direction in which to move the scope.
+            The corresponding values are as follows:
+
+                * 0 : North or +declination.
+                * 1 : South or -declination.
+                * 2 : East or +right ascension.
+                * 3 : West or -right ascension.
+
+        Duration : `int`
+            The duration of the guide pulse in milliseconds.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Method returns immediately if hardware supports back-to-back guiding e.g. dual-axis moving.
+        Otherwise returns only after the guide pulse has completed.
+        """
         logger.debug(f"ASCOMCamera.PulseGuide({Direction}, {Duration}) called")
         self._device.PulseGuide(Direction, Duration)
 
@@ -75,6 +118,8 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def BayerOffsetX(self):  # pragma: no cover
         """
+        The X/column offset of the Bayer filter array matrix. (`int`)
+
         .. warning::
             This property is not implemented in the ASCOM Alpaca protocol.
         """
@@ -84,6 +129,8 @@ class ASCOMCamera(ASCOMDevice, Camera):
     @property
     def BayerOffsetY(self):  # pragma: no cover
         """
+        The Y/row offset of the Bayer filter array matrix. (`int`)
+
         .. warning::
             This property is not implemented in the ASCOM Alpaca protocol.
         """
@@ -112,6 +159,18 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def CameraState(self):
+        """
+        The current operational state of the camera. (`CameraStates <https://ascom-standards.org/help/developer/html/P_ASCOM_DriverAccess_Camera_CameraState.htm>`_)
+
+        Can be interpreted as `int` values in the following logic:
+
+            * 0 : Camera is idle and ready to start an exposure.
+            * 1 : Camera exposure started but waiting (i.e. shutter, trigger, filter wheel, etc.).
+            * 2 : Camera exposure in progress.
+            * 3 : CCD readout in progress.
+            * 4 : Data downloading to PC.
+            * 5 : Camera in error condition, cannot continue.
+        """
         logger.debug(f"ASCOMCamera.CameraState property called")
         return self._device.CameraState
 
@@ -127,6 +186,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def CameraTime(self):
+        """Whether the camera supports the CameraTime property. (`bool`)"""
         logger.debug(f"ASCOMCamera.CameraTime property called")
         return self._camera_time
 
@@ -152,6 +212,10 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def CanPulseGuide(self):
+        """
+        Whether the camera supports pulse guiding,
+        see `definition <https://ascom-standards.org/Help/Developer/html/M_ASCOM_DriverAccess_Telescope_PulseGuide.htm>`_. (`bool`)
+        """
         logger.debug(f"ASCOMCamera.CanPulseGuide property called")
         return self._device.CanPulseGuide
 
@@ -330,18 +394,21 @@ class ASCOMCamera(ASCOMDevice, Camera):
         support the property """
         return (
             last_time
-            if last_time != "" and last_time != None
+            if last_time != "" and last_time is not None
             else self._last_exposure_start_time
         )
 
     @property
     def LastInputExposureDuration(self):
+        """The duration of the last exposure in seconds. (`float`)"""
         logger.debug(f"ASCOMCamera.LastInputExposureDuration property called")
         return self._last_exposure_duration
 
     @LastInputExposureDuration.setter
     def LastInputExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.LastInputExposureDuration property set to {value}"
+        )
         self._last_exposure_duration = value
 
     @property
@@ -441,6 +508,18 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @property
     def SensorType(self):
+        """
+        The type of color information the camera sensor captures. (`SensorType <https://ascom-standards.org/help/developer/html/T_ASCOM_DeviceInterface_SensorType.htm>`_)
+
+        The default representations are as follows:
+
+            * 0 : Monochrome with no Bayer encoding.
+            * 1 : Color without needing Bayer decoding.
+            * 2 : RGGB encoded Bayer array.
+            * 3 : CMYG encoded Bayer array.
+            * 4 : CMYG2 encoded Bayer array.
+            * 5 : LRGB Kodak TRUESENSE encoded Bayer array.
+        """
         logger.debug(f"ASCOMCamera.SensorType property called")
         return self._device.SensorType
 
@@ -481,5 +560,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @SubExposureDuration.setter
     def SubExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.SubExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.SubExposureDuration property set to {value}"
+        )
         self._device.SubExposureDuration = value

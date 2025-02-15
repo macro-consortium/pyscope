@@ -7,7 +7,27 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMFocuser(ASCOMDevice, Focuser):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
+        """
+        ASCOM implementation of the Focuser abstract base class.
+
+        The class provides functionality to control an ASCOM-compatible focuser device,
+        including methods for halting and moving the focuser, as well as properties for
+        various focuser attributes.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The device identifier.
+        alpaca : `bool`, default : `False`, optional
+            Flag indicating whether the device is an Alpaca device.
+        device_number : `int`, default : 0, optional
+            The device number.
+        protocol : `str`, default : "http", optional
+            The communication protocol to use.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,

@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import re
 import shlex
 
@@ -104,7 +105,8 @@ def read(
         line = line.replace("’", '"')
         lines.append(line)
 
-    # From: https://stackoverflow.com/questions/28401547/how-to-remove-comments-from-a-string
+    # From:
+    # https://stackoverflow.com/questions/28401547/how-to-remove-comments-from-a-string
     lines = [re.sub(r"(?m)^ *#.*\n?", "", line) for line in lines]
     lines = [re.sub(r"(?m)^ *!.*\n?", "", line) for line in lines]
     lines = [re.sub(r"(?m)^ *%.*\n?", "", line) for line in lines]
@@ -118,9 +120,12 @@ def read(
     ]  # Remove multiple, trailing, leading whitespace
     lines = [line for line in lines if line != ""]  # Remove empty lines
 
-    # From: https://stackoverflow.com/questions/35544325/python-convert-entire-string-to-lowercase-except-for-substrings-in-quotes
+    # From:
+    # https://stackoverflow.com/questions/35544325/python-convert-entire-string-to-lowercase-except-for-substrings-in-quotes
     lines = [
-        re.sub(r'\b(?<!")(\w+)(?!")\b', lambda match: match.group(1).lower(), line)
+        re.sub(
+            r'\b(?<!")(\w+)(?!")\b', lambda match: match.group(1).lower(), line
+        )
         for line in lines
     ]  # Make entire line lowercase except substrings in quotes
 
@@ -128,7 +133,9 @@ def read(
     lines = [
         dict(
             (key, value)
-            for key, value in zip(shlex.split(line)[::2], shlex.split(line)[1::2])
+            for key, value in zip(
+                shlex.split(line)[::2], shlex.split(line)[1::2]
+            )
         )
         for line in lines
     ]
@@ -150,7 +157,8 @@ def read(
                 continue
             elif len(value_matches) == 0:
                 logger.error(
-                    f"Keyword {key} does not match any possible keywords: {possible_keys.values()}, removing line {line_number}: {line}"
+                    f"Keyword {key} does not match any possible keywords: {
+                        possible_keys.values()}, removing line {line_number}: {line}"
                 )
                 lines.remove(line)
                 continue
@@ -242,7 +250,9 @@ def read(
         if line_number not in line_matches
     ]
     if len(datestart_matches) > 1:
-        logger.warning(f"Multiple datestarts found: {datestart_matches}, using first")
+        logger.warning(
+            f"Multiple datestarts found: {datestart_matches}, using first"
+        )
         datestart = astrotime.Time(
             datestart_matches[0],
             format="isot",
@@ -272,7 +282,9 @@ def read(
         if line_number not in line_matches
     ]
     if len(dateend_matches) > 1:
-        logger.warning(f"Multiple dateends found: {dateend_matches}, using first")
+        logger.warning(
+            f"Multiple dateends found: {dateend_matches}, using first"
+        )
         dateend = astrotime.Time(
             dateend_matches[0],
             format="isot",
@@ -409,7 +421,11 @@ def read(
         # Parse pm_ra_cosdec and pm_dec
         pm_ra_cosdec = 0 * u.arcsec / u.hour
         pm_dec = 0 * u.arcsec / u.hour
-        if "pm_ra_cosdec" in line.keys() and "pm_dec" in line.keys() and nonsidereal:
+        if (
+            "pm_ra_cosdec" in line.keys()
+            and "pm_dec" in line.keys()
+            and nonsidereal
+        ):
             pm_ra_cosdec = float(line["pm_ra_cosdec"]) * u.arcsec / u.hour
             pm_dec = float(line["pm_dec"]) * u.arcsec / u.hour
         elif (
@@ -417,7 +433,9 @@ def read(
             and "pm_dec" in line.keys()
             and not nonsidereal
         ):
-            logger.warning("Proper motions found on non-nonsidereal line, ignoring")
+            logger.warning(
+                "Proper motions found on non-nonsidereal line, ignoring"
+            )
         elif (
             "pm_ra_cosdec" not in line.keys()
             and "pm_dec" not in line.keys()
@@ -438,7 +456,9 @@ def read(
                 )
                 ra = ephemerides["RA"][0]
                 dec = ephemerides["Dec"][0]
-                pm_ra_cosdec = ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
+                pm_ra_cosdec = (
+                    ephemerides["dRA cos(Dec)"][0] * u.arcsec / u.hour
+                )
                 pm_dec = ephemerides["dDec"][0] * u.arcsec / u.hour
             except Exception as e1:
                 try:
@@ -452,7 +472,9 @@ def read(
                     pos_h = coord.get_body(
                         source_name, t0 + 10 * u.minute, location=location
                     )
-                    ra = pos_m.ra.to_string("hourangle", sep="hms", precision=3)
+                    ra = pos_m.ra.to_string(
+                        "hourangle", sep="hms", precision=3
+                    )
                     dec = pos_m.dec.to_string("deg", sep="dms", precision=2)
                     pm_ra_cosdec = (
                         (
@@ -462,7 +484,8 @@ def read(
                         / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                     pm_dec = (
-                        (pos_h.dec - pos_l.dec) / (pos_h.obstime - pos_l.obstime)
+                        (pos_h.dec - pos_l.dec)
+                        / (pos_h.obstime - pos_l.obstime)
                     ).to(u.arcsec / u.hour)
                 except Exception as e2:
                     logger.warning(
@@ -537,13 +560,13 @@ def read(
         if "repositioning" in line.keys():
             if (
                 line["repositioning"].startswith("t")
-                or line["repositioning"].startswith("1")
+                or line["repositioning"] == "1"
                 or line["repositioning"].startswith("y")
             ):
                 repositioning = (-1, -1)
             elif (
                 line["repositioning"].startswith("f")
-                or line["repositioning"].startswith("0")
+                or line["repositioning"] == "0"
                 or line["repositioning"].startswith("n")
             ):
                 repositioning = (0, 0)
@@ -685,7 +708,9 @@ def read(
         if "cadence" in line.keys():
             h, m, s = line["cadence"].split(":")
             cadence = astrotime.TimeDelta(
-                datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s)),
+                datetime.timedelta(
+                    hours=int(h), minutes=int(m), seconds=float(s)
+                ),
                 format="datetime",
             )
 
@@ -699,7 +724,9 @@ def read(
         if "schederr" in line.keys():
             h, m, s = line["schederr"].split(":")
             schederr = astrotime.TimeDelta(
-                datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s)),
+                datetime.timedelta(
+                    hours=int(h), minutes=int(m), seconds=float(s)
+                ),
                 format="datetime",
             )
 
@@ -767,7 +794,8 @@ def read(
             exposures = []
             prior_exposures = None
 
-        # Expand exposures or filters to match length of the other if either length is one
+        # Expand exposures or filters to match length of the other if either
+        # length is one
         if len(exposures) == 1 and len(filters) > 1:
             exposures = exposures * len(filters)
         elif len(filters) == 1 and len(exposures) > 1:
@@ -778,7 +806,9 @@ def read(
         # Sanity Check 1: matching number of filters and exposures
         if len(filters) != len(exposures) and len(filters) != 0:
             logger.error(
-                f"Number of filters ({len(filters)}) does not match number of exposures ({len(exposures)}) on line {line_number}, skipping: {line}"
+                f"Number of filters ({
+                    len(filters)}) does not match number of exposures ({
+                    len(exposures)}) on line {line_number}, skipping: {line}"
             )
             continue
 
@@ -794,7 +824,10 @@ def read(
         if cadence is not None:
             if cadence.to(u.second).value < np.sum(exposures):
                 logger.warning(
-                    f"Cadence ({cadence}, {cadence.to(u.second).value} sec) is less than total exposure time ({np.sum(exposures)}) on line {line_number}, setting cadence to total exposure time: {line}"
+                    f"Cadence ({cadence}, {
+                        cadence.to(
+                            u.second).value} sec) is less than total exposure time ({
+                        np.sum(exposures)}) on line {line_number}, setting cadence to total exposure time: {line}"
                 )
                 cadence = np.sum(exposures)
 
@@ -846,7 +879,7 @@ def read(
                 blocks.append(
                     astroplan.ObservingBlock(
                         target=obj,
-                        duration=temp_dur,
+                        duration=temp_dur + 5 * u.second,
                         priority=priority,
                         name=source_name,
                         configuration={
@@ -894,7 +927,9 @@ def write(observing_blocks, filename=None):
     codes = []
     for block in observing_blocks:
         if type(block) is not astroplan.scheduling.ObservingBlock:
-            logger.exception("observing_blocks must be a list of ObservingBlocks")
+            logger.exception(
+                "observing_blocks must be a list of ObservingBlocks"
+            )
             return
         codes.append(block.configuration["code"])
 
@@ -913,10 +948,13 @@ def write(observing_blocks, filename=None):
             blocks[0].configuration["title"]
         ) != len(blocks):
             logger.warning(
-                f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({blocks[0].configuration['title']})"
+                f"Title must be the same for all blocks with the same code {unique_code}, setting all titles to first title ({
+                    blocks[0].configuration['title']})"
             )
             blocks = [
-                block.configuration.update("title", blocks[0].configuration["title"])
+                block.configuration.update(
+                    "title", blocks[0].configuration["title"]
+                )
                 for block in blocks
             ]
 
@@ -924,7 +962,8 @@ def write(observing_blocks, filename=None):
             blocks[0].configuration["observer"]
         ) != len(blocks):
             logger.warning(
-                f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({blocks[0].configuration['observer']})"
+                f"Observer must be the same for all blocks with the same code {unique_code}, setting all observers to first observer ({
+                    blocks[0].configuration['observer']})"
             )
             blocks = [
                 block.configuration.update(
@@ -936,7 +975,9 @@ def write(observing_blocks, filename=None):
         if filename is None:
             filename = f"{unique_code}_{time_now}.sch"
         elif len(unique_codes) > 1:
-            filename = filename.replace(".sch", f"_{unique_code}_{time_now}.sch")
+            filename = filename.replace(
+                ".sch", f"_{unique_code}_{time_now}.sch"
+            )
         else:
             filename = filename
 
@@ -961,22 +1002,24 @@ def write(observing_blocks, filename=None):
                 try:
                     if block.name != "":
                         write_string += f'source "{block.name}"\n'
-                except:
+                except BaseException:
                     pass
-                write_string += f"ra {block.target.ra.to_string('hourangle', sep='hms', precision=4)}\n"
-                write_string += (
-                    f"dec {block.target.dec.to_string('deg', sep='dms', precision=3)}\n"
-                )
+                write_string += f"ra {
+                    block.target.ra.to_string(
+                        'hourangle', sep='hms', precision=4)}\n"
+                write_string += f"dec {
+                        block.target.dec.to_string(
+                            'deg', sep='dms', precision=3)}\n"
                 try:
                     write_string += f"priority {block.priority}\n"
-                except:
+                except BaseException:
                     pass
                 try:
                     if block.configuration["filename"] != "":
                         write_string += 'filename "{0}"\n'.format(
                             block.configuration["filename"]
                         )
-                except:
+                except BaseException:
                     pass
                 try:
                     if (
@@ -984,18 +1027,22 @@ def write(observing_blocks, filename=None):
                         or block.configuration["pm_dec"].value != 0
                     ):
                         write_string += f"nonsidereal true\n"
-                        write_string += f"pm_ra_cosdec {block.configuration['pm_ra_cosdec'].to(u.arcsec/u.hour).value}\n"
-                        write_string += f"pm_dec {block.configuration['pm_dec'].to(u.arcsec/u.hour).value}\n"
+                        write_string += f"pm_ra_cosdec {
+                            block.configuration['pm_ra_cosdec'].to(
+                                u.arcsec / u.hour).value}\n"
+                        write_string += f"pm_dec {
+                            block.configuration['pm_dec'].to(
+                                u.arcsec / u.hour).value}\n"
                     else:
                         write_string += f"nonsidereal false\n"
-                except:
+                except BaseException:
                     pass
                 try:
                     if block.configuration["shutter_state"]:
                         write_string += f"shutter_state open\n"
                     else:
                         write_string += f"shutter_state closed\n"
-                except:
+                except BaseException:
                     pass
                 write_string += f"exposure {block.configuration['exposure']}\n"
                 write_string += f"nexp {block.configuration['nexp']}\n"
@@ -1004,35 +1051,44 @@ def write(observing_blocks, filename=None):
                         write_string += f"do_not_interrupt true\n"
                     else:
                         write_string += f"do_not_interrupt false\n"
-                except:
+                except BaseException:
                     pass
                 try:
-                    write_string += f"readout {block.configuration['readout']}\n"
-                except:
+                    write_string += f"readout {
+                        block.configuration['readout']}\n"
+                except BaseException:
                     pass
                 try:
-                    write_string += f"binning {block.configuration['binning'][0]}x{block.configuration['binning'][1]}\n"
-                except:
+                    write_string += f"binning {
+                        block.configuration['binning'][0]}x{
+                        block.configuration['binning'][1]}\n"
+                except BaseException:
                     pass
                 write_string += f"filter {block.configuration['filter']}\n"
                 try:
                     if block.configuration["repositioning"] is True:
                         write_string += f"repositioning true\n"
                     elif type(block.configuration["repositioning"]) is tuple:
-                        write_string += f"repositioning {block.configuration['repositioning'][0]}x{block.configuration['repositioning'][1]}\n"
-                except:
+                        write_string += f"repositioning {
+                            block.configuration['repositioning'][0]}x{
+                            block.configuration['repositioning'][1]}\n"
+                except BaseException:
                     pass
                 try:
-                    write_string += f"frame_position {block.configuration['frame_position'][0]}x{block.configuration['frame_position'][1]}\n"
-                except:
+                    write_string += f"frame_position {
+                        block.configuration['frame_position'][0]}x{
+                        block.configuration['frame_position'][1]}\n"
+                except BaseException:
                     pass
                 try:
-                    write_string += f"frame_size {block.configuration['frame_size'][0]}x{block.configuration['frame_size'][1]}\n"
-                except:
+                    write_string += f"frame_size {
+                        block.configuration['frame_size'][0]}x{
+                        block.configuration['frame_size'][1]}\n"
+                except BaseException:
                     pass
                 try:
                     write_string += f"utstart {block.start_time.isot}\n"
-                except:
+                except BaseException:
                     try:
                         if block.constraints is not None:
                             if type(block.constraints) is not list:
@@ -1044,7 +1100,10 @@ def write(observing_blocks, filename=None):
                             ):  # TODO: Add in support for all constraints
                                 possible_min_times = []
                                 possible_max_times = []
-                                if type(constraint) is astroplan.TimeConstraint:
+                                if (
+                                    type(constraint)
+                                    is astroplan.TimeConstraint
+                                ):
                                     possible_min_times.append(constraint.min)
                                     possible_max_times.append(constraint.max)
                             min_time_idx = np.argmax(
@@ -1060,28 +1119,41 @@ def write(observing_blocks, filename=None):
                             )
                             error_time = round(
                                 astrotime.TimeDelta(
-                                    (max_time.jd - min_time.jd) / 2, format="jd"
+                                    (max_time.jd - min_time.jd) / 2,
+                                    format="jd",
                                 ).sec,
                                 3,
                             )
                             err_hours = int(error_time / 3600)
-                            err_minutes = int((error_time - err_hours * 3600) / 60)
+                            err_minutes = int(
+                                (error_time - err_hours * 3600) / 60
+                            )
                             err_seconds = (
-                                error_time - err_hours * 3600 - err_minutes * 60
+                                error_time
+                                - err_hours * 3600
+                                - err_minutes * 60
                             )
                             write_string += f"utstart {mid_time.isot}\n"
-                            write_string += f"schederr {err_hours:02.0f}:{err_minutes:02.0f}:{err_seconds:02.3f}\n"
-                    except:
+                            write_string += f"schederr {
+                                err_hours:02.0f}:{
+                                err_minutes:02.0f}:{
+                                err_seconds:02.3f}\n"
+                    except BaseException:
                         pass
                 try:
                     if block.configuration["comment"] != "":
                         write_string += 'comment "{comment} -- written by pyscope v{version}"\n'.format(
-                            comment=block.configuration["comment"], version=__version__
+                            comment=block.configuration["comment"],
+                            version=__version__,
                         )
                     else:
-                        write_string += f'comment "written by pyscope v{__version__}"\n'
-                except:
-                    write_string += f'comment "written by pyscope v{__version__}"\n'
+                        write_string += (
+                            f'comment "written by pyscope v{__version__}"\n'
+                        )
+                except BaseException:
+                    write_string += (
+                        f'comment "written by pyscope v{__version__}"\n'
+                    )
 
                 f.write(write_string + "block end\n\n")
             f.write("\n")

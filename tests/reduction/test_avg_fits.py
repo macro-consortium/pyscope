@@ -28,7 +28,9 @@ def test_avg_fits(tmp_path):
     for i in range(1, 11):
         data = np.ones((10, 10), dtype=np.uint16)
         fits.writeto(
-            f"{tmp_path}/images/avg_fits_test_{i}.fts", data * i, overwrite=True
+            f"{tmp_path}/images/avg_fits_test_{i}.fts",
+            data * i,
+            overwrite=True,
         )
         # print(data * i)
 

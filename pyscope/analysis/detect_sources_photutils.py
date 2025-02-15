@@ -55,7 +55,11 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--bkgrms-estimator",
     type=click.Choice(
-        ["StdBackgroundRMS", "MADStdBackgroundRMS", "BiweightScaleBackgroundRMS"]
+        [
+            "StdBackgroundRMS",
+            "MADStdBackgroundRMS",
+            "BiweightScaleBackgroundRMS",
+        ]
     ),
     default="StdBackgroundRMS",
     help="""Background RMS estimator to use""",
@@ -240,7 +244,9 @@ def detect_sources_photutils_cli(
     logger.info("Estimating background... Done")
 
     logger.info("Convolving image with a 2D Gaussian kernel...")
-    kernel = photsegmentation.make_2dgaussian_kernel(kernel_fwhm, size=kernel_size)
+    kernel = photsegmentation.make_2dgaussian_kernel(
+        kernel_fwhm, size=kernel_size
+    )
     convolved_image = convolution.convolve(image, kernel)
     logger.info("Convolving image with a 2D Gaussian kernel... Done")
 
