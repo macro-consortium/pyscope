@@ -1,21 +1,21 @@
 astroplan == 0.10.1
 astropy == 6.1.4
 # alpyca == 2.0.4 # not in conda
-astroquery == 0.4.7
+astroquery == 0.4.9.post1
 astroscrappy == 1.2.0
 ccdproc == 2.4.2
-click == 8.1.7
+click == 8.1.8
 cmcrameri == 1.9
 markdown == 3.6
 matplotlib == 3.10.0
 numpy == 2.1.2
 oschmod == 0.3.12
 pandas == 2.2.3
-paramiko == 3.5.0
+paramiko == 3.5.1
 photutils == 1.13.0
-prettytable == 3.11.0
+prettytable == 3.14.0
 pywin32 == 308;platform_system=='Windows'
-scikit-image == 0.24.0
+scikit-image == 0.25.1
 scipy == 1.14.1
 smplotlib == 0.0.9
 sqlalchemy == 2.0.37
