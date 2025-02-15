@@ -15,7 +15,7 @@ paramiko == 3.5.0
 photutils == 1.13.0
 prettytable == 3.11.0
 pywin32 == 308;platform_system=='Windows'
-scikit-image == 0.24.0
+scikit-image == 0.25.1
 scipy == 1.14.1
 smplotlib == 0.0.9
 sqlalchemy == 2.0.37
