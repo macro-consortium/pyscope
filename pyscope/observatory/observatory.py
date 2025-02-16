@@ -1404,7 +1404,7 @@ class Observatory:
                     while self.focuser.IsMoving:
                         time.sleep(0.1)
                     logger.info("Focuser stopped.")
-                logger.info("Focuser at postion %i" % self.focuser.Position)
+                logger.info("Focuser at position %i" % self.focuser.Position)
                 return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
