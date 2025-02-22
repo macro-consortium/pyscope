@@ -136,6 +136,7 @@ dmypy.json
 *.ipynb
 *.log_*
 *.ecsv
+.testing
 .vscode
 .DS_Store
 *ascom.alpaca.simulators*

@@ -341,6 +341,8 @@ def schedtel_cli(
         Suppresses logging output.
     verbose : `int`, optional
         Controls logging verbosity. Defaults to `0`.
+    reconfig_file : `str`, optional
+        Path to a reconfiguration file.
 
     Returns
     -------
@@ -394,6 +396,7 @@ def schedtel_cli(
     logger.debug(f"plot: {plot}")
     logger.debug(f"quiet: {quiet}")
     logger.debug(f"verbose: {verbose}")
+    logger.debug(f"reconfig_file: {reconfig_file}")
 
     # Set the schedule time
     sched_time = astrotime.Time.now()
@@ -679,12 +682,15 @@ def schedtel_cli(
     # Basic Scheduler without astroplan
     def basic_scheduler(block_group, schedule):
         # Set start time based on sun set angle
-        current_time = astrotime.Time.now()
-        sun_set = observatory.sun_set_time(current_time, which="next", horizon=-12 * u.deg)
-        sun_rise = observatory.sun_rise_time(current_time, which="next", horizon=-12 * u.deg)
+        current_time = astrotime.Time(
+            date,
+            format="datetime",
+        )
+        sun_set = observatory.sun_set_time(current_time, which="next", horizon=max_altitude * u.deg)
+        sun_rise = observatory.sun_rise_time(current_time, which="next", horizon=max_altitude * u.deg)
         start_time = sun_set.mjd
         start_time = astrotime.Time(start_time, format="mjd")
-        print (type(start_time))
+        # print (type(start_time))
         end_time = sun_rise.mjd
         end_time = astrotime.Time(end_time, format="mjd")
         for i in range(len(block_group)):
@@ -692,15 +698,39 @@ def schedtel_cli(
                 
                 try:
                     print(f"Last end time: {schedule[-1]['end_time']}")
-                    block_group[0]["start_time"] = schedule[-1]["end_time"]
+
+                    # If there's a block group constraint, use it as
+                    # that should be the scheduled utstart time
+                    if block_group[0]["constraints"] is not None:
+                        if block_group[0]["constraints"][0].min is not None:
+                            block_group[0]["start_time"] = block_group[0]["constraints"][0].min
+                        else:
+                            # Otherwise, use the last end time
+                            block_group[0]["start_time"] = schedule[-1]["end_time"]
+                    else:
+                        # If there's no block group constraint, use the last end time
+                        block_group[0]["start_time"] = schedule[-1]["end_time"]
+
+                    # Calculate transition time
                     transition_time = reconfig_file.calc_reconfig_time_blocks(
                         block_group[0], schedule[-1], location, verbose=False)
-                    total_time = transition_time + block_group[0]["duration"] 
-                    # total_time /= 86400
-                    block_group[0]["start_time"] = schedule[-1]["end_time"] + total_time 
+                    
+                    # If last end time + transition time is greater than start time, 
+                    # use last end time
+                    if block_group[0]["start_time"] < schedule[-1]["end_time"] + transition_time:
+                        block_group[0]["start_time"] = schedule[-1]["end_time"] + transition_time
+
+                    # total_time = transition_time + block_group[0]["duration"] 
+                    # # total_time /= 86400
+                    # block_group[0]["start_time"] = schedule[-1]["end_time"] + total_time 
                 except Exception as e:
-                    print(e)
-                    block_group[0]["start_time"] = start_time
+                    print(f"Error in scheduler: {e}")
+                    # If there's a block group constraint, use it
+                    if block_group[0]["constraints"] is not None:
+                        block_group[0]["start_time"] = block_group[0]["constraints"][0].min
+                    else:
+                        block_group[0]["start_time"] = start_time
+                    # block_group[0]["start_time"] = start_time
 
             # Calculate end time from transition times
             for i, block in enumerate(block_group):    
@@ -724,11 +754,16 @@ def schedtel_cli(
                 if block["end_time"] > end_time:
                     print("End time is greater than sunrise")
                     # return schedule
+
+        # Add constraints
+
         return schedule
     
     
     logger.info("Scheduling ObservingBlocks")
     scheduled_blocks = []
+    print(f"Type of block_groups: {type(block_groups)}")
+    print(f"Type of block_groups[0]: {type(block_groups[0])}")
     for i in tqdm.tqdm(range(len(block_groups))):
         logger.debug("Block group %i of %i" % (i + 1, len(block_groups)))
     #     # schedule_handler(block_groups[i], schedule)
@@ -962,6 +997,11 @@ def schedtel_cli(
         filename = "telrun_" + first_time + ".ecsv"
 
     exec_table = schedtab.blocks_to_table(scheduled_blocks)
+
+    # If no 'constraints' column in table, add a blank one
+    if "constraints" not in exec_table.colnames:
+        example_constraints = [{}]
+        exec_table['constraints'] = [example_constraints]
 
     write_queue = False
     if telrun:
