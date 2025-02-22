@@ -125,13 +125,18 @@ class ReconfigConfigs:
             obs_location = obs_location.location
 
         # Calculate the slew time for the telescope
-        slew_time = self.telescope.calc_slew_time_skycoord(
-            current_coords,
-            target_coords,
-            obs_location=obs_location,
-            obs_time=obs_time,
-            return_quantity=True,
-        )
+        # If current coords and target coords are the same, 
+        # the slew time is 0.0 seconds
+        if current_coords == target_coords:
+            slew_time = 0.0 * u.s
+        else:
+            slew_time = self.telescope.calc_slew_time_skycoord(
+                current_coords,
+                target_coords,
+                obs_location=obs_location,
+                obs_time=obs_time,
+                return_quantity=True,
+            )
 
         # Calculate the filter wheel change time
         filter_change_time = 0.0 * u.s
