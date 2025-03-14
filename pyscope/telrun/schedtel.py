@@ -1109,7 +1109,7 @@ def plot_schedule_gantt_cli(schedule_table, observatory):
 
     tz = timezonefinder.TimezoneFinder().timezone_at(lng=obs_lon.deg, lat=obs_lat.deg)
     tz = zoneinfo.ZoneInfo(tz)
-    date = str(np.min(schedule_table["start_time"]).isot)
+    date = str(np.min(schedule_table["start_time"]-1).isot)
     date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
     t0 = astrotime.Time(
         datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
