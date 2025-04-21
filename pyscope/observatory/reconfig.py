@@ -496,7 +496,7 @@ class Focuser:
     """A class to store focuser configuration parameters"""
 
     def __init__(self, config):
-        self.units = config.get("focuser", "units", fallback="steps")
+        self.units = config.get("focuser", "units", fallback="micron")
         if "micron" in self.units:
             self.units = "micron"
         self.speed = config.getfloat("focuser", "speed", fallback=0.0) / u.s
