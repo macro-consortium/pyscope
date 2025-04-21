@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMTelescope(ASCOMDevice, Telescope):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
         """
         ASCOM implementation of the Telescope base class.
 
@@ -26,6 +28,7 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         protocol : `str`, default : "http", optional
             The communication protocol to use.
         """
+        self.identifier = identifier
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -114,7 +117,19 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     def FindHome(self):
         logger.debug("ASCOMTelescope.FindHome() called")
-        self._device.FindHome()
+        try:
+            if callable(self._device.FindHome):
+                logger.debug("FindHome() is callable and will be executed.")
+                self._device.FindHome()
+            else:
+                logger.debug(
+                    "FindHome() is not callable, using 'self._device.FindHome' to find home for the telescope"
+                )
+                # Handle it as a property if necessary, or simply ignore if no
+                # action is required.
+                self._device.FindHome
+        except Exception as e:
+            logger.error(f"Error in executing or accessing FindHome: {e}")
 
     def MoveAxis(self, Axis, Rate):
         """
@@ -159,7 +174,8 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
                 logger.debug(
                     "SetPark() is not callable, using 'self._device.Park' to park the telescope"
                 )
-                # Handle it as a property if necessary, or simply ignore if no action is required.
+                # Handle it as a property if necessary, or simply ignore if no
+                # action is required.
                 self._device.Park
         except Exception as e:
             logger.error(f"Error in executing or accessing SetPark: {e}")
@@ -184,7 +200,9 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         Duration : `int`
             Time in milliseconds for which to pulse the guide. Must be a positive non-zero value.
         """
-        logger.debug(f"ASCOMTelescope.PulseGuide({Direction}, {Duration}) called")
+        logger.debug(
+            f"ASCOMTelescope.PulseGuide({Direction}, {Duration}) called"
+        )
         self._device.PulseGuide(Direction, Duration)
 
     def SetPark(self):
@@ -198,14 +216,20 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         .. deprecated:: 0.1.1
             ASCOM is deprecating this method.
         """
-        logger.debug(f"ASCOMTelescope.SlewToAltAz({Azimuth}, {Altitude}) called")
+        logger.debug(
+            f"ASCOMTelescope.SlewToAltAz({Azimuth}, {Altitude}) called"
+        )
         self._device.SlewToAltAz(Azimuth, Altitude)
 
     def SlewToAltAzAsync(self, Azimuth, Altitude):
-        logger.debug(f"ASCOMTelescope.SlewToAltAzAsync({Azimuth}, {Altitude}) called")
+        logger.debug(
+            f"ASCOMTelescope.SlewToAltAzAsync({Azimuth}, {Altitude}) called"
+        )
         self._device.SlewToAltAzAsync(Azimuth, Altitude)
 
-    def SlewToCoordinates(self, RightAscension, Declination):  # pragma: no cover
+    def SlewToCoordinates(
+        self, RightAscension, Declination
+    ):  # pragma: no cover
         """
         Deprecated
 
@@ -238,7 +262,9 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
         self._device.SlewToTargetAsync()
 
     def SyncToAltAz(self, Azimuth, Altitude):
-        logger.debug(f"ASCOMTelescope.SyncToAltAz({Azimuth}, {Altitude}) called")
+        logger.debug(
+            f"ASCOMTelescope.SyncToAltAz({Azimuth}, {Altitude}) called"
+        )
         self._device.SyncToAltAz(Azimuth, Altitude)
 
     def SyncToCoordinates(self, RightAscension, Declination):
@@ -301,7 +327,13 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
     @property
     def CanFindHome(self):
         logger.debug("ASCOMTelescope.CanFindHome property accessed")
-        return self._device.CanFindHome
+        canHome = self._device.CanFindHome
+        # If identifier contains SiTech, then return True
+        # This is a workaround for SiTech controllers that do not return CanFindHome
+        # but can actually find home
+        if self.identifier.find("SiTech") != -1:
+            canHome = True
+        return canHome
 
     @property
     def CanPark(self):
@@ -334,7 +366,9 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     @property
     def CanSetRightAscensionRate(self):
-        logger.debug("ASCOMTelescope.CanSetRightAscensionRate property accessed")
+        logger.debug(
+            "ASCOMTelescope.CanSetRightAscensionRate property accessed"
+        )
         return self._device.CanSetRightAscensionRate
 
     @property
@@ -446,7 +480,9 @@ class ASCOMTelescope(ASCOMDevice, Telescope):
 
     @property
     def GuideRateRightAscension(self):
-        logger.debug("ASCOMTelescope.GuideRateRightAscension property accessed")
+        logger.debug(
+            "ASCOMTelescope.GuideRateRightAscension property accessed"
+        )
         return self._device.GuideRateRightAscension
 
     @GuideRateRightAscension.setter

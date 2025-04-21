@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMFocuser(ASCOMDevice, Focuser):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
         """
         ASCOM implementation of the Focuser abstract base class.
 

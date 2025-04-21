@@ -139,7 +139,9 @@ def summary_report_cli(
 
     if code is not None:
         if len(code) != 3:
-            raise click.BadOptionUsage("Observing codes must be 3 characters long.")
+            raise click.BadOptionUsage(
+                "Observing codes must be 3 characters long."
+            )
 
     # Get schedule
     if schedule is None:
@@ -172,12 +174,17 @@ def summary_report_cli(
                 for hdr in headers
             ],
             [
-                astrotime.Time(row["start time (UTC)"], format="iso", scale="utc")
+                astrotime.Time(
+                    row["start time (UTC)"], format="iso", scale="utc"
+                )
                 for row in schedule
             ],
             [hdr.get("FILTER", "None") for hdr in headers],
             [hdr["READOUT"] for hdr in headers],
-            [str(hdr["XBINNING"]) + "x" + str(hdr["YBINNING"]) for hdr in headers],
+            [
+                str(hdr["XBINNING"]) + "x" + str(hdr["YBINNING"])
+                for hdr in headers
+            ],
             [hdr["EXPTIME"] for hdr in headers],
             [
                 coord.SkyCoord(
@@ -199,9 +206,15 @@ def summary_report_cli(
             [
                 (
                     coord.SkyCoord(
-                        hdr["OBJCTRA"], hdr["OBJCTDEC"], unit=("hourangle", "deg")
+                        hdr["OBJCTRA"],
+                        hdr["OBJCTDEC"],
+                        unit=("hourangle", "deg"),
                     )
-                    if None not in (hdr.get("OBJCTRA", None), hdr.get("OBJCTDEC", None))
+                    if None
+                    not in (
+                        hdr.get("OBJCTRA", None),
+                        hdr.get("OBJCTDEC", None),
+                    )
                     else None
                 )
                 for hdr in headers
@@ -244,7 +257,8 @@ def summary_report_cli(
 
     # Seeing
     seeing_arr = np.mean(
-        [tbl["xpixscale"] * tbl["FWHM_H"], tbl["ypixscale"] * tbl["FWHM_V"]], axis=0
+        [tbl["xpixscale"] * tbl["FWHM_H"], tbl["ypixscale"] * tbl["FWHM_V"]],
+        axis=0,
     )
     seeing_median = np.median(seeing_arr)
     seeing_std = np.std(seeing_arr)
@@ -270,7 +284,8 @@ def summary_report_cli(
     dra = np.array(
         [
             (
-                (tbl["sched coords"][i].ra.deg - tbl["obj coords"][i].ra.deg) / u.arcsec
+                (tbl["sched coords"][i].ra.deg - tbl["obj coords"][i].ra.deg)
+                / u.arcsec
                 if tbl["obj coords"][i] is not None
                 else np.nan
             )
@@ -304,9 +319,13 @@ def summary_report_cli(
             [tbl["observer"][tbl["code"] == code] for code in all_codes],
             [len(tbl[tbl["code"] == code]) for code in all_codes],
             [
-                np.sum(tbl["exptime"][tbl["code"] == code]) / 60 for code in all_codes
+                np.sum(tbl["exptime"][tbl["code"] == code]) / 60
+                for code in all_codes
             ],  # Minutes
-            [np.unique(tbl["target"][tbl["code"] == code]) for code in all_codes],
+            [
+                np.unique(tbl["target"][tbl["code"] == code])
+                for code in all_codes
+            ],
         ],
         names=["code", "observer", "n images", "exp time [min]", "targets"],
     )
@@ -357,7 +376,7 @@ def summary_report_cli(
             <p>Number of observing projects: {n_codes}</p>
             <p>Number of images: {n_images}</p>
             <p>Total exposure time: {exp_tot:.2f} minutes</p>
-            <p>Moon phase range: {100*moon_phs_range[0]:.2f}% -- {100*moon_phs_range[1]:.2f}%</p>
+            <p>Moon phase range: {100 * moon_phs_range[0]:.2f}% -- {100 * moon_phs_range[1]:.2f}%</p>
             <p>Median seeing: {seeing_median:.2f} +/- {seeing_std:.2f} arcsec</p>
             <p>Median pointing error: {dra_median:.2f} +/- {dra_std:.2f} arcsec (RA), {ddec_median:.2f} +/- {ddec_std:.2f} arcsec (Dec)</p>
             <p>Median late time: {late_median:.2f} +/- {late_std:.2f} minutes</p>

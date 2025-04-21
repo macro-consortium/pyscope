@@ -31,7 +31,7 @@ def test_position(device, disconnect):
 def test_reverse(device, disconnect):
     if device.CanReverse:
         device.Reverse = True
-        assert device.Reverse == True
+        assert device.Reverse
         device.Reverse = False
         assert device.Reverse == False
 

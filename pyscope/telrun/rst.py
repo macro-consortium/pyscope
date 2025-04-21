@@ -59,7 +59,9 @@ logger = logging.getLogger(__name__)
     help="Increase verbosity",
 )
 @click.version_option()
-def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verbose=-1):
+def rst_cli(
+    source=None, date=None, observatory="./config/observatory.cfg", verbose=-1
+):
     """Calculate the rise, set, and transit times for a given source or dusk and
     dawn times for the observatory.\f
 
@@ -178,14 +180,17 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
             name = config.get("site", "name", fallback="pyscope observatory")
         else:
             raise click.BadParameter(
-                "Observatory configuration file does not exist: %s" % observatory
+                "Observatory configuration file does not exist: %s"
+                % observatory
             )
     elif type(observatory) is Observatory:
         lat = observatory.observatory_location.lat
         lon = observatory.observatory_location.lon
         name = observatory.instrument_name
     else:
-        raise click.BadParameter("Observatory must be a string or Observatory object.")
+        raise click.BadParameter(
+            "Observatory must be a string or Observatory object."
+        )
     logger.debug(f"lat = {lat}")
     logger.debug(f"lon = {lon}")
     logger.debug(f"name = {name}")
@@ -199,10 +204,14 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
         date = datetime.datetime.now()
     else:
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
-    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+    date = datetime.datetime(
+        date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+    )
 
     t0 = astrotime.Time(
-        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        datetime.datetime(
+            date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+        ),
         format="datetime",
     )
     logger.debug(f"t0 = {t0}")
@@ -261,7 +270,9 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
         try:
             obj = coord.SkyCoord.from_name(source)
         except coord.name_resolve.NameResolveError:
-            logger.debug(f"Could not resolve {source} by name. Attempting MPC query.")
+            logger.debug(
+                f"Could not resolve {source} by name. Attempting MPC query."
+            )
             try:
                 eph = MPC.get_ephemeris(
                     source,
@@ -281,14 +292,16 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
                     f"""Could not resolve {source} by name. Using MPC query.
                     Note that rise-set times may be inaccurate for high PM bodies."""
                 )
-            except:
+            except BaseException:
                 try:
-                    obj = coord.get_body(source, t0 + 0.5 * u.day, observer.location)
+                    obj = coord.get_body(
+                        source, t0 + 0.5 * u.day, observer.location
+                    )
                     logger.warning(
                         f"""Could not resolve {source} by name or MPC query. Using get_body query.
                         Note that rise-set times may be inaccurate for solar system bodies."""
                     )
-                except:
+                except BaseException:
                     click.echo(
                         f"Could not resolve {source} by name, MPC query, or get_body query."
                     )
@@ -304,7 +317,10 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
             "%s Transit" % source,
             observer.target_meridian_transit_time(t0, obj, which="next"),
         )
-        set_time = ("%s Set" % source, observer.target_set_time(t0, obj, which="next"))
+        set_time = (
+            "%s Set" % source,
+            observer.target_set_time(t0, obj, which="next"),
+        )
 
         logger.debug(f"rise_time = {rise_time}")
         logger.debug(f"transit_time = {transit_time}")
@@ -347,7 +363,9 @@ def rst_cli(source=None, date=None, observatory="./config/observatory.cfg", verb
 
     if verbose > -1:
         click.echo(
-            f"Times from: {date.strftime('%Y-%m-%d %H:%M (%Z)')}, {t0.strftime('%Y-%m-%d %H:%M (UTC)')}"
+            f"Times from: {
+                date.strftime('%Y-%m-%d %H:%M (%Z)')}, {
+                t0.strftime('%Y-%m-%d %H:%M (UTC)')}"
         )
         click.echo(tbl)
 

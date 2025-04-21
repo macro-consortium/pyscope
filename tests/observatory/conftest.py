@@ -30,7 +30,8 @@ def device(request):
     )
     c = getattr(observatory, n)  # Creates a device class by string name :-)
     d = c("localhost:32323", alpaca=True)  # Created an instance of the class
-    #    d = c('[fe80::9927:65fc:e9e8:f33a%eth0]:32323', 0)  # RPi 4 Ethernet to Windows OmniSim IPv6
+    # d = c('[fe80::9927:65fc:e9e8:f33a%eth0]:32323', 0)  # RPi 4 Ethernet to
+    # Windows OmniSim IPv6
     d.Connected = True
     return d
 

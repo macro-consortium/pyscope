@@ -1,16 +1,6 @@
-import configparser
-import datetime
 import logging
 
 import click
-import prettytable
-import timezonefinder
-from astropy import coordinates as coord
-from astropy import time as astrotime
-from astropy import units as u
-from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
-
-from ..observatory import Observatory
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +63,13 @@ logger = logging.getLogger(__name__)
 )
 @click.version_option()
 def exoplanet_transits_cli(
-    filt, max_mag, transit_depth, transit_depth_percent, date, observatory, verbose
+    filt,
+    max_mag,
+    transit_depth,
+    transit_depth_percent,
+    date,
+    observatory,
+    verbose,
 ):
     """
 
@@ -113,10 +109,14 @@ def exoplanet_transits_cli(
         date = datetime.datetime.now()
     else:
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
-    date = datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz)
+    date = datetime.datetime(
+        date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+    )
 
     t0 = astrotime.Time(
-        datetime.datetime(date.year, date.month, date.day, 12, 0, 0, tzinfo=tz),
+        datetime.datetime(
+            date.year, date.month, date.day, 12, 0, 0, tzinfo=tz
+        ),
         format="datetime",
     )
     logger.debug(f"t0 = {t0}")
@@ -128,10 +128,14 @@ def exoplanet_transits_cli(
     logger.info("Searching LST range: %s to %s" % (min_ra, max_ra))
 
     min_dec = np.max(
-        observatory.observatory_location.lat.deg - (90 - observatory.min_altitude), -90
+        observatory.observatory_location.lat.deg
+        - (90 - observatory.min_altitude),
+        -90,
     )
     max_dec = np.min(
-        observatory.observatory_location.lat.deg + (90 - observatory.min_altitude), 90
+        observatory.observatory_location.lat.deg
+        + (90 - observatory.min_altitude),
+        90,
     )
     logger.info("Searching declination range: %s to %s" % (min_dec, max_dec))
 
@@ -163,11 +167,16 @@ def exoplanet_transits_cli(
     print_table = []
 
     for exo, i in enumerate(table):
-        t_until_next_transit = exo["pl_orbper"] * u.day - (t0 - exo["pl_tranmid"])
+        t_until_next_transit = exo["pl_orbper"] * u.day - (
+            t0 - exo["pl_tranmid"]
+        )
 
         if t_until_next_transit > (t1 - t0):
             logger.info(
-                f"Removing {exo['pl_name']} because it is not transiting between {t0.iso} and {t1.iso}"
+                f"Removing {
+                    exo['pl_name']} because it is not transiting between {
+                    t0.iso} and {
+                    t1.iso}"
             )
             t.remove_row(i)
             continue

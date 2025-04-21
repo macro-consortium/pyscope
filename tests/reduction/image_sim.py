@@ -3,7 +3,10 @@ import os
 import numpy as np
 from astropy.modeling.models import Const2D, Gaussian2D, RickerWavelet2D
 from photutils.aperture import EllipticalAperture
-from photutils.datasets import make_gaussian_sources_image, make_random_gaussians_table
+from photutils.datasets import (
+    make_gaussian_sources_image,
+    make_random_gaussians_table,
+)
 
 # To use a seed, set it in the environment. Useful for minimizing changes when
 # publishing the book.
@@ -209,7 +212,9 @@ def make_cosmic_rays(image, number, strength=10000):
     maximum_pos = np.min(cr_image.shape)
     # These will be center points of the cosmic rays, which we place away from
     # the edges to ensure they are visible.
-    xy_cr = default_rng.integers(0.1 * maximum_pos, 0.9 * maximum_pos, size=[number, 2])
+    xy_cr = default_rng.integers(
+        0.1 * maximum_pos, 0.9 * maximum_pos, size=[number, 2]
+    )
 
     cr_length = 5  # pixels, a little big
     cr_width = 2
@@ -227,7 +232,9 @@ def make_cosmic_rays(image, number, strength=10000):
 
 def make_one_donut(center, diameter=10, amplitude=0.25):
     sigma = diameter / 2
-    mh = RickerWavelet2D(amplitude=amplitude, x_0=center[0], y_0=center[1], sigma=sigma)
+    mh = RickerWavelet2D(
+        amplitude=amplitude, x_0=center[0], y_0=center[1], sigma=sigma
+    )
     gauss = Gaussian2D(
         amplitude=amplitude,
         x_mean=center[0],
@@ -271,12 +278,18 @@ def add_donuts(image, number=20):
     max_diam = int(0.05 * shape.max())
 
     # Weight towards the smaller donuts because it looks more like real flats..
-    diameters = rng.choice([min_diam, min_diam, min_diam, max_diam], size=number)
+    diameters = rng.choice(
+        [min_diam, min_diam, min_diam, max_diam], size=number
+    )
 
     # Add a little variation in amplitude
     amplitudes = rng.normal(0.25, 0.05, size=number)
-    center_x = rng.randint(border_padding, high=shape[1] - border_padding, size=number)
-    center_y = rng.randint(border_padding, high=shape[0] - border_padding, size=number)
+    center_x = rng.randint(
+        border_padding, high=shape[1] - border_padding, size=number
+    )
+    center_y = rng.randint(
+        border_padding, high=shape[0] - border_padding, size=number
+    )
     centers = [[x, y] for x, y in zip(center_x, center_y)]
 
     donut_model = make_one_donut(
@@ -284,9 +297,13 @@ def add_donuts(image, number=20):
     )
     donut_im = donut_model(x, y)
     idx = 1
-    for center, diam, amplitude in zip(centers[1:], diameters[1:], amplitudes[1:]):
+    for center, diam, amplitude in zip(
+        centers[1:], diameters[1:], amplitudes[1:]
+    ):
         idx += 1
-        donut_model = make_one_donut(center, diameter=diam, amplitude=amplitude)
+        donut_model = make_one_donut(
+            center, diameter=diam, amplitude=amplitude
+        )
         donut_im += donut_model(x, y)
 
     donut_im /= number

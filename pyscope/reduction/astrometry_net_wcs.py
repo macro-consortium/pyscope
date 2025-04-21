@@ -60,7 +60,10 @@ def astrometry_net_wcs_cli(filepath, **kwargs):
                 )
             else:
                 wcs_header = solver.monitor_submission(
-                    submission_id, verbose=True, return_submission_id=True, **kwargs
+                    submission_id,
+                    verbose=True,
+                    return_submission_id=True,
+                    **kwargs
                 )
         except TimeoutError as e:
             submission_id = e.args[1]

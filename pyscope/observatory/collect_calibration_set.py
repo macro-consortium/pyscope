@@ -162,10 +162,10 @@ def collect_calibration_set_cli(
         The verbosity of the output.
     """
 
-    if type(observatory) == str:
+    if isinstance(observatory, str):
         logger.info(f"Collecting calibration set for {observatory}")
         obs = Observatory(observatory)
-    elif type(observatory) == Observatory:
+    elif isinstance(observatory, Observatory):
         logger.info(f"Collecting calibration set for {observatory.site_name}")
         obs = observatory
     else:
@@ -175,11 +175,15 @@ def collect_calibration_set_cli(
     obs.connect_all()
 
     if len(filter_exposures) != len(filters):
-        logger.error("The number of filter exposures must match the number of filters.")
+        logger.error(
+            "The number of filter exposures must match the number of filters."
+        )
         return
 
     if new_dir:
-        save_path = Path(save_path) / obs.observatory_time.strftime("%Y-%m-%d_%H-%M-%S")
+        save_path = Path(save_path) / obs.observatory_time.strftime(
+            "%Y-%m-%d_%H-%M-%S"
+        )
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     logger.info(f"Saving calibration set to {save_path}")

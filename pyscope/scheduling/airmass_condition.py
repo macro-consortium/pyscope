@@ -73,11 +73,15 @@ class AirmassCondition(BoundaryCondition):
         .. [7] `Pickering 2002 <http://www.dioi.org/vols/wc0.pdf>`_
 
         """
-        logger.debug("AirmassCondition(airmass_limit=%s, formula=%s, weight=%s)")
+        logger.debug(
+            "AirmassCondition(airmass_limit=%s, formula=%s, weight=%s)"
+        )
         super().__init__(func=self._func, lqs_func=self._lqs_func)
 
     @classmethod
-    def from_string(self, string, airmass_limit=None, formula=None, weight=None):
+    def from_string(
+        self, string, airmass_limit=None, formula=None, weight=None
+    ):
         """
         Create a `~pyscope.telrun.AirmassCondition` or a `list` of `~pyscope.telrun.AirmassCondition` objects from a `str` representation of a `~pyscope.telrun.AirmassCondition`.
         Any optional parameters are used to override the parameters extracted from the `str` representation.
@@ -148,7 +152,8 @@ class AirmassCondition(BoundaryCondition):
 
         """
         logger.debug(
-            "AirmassCondition._lqs_func(value=%s, max_val=%s)" % (value, max_val)
+            "AirmassCondition._lqs_func(value=%s, max_val=%s)"
+            % (value, max_val)
         )
 
     @property
@@ -162,7 +167,9 @@ class AirmassCondition(BoundaryCondition):
             The maximum airmass value that is allowed.
 
         """
-        logger.debug("AirmassCondition().airmass_limit == %s" % self._airmass_limit)
+        logger.debug(
+            "AirmassCondition().airmass_limit == %s" % self._airmass_limit
+        )
         return self._airmass_limit
 
     @property

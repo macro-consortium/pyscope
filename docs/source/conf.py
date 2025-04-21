@@ -1,3 +1,4 @@
+# isort:skip_file
 import inspect
 import os
 import pathlib
@@ -36,7 +37,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/WWGolay/pyscope",
+            "url": "https://github.com/macro-consortium/pyscope",
             "icon": "fa-brands fa-square-github",
         },
         {
@@ -52,12 +53,22 @@ html_theme_options = {
     ],
 }
 
-intersphinx_mapping["click"] = ("https://click.palletsprojects.com/en/8.1.x/", None)
+intersphinx_mapping["click"] = (
+    "https://click.palletsprojects.com/en/8.1.x/",
+    None,
+)
 intersphinx_mapping["astroquery"] = (
     "https://astroquery.readthedocs.io/en/latest/",
     None,
 )
-intersphinx_mapping["astroplan"] = ("https://astroplan.readthedocs.io/en/latest/", None)
+intersphinx_mapping["astroplan"] = (
+    "https://astroplan.readthedocs.io/en/latest/",
+    None,
+)
+intersphinx_mapping["sqlalchemy"] = (
+    "https://docs.sqlalchemy.org/en/20/",
+    None,
+)
 
 extensions = list(map(lambda x: x.replace("viewcode", "linkcode"), extensions))
 
@@ -147,7 +158,8 @@ def linkcode_resolve(domain, info):
         pass
 
     return (
-        "https://github.com/WWGolay/pyscope/blob" f"/{linkcode_revision}/{fn}{linespec}"
+        "https://github.com/macro-consortium/pyscope/blob"
+        f"/{linkcode_revision}/{fn}{linespec}"
     )
 
 

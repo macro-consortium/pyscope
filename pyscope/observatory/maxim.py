@@ -165,7 +165,9 @@ class _MaximCamera(Camera):
         self._com_object.SaveImage(filename)
 
     def StartExposure(self, Duration, Light):
-        logger.debug(f"StartExposure called with Duration={Duration}, Light={Light}")
+        logger.debug(
+            f"StartExposure called with Duration={Duration}, Light={Light}"
+        )
         self._last_exposure_duration = Duration
         self._last_exposure_start_time = str(Time.now())
         self._com_object.Expose(Duration, Light)

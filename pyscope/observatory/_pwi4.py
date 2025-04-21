@@ -60,7 +60,9 @@ class _PWI4:
         return self.request_with_status("/mount/disable", axis=axisNum)
 
     def mount_set_slew_time_constant(self, value):
-        return self.request_with_status("/mount/set_slew_time_constant", value=value)
+        return self.request_with_status(
+            "/mount/set_slew_time_constant", value=value
+        )
 
     def mount_set_axis0_wrap_range_min(self, axis0_wrap_min_degs):
         # Added in PWI 4.0.13
@@ -168,7 +170,10 @@ class _PWI4:
 
     def mount_follow_tle(self, tle_line_1, tle_line_2, tle_line_3):
         return self.request_with_status(
-            "/mount/follow_tle", line1=tle_line_1, line2=tle_line_2, line3=tle_line_3
+            "/mount/follow_tle",
+            line1=tle_line_1,
+            line2=tle_line_2,
+            line3=tle_line_3,
         )
 
     def mount_radecpath_new(self):
@@ -186,7 +191,9 @@ class _PWI4:
         return self.request_with_status("/mount/radecpath/apply")
 
     def mount_custom_path_new(self, coord_type):
-        return self.request_with_status("/mount/custom_path/new", type=coord_type)
+        return self.request_with_status(
+            "/mount/custom_path/new", type=coord_type
+        )
 
     def mount_custom_path_add_point_list(self, points):
         lines = []
@@ -198,7 +205,9 @@ class _PWI4:
 
         postdata = urlencode({"data": data}).encode()
 
-        return self.request("/mount/custom_path/add_point_list", postdata=postdata)
+        return self.request(
+            "/mount/custom_path/add_point_list", postdata=postdata
+        )
 
     def mount_custom_path_apply(self, update_wrap=None):
         # update_wrap parameter was added in PWI 4.0.99 beta 26
@@ -254,7 +263,9 @@ class _PWI4:
 
     def mount_model_delete_artificial_points(self):
         # Added in PWI 4.0.99 beta 26
-        return self.request_with_status("/mount/model/delete_artificial_points")
+        return self.request_with_status(
+            "/mount/model/delete_artificial_points"
+        )
 
     def mount_model_enable_point(self, *point_indexes_0_based):
         """
@@ -384,7 +395,9 @@ class _PWI4:
         return self.request_with_status("/rotator/goto_mech", degs=target_degs)
 
     def rotator_goto_field(self, target_degs):
-        return self.request_with_status("/rotator/goto_field", degs=target_degs)
+        return self.request_with_status(
+            "/rotator/goto_field", degs=target_degs
+        )
 
     def rotator_offset(self, offset_degs):
         return self.request_with_status("/rotator/offset", degs=offset_degs)
@@ -497,7 +510,7 @@ class _PWI4:
 
         # In Python 3, response is of type "bytes".
         # Convert it to a string for processing below
-        if type(response) == bytes:
+        if isinstance(response, bytes):
             response = response.decode("utf-8")
 
         response_dict = {}
@@ -568,8 +581,12 @@ class _PWI4Status:
         self.mount.slew_time_constant = self.get_float(
             "mount.slew_time_constant"
         )  # Added in 4.0.9 beta 6
-        self.mount.ra_apparent_hours = self.get_float("mount.ra_apparent_hours")
-        self.mount.dec_apparent_degs = self.get_float("mount.dec_apparent_degs")
+        self.mount.ra_apparent_hours = self.get_float(
+            "mount.ra_apparent_hours"
+        )
+        self.mount.dec_apparent_degs = self.get_float(
+            "mount.dec_apparent_degs"
+        )
         self.mount.ra_j2000_hours = self.get_float("mount.ra_j2000_hours")
         self.mount.dec_j2000_degs = self.get_float("mount.dec_j2000_degs")
         self.mount.target_ra_apparent_hours = self.get_float(
@@ -582,7 +599,9 @@ class _PWI4Status:
         self.mount.altitude_degs = self.get_float("mount.altitude_degs")
         self.mount.is_slewing = self.get_bool("mount.is_slewing")
         self.mount.is_tracking = self.get_bool("mount.is_tracking")
-        self.mount.field_angle_here_degs = self.get_float("mount.field_angle_here_degs")
+        self.mount.field_angle_here_degs = self.get_float(
+            "mount.field_angle_here_degs"
+        )
         self.mount.field_angle_at_target_degs = self.get_float(
             "mount.field_angle_at_target_degs"
         )
@@ -615,7 +634,9 @@ class _PWI4Status:
             axis.dist_to_target_arcsec = self.get_float(
                 prefix + "dist_to_target_arcsec"
             )
-            axis.servo_error_arcsec = self.get_float(prefix + "servo_error_arcsec")
+            axis.servo_error_arcsec = self.get_float(
+                prefix + "servo_error_arcsec"
+            )
             axis.min_mech_position_degs = self.get_float(
                 prefix + "min_mech_position_degs"
             )  # Added in 4.0.13
@@ -647,7 +668,9 @@ class _PWI4Status:
 
         self.mount.model = _Section()
         self.mount.model.filename = self.get_string("mount.model.filename")
-        self.mount.model.num_points_total = self.get_int("mount.model.num_points_total")
+        self.mount.model.num_points_total = self.get_int(
+            "mount.model.num_points_total"
+        )
         self.mount.model.num_points_enabled = self.get_int(
             "mount.model.num_points_enabled"
         )
@@ -657,9 +680,7 @@ class _PWI4Status:
 
         # mount.offests.* was added in PWI 4.0.11 Beta 5
         if "mount.offsets.ra_arcsec.total" not in self.raw:
-            self.mount.offsets = (
-                None  # Offset reporting not supported by running version of PWI4
-            )
+            self.mount.offsets = None  # Offset reporting not supported by running version of PWI4
         else:
             self.mount.offsets = _Section()
 
@@ -670,8 +691,10 @@ class _PWI4Status:
             self.mount.offsets.ra_arcsec.rate = self.get_float(
                 "mount.offsets.ra_arcsec.rate"
             )
-            self.mount.offsets.ra_arcsec.gradual_offset_progress = self.get_float(
-                "mount.offsets.ra_arcsec.gradual_offset_progress"
+            self.mount.offsets.ra_arcsec.gradual_offset_progress = (
+                self.get_float(
+                    "mount.offsets.ra_arcsec.gradual_offset_progress"
+                )
             )
 
             self.mount.offsets.dec_arcsec = _Section()
@@ -681,8 +704,10 @@ class _PWI4Status:
             self.mount.offsets.dec_arcsec.rate = self.get_float(
                 "mount.offsets.dec_arcsec.rate"
             )
-            self.mount.offsets.dec_arcsec.gradual_offset_progress = self.get_float(
-                "mount.offsets.dec_arcsec.gradual_offset_progress"
+            self.mount.offsets.dec_arcsec.gradual_offset_progress = (
+                self.get_float(
+                    "mount.offsets.dec_arcsec.gradual_offset_progress"
+                )
             )
 
             self.mount.offsets.axis0_arcsec = _Section()
@@ -692,8 +717,10 @@ class _PWI4Status:
             self.mount.offsets.axis0_arcsec.rate = self.get_float(
                 "mount.offsets.axis0_arcsec.rate"
             )
-            self.mount.offsets.axis0_arcsec.gradual_offset_progress = self.get_float(
-                "mount.offsets.axis0_arcsec.gradual_offset_progress"
+            self.mount.offsets.axis0_arcsec.gradual_offset_progress = (
+                self.get_float(
+                    "mount.offsets.axis0_arcsec.gradual_offset_progress"
+                )
             )
 
             self.mount.offsets.axis1_arcsec = _Section()
@@ -703,8 +730,10 @@ class _PWI4Status:
             self.mount.offsets.axis1_arcsec.rate = self.get_float(
                 "mount.offsets.axis1_arcsec.rate"
             )
-            self.mount.offsets.axis1_arcsec.gradual_offset_progress = self.get_float(
-                "mount.offsets.axis1_arcsec.gradual_offset_progress"
+            self.mount.offsets.axis1_arcsec.gradual_offset_progress = (
+                self.get_float(
+                    "mount.offsets.axis1_arcsec.gradual_offset_progress"
+                )
             )
 
             self.mount.offsets.path_arcsec = _Section()
@@ -714,8 +743,10 @@ class _PWI4Status:
             self.mount.offsets.path_arcsec.rate = self.get_float(
                 "mount.offsets.path_arcsec.rate"
             )
-            self.mount.offsets.path_arcsec.gradual_offset_progress = self.get_float(
-                "mount.offsets.path_arcsec.gradual_offset_progress"
+            self.mount.offsets.path_arcsec.gradual_offset_progress = (
+                self.get_float(
+                    "mount.offsets.path_arcsec.gradual_offset_progress"
+                )
             )
 
             self.mount.offsets.transverse_arcsec = _Section()
@@ -733,9 +764,7 @@ class _PWI4Status:
 
         # mount.spiral_offset.* was added in PWI 4.0.11 Beta 8
         if "mount.spiral_offset.x" not in self.raw:
-            self.mount.spiral_offset = (
-                None  # Offset reporting not supported by running version of PWI4
-            )
+            self.mount.spiral_offset = None  # Offset reporting not supported by running version of PWI4
         else:
             self.mount.spiral_offset = _Section()
             self.mount.spiral_offset.x = self.get_int("mount.spiral_offset.x")
@@ -762,19 +791,27 @@ class _PWI4Status:
         )  # Added in 4.0.99 Beta 2
         self.rotator.is_connected = self.get_bool("rotator.is_connected")
         self.rotator.is_enabled = self.get_bool("rotator.is_enabled")
-        self.rotator.mech_position_degs = self.get_float("rotator.mech_position_degs")
-        self.rotator.field_angle_degs = self.get_float("rotator.field_angle_degs")
+        self.rotator.mech_position_degs = self.get_float(
+            "rotator.mech_position_degs"
+        )
+        self.rotator.field_angle_degs = self.get_float(
+            "rotator.field_angle_degs"
+        )
         self.rotator.is_moving = self.get_bool("rotator.is_moving")
         self.rotator.is_slewing = self.get_bool("rotator.is_slewing")
 
         self.m3 = _Section()
-        self.m3.exists = self.get_bool("m3.exists", False)  # Added in 4.0.99 Beta 2
+        self.m3.exists = self.get_bool(
+            "m3.exists", False
+        )  # Added in 4.0.99 Beta 2
         self.m3.port = self.get_int("m3.port")
 
         self.autofocus = _Section()
         self.autofocus.is_running = self.get_bool("autofocus.is_running")
         self.autofocus.success = self.get_bool("autofocus.success")
-        self.autofocus.best_position = self.get_float("autofocus.best_position")
+        self.autofocus.best_position = self.get_float(
+            "autofocus.best_position"
+        )
         self.autofocus.tolerance = self.get_float("autofocus.tolerance")
 
     def get_bool(self, name, value_if_missing=None):
@@ -825,7 +862,9 @@ class _PWI4HttpCommunicator:
 
         self.timeout_seconds = 3
 
-        self.on_request_issued = None  # Optional callback function can be assigned here
+        self.on_request_issued = (
+            None  # Optional callback function can be assigned here
+        )
         self.on_request_completed = (
             None  # Optional callback function can be assigned here
         )
@@ -843,11 +882,14 @@ class _PWI4HttpCommunicator:
           make_url("/mount/gotoradec2000", ra=10.123, dec="15 30 45") -> "http://localhost:8220/mount/gotoradec2000?ra=10.123&dec=15%2030%2045"
         """
 
-        # Construct the basic URL, excluding the keyword parameters; for example: "http://localhost:8220/specified/path?"
+        # Construct the basic URL, excluding the keyword parameters; for
+        # example: "http://localhost:8220/specified/path?"
         url = "http://" + self.host + ":" + str(self.port) + path + "?"
 
         # Remove any keyword args with a value of None
-        kwargs = {key: value for key, value in kwargs.items() if value is not None}
+        kwargs = {
+            key: value for key, value in kwargs.items() if value is not None
+        }
 
         # For every keyword=value argument given to this function,
         # construct a string of the form "key1=val1&key2=val2".
@@ -857,7 +899,8 @@ class _PWI4HttpCommunicator:
         urlparams = urlencode(keyword_values)
 
         # In URLs, spaces can be encoded as "+" characters or as "%20".
-        # This will convert plus symbols to percent encoding for improved compatibility.
+        # This will convert plus symbols to percent encoding for improved
+        # compatibility.
         urlparams = urlparams.replace("+", "%20")
 
         # Build the final URL and return it.
@@ -908,7 +951,9 @@ class _PWI4HttpCommunicator:
         # The server will return an HTTP Status Code as part of the response.
         # If the status code indicates an error, an HTTPError will be thrown.
         try:
-            response = urlopen(url, data=postdata, timeout=self.timeout_seconds)
+            response = urlopen(
+                url, data=postdata, timeout=self.timeout_seconds
+            )
         except HTTPError as e:
             if e.code == 404:
                 error_message = "Command not found"
@@ -920,23 +965,24 @@ class _PWI4HttpCommunicator:
                 error_message = str(e)
 
             try:
-                error_details = (
-                    e.read()
-                )  # Try to read the payload of the response for error information
+                # Try to read the payload of the response for error information
+                error_details = e.read()
 
                 # In Python 3, the response is returned as bytes rather than a string,
                 # so we need to decode it into a string
-                if type(error_details) == bytes:
+                if isinstance(error_details, bytes):
                     error_details = error_details.decode("utf-8")
                 error_message = error_message + ": " + error_details
-            except:
+            except BaseException:
                 pass  # If that failed, we won't include any further details
 
-            raise Exception(error_message)  # TODO: Consider a custom exception here
+            # TODO: Consider a custom exception here
+            raise Exception(error_message)
 
         except Exception as e:
             # This will often be a urllib2.URLError to indicate that a connection
-            # could not be made to the server, but we'll handle any exception here
+            # could not be made to the server, but we'll handle any exception
+            # here
             raise
 
         payload = response.read()

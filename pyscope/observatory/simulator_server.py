@@ -119,7 +119,7 @@ class SimulatorServer:
         if platform.system() == "Darwin" or platform.system() == "Linux":
             # self.process.kill() # doesn't work since sudo is needed
             subprocess.Popen(
-                f"sudo kill {(os.getpgid(self.process.pid)+1)}", shell=True
+                f"sudo kill {(os.getpgid(self.process.pid) + 1)}", shell=True
             )
         else:
             self.process.kill()

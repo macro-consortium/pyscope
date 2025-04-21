@@ -1,286 +1,135 @@
+from __future__ import annotations
+
 import logging
+from datetime import datetime, timezone
+from typing import List
 from uuid import uuid4
 
-from astropy import units as u
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from ..db import Base
 
 logger = logging.getLogger(__name__)
+logger.debug("field.py")
 
 
-class Field:
-    def __init__(self, target, config=None, **kwargs):
-        """
-        A single target field and configuration for an observation.
+class Field(Base):
+    """
+    Contains an individual `~pyscope.scheduling.Target` and the associated
+    `~pyscope.telrun.InstrumentConfiguration` to observe the target.
 
-        The `~pyscope.telrun.Field` is the basic unit of an observation. It contains
-        the target, instrument configuration, exposure time, number of exposures, and
-        output filename.
+    The `~pyscope.scheduling.Field` is the fundamental unit of observation in
+    the `~pyscope.scheduling.ScheduleBlock`. It contains the target to observe
+    and the configuration to use when observing the target. The field also
+    contains the number of iterations to perform on the target. This is useful
+    for repeating the observation of a target multiple times.
 
-        Parameters
-        ----------
-        target : `~astropy.coordinates.SkyCoord`, required
-            The target field to observe. If the target has proper motion, ensure
-            that the reference epoch and the proper motions are set.
+    Parameters
+    ----------
+    target : `~pyscope.scheduling.Target`, required
+        The target to observe. The target contains the data needed to determine
+        the position of the target in the sky.
 
-        config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
-            The instrument configuration to use for the observation. If `None`, the
-            default configuration from the `~pyscope.telrun.ScheduleBlock` will be used.
+    exp : `float`, required
+        The exposure time in seconds for each iteration of the field.
 
-        **kwargs : `dict`, default : {}
-            Additional keyword arguments to pass to the instrument for the observation.
+    config : `~pyscope.telrun.InstrumentConfiguration`, default : `None`
+        The instrument configuration to use when observing the target. If
+        `None`, the default configuration from the
+        `~pyscope.scheduling.ObservingBlock` will be used.
 
-        """
-        logger.debug(
-            "Field(target=%s, config=%s, exp=%i, nexp=%i, out_fname=%s, kwargs=%s)"
-            % (target, config, exp, nexp, out_fname, kwargs)
-        )
+    niter : `int`, default : 1
+        The number of iterations of this field to perform. This parameter is
+        used to repeat the observation of the field multiple times. For
+        example, if an observer wanted to use multiple exposures to observe a
+        field, they could set this parameter to take those data in a single
+        field instead of creating multiple fields for the same target.
 
-        self.target = target
-        self.config = config
-        self.kwargs = kwargs
-        self._uuid = uuid4()
-        self._est_duration = 0 * u.sec
-        self._exec_status = "Unscheduled"
-        self._exec_start = None
-        self._exec_end = None
-        self._exec_log = None
-        logger.debug("Field() = %s" % self)
+    sleep_on_finish : `float`, default : 0
+        The amount of time to sleep after the field is completed. This is useful
+        for setting a short delay for specific cadence requirements.
 
-    @classmethod
-    def from_string(cls, string, target=None, config=None, **kwargs):
-        """
-        Create a `~pyscope.telrun.Field` or a `list` of `~pyscope.telrun.Field` objects from a `str` representation of a `~pyscope.telrun.Field`.
+    See Also
+    --------
+    pyscope.scheduling.RepositioningField : A special type of
+        `~pyscope.scheduling.Field` that is used to iteratively reposition the
+        pointing by placing the target at a specific location on the detector.
+    pyscope.scheduling.AutofocusField : A special type of
+        `~pyscope.scheduling.Field` that is used to focus the telescope.
+    pyscope.scheduling.DarkField : A special type of
+        `~pyscope.scheduling.Field` that is used to capture dark frames.
+    pyscope.scheduling.FlatField : A special type of
+        `~pyscope.scheduling.Field` that is used to capture flat fields.
+    """
 
-        Parameters
-        ----------
-        string : `str`, required
+    target_uuid: Mapped[Uuid] = mapped_column(
+        ForeignKey("target.uuid"),
+        nullable=False,
+        init=False,
+    )
+    """
+    The UUID of the `~pyscope.scheduling.Target` to observe.
+    See the `target` attribute for more information.
+    """
 
-        Returns
-        -------
-        `~pyscope.telrun.Field` or `list` of `~pyscope.telrun.Field`
+    target: Mapped[Target] = relationship(back_populates="fields")
+    """
+    The `~pyscope.scheduling.Target` to observe. The target contains the data
+    needed to determine the position of the target in the sky.
+    """
 
-        """
-        logger.debug(
-            "Field.from_string(string=%s, target=%s, config=%s, kwargs=%s)"
-            % (string, target, config, kwargs)
-        )
+    exp: Mapped[float] = mapped_column(Float, nullable=False)
+    """
+    The exposure time in seconds for each iteration of the field.
+    """
 
-        logger.debug("Field.from_string() = %s" % field)
+    config_uuid: Mapped[Uuid] = mapped_column(
+        ForeignKey("instrument_configuration.uuid"),
+        nullable=True,
+        init=False,
+    )
+    """
+    The UUID for the `~pyscope.telrun.InstrumentConfiguration`.
+    See the `config` parameter for more information.
+    """
 
-    def __str__(self):
-        """
-        Return a `str` representation of the `~pyscope.telrun.Field`.
+    config: Mapped[InstrumentConfiguration | None] = relationship(
+        back_populates="fields"
+    )
+    """
+    The `~pyscope.telrun.InstrumentConfiguration` to use when observing the
+    target.
 
-        Returns
-        -------
-        `str`
-            A `str` representation of the `~pyscope.telrun.Field`.
+    .. note::
+        This parameter is optional and will default to the
+        value of the `~pyscope.scheduling.ObservingBlock` default
+        `~pyscope.telrun.InstrumentConfiguration` if not specified. It is
+        often useful to set the configuration on the ObservingBlock level
+        and separate the configuration from the field.
 
-        """
-        logger.debug("Field().__str__() = %s" % self)
+    """
 
-    def __repr__(self):
-        """
-        Return a `str` representation of the `~pyscope.telrun.Field`.
+    niter: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    """
+    The number of iterations of this field to perform. This parameter is used
+    to repeat the observation of the field multiple times. For example, if an
+    observer wanted to use multiple exposures to observe a field, they could
+    set this parameter to take those data in a single field instead of creating
+    multiple fields for the same target.
+    """
 
-        Returns
-        -------
-        `str`
-            A `str` representation of the `~pyscope.telrun.Field`.
+    sleep_on_finish: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0
+    )
+    """
+    The amount of time to sleep after the field is completed. This is useful
+    for setting a short delay for specific cadence requirements.
+    """
 
-        """
-        return str(self)
+    __mapper_args__ = {
+        "polymorphic_identity": "field",
+    }
 
-    @property
-    def target(self):
-        """
-        The target field to observe.
-
-        Returns
-        -------
-        `astropy.coordinates.SkyCoord`
-            The target field to observe. If the target has proper motion, ensure
-            that the reference epoch and the proper motions are set.
-
-        """
-        logger.debug("Field().target == %s" % self._target)
-        return self._pointing
-
-    @target.setter
-    def target(self, value):
-        """
-        Set the target field to observe.
-
-        Parameters
-        ----------
-        value : `~astropy.coordinates.SkyCoord`, required
-            The target field to observe. If the target has proper motion, ensure
-            that the reference epoch and the proper motions are set.
-
-        """
-        logger.debug("Field.target = %s" % value)
-        pass
-
-    @property
-    def config(self):
-        """
-        The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
-
-        Returns
-        -------
-        `~pyscope.telrun.InstrumentConfiguration`
-            The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
-
-        """
-        logger.debug("Field().config == %s" % self._config)
-        return self._config
-
-    @config.setter
-    def config(self, value):
-        """
-        Set the instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
-
-        Parameters
-        ----------
-        value : `~pyscope.telrun.InstrumentConfiguration`, required
-            The instrument `~pyscope.telrun.InstrumentConfiguration` to use for the `~pyscope.telrun.Field`.
-
-        """
-        logger.debug("Field().config = %s" % value)
-        pass
-
-    @property
-    def kwargs(self):
-        """
-        Additional keyword arguments to pass to the instrument.
-
-        Returns
-        -------
-        `dict`
-            Additional keyword arguments to pass to the instrument.
-
-        """
-        logger.debug("Field().kwargs == %s" % self._kwargs)
-        return self._kwargs
-
-    @kwargs.setter
-    def kwargs(self, value):
-        """
-        Set additional keyword arguments to pass to the instrument.
-
-        Parameters
-        ----------
-        value : `dict`, required
-            Additional keyword arguments to pass to the instrument.
-
-        """
-        logger.debug("Field().kwargs = %s" % value)
-        pass
-
-    @property
-    def ID(self):
-        """
-        The unique identifier for the `~pyscope.telrun.Field`.
-
-        Returns
-        -------
-        `uuid.UUID`
-            The unique identifier for the `~pyscope.telrun.Field`.
-
-        """
-        logger.debug("Field().ID == %s" % self._uuid)
-        return self._uuid
-
-    @property
-    def est_duration(self):
-        """
-        The estimated duration of the observation. This is estimated based on the
-        properties of the target, the instrument configuration, and the observing
-        conditions by the `~pyscope.observatory.Observatory`.
-
-        Returns
-        -------
-        `~astropy.units.Quantity`
-            The estimated duration of the observation.
-
-        """
-        logger.debug("Field().est_duration == %s" % self._est_duration)
-        return self._est_duration
-
-    @property
-    def exec_status(self):
-        """
-        The execution status of the observation. The status is used to track the
-        progress of the observation through the observation process. The status
-        can be one of the following:
-        - "_U_nscheduled"
-        - "_E_xpired"
-        - "_I_nvalid"
-        - "_B_uilt"
-        - "_Q_ueued"
-        - "_S_cheduled"
-        - "_W_aiting"
-        - "_A_borted"
-        - "_R_unning"
-        - "_F_ailed"
-        - "_P_artially Completed"
-        - "_C_ompleted"
-        These are all also uniquely specified by their first letter as a shorthand.
-
-        Returns
-        -------
-        `str`
-            The execution status of the observation.
-
-        """
-        logger.debug("Field().exec_status == %s" % self._exec_status)
-        return self._exec_status
-
-    @property
-    def exec_start(self):
-        """
-        The actual execution start time of the observation. This is set by the
-        `~pyscope.telrun.TelrunOperator` when the observation begins.
-
-        Returns
-        -------
-        `~astropy.time.Time`
-            The actual execution start time of the observation.
-
-        """
-        logger.debug("Field().exec_start == %s" % self._exec_start)
-        return self._exec_start
-
-    @property
-    def exec_end(self):
-        """
-        The actual execution end time of the observation. This is set by the
-        `~pyscope.telrun.TelrunOperator` when the observation ends.
-
-        Returns
-        -------
-        `~astropy.time.Time`
-            The actual execution end time of the observation.
-
-        """
-        logger.debug("Field().exec_end == %s" % self._exec_end)
-        return self._exec_end
-
-    @property
-    def exec_log(self):
-        """
-        The execution log of the observation. This is a list of `str` messages
-        that are generated by the `~pyscope.telrun.TelrunOperator` instance during
-        the execution of the observation. The log is used to track the progress
-        of the observation and to diagnose any issues in the resulting data that
-        may have occurred during the observation. The log is generated using the
-        Python `logging` module, see the `~pyscope.telrun.TelrunOperator` and the
-        `logging` module documentation for more information.
-
-        Returns
-        -------
-        `list` of `str`
-            The execution log of the observation recorded using the Python `logging` module.
-
-        """
-        logger.debug("Field().exec_log == %s" % self._exec_log)
-        return self._exec_log
+    def __post_init__(self) -> None:
+        logger.debug("_Field = %s" % self.__repr__)

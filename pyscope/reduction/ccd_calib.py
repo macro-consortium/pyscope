@@ -81,7 +81,9 @@ logger = logging.getLogger(__name__)
     default=0,
     help="Print verbose output. 1=verbose. 2=more verbose.",
 )
-@click.argument("fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True))
+@click.argument(
+    "fnames", nargs=-1, type=click.Path(exists=True, resolve_path=True)
+)
 @click.version_option()
 def ccd_calib_cli(
     fnames,
@@ -197,17 +199,17 @@ def ccd_calib_cli(
 
             try:
                 bias_xbin = bias_hdr["XBINNING"]
-            except:
+            except BaseException:
                 bias_xbin = bias_hdr["XBIN"]
 
             try:
                 bias_ybin = bias_hdr["YBINNING"]
-            except:
+            except BaseException:
                 bias_ybin = bias_hdr["YBIN"]
 
             try:
                 bias_gain = bias_hdr["GAIN"]
-            except:
+            except BaseException:
                 bias_gain = ""
 
             logger.debug(f"Bias frame frametype: {bias_frametyp}")
@@ -219,9 +221,9 @@ def ccd_calib_cli(
 
     if dark_frame is not None:
         logger.info(f"Loading dark frame: {dark_frame}")
-        dark, dark_hdr = fits.getdata(dark_frame).astype(np.float64), fits.getheader(
-            dark_frame
-        )
+        dark, dark_hdr = fits.getdata(dark_frame).astype(
+            np.float64
+        ), fits.getheader(dark_frame)
 
         try:
             dark_frametyp = dark_hdr["IMAGETYP"]
@@ -244,17 +246,17 @@ def ccd_calib_cli(
 
         try:
             dark_xbin = dark_hdr["XBINNING"]
-        except:
+        except BaseException:
             dark_xbin = dark_hdr["XBIN"]
 
         try:
             dark_ybin = dark_hdr["YBINNING"]
-        except:
+        except BaseException:
             dark_ybin = dark_hdr["YBIN"]
 
         try:
             dark_gain = dark_hdr["GAIN"]
-        except:
+        except BaseException:
             dark_gain = ""
 
         logger.debug(f"Dark frame frametype: {dark_frametyp}")
@@ -266,15 +268,18 @@ def ccd_calib_cli(
 
     if flat_frame is not None:
         logger.info(f"Loading flat frame: {flat_frame}")
-        flat, flat_hdr = fits.getdata(flat_frame).astype(np.float64), fits.getheader(
-            flat_frame
-        )
+        flat, flat_hdr = fits.getdata(flat_frame).astype(
+            np.float64
+        ), fits.getheader(flat_frame)
 
         try:
             flat_frametyp = flat_hdr["IMAGETYP"]
         except KeyError:
             flat_frametyp = ""
-        if "flat" not in flat_frametyp.lower() and "light" not in flat_frametyp.lower():
+        if (
+            "flat" not in flat_frametyp.lower()
+            and "light" not in flat_frametyp.lower()
+        ):
             logger.warning(
                 f"Flat frame frametype ({flat_frametyp}) does not match 'flat'"
             )
@@ -296,22 +301,22 @@ def ccd_calib_cli(
 
         try:
             flat_xbin = flat_hdr["XBINNING"]
-        except:
+        except BaseException:
             flat_xbin = flat_hdr["XBIN"]
 
         try:
             flat_ybin = flat_hdr["YBINNING"]
-        except:
+        except BaseException:
             flat_ybin = flat_hdr["YBIN"]
 
         try:
             flat_gain = flat_hdr["GAIN"]
-        except:
+        except BaseException:
             flat_gain = ""
 
         try:
             flat_pedestal = flat_hdr["PEDESTAL"]
-        except:
+        except BaseException:
             flat_pedestal = 0
 
         logger.debug(f"Flat frame frametype: {flat_frametyp}")
@@ -326,7 +331,9 @@ def ccd_calib_cli(
 
     for fname in fnames:
         logger.info(f"Calibrating {fname}...")
-        image, hdr = fits.getdata(fname).astype(np.float64), fits.getheader(fname)
+        image, hdr = fits.getdata(fname).astype(np.float64), fits.getheader(
+            fname
+        )
 
         if "CALSTAT" in hdr.keys():
             if hdr["CALSTAT"]:
@@ -362,17 +369,17 @@ def ccd_calib_cli(
 
         try:
             image_xbin = hdr["XBINNING"]
-        except:
+        except BaseException:
             image_xbin = hdr["XBIN"]
 
         try:
             image_ybin = hdr["YBINNING"]
-        except:
+        except BaseException:
             image_ybin = hdr["YBIN"]
 
         try:
             image_gain = hdr["GAIN"]
-        except:
+        except BaseException:
             image_gain = ""
 
         logger.debug(f"Image readout mode: {image_readout_mode}")
@@ -507,12 +514,19 @@ def ccd_calib_cli(
         if flat_frame is not None:
             logger.info("Checking if flat frame has a pedestal...")
             if "PEDESTAL" in flat_hdr:
-                logger.info(f"Pedestal keyword found, value: {flat_hdr['PEDESTAL']}")
+                logger.info(
+                    f"Pedestal keyword found, value: {
+                        flat_hdr['PEDESTAL']}"
+                )
                 flat_pedestal = flat_hdr["PEDESTAL"]
-                logger.info(f"Subtracting pedestal of {flat_pedestal} from flat frame.")
+                logger.info(
+                    f"Subtracting pedestal of {flat_pedestal} from flat frame."
+                )
                 flat = np.subtract(flat, flat_pedestal)
 
-            logger.info("Normalizing the flat frame by the mean of the entire image.")
+            logger.info(
+                "Normalizing the flat frame by the mean of the entire image."
+            )
             flat_mean = np.mean(flat)
             logger.info(f"flat_mean: {flat_mean}")
             flat = np.divide(flat, flat_mean)
@@ -535,7 +549,8 @@ def ccd_calib_cli(
             )
             t = time.time() - t0
             hdr.add_comment(
-                f"Removed hot pixels using astroscrappy, {astro_scrappy[0]} iterations"
+                f"Removed hot pixels using astroscrappy, {
+                    astro_scrappy[0]} iterations"
             )
             hdr.add_comment("Hot pixel removal took %.1f seconds" % t)
             logger.debug(f"Hot pixel removal took {t} seconds")

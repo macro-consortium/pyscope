@@ -33,12 +33,15 @@ def test_telrun_operator(tmp_path):
 
     # create a new observatory
     obs = Observatory(
-        config_path="./tests/bin/simulator_observatory.cfg", longitude=new_longitude
+        config_path="./tests/bin/simulator_observatory.cfg",
+        longitude=new_longitude,
     )
     obs.telescope.Unpark()
 
     # get the local sidereal time
-    lst = obs.observatory_time.sidereal_time("apparent", longitude=obs.longitude)
+    lst = obs.observatory_time.sidereal_time(
+        "apparent", longitude=obs.longitude
+    )
     lst -= 35 / (60 * 60) * u.hourangle  # 35 seconds before the next LST
 
     # create a telrun operator
@@ -77,7 +80,9 @@ def test_telrun_operator(tmp_path):
             },
         ),
         ObservingBlock(
-            target=coord.SkyCoord(ra=lst.to(u.hourangle), dec=obs.latitude + 1 * u.deg),
+            target=coord.SkyCoord(
+                ra=lst.to(u.hourangle), dec=obs.latitude + 1 * u.deg
+            ),
             duration=1 * u.minute,
             priority=1,
             name="Test Obs",

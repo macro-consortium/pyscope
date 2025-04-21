@@ -160,11 +160,19 @@ def reduce_calibration_set_cli(
             name_str = str(flat_set.name).split("_")
 
             matching_dark = list(
-                calibration_set.glob(f"master_dark_{name_str[2]}_{name_str[3]}*.fts")
+                calibration_set.glob(
+                    f"master_dark_{
+                        name_str[2]}_{
+                        name_str[3]}*.fts"
+                )
             )
             matching_dark = matching_dark[0] if matching_dark else None
             matching_bias = list(
-                calibration_set.glob(f"master_bias_{name_str[2]}_{name_str[3]}*.fts")
+                calibration_set.glob(
+                    f"master_bias_{
+                        name_str[2]}_{
+                        name_str[3]}*.fts"
+                )
             )
             matching_bias = matching_bias[0] if matching_bias else None
 
@@ -184,7 +192,9 @@ def reduce_calibration_set_cli(
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
-                / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),
+                / (
+                    str(flat_set.name).replace("flats", "master_flat") + ".fts"
+                ),
             )
 
         elif camera == "cmos":
@@ -193,7 +203,10 @@ def reduce_calibration_set_cli(
 
             matching_dark = list(
                 calibration_set.glob(
-                    f"master_dark_{name_str[2]}_{name_str[3]}_{name_str[4]}*.fts"
+                    f"master_dark_{
+                        name_str[2]}_{
+                        name_str[3]}_{
+                        name_str[4]}*.fts"
                 )
             )
             matching_dark = matching_dark[0] if matching_dark else None
@@ -210,7 +223,9 @@ def reduce_calibration_set_cli(
                 mode=mode,
                 pre_normalize=pre_normalize,
                 outfile=calibration_set
-                / (str(flat_set.name).replace("flats", "master_flat") + ".fts"),
+                / (
+                    str(flat_set.name).replace("flats", "master_flat") + ".fts"
+                ),
             )
 
     logger.info("Calibration set reduction complete.")

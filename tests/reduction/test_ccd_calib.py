@@ -1,9 +1,9 @@
-## make image with ccdproc
-## calibrate with ccdproc
-## calibrate with ccd_calib
-## take difference
-## if equal, then it passes the test
-## Follow guideline Will sent
+# make image with ccdproc
+# calibrate with ccdproc
+# calibrate with ccd_calib
+# take difference
+# if equal, then it passes the test
+# Follow guideline Will sent
 
 import os
 import shutil
@@ -60,15 +60,17 @@ def test_ccd_calib(tmp_path):
 
     print("creating bias image...")
     # bias image
-    bias_with_noise = imsim.bias(image, bias_level, realistic=True) + imsim.read_noise(
-        image, read_noise_electrons, gain=gain
-    )
+    bias_with_noise = imsim.bias(
+        image, bias_level, realistic=True
+    ) + imsim.read_noise(image, read_noise_electrons, gain=gain)
     fits.writeto(
         os.path.join(tmp_path, "master", "bias", "master-bias.fts"),
         bias_with_noise,
         overwrite=True,
     )
-    header = fits.getheader(os.path.join(tmp_path, "master", "bias", "master-bias.fts"))
+    header = fits.getheader(
+        os.path.join(tmp_path, "master", "bias", "master-bias.fts")
+    )
     header["READOUT"] = "highgain"
     header["EXPOSURE"] = 0.0
     header["XBIN"] = "1"
@@ -80,14 +82,21 @@ def test_ccd_calib(tmp_path):
         overwrite=True,
     )
     print(
-        f'bias image created: {os.path.join(tmp_path, "master", "bias", "master-bias.fts")}'
+        f'bias image created: {
+            os.path.join(
+                tmp_path,
+                "master",
+                "bias",
+                "master-bias.fts")}'
     )
 
     print("creating dark image...")
     # dark frame
     dark_frame_with_noise = (
         imsim.bias(image, bias_level, realistic=True)
-        + imsim.dark_current(image, dark, dark_exposure, gain=gain, hot_pixels=True)
+        + imsim.dark_current(
+            image, dark, dark_exposure, gain=gain, hot_pixels=True
+        )
         + imsim.read_noise(image, read_noise_electrons, gain=gain)
     )
     fits.writeto(
@@ -95,7 +104,9 @@ def test_ccd_calib(tmp_path):
         dark_frame_with_noise,
         overwrite=True,
     )
-    header = fits.getheader(os.path.join(tmp_path, "master", "dark", "master-dark.fts"))
+    header = fits.getheader(
+        os.path.join(tmp_path, "master", "dark", "master-dark.fts")
+    )
     header["READOUT"] = "highgain"
     header["EXPOSURE"] = 60.0
     header["XBIN"] = "1"
@@ -107,7 +118,12 @@ def test_ccd_calib(tmp_path):
         overwrite=True,
     )
     print(
-        f'dark image created: {os.path.join(tmp_path, "master", "dark", "master-dark.fts")}'
+        f'dark image created: {
+            os.path.join(
+                tmp_path,
+                "master",
+                "dark",
+                "master-dark.fts")}'
     )
 
     print("creating flat image...")
@@ -118,7 +134,9 @@ def test_ccd_calib(tmp_path):
         flat,
         overwrite=True,
     )
-    header = fits.getheader(os.path.join(tmp_path, "master", "flat", "master-flat.fts"))
+    header = fits.getheader(
+        os.path.join(tmp_path, "master", "flat", "master-flat.fts")
+    )
     header["READOUT"] = "highgain"
     header["EXPOSURE"] = 60.0
     header["XBIN"] = "1"
@@ -130,19 +148,28 @@ def test_ccd_calib(tmp_path):
         overwrite=True,
     )
     print(
-        f'flat image created: {os.path.join(tmp_path, "master", "flat", "master-flat.fts")}'
+        f'flat image created: {
+            os.path.join(
+                tmp_path,
+                "master",
+                "flat",
+                "master-flat.fts")}'
     )
 
     print("creating raw image...")
     # raw image
     realistic_stars = (
         imsim.stars(image, 50, max_counts=max_star_counts)
-        + imsim.dark_current(image, dark, star_exposure, gain=gain, hot_pixels=True)
+        + imsim.dark_current(
+            image, dark, star_exposure, gain=gain, hot_pixels=True
+        )
         + imsim.bias(image, bias_level, realistic=True)
         + imsim.read_noise(image, read_noise_electrons, gain=gain)
     )
     fits.writeto(
-        os.path.join(tmp_path, "raw", "raw-image.fts"), realistic_stars, overwrite=True
+        os.path.join(tmp_path, "raw", "raw-image.fts"),
+        realistic_stars,
+        overwrite=True,
     )
     header = fits.getheader(os.path.join(tmp_path, "raw", "raw-image.fts"))
     header["READOUT"] = "highgain"
@@ -155,19 +182,29 @@ def test_ccd_calib(tmp_path):
         header=header,
         overwrite=True,
     )
-    print(f'raw image created: {os.path.join(tmp_path, "raw", "raw-image.fts")}')
+    print(
+        f'raw image created: {
+            os.path.join(
+                tmp_path,
+                "raw",
+                "raw-image.fts")}'
+    )
 
     # calibrated image
     print("creating calibrated image with astropy...")
     scaled_dark_current = (
-        star_exposure * (dark_frame_with_noise - bias_with_noise) / dark_exposure
+        star_exposure
+        * (dark_frame_with_noise - bias_with_noise)
+        / dark_exposure
     )
     print(f"scaled dark current: {scaled_dark_current}")
     print(f"star exposure: {star_exposure}")
     print(f"dark frame: {dark_frame_with_noise}")
     print(f"bias with noise: {bias_with_noise}")
     print(f"dark exposure: {dark_exposure}")
-    calibrated_stars = (realistic_stars - bias_with_noise - scaled_dark_current) / flat
+    calibrated_stars = (
+        realistic_stars - bias_with_noise - scaled_dark_current
+    ) / flat
     fits.writeto(
         os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts"),
         calibrated_stars,
@@ -181,13 +218,19 @@ def test_ccd_calib(tmp_path):
     header["XBIN"] = "1"
     header["YBIN"] = "1"
     fits.writeto(
-        filename=os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts"),
+        filename=os.path.join(
+            tmp_path, "calibrated", "astropy-calibrated-image.fts"
+        ),
         data=calibrated_stars,
         header=header,
         overwrite=True,
     )
     print(
-        f'calibrated image created: {os.path.join(tmp_path, "calibrated", "astropy-calibrated-image.fts")}'
+        f'calibrated image created: {
+            os.path.join(
+                tmp_path,
+                "calibrated",
+                "astropy-calibrated-image.fts")}'
     )
 
     print("running ccd_calib...")
@@ -205,7 +248,9 @@ def test_ccd_calib(tmp_path):
     print("comparing raw images...")
     print("-" * 50)
     print()
-    ccd_float32 = fits.getdata(os.path.join(tmp_path, "raw", "raw-image_float32.fts"))
+    ccd_float32 = fits.getdata(
+        os.path.join(tmp_path, "raw", "raw-image_float32.fts")
+    )
     print(f"ccd_float32: {ccd_float32}")
     print()
     print(f"realistic_stars: {realistic_stars}")
@@ -249,7 +294,8 @@ def test_ccd_calib(tmp_path):
     print(f"ccd_bias_dark_subtracted: {ccd_bias_dark_subtracted}")
     print()
     print(
-        f"astropy bias and dark subtracted: {realistic_stars - bias_with_noise - scaled_dark_current}"
+        f"astropy bias and dark subtracted: {
+            realistic_stars - bias_with_noise - scaled_dark_current}"
     )
     diff = ccd_bias_dark_subtracted - (
         realistic_stars - bias_with_noise - scaled_dark_current
@@ -288,10 +334,13 @@ def test_ccd_calib(tmp_path):
     ccd_calib_flat_bias_dark_subtracted = fits.getdata(
         os.path.join(tmp_path, "raw", "raw-image_flat_bias_dark_sub.fts")
     )
-    print(f"ccd_calib_flat_bias_dark_subtracted: {ccd_calib_flat_bias_dark_subtracted}")
+    print(
+        f"ccd_calib_flat_bias_dark_subtracted: {ccd_calib_flat_bias_dark_subtracted}"
+    )
     print()
     print(
-        f"astropy dark and bias subtracted: {flat - bias_with_noise - scaled_dark_current}"
+        f"astropy dark and bias subtracted: {
+            flat - bias_with_noise - scaled_dark_current}"
     )
     diff = ccd_calib_flat_bias_dark_subtracted - (
         flat - bias_with_noise - scaled_dark_current

@@ -16,7 +16,12 @@ from .telrun_operator import TelrunOperator
     "path", type=click.Path(resolve_path=True), default="./", required=False
 )
 @click.option(
-    "-g", "--gui", is_flag=True, default=True, show_default=True, help="Start the GUI"
+    "-g",
+    "--gui",
+    is_flag=True,
+    default=True,
+    show_default=True,
+    help="Start the GUI",
 )
 @click.version_option()
 def start_telrun_operator_cli(path="./", gui=True):

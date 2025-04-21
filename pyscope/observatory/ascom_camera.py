@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMCamera(ASCOMDevice, Camera):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
         """
         Provides the `ASCOMCamera` class for controlling `ASCOM <https://ascom-standards.org/About/Overview.htm>`_-compatible cameras.
 
@@ -69,7 +71,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
                 self._image_data_type = np.uint16
             else:
                 self._image_data_type = np.uint32
-        except:
+        except BaseException:
             self._image_data_type = np.uint16
 
     def PulseGuide(self, Direction, Duration):
@@ -392,7 +394,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
         support the property """
         return (
             last_time
-            if last_time != "" and last_time != None
+            if last_time != "" and last_time is not None
             else self._last_exposure_start_time
         )
 
@@ -404,7 +406,9 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @LastInputExposureDuration.setter
     def LastInputExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.LastInputExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.LastInputExposureDuration property set to {value}"
+        )
         self._last_exposure_duration = value
 
     @property
@@ -556,5 +560,7 @@ class ASCOMCamera(ASCOMDevice, Camera):
 
     @SubExposureDuration.setter
     def SubExposureDuration(self, value):
-        logger.debug(f"ASCOMCamera.SubExposureDuration property set to {value}")
+        logger.debug(
+            f"ASCOMCamera.SubExposureDuration property set to {value}"
+        )
         self._device.SubExposureDuration = value
