@@ -8,7 +8,7 @@ click == 8.1.8
 cmcrameri == 1.9
 markdown == 3.6
 matplotlib == 3.10.0
-numpy == 2.1.2
+numpy == 2.2.3
 oschmod == 0.3.12
 pandas == 2.2.3
 paramiko == 3.5.1
@@ -19,7 +19,7 @@ scikit-image == 0.25.1
 scipy == 1.14.1
 smplotlib == 0.0.9
 sqlalchemy == 2.0.37
-timezonefinder == 6.5.2
+timezonefinder == 6.5.9
 tqdm == 4.66.5
 # twirl == 0.4.2
 zwoasi == 0.2.0;platform_system=='Windows'
