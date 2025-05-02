@@ -20,6 +20,6 @@ scipy == 1.14.1
 smplotlib == 0.0.9
 sqlalchemy == 2.0.37
 timezonefinder == 6.5.9
-tqdm == 4.66.5
+tqdm == 4.67.1
 # twirl == 0.4.2
 zwoasi == 0.2.0;platform_system=='Windows'
