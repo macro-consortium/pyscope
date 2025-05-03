@@ -31,20 +31,20 @@ def blocks_to_table(observing_blocks):
 
     unscheduled_blocks_mask = np.array(
         [
-            hasattr(block, "target") and block.start_time is None
+            "target" in block and block["start_time"] is None
             for block in observing_blocks
         ]
     )
 
     open_slots_mask = np.array(
-        [not hasattr(block, "target") for block in observing_blocks]
+        [not "target" in block for block in observing_blocks]
     )
 
     t["ID"] = np.ma.array(
         [
             (
-                block.configuration["ID"]
-                if hasattr(block, "target")
+                block["ID"]
+                if "target" in block
                 else astrotime.Time.now().mjd
             )
             for block in observing_blocks
@@ -55,8 +55,8 @@ def blocks_to_table(observing_blocks):
     # Populate simple columns
     t["name"] = [
         (
-            block.name
-            if hasattr(block, "target")
+            block["name"]
+            if "target" in block
             else (
                 "TransitionBlock" if type(block) is not astroplan.Slot else "EmptyBlock"
             )
@@ -70,7 +70,7 @@ def blocks_to_table(observing_blocks):
                 (
                     block.start.mjd
                     if type(block) is astroplan.Slot
-                    else 0 if block.start_time is None else block.start_time.mjd
+                    else 0 if block["start_time"] is None else block["start_time"].mjd
                 )
                 for block in observing_blocks
             ],
@@ -85,7 +85,7 @@ def blocks_to_table(observing_blocks):
                 (
                     block.end.mjd
                     if type(block) is astroplan.Slot
-                    else 0 if block.end_time is None else block.end_time.mjd
+                    else 0 if block["end_time"] is None else block["end_time"].mjd
                 )
                 for block in observing_blocks
             ],
@@ -97,8 +97,8 @@ def blocks_to_table(observing_blocks):
     t["target"] = coord.SkyCoord(
         [
             (
-                block.target.to_string("hmsdms")
-                if hasattr(block, "target")
+                block["target"].to_string("hmsdms")
+                if "target" in block
                 else "0h0m0.0s -90d0m0.0s"
             )
             for block in observing_blocks
@@ -107,14 +107,14 @@ def blocks_to_table(observing_blocks):
 
     t["priority"] = np.ma.array(
         [
-            block.priority if hasattr(block, "target") else 0
+            block["priority"] if "target" in block else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["observer"] if hasattr(block, "target") else [""]
+        block["observer"] if "target" in block else [""]
         for block in observing_blocks
     ]
     t["observer"] = np.ma.array(
@@ -123,7 +123,7 @@ def blocks_to_table(observing_blocks):
 
     t["code"] = np.ma.array(
         [
-            block.configuration["code"] if hasattr(block, "target") else ""
+            block["code"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -131,7 +131,7 @@ def blocks_to_table(observing_blocks):
 
     t["title"] = np.ma.array(
         [
-            block.configuration["title"] if hasattr(block, "target") else ""
+            block["title"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -139,7 +139,7 @@ def blocks_to_table(observing_blocks):
 
     t["filename"] = np.ma.array(
         [
-            block.configuration["filename"] if hasattr(block, "target") else ""
+            block["filename"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -147,7 +147,7 @@ def blocks_to_table(observing_blocks):
 
     t["type"] = np.ma.array(
         [
-            block.configuration["type"] if hasattr(block, "target") else ""
+            block["type"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -155,7 +155,7 @@ def blocks_to_table(observing_blocks):
 
     t["backend"] = np.ma.array(
         [
-            block.configuration["backend"] if hasattr(block, "target") else ""
+            block["backend"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -163,7 +163,7 @@ def blocks_to_table(observing_blocks):
 
     t["filter"] = np.ma.array(
         [
-            block.configuration["filter"] if hasattr(block, "target") else ""
+            block["filter"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -171,22 +171,22 @@ def blocks_to_table(observing_blocks):
 
     t["exposure"] = np.ma.array(
         [
-            block.configuration["exposure"] if hasattr(block, "target") else 0
+            block["exposure"] if "target" in block else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
-
+    
     t["nexp"] = np.ma.array(
         [
-            block.configuration["nexp"] if hasattr(block, "target") else 0
+            block["nexp"] if "target" in block else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["repositioning"] if hasattr(block, "target") else (0, 0)
+        block["repositioning"] if "target" in block else (0, 0)
         for block in observing_blocks
     ]
     t["repositioning"] = np.ma.array(
@@ -195,7 +195,7 @@ def blocks_to_table(observing_blocks):
 
     t["shutter_state"] = np.ma.array(
         [
-            block.configuration["shutter_state"] if hasattr(block, "target") else False
+            block["shutter_state"] if "target" in block else False
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -203,14 +203,14 @@ def blocks_to_table(observing_blocks):
 
     t["readout"] = np.ma.array(
         [
-            block.configuration["readout"] if hasattr(block, "target") else 0
+            block["readout"] if "target" in block else 0
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
     temp_list = [
-        block.configuration["binning"] if hasattr(block, "target") else (1, 1)
+        block["binning"] if "target" in block else (1, 1)
         for block in observing_blocks
     ]
     t["binning"] = np.ma.array(
@@ -218,7 +218,7 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_position"] if hasattr(block, "target") else (0, 0)
+        block["frame_position"] if "target" in block else (0, 0)
         for block in observing_blocks
     ]
     t["frame_position"] = np.ma.array(
@@ -226,7 +226,7 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_size"] if hasattr(block, "target") else (0, 0)
+        block["frame_size"] if "target" in block else (0, 0)
         for block in observing_blocks
     ]
     t["frame_size"] = np.ma.array(
@@ -236,8 +236,8 @@ def blocks_to_table(observing_blocks):
     t["pm_ra_cosdec"] = np.ma.array(
         [
             (
-                block.configuration["pm_ra_cosdec"].to(u.arcsec / u.hour).value
-                if hasattr(block, "target")
+                block["pm_ra_cosdec"].to(u.arcsec / u.hour).value
+                if "target" in block
                 else 0
             )
             for block in observing_blocks
@@ -248,8 +248,8 @@ def blocks_to_table(observing_blocks):
     t["pm_dec"] = np.ma.array(
         [
             (
-                block.configuration["pm_dec"].to(u.arcsec / u.hour).value
-                if hasattr(block, "target")
+                block["pm_dec"].to(u.arcsec / u.hour).value
+                if "target" in block
                 else 0
             )
             for block in observing_blocks
@@ -259,7 +259,7 @@ def blocks_to_table(observing_blocks):
 
     t["comment"] = np.ma.array(
         [
-            block.configuration["comment"] if hasattr(block, "target") else ""
+            block["comment"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -267,7 +267,7 @@ def blocks_to_table(observing_blocks):
 
     t["sch"] = np.ma.array(
         [
-            block.configuration["sch"] if hasattr(block, "target") else ""
+            block["sch"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -275,7 +275,7 @@ def blocks_to_table(observing_blocks):
 
     t["status"] = np.ma.array(
         [
-            block.configuration["status"] if hasattr(block, "target") else ""
+            block["status"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -283,7 +283,7 @@ def blocks_to_table(observing_blocks):
 
     t["message"] = np.ma.array(
         [
-            block.configuration["message"] if hasattr(block, "target") else ""
+            block["message"] if "target" in block else ""
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -291,117 +291,118 @@ def blocks_to_table(observing_blocks):
 
     t["sched_time"] = np.ma.array(
         [
-            (block.configuration["sched_time"].mjd if hasattr(block, "target") else 0)
+            (block["sched_time"].mjd if "target" in block else 0)
             for block in observing_blocks
         ],
         mask=open_slots_mask,
     )
 
-    # Turn the constraints into a list of dicts
-    constraints = np.full(
-        (
-            len(observing_blocks),
-            np.max(
-                [
-                    (
-                        len(block.constraints)
-                        if hasattr(block, "target") and block.constraints is not None
-                        else 0
-                    )
-                    for block in observing_blocks
-                ]
-            ),
-        ),
-        dict(),
-    )
-    for block_num, block in enumerate(observing_blocks):
-        constraint_list = np.full(
-            np.max(
-                [
-                    (
-                        len(block.constraints)
-                        if hasattr(block, "target") and block.constraints is not None
-                        else 0
-                    )
-                    for block in observing_blocks
-                ]
-            ),
-            dict(),
-        )
-        if hasattr(block, "target") and block.constraints is not None:
-            for constraint_num, constraint in enumerate(block.constraints):
-                if type(constraint) is astroplan.TimeConstraint:
-                    constraint_dict = {
-                        "type": "TimeConstraint",
-                        "min": (
-                            constraint.min.isot if constraint.min is not None else None
-                        ),
-                        "max": (
-                            constraint.max.isot if constraint.max is not None else None
-                        ),
-                    }
-                elif type(constraint) is astroplan.AtNightConstraint:
-                    constraint_dict = {
-                        "type": "AtNightConstraint",
-                        "max_solar_altitude": (
-                            constraint.max_solar_altitude.to(u.deg).value
-                            if constraint.max_solar_altitude is not None
-                            else 0
-                        ),
-                    }
-                elif type(constraint) is astroplan.AltitudeConstraint:
-                    constraint_dict = {
-                        "type": "AltitudeConstraint",
-                        "min": (
-                            constraint.min.to(u.deg).value
-                            if constraint.min is not None
-                            else 0
-                        ),
-                        "max": (
-                            constraint.max.to(u.deg).value
-                            if constraint.max is not None
-                            else 90
-                        ),
-                        "boolean_constraint": constraint.boolean_constraint,
-                    }
-                elif type(constraint) is astroplan.AirmassConstraint:
-                    constraint_dict = {
-                        "type": "AirmassConstraint",
-                        "min": constraint.min if constraint.min is not None else 0,
-                        "max": constraint.max if constraint.max is not None else 100,
-                        "boolean_constraint": (
-                            constraint.boolean_constraint
-                            if constraint.boolean_constraint is not None
-                            else False
-                        ),
-                    }
-                elif type(constraint) is astroplan.MoonSeparationConstraint:
-                    constraint_dict = {
-                        "type": "MoonSeparationConstraint",
-                        "min": (
-                            constraint.min.to(u.deg).value
-                            if constraint.min is not None
-                            else 0
-                        ),
-                        "max": (
-                            constraint.max.to(u.deg).value
-                            if constraint.max is not None
-                            else 360
-                        ),
-                    }
-                elif constraint is None:
-                    continue
-                else:
-                    logger.warning(
-                        f"Constraint {constraint} is not supported and will be ignored"
-                    )
-                    continue
-                constraint_list[constraint_num] = constraint_dict
-        constraints[block_num] = constraint_list
+    # # Turn the constraints into a list of dicts
+    # constraints = np.full(
+    #     (
+    #         len(observing_blocks),
+    #         np.max(
+    #             [
+    #                 (
+    #                     len(block)
+    #                     if "target" in block and block is not None
+    #                     else 0
+    #                 )
+    #                 for block in observing_blocks
+    #             ]
+    #         ),
+    #     ),
+    #     dict(),
+    # )
+    # for block_num, block in enumerate(observing_blocks):
+    #     constraint_list = np.full(
+    #         np.max(
+    #             [
+    #                 (
+    #                     len(block)
+    #                     if "target" in block and block is not None
+    #                     else 0
+    #                 )
+    #                 for block in observing_blocks
+    #             ]
+    #         ),
+    #         dict(),
+    #     )
+    #     if "target" in block and block is not None:
+    #         for constraint_num, constraint in enumerate(block):
+    #             if type(constraint) is astroplan.TimeConstraint:
+    #                 constraint_dict = {
+    #                     "type": "TimeConstraint",
+    #                     "min": (
+    #                         constraint.min.isot if constraint.min is not None else None
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.isot if constraint.max is not None else None
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.AtNightConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AtNightConstraint",
+    #                     "max_solar_altitude": (
+    #                         constraint.max_solar_altitude.to(u.deg).value
+    #                         if constraint.max_solar_altitude is not None
+    #                         else 0
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.AltitudeConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AltitudeConstraint",
+    #                     "min": (
+    #                         constraint.min.to(u.deg).value
+    #                         if constraint.min is not None
+    #                         else 0
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.to(u.deg).value
+    #                         if constraint.max is not None
+    #                         else 90
+    #                     ),
+    #                     "boolean_constraint": constraint.boolean_constraint,
+    #                 }
+    #             elif type(constraint) is astroplan.AirmassConstraint:
+    #                 constraint_dict = {
+    #                     "type": "AirmassConstraint",
+    #                     "min": constraint.min if constraint.min is not None else 0,
+    #                     "max": constraint.max if constraint.max is not None else 100,
+    #                     "boolean_constraint": (
+    #                         constraint.boolean_constraint
+    #                         if constraint.boolean_constraint is not None
+    #                         else False
+    #                     ),
+    #                 }
+    #             elif type(constraint) is astroplan.MoonSeparationConstraint:
+    #                 constraint_dict = {
+    #                     "type": "MoonSeparationConstraint",
+    #                     "min": (
+    #                         constraint.min.to(u.deg).value
+    #                         if constraint.min is not None
+    #                         else 0
+    #                     ),
+    #                     "max": (
+    #                         constraint.max.to(u.deg).value
+    #                         if constraint.max is not None
+    #                         else 360
+    #                     ),
+    #                 }
+    #             elif constraint is None:
+    #                 continue
+    #             else:
+    #                 logger.warning(
+    #                     f"Constraint {constraint} is not supported and will be ignored"
+    #                 )
+    #                 continue
+    
+    #             constraint_list[constraint_num] = constraint_dict
+    #     constraints[block_num] = constraint_list
 
-    t["constraints"] = np.ma.array(
-        constraints, mask=_mask_expander(constraints, open_slots_mask)
-    )
+    # t["constraints"] = np.ma.array(
+    #     constraints, mask=_mask_expander(constraints, open_slots_mask)
+    # )
 
     t.add_index("ID", unique=True)
 

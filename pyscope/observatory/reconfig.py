@@ -3,6 +3,7 @@
 import configparser
 from astropy.coordinates import HADec
 import astropy.units as u
+from astroplan import Observer
 
 
 class ReconfigConfigs:
@@ -54,7 +55,7 @@ class ReconfigConfigs:
         self.telescope = Telescope(config)
         self.camera = Camera(config)
         self.focuser = Focuser(config)
-        self.other = AuxiliarySystems(config)
+        self.aux = AuxiliarySystems(config)
 
     def calc_reconfig_time_blocks(
         self, first_block, second_block, location, simultaneous=False, verbose=False
@@ -68,6 +69,12 @@ class ReconfigConfigs:
         simultaneous (bool): Whether to perform the reconfiguration tasks simultaneously
         """
         # Calculate the reconfiguration time for the telescope
+        # Should we reposition?
+        try:
+            repositioning = not (second_block["repositioning"] == (0,0))
+        except AttributeError:
+            repositioning = not (second_block["repositioning"].data == [0,0]).all()
+
         reconfig_time = self.calc_reconfig_time(
             first_block["target"],
             second_block["target"],
@@ -75,6 +82,7 @@ class ReconfigConfigs:
             obs_time=first_block["start_time"],
             current_filter_pos=first_block["filter"],
             target_filter_pos=second_block["filter"],
+            repositioning=repositioning,
             simultaneous=simultaneous,
             verbose=verbose
         )
@@ -89,6 +97,7 @@ class ReconfigConfigs:
         obs_time=None,
         current_filter_pos=None,
         target_filter_pos=None,
+        repositioning=False,
         simultaneous=False,
         verbose=False
     ):
@@ -103,15 +112,31 @@ class ReconfigConfigs:
         current_filter_pos (int): The current filter wheel position
         target_filter_pos (int): The target filter wheel position
         simultaneous (bool): Whether to perform the reconfiguration tasks simultaneously
+        verbose (bool): Whether to print the reconfiguration times for each component
+
+        Returns
+        -------
+        reconfig_time (float): The total reconfiguration time in seconds
         """
+        # If obs_location is not an EarthLocation, convert it to one
+        if isinstance(obs_location, Observer):
+            if verbose:
+                print(f"Is Observer: {obs_location}")
+            obs_location = obs_location.location
+
         # Calculate the slew time for the telescope
-        slew_time = self.telescope.calc_slew_time_skycoord(
-            current_coords,
-            target_coords,
-            obs_location=obs_location,
-            obs_time=obs_time,
-            return_quantity=True,
-        )
+        # If current coords and target coords are the same, 
+        # the slew time is 0.0 seconds
+        if current_coords == target_coords:
+            slew_time = 0.0 * u.s
+        else:
+            slew_time = self.telescope.calc_slew_time_skycoord(
+                current_coords,
+                target_coords,
+                obs_location=obs_location,
+                obs_time=obs_time,
+                return_quantity=True,
+            )
 
         # Calculate the filter wheel change time
         filter_change_time = 0.0 * u.s
@@ -132,7 +157,10 @@ class ReconfigConfigs:
 
         # Calculate other overhead time
         other_overhead_time = 0.0 * u.s
-
+        other_overhead_time += self.aux.pad_time
+        if repositioning:
+            other_overhead_time += self.aux.repositioning_time
+        
         # Print the reconfiguration times for each component
         if verbose:
             print("Reconfiguration Times:")
@@ -468,7 +496,7 @@ class Focuser:
     """A class to store focuser configuration parameters"""
 
     def __init__(self, config):
-        self.units = config.get("focuser", "units", fallback="steps")
+        self.units = config.get("focuser", "units", fallback="micron")
         if "micron" in self.units:
             self.units = "micron"
         self.speed = config.getfloat("focuser", "speed", fallback=0.0) / u.s
@@ -541,8 +569,11 @@ class AuxiliarySystems:
     """A class to store other configuration parameters"""
 
     def __init__(self, config):
-        self.dome_open_time = config.getfloat("other", "dome_open_time", fallback=0.0)
-        self.dome_close_time = config.getfloat("other", "dome_close_time", fallback=0.0)
+        self.dome_open_time = config.getfloat("other", "dome_open_time", fallback=0.0) * u.s
+        self.dome_close_time = config.getfloat("other", "dome_close_time", fallback=0.0) * u.s
+        self.repositioning_time = config.getfloat("other", "repositioning_time", fallback=0.0) * u.s
+        self.pad_time = config.getfloat("other", "pad_time", fallback=0.0) * u.s
+
 
     def calc_dome_open_time(self):
         """Calculate the time to open the dome"""
@@ -551,3 +582,13 @@ class AuxiliarySystems:
     def calc_dome_close_time(self):
         """Calculate the time to close the dome"""
         return self.dome_close_time
+    
+    def calc_repositioning_time(self):
+        """Calculate the time to reposition the telescope"""
+        return self.repositioning_time
+    
+    def calc_pad_time(self):
+        """Calculate the padding time to add to each observation"""
+        return self.pad_time
+    
+
