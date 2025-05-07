@@ -198,7 +198,7 @@ def process_image(img):
                 calib_dir=CALIB_DIR,
                 raw_archive_dir=LANDING_DIR / "raw_archive",
                 in_place=True,
-                zmag=True,
+                zmag=False,
                 verbose=0,
                 fnames=(img,),
             )
