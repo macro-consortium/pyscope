@@ -18,6 +18,7 @@ Environment="PATH=/opt/miniforge3/bin:/usr/local/telescope/bin:/usr/local/bin:/u
 [Install]
 WantedBy=multi-user.target
 
+test
 """
 
 import datetime as dt
@@ -34,7 +35,8 @@ from astropy.io import fits
 from pyscope.reduction.calib_images import calib_images
 
 # observatory home - TODO get from environment?
-OBSERVATORY_HOME = Path("/usr/local/telescope/rlmt")
+#OBSERVATORY_HOME = Path("/usr/local/telescope/rlmt")
+OBSERVATORY_HOME = Path("/mnt/ExtraImages/telescope/rlmt")
 
 # directory where raw images arrive
 LANDING_DIR = Path(OBSERVATORY_HOME, "images")
@@ -156,7 +158,7 @@ def process_image(img):
                 calib_dir=CALIB_DIR,
                 raw_archive_dir=LANDING_DIR / "raw_archive",
                 in_place=True,
-                zmag=True,
+                zmag=False,
                 verbose=0,
                 fnames=(img,),
             )
