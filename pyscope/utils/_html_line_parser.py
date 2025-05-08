@@ -28,7 +28,8 @@ def _get_number_from_line(line, expected_keyword, expected_units, is_numeric):
 
     line = line[4:-3]  # Strip off beginning and ending comment characters
 
-    fields = line.split(b"=", 1)  # Split into at most two fields (keyword and value)
+    # Split into at most two fields (keyword and value)
+    fields = line.split(b"=", 1)
     if len(fields) != 2:
         return None
 
@@ -44,12 +45,14 @@ def _get_number_from_line(line, expected_keyword, expected_units, is_numeric):
 
     if line_keyword != bytes(expected_keyword, "utf-8"):
         return None
-    if expected_units is not None and line_units != bytes(expected_units, "utf-8"):
+    if expected_units is not None and line_units != bytes(
+        expected_units, "utf-8"
+    ):
         return None
     if is_numeric:
         try:
             return float(line_value)
-        except:
+        except BaseException:
             return None
     else:
         return str(line_value)

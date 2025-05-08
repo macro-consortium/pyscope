@@ -18,7 +18,7 @@ def blocks_to_table(observing_blocks):
 
     Parameters
     ----------
-    observing_blocks : list
+    observing_blocks : `list`
         A list of observing blocks.
 
     Returns
@@ -58,7 +58,9 @@ def blocks_to_table(observing_blocks):
             block.name
             if hasattr(block, "target")
             else (
-                "TransitionBlock" if type(block) is not astroplan.Slot else "EmptyBlock"
+                "TransitionBlock"
+                if type(block) is not astroplan.Slot
+                else "EmptyBlock"
             )
         )
         for block in observing_blocks
@@ -70,7 +72,9 @@ def blocks_to_table(observing_blocks):
                 (
                     block.start.mjd
                     if type(block) is astroplan.Slot
-                    else 0 if block.start_time is None else block.start_time.mjd
+                    else (
+                        0 if block.start_time is None else block.start_time.mjd
+                    )
                 )
                 for block in observing_blocks
             ],
@@ -93,7 +97,7 @@ def blocks_to_table(observing_blocks):
         ),
         format="mjd",
     )
-
+    # print(f"Target to hmsdms: {block.target.to_string('hmsdms')}")
     t["target"] = coord.SkyCoord(
         [
             (
@@ -186,7 +190,11 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["repositioning"] if hasattr(block, "target") else (0, 0)
+        (
+            block.configuration["repositioning"]
+            if hasattr(block, "target")
+            else (0, 0)
+        )
         for block in observing_blocks
     ]
     t["repositioning"] = np.ma.array(
@@ -195,7 +203,11 @@ def blocks_to_table(observing_blocks):
 
     t["shutter_state"] = np.ma.array(
         [
-            block.configuration["shutter_state"] if hasattr(block, "target") else False
+            (
+                block.configuration["shutter_state"]
+                if hasattr(block, "target")
+                else False
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -218,7 +230,11 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_position"] if hasattr(block, "target") else (0, 0)
+        (
+            block.configuration["frame_position"]
+            if hasattr(block, "target")
+            else (0, 0)
+        )
         for block in observing_blocks
     ]
     t["frame_position"] = np.ma.array(
@@ -226,7 +242,11 @@ def blocks_to_table(observing_blocks):
     )
 
     temp_list = [
-        block.configuration["frame_size"] if hasattr(block, "target") else (0, 0)
+        (
+            block.configuration["frame_size"]
+            if hasattr(block, "target")
+            else (0, 0)
+        )
         for block in observing_blocks
     ]
     t["frame_size"] = np.ma.array(
@@ -291,7 +311,11 @@ def blocks_to_table(observing_blocks):
 
     t["sched_time"] = np.ma.array(
         [
-            (block.configuration["sched_time"].mjd if hasattr(block, "target") else 0)
+            (
+                block.configuration["sched_time"].mjd
+                if hasattr(block, "target")
+                else 0
+            )
             for block in observing_blocks
         ],
         mask=open_slots_mask,
@@ -305,7 +329,8 @@ def blocks_to_table(observing_blocks):
                 [
                     (
                         len(block.constraints)
-                        if hasattr(block, "target") and block.constraints is not None
+                        if hasattr(block, "target")
+                        and block.constraints is not None
                         else 0
                     )
                     for block in observing_blocks
@@ -320,7 +345,8 @@ def blocks_to_table(observing_blocks):
                 [
                     (
                         len(block.constraints)
-                        if hasattr(block, "target") and block.constraints is not None
+                        if hasattr(block, "target")
+                        and block.constraints is not None
                         else 0
                     )
                     for block in observing_blocks
@@ -334,10 +360,14 @@ def blocks_to_table(observing_blocks):
                     constraint_dict = {
                         "type": "TimeConstraint",
                         "min": (
-                            constraint.min.isot if constraint.min is not None else None
+                            constraint.min.isot
+                            if constraint.min is not None
+                            else None
                         ),
                         "max": (
-                            constraint.max.isot if constraint.max is not None else None
+                            constraint.max.isot
+                            if constraint.max is not None
+                            else None
                         ),
                     }
                 elif type(constraint) is astroplan.AtNightConstraint:
@@ -367,8 +397,14 @@ def blocks_to_table(observing_blocks):
                 elif type(constraint) is astroplan.AirmassConstraint:
                     constraint_dict = {
                         "type": "AirmassConstraint",
-                        "min": constraint.min if constraint.min is not None else 0,
-                        "max": constraint.max if constraint.max is not None else 100,
+                        "min": (
+                            constraint.min if constraint.min is not None else 0
+                        ),
+                        "max": (
+                            constraint.max
+                            if constraint.max is not None
+                            else 100
+                        ),
                         "boolean_constraint": (
                             constraint.boolean_constraint
                             if constraint.boolean_constraint is not None
@@ -405,7 +441,8 @@ def blocks_to_table(observing_blocks):
 
     t.add_index("ID", unique=True)
 
-    # TODO: Change string columns to handle arbitrary length strings instead of truncating
+    # TODO: Change string columns to handle arbitrary length strings instead
+    # of truncating
 
     return t
 
@@ -427,7 +464,8 @@ def table_to_blocks(table):
                 elif constraint["type"] == "AtNightConstraint":
                     constraints.append(
                         astroplan.AtNightConstraint(
-                            max_solar_altitude=constraint["max_solar_altitude"] * u.deg
+                            max_solar_altitude=constraint["max_solar_altitude"]
+                            * u.deg
                         )
                     )
                 elif constraint["type"] == "AltitudeConstraint":
@@ -435,7 +473,9 @@ def table_to_blocks(table):
                         astroplan.AltitudeConstraint(
                             min=constraint["min"] * u.deg,
                             max=constraint["max"] * u.deg,
-                            boolean_constraint=constraint["boolean_constraint"],
+                            boolean_constraint=constraint[
+                                "boolean_constraint"
+                            ],
                         )
                     )
                 elif constraint["type"] == "AirmassConstraint":
@@ -443,7 +483,9 @@ def table_to_blocks(table):
                         astroplan.AirmassConstraint(
                             min=constraint["min"],
                             max=constraint["max"],
-                            boolean_constraint=constraint["boolean_constraint"],
+                            boolean_constraint=constraint[
+                                "boolean_constraint"
+                            ],
                         )
                     )
                 elif constraint["type"] == "MoonSeparationConstraint":
@@ -454,9 +496,11 @@ def table_to_blocks(table):
                         )
                     )
                 else:
-                    logger.warning("Only time constraints are currently supported")
+                    logger.warning(
+                        "Only time constraints are currently supported"
+                    )
                     continue
-            except:
+            except BaseException:
                 constraints.append(None)
 
         if row["ID"] is None:
@@ -465,7 +509,7 @@ def table_to_blocks(table):
         blocks.append(
             astroplan.ObservingBlock(
                 target=astroplan.FixedTarget(row["target"]),
-                duration=row["exposure"] * row["nexp"] * u.second,
+                duration=(row["exposure"] * row["nexp"] + 5) * u.second,
                 priority=row["priority"],
                 name=row["name"],
                 configuration={
@@ -515,7 +559,8 @@ def validate(schedule_table, observatory=None):
         convert_to_blocks = True
 
     assert (
-        type(schedule_table) is table.Table or type(schedule_table) is table.Row
+        type(schedule_table) is table.Table
+        or type(schedule_table) is table.Row
     ), "schedule_table must be an astropy table or row"
 
     if type(schedule_table) is table.Row:
@@ -577,26 +622,38 @@ def validate(schedule_table, observatory=None):
             ):
                 if not np.issubdtype(column.dtype, np.dtype("U")):
                     logger.error(
-                        f"Column '{column.name}' must be of type str, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of type str, not {
+                            column.dtype}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type str, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of type str, not {
+                            column.dtype}"
                     )
             case "start_time" | "end_time":
                 if type(column) is not astrotime.Time:
                     logger.error(
-                        f"Column '{column.name}' must be of type astropy.time.Time, not {type(column)}"
+                        f"Column '{
+                            column.name}' must be of type astropy.time.Time, not {
+                            type(column)}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type astropy.time.Time, not {type(column)}"
+                        f"Column '{
+                            column.name}' must be of type astropy.time.Time, not {
+                            type(column)}"
                     )
             case "target":
                 if type(column) is not coord.SkyCoord:
                     logger.error(
-                        f"Column '{column.name}' must be of type astropy.coordinates.SkyCoord, not {type(column)}"
+                        f"Column '{
+                            column.name}' must be of type astropy.coordinates.SkyCoord, not {
+                            type(column)}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type astropy.coordinates.SkyCoord, not {type(column)}"
+                        f"Column '{
+                            column.name}' must be of type astropy.coordinates.SkyCoord, not {
+                            type(column)}"
                     )
             # case (
             #     "priority"
@@ -615,20 +672,28 @@ def validate(schedule_table, observatory=None):
             #             f"Column '{column.name}' must be of type int64, not {column.dtype}"
             #         )
             case "exposure" | "pm_ra_cosdec" | "pm_dec":
-                if not np.issubdtype(column.dtype, np.dtype("float64")):
+                if not np.issubdtype(column.dtype, np.floating):
                     logger.error(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of a float type, not {
+                            column.dtype}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type float64, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of a float type, not {
+                            column.dtype}"
                     )
             case "shutter_state":
                 if column.dtype != bool:
                     logger.error(
-                        f"Column '{column.name}' must be of type bool, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of type bool, not {
+                            column.dtype}"
                     )
                     raise ValueError(
-                        f"Column '{column.name}' must be of type bool, not {column.dtype}"
+                        f"Column '{
+                            column.name}' must be of type bool, not {
+                            column.dtype}"
                     )
 
     # Obs-specific validation
@@ -642,9 +707,17 @@ def validate(schedule_table, observatory=None):
                 continue
 
             # Logging to debug and verify the input values
-            logger.info(f"Target object: {row['target']}, Type: {type(row['target'])}")
             logger.info(
-                f"Start time: {row['start_time']}, Type: {type(row['start_time'])}"
+                f"Target object: {
+                    row['target']}, Type: {
+                    type(
+                        row['target'])}"
+            )
+            logger.info(
+                f"Start time: {
+                    row['start_time']}, Type: {
+                    type(
+                        row['start_time'])}"
             )
 
             # Check if target is observable at start time
@@ -683,20 +756,24 @@ def validate(schedule_table, observatory=None):
             try:
                 current_cam_state = observatory.camera.Connected
                 observatory.camera.Connected = True
-                if row["exposure"].to(u.second).value > observatory.camera.ExposureMax:
+                if (
+                    row["exposure"].to(u.second).value
+                    > observatory.camera.ExposureMax
+                ):
                     logger.error("Exposure time exceeds maximum")
                     row["status"] = "I"  # Invalid
                     row["message"] = "Exposure time exceeds maximum"
                     continue
                 elif (
-                    row["exposure"].to(u.second).value < observatory.camera.ExposureMin
+                    row["exposure"].to(u.second).value
+                    < observatory.camera.ExposureMin
                 ):
                     logger.error("Exposure time is below minimum")
                     row["status"] = "I"  # Invalid
                     row["message"] = "Exposure time is below minimum"
                     continue
                 observatory.camera.Connected = current_cam_state
-            except:
+            except BaseException:
                 logger.warning(
                     "Exposure time range check failed because the driver is not available"
                 )
@@ -707,15 +784,21 @@ def validate(schedule_table, observatory=None):
                 observatory.camera.Connected = True
                 if (
                     (
-                        row["repositioning"][0] > observatory.camera.CameraXSize
-                        or row["repositioning"][1] > observatory.camera.CameraYSize
+                        row["repositioning"][0]
+                        > observatory.camera.CameraXSize
+                        or row["repositioning"][1]
+                        > observatory.camera.CameraYSize
                     )
                     and row["repositioning"] != [0, 0]
                     and row["repositioning"] != [None, None]
                 ):
-                    logger.error("Repositioning coordinates exceed camera size")
+                    logger.error(
+                        "Repositioning coordinates exceed camera size"
+                    )
                     row["status"] = "I"  # Invalid
-                    row["message"] = "Repositioning coordinates exceed camera size"
+                    row["message"] = (
+                        "Repositioning coordinates exceed camera size"
+                    )
                 if (
                     (
                         row["frame_position"][0] + row["frame_size"][0]
@@ -728,9 +811,11 @@ def validate(schedule_table, observatory=None):
                 ):
                     logger.error("Frame position and size exceed camera size")
                     row["status"] = "I"  # Invalid
-                    row["message"] = "Frame position and size exceed camera size"
+                    row["message"] = (
+                        "Frame position and size exceed camera size"
+                    )
                 observatory.camera.Connected = current_cam_state
-            except:
+            except BaseException:
                 logger.warning(
                     "Repositioning check failed because the driver is not available"
                 )
@@ -744,7 +829,7 @@ def validate(schedule_table, observatory=None):
                     row["status"] = "I"  # Invalid
                     row["message"] = "Readout mode not available"
                 observatory.camera.Connected = current_cam_state
-            except:
+            except BaseException:
                 logger.warning(
                     "Readout mode check failed because the driver is not available"
                 )
@@ -769,7 +854,7 @@ def validate(schedule_table, observatory=None):
                     row["status"] = "I"
                     row["message"] = "Binning must be square"
                 observatory.camera.Connected = current_cam_state
-            except:
+            except BaseException:
                 logger.warning(
                     "Binning check failed because the driver is not available"
                 )

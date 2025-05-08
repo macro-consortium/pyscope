@@ -1,5 +1,6 @@
 import configparser
 import datetime
+import glob
 import importlib
 import json
 import logging
@@ -125,6 +126,9 @@ class Observatory:
         self._instrument_reconfig_times = None
 
         self._maxim = None
+
+        if not os.path.exists(config_path):
+            raise ObservatoryException("Config file '%s' not found" % config_path)
 
         if config_path is not None:
             logger.info(
@@ -1304,17 +1308,19 @@ class Observatory:
             filepath = os.path.join(os.getcwd(), filename)
             self.camera.SaveImageAsFits(filepath)
             img_array = fits.getdata(filename)
+        try:
+            hdr = self.generate_header_info(
+                filename, frametyp, custom_header, history, maxim, allowed_overwrite
+            )
+            # update RADECSYS key to RADECSYSa
+            if "RADECSYS" in hdr:
+                hdr["RADECSYSa"] = hdr["RADECSYS"]
+                hdr.pop("RADECSYS", None)
+            hdu = fits.PrimaryHDU(img_array, header=hdr)
+        except Exception as e:
+            logger.exception(f"Error generating header information: {e}")
+            hdu = fits.PrimaryHDU(img_array)
 
-        hdr = self.generate_header_info(
-            filename, frametyp, custom_header, history, maxim, allowed_overwrite
-        )
-
-        # update RADECSYS key to RADECSYSa
-        if "RADECSYS" in hdr:
-            hdr["RADECSYSa"] = hdr["RADECSYS"]
-            hdr.pop("RADECSYS", None)
-
-        hdu = fits.PrimaryHDU(img_array, header=hdr)
         hdu.writeto(filename, overwrite=overwrite)
 
         return True
@@ -1390,8 +1396,15 @@ class Observatory:
                     logger.info("Focuser moved")
                     return True
             elif self.focuser.Connected and self.filter_focus_offsets[filter_name] == 0:
-                logger.info("No focus offset for filter %s" % filter_name)
-                logger.info("Focuser at postion %i" % self.focuser.Position)
+                logger.info("No configured focus offset for filter %s" % filter_name)
+                logger.info("Checking if focuser is moving...")
+                time.sleep(1)
+                if self.focuser.IsMoving:
+                    logger.info("Focuser is moving, waiting...")
+                    while self.focuser.IsMoving:
+                        time.sleep(0.1)
+                    logger.info("Focuser stopped.")
+                logger.info("Focuser at position %i" % self.focuser.Position)
                 return True
             else:
                 raise ObservatoryException("Focuser is not connected.")
@@ -1442,6 +1455,13 @@ class Observatory:
             )
             return False
 
+        if self.telescope.Altitude < self.min_altitude.to(u.deg).value:
+            logger.exception(
+                "Telescope is below the minimum altitude of %.2f degrees"
+                % self.min_altitude.to(u.deg).value
+            )
+            return False
+
         if control_rotator and self.rotator is not None:
             self.stop_derotation_thread()
 
@@ -1476,9 +1496,9 @@ class Observatory:
                 self.telescope.SlewToCoordinates(slew_obj.ra.hour, slew_obj.dec.deg)
         elif self.telescope.CanSlewAltAz:
             if self.telescope.CanSlewAltAzAsync:
-                self.telescope.SlewToAltAzAsync(altaz_obj.alt.deg, altaz_obj.az.deg)
+                self.telescope.SlewToAltAzAsync(Altitude = altaz_obj.alt.deg, Azimuth = altaz_obj.az.deg)
             else:
-                self.telescope.SlewToAltAz(altaz_obj.alt.deg, altaz_obj.az.deg)
+                self.telescope.SlewToAltAz(Altitude = altaz_obj.alt.deg, Azimuth = altaz_obj.az.deg)
         else:
             raise ObservatoryException("The telescope cannot slew to coordinates.")
 
@@ -1746,6 +1766,7 @@ class Observatory:
         use_current_pointing=False,
         save_images=False,
         save_path=None,
+        binning=2,  # HOTFIX for 6200
     ):
         """Runs the autofocus routine"""
 
@@ -1781,7 +1802,14 @@ class Observatory:
                 nsteps,
                 endpoint=True,
             )
-            test_positions = np.round(test_positions, -2)
+            test_positions = test_positions.astype(int)
+
+            autofocus_time = self.observatory_time.isot.replace(":", "-")
+
+            if save_path is None:
+                save_path = Path(
+                    os.getcwd(), "images", "autofocus", f"{autofocus_time}"
+                ).resolve()
 
             focus_values = []
             for i, position in enumerate(test_positions):
@@ -1800,6 +1828,9 @@ class Observatory:
                         time.sleep(0.1)
                 logger.info("Focuser moved.")
 
+                # Set binning
+                self.camera.BinX = binning
+
                 logger.info("Taking %s second exposure..." % exposure)
                 self.camera.StartExposure(exposure, True)
                 while not self.camera.ImageReady:
@@ -1807,43 +1838,85 @@ class Observatory:
                 logger.info("Exposure complete.")
 
                 logger.info("Calculating mean star fwhm...")
-                if save_images:
-                    if save_path is None:
-                        save_path = Path(self._images_path / "autofocus").resolve()
-                else:
-                    save_path = Path(tempfile.gettempdir()).resolve()
+                if not save_images:
+                    save_path = Path(
+                        tempfile.gettempdir(), f"{autofocus_time}"
+                    ).resolve()
                 if not save_path.exists():
                     save_path.mkdir(parents=True)
-                fname = (
-                    save_path
-                    / f"autofocus_{self.observatory_time.isot.replace(':', '-')}.fts"
-                )
+                fname = save_path / f"FOCUS{int(position)}.fit"
 
-                self.save_last_image(fname, frametyp="Focus")
-                cat = detect_sources_photutils(
-                    fname,
-                    threshold=100,
-                    deblend=False,
-                    tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
-                )
-                focus_values.append(np.mean(cat.fwhm.value))
-                logger.info("FWHM = %.1f pixels" % focus_values[-1])
+                self.save_last_image(fname, frametyp="Focus", overwrite=True)
+
+                # Removed for hotfix for PlateSolve2
+                # cat = detect_sources_photutils(
+                #     fname,
+                #     threshold=100,
+                #     deblend=False,
+                #     tbl_save_path=Path(str(fname).replace(".fts", ".ecsv")),
+                # )
+                # focus_values.append(np.mean(cat.fwhm.value))
+                # logger.info("FWHM = %.1f pixels" % focus_values[-1])
 
             # fit hyperbola to focus values
-            popt, pcov = curve_fit(
-                lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
-                test_positions,
-                focus_values,
-                p0=[midpoint, 1, 1, 0],
-                bounds=(
-                    [midpoint - n_steps * step_size, 0, 0, -1e6],
-                    [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
-                ),
+
+            # Removed for hotfix for PlateSolve2
+            # popt, pcov = curve_fit(
+            #     lambda x, x0, a, b, c: a / b * np.sqrt(b**2 + (x - x0) ** 2) + c,
+            #     test_positions,
+            #     focus_values,
+            #     p0=[midpoint, 1, 1, 0],
+            #     bounds=(
+            #         [midpoint - n_steps * step_size, 0, 0, -1e6],
+            #         [midpoint + n_steps * step_size, 1e6, 1e6, 1e6],
+            #     ),
+            # )
+            #
+            # result = popt[0]
+            # result_err = np.sqrt(np.diag(pcov))[0]
+
+            # Run platesolve 2 from cmd line
+            platesolve2_path = Path(
+                r"C:\Program Files (x86)\PlaneWave Instruments\PlaneWave Interface 4\PlateSolve2\PlateSolve2.exe"
+            ).resolve()
+            # print(platesolve2_path)
+            results_path = Path(save_path / "results.txt").resolve()
+            # print(f"Results path: {results_path}")
+            image_path = glob.glob(str(save_path / "*.fit"))[0]
+            # print(f"Image path: {image_path}")
+            logger.info("Running PlateSolve2...")
+            procid = os.spawnv(
+                os.P_NOWAIT,
+                platesolve2_path,
+                [f'"{platesolve2_path}" {image_path},{results_path},180'],
             )
 
-            result = popt[0]
-            result_err = np.sqrt(np.diag(pcov))[0]
-            logger.info("Best focus position is %i +/- %i" % (result, result_err))
+            while results_path.exists() == False:
+                time.sleep(0.1)
+            # Read results
+            with open(results_path, "r") as f:
+                results = f.read()
+            while results == "":
+                time.sleep(0.1)
+                with open(results_path, "r") as f:
+                    results = f.read()
+
+            print(f"Results path: {results_path}")
+            print(results)
+            results = results.split(",")
+            # Remove whitespace
+            results = [x.strip() for x in results]
+            print(results)
+            result, fwhm, result_err = (
+                float(results[0]),
+                float(results[1]),
+                float(results[2]),
+            )
+            print(f"Best focus: {result}")
+            print(f"FWHM: {fwhm}")
+            print(f"Focus error: {result_err}")
+
+            logger.info(f"Best focus position is {result} +/- {result_err}")
 
             if result < test_positions[0] or result > test_positions[-1]:
                 logger.warning("Best focus position is outside the test range.")
@@ -1880,13 +1953,13 @@ class Observatory:
 
         Parameters
         ----------
-        radius : float, optional (default = 1)
+        radius : `float`, optional (default = 1)
             The radius in arcseconds to dither the telescope.
 
         center_pos : `~astropy.coordinates.SkyCoord`, optional
             The center position to dither around. If None, the current pointing of the mount will be used.
 
-        seed : int, optional
+        seed : `int`, optional
             The seed to use for the random number generator. If None, the seed will be randomly generated.
 
         Returns
@@ -1921,6 +1994,7 @@ class Observatory:
         tolerance=3,
         exposure=10,
         readout=0,
+        binning=2,  # HOTFIX: HARDCODED FOR ASI6200
         save_images=False,
         save_path="./",
         settle_time=5,
@@ -1932,54 +2006,54 @@ class Observatory:
 
         Parameters
         ----------
-        obj : str or `~astropy.coordinates.SkyCoord`, optional
+        obj : `str` or `~astropy.coordinates.SkyCoord`, optional
             The name of the target or a `~astropy.coordinates.SkyCoord` object of the target. If a string,
             a query will be made to the SIMBAD database to get the coordinates. If a `~astropy.coordinates.SkyCoord`
-            object, the coordinates will be used directly. If None, the ra and dec parameters must be specified.
+            object, the coordinates will be used directly. If `None`, the ra and dec parameters must be specified.
         ra : `~astropy.coordinates.Longitude`-like, optional
             The ICRS J2000 right ascension of the target that will initialize a `~astropy.coordinates.SkyCoord`
             object. This will override the ra value in the object parameter.
         dec : `~astropy.coordinates.Latitude`-like, optional
             The ICRS J2000 declination of the target that will initialize a `~astropy.coordinates.SkyCoord`
             object. This will override the dec value in the object parameter.
-        unit : tuple, optional
+        unit : `tuple`, optional
             The units of the ra and dec parameters. Default is ('hr', 'deg').
-        frame : str, optional
+        frame : `str`, optional
             The coordinate frame of the ra and dec parameters. Default is 'icrs'.
-        target_x_pixel : float, optional
+        target_x_pixel : `float`, optional
             The desired x pixel location of the target.
-        target_y_pixel : float, optional
+        target_y_pixel : `float`, optional
             The desired y pixel location of the target.
-        initial_offset_dec : float, optional
+        initial_offset_dec : `float`, optional
             The initial offset of declination in arcseconds to use for the slew. Default is 0. Ignored if
-            do_initial_slew is False.
-        check_and_refine : bool, optional
+            do_initial_slew is `False`.
+        check_and_refine : `bool`, optional
             Whether or not to check the offset and refine the slew. Default is True.
-        max_attempts : int, optional
+        max_attempts : `int`, optional
             The maximum number of attempts to make to center the target. Default is 5. Ignored if
             check_and_refine is False.
-        tolerance : float, optional
+        tolerance : `float`, optional
             The tolerance in pixels to consider the target centered. Default is 3. Ignored if
-            check_and_refine is False.
-        exposure : float, optional
+            check_and_refine is `False`.
+        exposure : `float`, optional
             The exposure time in seconds to use for the centering images. Default is 10.
-        readout : int, optional
+        readout : `int`, optional
             The readout mode to use for the centering images. Default is 0.
-        save_images : bool, optional
-            Whether or not to save the centering images. Default is False.
-        save_path : str, optional
+        save_images : `bool`, optional
+            Whether or not to save the centering images. Default is `False`.
+        save_path : `str`, optional
             The path to save the centering images to. Default is the current directory. Ignored if
-            save_images is False.
-        settle_time : float, optional
+            save_images is `False`.
+        settle_time : `float`, optional
             The time in seconds to wait after the slew before checking the offset. Default is 5.
-        do_initial_slew : bool, optional
-            Whether or not to do the initial slew to the target. Default is True. If False, the current
+        do_initial_slew : `bool`, optional
+            Whether or not to do the initial slew to the target. Default is `True`. If `False`, the current
             telescope position will be used as the starting point for the centering routine.
 
         Returns
         -------
-        success : bool
-            True if the target was successfully centered, False otherwise.
+        success : `bool`
+            `True` if the target was successfully centered, `False` otherwise.
         """
         """logger.info(
             f"repositioning called with {obj}, {ra}, {dec}, {unit}, {frame}, {target_x_pixel}, {target_y_pixel}, {initial_offset_dec}, check and refine: {check_and_refine}, {max_attempts}, tol: {tolerance}, {exposure}, {readout}, {save_images}, {save_path}, {sync_mount}, {settle_time}, {do_initial_slew}"
@@ -2044,6 +2118,7 @@ class Observatory:
 
             logger.info("Taking %.2f second exposure" % exposure)
             self.camera.ReadoutMode = readout
+            self.camera.BinX = binning
             self.camera.StartExposure(exposure, True)
             while not self.camera.ImageReady:
                 time.sleep(0.1)
@@ -2218,11 +2293,11 @@ class Observatory:
 
         if self.telescope.CanSlewAltAzAsync:
             self.telescope.SlewToAltAzAsync(
-                self.cover_calibrator_az, self.cover_calibrator_alt
+                Azimuth = self.cover_calibrator_az, Altitude = self.cover_calibrator_alt
             )
         elif self.telescope.CanSlewAltAz:
             self.telescope.SlewToAltAz(
-                self.cover_calibrator_az, self.cover_calibrator_alt
+                Azimuth = self.cover_calibrator_az, Altitude = self.cover_calibrator_alt
             )
         elif self.telescope.CanSlew:
             obj = self.get_object_slew(
@@ -2251,18 +2326,18 @@ class Observatory:
                 self.telescope.Tracking = False
             logger.info("Tracking off")
 
-        if self.cover_calibrator is not None:
+        """if self.cover_calibrator is not None:
             if self.cover_calibrator.CoverState != "NotPresent":
                 logger.info("Opening the cover calibrator")
                 self.cover_calibrator.OpenCover()
-                logger.info("Cover open")
+                logger.info("Cover open")"""
 
         if gain is not None:
             logger.info("Setting the camera gain to %i" % gain)
             self.camera.Gain = gain
             logger.info("Camera gain set")
 
-        for filt, filt_exp in zip(filters, filter_exposures):
+        for filt, filt_exp, idx in zip(filters, filter_exposures, range(len(filters))):
 
             # skip filters with 0 exposure time
             if filt_exp == 0:
@@ -2280,9 +2355,9 @@ class Observatory:
                 if type(filter_brightness) is list:
                     logger.info(
                         "Setting the cover calibrator brightness to %i"
-                        % filter_brightness[i]
+                        % filter_brightness[idx]
                     )
-                    self.cover_calibrator.CalibratorOn(filter_brightness[i])
+                    self.cover_calibrator.CalibratorOn(filter_brightness[idx])
                     logger.info("Cover calibrator on")
             else:
                 logger.warning("Cover calibrator not available, assuming sky flats")
@@ -2344,7 +2419,7 @@ class Observatory:
                             iter_save_name = Path(
                                 (
                                     str(iter_save_name)
-                                    + (f"_Bright{filter_brightness[i]}" + "_{j}.fts")
+                                    + (f"_Bright{filter_brightness[idx]}" + f"_{j}.fts")
                                 )
                             )
                         else:
@@ -2737,6 +2812,7 @@ class Observatory:
             info["EXPTIME"] = (last_exposure_duration, info["EXPTIME"][1])
             info["EXPOSURE"] = (last_exposure_duration, info["EXPOSURE"][1])
         except:
+            logger.debug("Could not get last exposure duration")
             pass
         try:
             info["CAMTIME"] = (self.camera.CameraTime, info["CAMTIME"][1])
@@ -2871,32 +2947,32 @@ class Observatory:
                 "CALSTATE": (self.cover_calibrator.CalibratorState, "Calibrator state"),
                 "COVSTATE": (self.cover_calibrator.CoverState, "Cover state"),
                 "BRIGHT": (None, "Brightness of cover calibrator"),
-                "CCNAME": (self.cover_calibrator.Name, "Cover calibrator name"),
-                "COVCAL": (self.cover_calibrator.Name, "Cover calibrator name"),
-                "CCDRVER": (
-                    self.cover_calibrator.DriverVersion,
-                    "Cover calibrator driver version",
-                ),
-                "CCDRV": (
-                    str(self.cover_calibrator.DriverInfo),
-                    "Cover calibrator driver info",
-                ),
-                "CCINTF": (
-                    self.cover_calibrator.InterfaceVersion,
-                    "Cover calibrator interface version",
-                ),
-                "CCDESC": (
-                    self.cover_calibrator.Description,
-                    "Cover calibrator description",
-                ),
-                "MAXBRITE": (
-                    self.cover_calibrator.MaxBrightness,
-                    "Cover calibrator maximum possible brightness",
-                ),
-                "CCSUPAC": (
-                    str(self.cover_calibrator.SupportedActions),
-                    "Cover calibrator supported actions",
-                ),
+                # "CCNAME": (self.cover_calibrator.Name, "Cover calibrator name"),
+                # "COVCAL": (self.cover_calibrator.Name, "Cover calibrator name"),
+                # "CCDRVER": (
+                #     self.cover_calibrator.DriverVersion,
+                #     "Cover calibrator driver version",
+                # ),
+                # "CCDRV": (
+                #     str(self.cover_calibrator.DriverInfo),
+                #     "Cover calibrator driver info",
+                # ),
+                # "CCINTF": (
+                #     self.cover_calibrator.InterfaceVersion,
+                #     "Cover calibrator interface version",
+                # ),
+                # "CCDESC": (
+                #     self.cover_calibrator.Description,
+                #     "Cover calibrator description",
+                # ),
+                # "MAXBRITE": (
+                #     self.cover_calibrator.MaxBrightness,
+                #     "Cover calibrator maximum possible brightness",
+                # ),
+                # "CCSUPAC": (
+                #     str(self.cover_calibrator.SupportedActions),
+                #     "Cover calibrator supported actions",
+                # ),
             }
             try:
                 info["BRIGHT"] = (self.cover_calibrator.Brightness, info["BRIGHT"][1])

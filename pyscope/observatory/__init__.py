@@ -1,10 +1,18 @@
-# isort: skip_file
+"""
+The `observatory` module provides classes and functions for controlling and automating
+observatory hardware and operations. This currently includes support only for the
+`Robert L. Mutel Telescope` at the University of Iowa, but is designed to be extensible
+to all motorized observatory telescopes in the future.
+Operations include managing telescopes, cameras, focuser, filter wheels, domes, and other
+devices commonly found in an observatory setup.
+"""
+
+# isort:skip_file
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-from ._docstring_inheritee import _DocstringInheritee
 from ._pwi4 import _PWI4
 
 from .device import Device
@@ -45,8 +53,9 @@ from .simulator_server import SimulatorServer
 from .observatory_exception import ObservatoryException
 from .observatory import Observatory
 
-
 from .pwi_autofocus import PWIAutofocus
+
+from .zwo_camera import ZWOCamera
 
 # from .skyx import SkyX
 

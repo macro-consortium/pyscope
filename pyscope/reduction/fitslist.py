@@ -12,17 +12,17 @@ from astropy.table import Table
 
 logger = logging.getLogger(__name__)
 
-### --- Constants ---
+# --- Constants ---
 micron = 1e-6
 deg = np.pi / 180.0
 arcmin = deg / 60.0
 arcsec = deg / 3600.0
 date = time.Time("2003-11-11")
 # extra_keys = []
-### --- End of Constants ---
+# --- End of Constants ---
 
 
-### --- Phillip's Functions ---
+# --- Phillip's Functions ---
 def get_offsets(hdr):
     """
     Input : FITS header
@@ -118,7 +118,7 @@ def zp_stats(filter, mode, zp_stats_list):
     return zp_med, zp_std
 
 
-### --- End of Phillip's Functions ---
+# --- End of Phillip's Functions ---
 
 
 @click.command(
@@ -128,7 +128,9 @@ def zp_stats(filter, mode, zp_stats_list):
 )
 @click.option("-d", "--date", default="", help="Date [default all].")
 @click.option("-f", "--filt", default="", help="Filter name [default all].")
-@click.option("-r", "--readout", default="", help="Readout mode [default all].")
+@click.option(
+    "-r", "--readout", default="", help="Readout mode [default all]."
+)
 @click.option("-b", "--binning", default="", help="Binning [default all].")
 @click.option(
     "-e",
@@ -140,12 +142,21 @@ def zp_stats(filter, mode, zp_stats_list):
 )
 @click.option("-t", "--target", default="", help="Target name [default all].")
 @click.option(
-    "-v", "--verbose", count=True, type=click.IntRange(0, 1), help="Verbose output."
+    "-v",
+    "--verbose",
+    count=True,
+    type=click.IntRange(0, 1),
+    help="Verbose output.",
 )
-@click.option("-k", "--add_keys", default="", help="Additional header keys to print.")
 @click.option(
-    "-n", "--fnames", default="./", type=click.Path(exists=True, file_okay=False)
-)  ##need default = "?"
+    "-k", "--add_keys", default="", help="Additional header keys to print."
+)
+@click.option(
+    "-n",
+    "--fnames",
+    default="./",
+    type=click.Path(exists=True, file_okay=False),
+)  # need default = "?"
 @click.option("-s", "--save", is_flag=True, help="Save output to a file")
 @click.option("-o", "--offsets", is_flag=True, help="Save output to a file")
 @click.option("-z", "--zp_stats", is_flag=True, help="Save output to a file")
@@ -164,7 +175,53 @@ def fitslist_cli(
     offsets,
     zp_stats,
 ):
-    """List FITS files and their properties."""
+    """
+    List FITS files and their properties.
+
+    This command-line tool extracts metadata from FITS files in a specified directory
+    and presents it in a structured table. Users can filter files by various criteria
+    and save the results to a CSV file.
+
+    Parameters
+    ----------
+    `date` : `str`, optional
+        Filter by observation date. Defaults to include all dates.
+    `filt` : `str`, optional
+        Filter by filter name. Defaults to include all filters.
+    `readout` : `str`, optional
+        Filter by readout mode. Defaults to include all modes.
+    `binning` : `str`, optional
+        Filter by binning configuration. Defaults to include all configurations.
+    `exptime` : `str`, optional
+        Filter by approximate exposure time (1% tolerance). Defaults to include all exposure times.
+    `target` : `str`, optional
+        Filter by target name. Defaults to include all targets.
+    `verbose` : `int`, optional
+        Verbosity level for logging. Use `-v` for more detailed output. Defaults to `0`.
+    `fnames` : `str`, optional
+        Path to the directory containing FITS files. Defaults to `./`.
+    `save` : `bool`, optional
+        Save the output table to a file named `fitslist.csv`. Defaults to `False`.
+    `add_keys` : `str`, optional
+        Comma-separated list of additional FITS header keys to include in the output table.
+    `offsets` : `bool`, optional
+        Include RA/DEC offsets in the output table. Defaults to `False`.
+    `zp_stats` : `bool`, optional
+        Include zeropoint statistics in the output table. Defaults to `False`.
+
+    Returns
+    -------
+    `astropy.table.Table`
+        A table containing the extracted FITS metadata.
+
+    Raises
+    ------
+    `KeyError`
+        If a required FITS header key is missing.
+    `FileNotFoundError`
+        If the specified directory does not exist or is empty.
+
+    """
     # Set up logging
     logger.setLevel(int(10 * (1 - verbose)))
     logger.debug(
@@ -203,7 +260,7 @@ def fitslist_cli(
     for ftsfile in ftsfiles:
         try:
             header = fits.getheader(ftsfile)
-        except:
+        except BaseException:
             logger.warning(f"Could not open {ftsfile}.")
             continue
 
@@ -267,7 +324,9 @@ def fitslist_cli(
                     except KeyError:
                         target_name = ""
         if target_name not in target.split(",") or target == "":
-            logger.debug(f"Target {target_name} not in {target}. Skipping {ftsfile}.")
+            logger.debug(
+                f"Target {target_name} not in {target}. Skipping {ftsfile}."
+            )
             target_name = "n/a"
 
         # Actual coordinates
@@ -386,7 +445,7 @@ def fitslist_cli(
             ]
         )
 
-    ##switch to astropy table which can be saved to a file
+    # switch to astropy table which can be saved to a file
     standard_names = [
         "FITS file",
         "Target",

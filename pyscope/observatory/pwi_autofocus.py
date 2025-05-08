@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 class PWIAutofocus(Autofocus):
     def __init__(self):
+        """
+        Autofocus class for PlaneWave Instruments focuser.
+
+        This class provides an interface for autofocus running, and aborting on the PlaneWave Instruments focuser.
+        """
         logger.debug("PWIAutofocus.__init__ called")
         if platform.system() != "Windows":
             raise Exception("This class is only available on Windows.")
@@ -33,6 +38,22 @@ class PWIAutofocus(Autofocus):
             self._com_object.PreventFilterChange = True
 
     def Run(self, exposure=10, timeout=120):
+        """
+        Run the autofocus routine on the PlaneWave Instruments focuser.
+        Only returns once the autofocus routine has completed.
+
+        Parameters
+        ----------
+        exposure : `float`, default : 10, optional
+            Exposure time in seconds for the autofocus routine.
+        timeout : `float`, default : 120, optional
+            Timeout in seconds for the autofocus routine to complete.
+
+        Returns
+        -------
+        `float` or `None`
+            The best position found by the autofocus routine, or None if the autofocus routine failed.
+        """
         logger.debug(
             f"PWIAutofocus.Run called with args: exposure={exposure}, timeout={timeout}"
         )
@@ -52,7 +73,8 @@ class PWIAutofocus(Autofocus):
 
             if time.time() > t:
                 raise Exception(
-                    "Autofocus took longer than %g seconds to complete" % timeout
+                    "Autofocus took longer than %g seconds to complete"
+                    % timeout
                 )
 
         if self._com_object.Success:
@@ -61,6 +83,9 @@ class PWIAutofocus(Autofocus):
             return None
 
     def Abort(self):
+        """
+        Abort the autofocus routine on the PlaneWave Instruments focuser.
+        """
         logger.debug("PWIAutofocus.Abort called")
         self._com_object.StopAutofocus
 

@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
+  rev: v6.0.1
   hooks:
   - id: check-ast
   - id: check-case-conflict
@@ -9,14 +9,15 @@ repos:
   - id: requirements-txt-fixer
   - id: trailing-whitespace
 - repo: https://github.com/PyCQA/isort
-  rev: 5.13.2
+  rev: 6.0.1
   hooks:
   - id: isort
-    args: [--profile=black]
+    args: [--profile=black, -l 79]
 - repo: https://github.com/psf/black
-  rev: 24.3.0
+  rev: 25.1.0
   hooks:
   - id: black
+    args: [--line-length=79]
 - repo: https://github.com/pre-commit/pygrep-hooks
   rev: v1.10.0
   hooks:

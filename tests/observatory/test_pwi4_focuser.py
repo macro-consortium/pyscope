@@ -6,12 +6,14 @@ import pytest
 from pyscope.observatory import PWI4Focuser
 
 
-@pytest.mark.skipif(platform.node() != "TCC1-MACRO", reason="Only works on TCC1-MACRO")
+@pytest.mark.skipif(
+    platform.node() != "TCC1-MACRO", reason="Only works on TCC1-MACRO"
+)
 def test_pwi4_focuser():
 
     f = PWI4Focuser()
     f.Connected = True
-    assert f.Connected == True
+    assert f.Connected
     assert f.Absolute == False
     assert f.IsMoving == False
 

@@ -11,6 +11,18 @@ logger = logging.getLogger(__name__)
 
 class IPCoverCalibrator(CoverCalibrator):
     def __init__(self, tcp_ip, tcp_port, buffer_size):
+        """
+        Implements the CoverCalibrator interface for a cover calibrator that is controlled via a TCP/IP connection.
+
+        Parameters
+        ----------
+        tcp_ip : `str`
+            The IP address of the cover calibrator.
+        tcp_port : `int`
+            The port number of the cover calibrator.
+        buffer_size : `int`
+            The size of the buffer to use when sending and receiving data.
+        """
         self._tcp_ip = tcp_ip
         self._tcp_port = tcp_port
         self._buffer_size = buffer_size
@@ -69,7 +81,7 @@ class IPCoverCalibrator(CoverCalibrator):
 
         try:
             s.send(my_bytes)
-        except:
+        except BaseException:
             return False
         finally:
             data = s.recv(self.buffer_size)
@@ -80,15 +92,18 @@ class IPCoverCalibrator(CoverCalibrator):
 
     @property
     def tcp_ip(self):
+        """The IP address of the cover calibrator. (`str`)"""
         logger.debug("IPCoverCalibrator.tcp_ip called")
         return self._tcp_ip
 
     @property
     def tcp_port(self):
+        """The port number of the cover calibrator. (`int`)"""
         logger.debug("IPCoverCalibrator.tcp_port called")
         return self._tcp_port
 
     @property
     def buffer_size(self):
+        """The size of the buffer to use when sending and receiving data. (`int`)"""
         logger.debug("IPCoverCalibrator.buffer_size called")
         return self._buffer_size

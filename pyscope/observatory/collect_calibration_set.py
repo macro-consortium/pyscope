@@ -119,53 +119,53 @@ def collect_calibration_set_cli(
     verbose=0,
 ):
     """
-    Collects a calibration set for the observatory.\b
+    Collects a calibration set for the observatory.
 
     .. warning::
         The filter_exposures and filter_brightnesses must be of equal length.
 
     Parameters
     ----------
-    observatory : str
-
-    camera : str, default="ccd"
-
-    readouts : list, default=[None]
-
-    binnings : list, default=[None]
-
-    repeat : int, default=1
-
-    dark_exposures : list, default=[]
-
-    filters : list, default=[]
-
-    filter_exposures : list, default=[]
-
-    filter_brightness : list, default=None
-
-    home_telescope : bool, default=False
-
-    target_counts : int, default=None
-
-    check_cooler : bool, default=True
-
-    tracking : bool, default=True
-
-    dither_radius : float, default=0
-
-    save_path : str, default="./temp/"
-
-    new_dir : bool, default=True
-
-    verbose : int, default=0
-
+    observatory : `str` or :py:class:`pyscope.observatory.Observatory`
+        The name of the observatory, or the observatory object itself, to connect to.
+    camera : `str`, default : "ccd"
+        The type of camera to collect calibration data for, such as ccd or cmos.
+    readouts : `list`, default : [`None`]
+        The indices of readout modes to iterate through.
+    binnings : `list`, default : [`None`]
+        The binnings to iterate through.
+    repeat : `int`, default : 1
+        The number of times to repeat each exposure.
+    dark_exposures : `list`, default : []
+        The dark exposure times.
+    filters : `list`, default : []
+        The filters to collect flats for.
+    filter_exposures : `list`, default : []
+        The flat exposure times for each filter.
+    filter_brightness : `list`, default : `None`
+        The intensity of the calibrator [if present] for each filter.
+    home_telescope : `bool`, default : `False`
+        Whether to return the telescope to its home position after taking flats.
+    target_counts : `int`, default : `None`
+        The target counts for the flats.
+    check_cooler : `bool`, default : `True`
+        Whether to check if the cooler is on before taking flats.
+    tracking : `bool`, default : `True`
+        Whether to track the telescope while taking flats.
+    dither_radius : `float`, default : 0
+        The radius to dither the telescope by while taking flats.
+    save_path : `str`, default : "./temp/"
+        The path to save the calibration set.
+    new_dir : `bool`, default : `True`
+        Whether to create a new directory for the calibration set.
+    verbose : `int`, default : 0
+        The verbosity of the output.
     """
 
-    if type(observatory) == str:
+    if isinstance(observatory, str):
         logger.info(f"Collecting calibration set for {observatory}")
         obs = Observatory(observatory)
-    elif type(observatory) == Observatory:
+    elif isinstance(observatory, Observatory):
         logger.info(f"Collecting calibration set for {observatory.site_name}")
         obs = observatory
     else:
@@ -175,11 +175,15 @@ def collect_calibration_set_cli(
     obs.connect_all()
 
     if len(filter_exposures) != len(filters):
-        logger.error("The number of filter exposures must match the number of filters.")
+        logger.error(
+            "The number of filter exposures must match the number of filters."
+        )
         return
 
     if new_dir:
-        save_path = Path(save_path) / obs.observatory_time.strftime("%Y-%m-%d_%H-%M-%S")
+        save_path = Path(save_path) / obs.observatory_time.strftime(
+            "%Y-%m-%d_%H-%M-%S"
+        )
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     logger.info(f"Saving calibration set to {save_path}")

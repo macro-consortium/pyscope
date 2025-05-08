@@ -7,7 +7,26 @@ logger = logging.getLogger(__name__)
 
 
 class ASCOMDome(ASCOMDevice, Dome):
-    def __init__(self, identifier, alpaca=False, device_number=0, protocol="http"):
+    def __init__(
+        self, identifier, alpaca=False, device_number=0, protocol="http"
+    ):
+        """
+        ASCOM implementation of the Dome abstract base class.
+
+        This class provides the functionality to control an ASCOM-compatible dome device,
+        including methods for controlling the dome's movement and shutter.
+
+        Parameters
+        ----------
+        identifier : `str`
+            The unique device identifier. This can be the ProgID for COM devices or the device number for Alpaca devices.
+        alpaca : `bool`, default : `False`, optional
+            Whether to use the Alpaca protocol. If `False`, the COM protocol is used.
+        device_number : `int`, default : 0, optional
+            The device number for Alpaca devices.
+        protocol : `str`, default : "http", optional
+            The protocol to use for Alpaca devices.
+        """
         super().__init__(
             identifier,
             alpaca=alpaca,
@@ -114,6 +133,19 @@ class ASCOMDome(ASCOMDevice, Dome):
 
     @property
     def ShutterStatus(self):
+        """
+        The status of the dome shutter or roof structure. (`ShutterState <https://ascom-standards.org/Help/Developer/html/T_ASCOM_DeviceInterface_ShutterState.htm>`_)
+
+        Raises error if there's no shutter control, or if the shutter status can not be read, returns the last shutter state.
+        Enum values and their representations are as follows:
+
+            * 0 : Open
+            * 1 : Closed
+            * 2 : Opening
+            * 3 : Closing
+            * 4 : Error
+            * Other : Unknown
+        """
         logger.debug(f"ASCOMDome.ShutterStatus property called")
         shutter_status = self._device.ShutterStatus
         if shutter_status == 0:
