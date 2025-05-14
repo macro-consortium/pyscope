@@ -38,6 +38,35 @@ Features
 * Powered by `Astropy <https://www.astropy.org/>`__,
   `Astropy-affiliated <https://www.astropy.org/affiliated/>`__ packages, and
   `ASCOM <https://ascom-standards.org/>`__
+
+.. |License| image:: https://img.shields.io/pypi/l/pyscope
+    :target: https://pypi.org/project/pyscope/
+    :alt: License
+
+.. |Zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8403570.svg
+    :target: https://doi.org/10.5281/zenodo.8403570
+    :alt: Zenodo
+
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/pyscope
+    :target: https://pypi.org/project/pyscope/
+    :alt: PyPI Version
+
+.. |PyPI Python Versions| image:: https://img.shields.io/pypi/pyversions/pyscope?logo=Python
+    :target: https://pypi.org/project/pyscope/
+    :alt: PyPI Python Versions
+
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/pyscope?logo=python
+    :target: https://pypi.org/project/pyscope/
+    :alt: PyPI Downloads
+
+.. |Astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org
+    :alt: Powered by Astropy
+
+.. |Donate| image:: https://img.shields.io/badge/Donate-to_pyscope-crimson
+  :target: https://github.com/sponsors/WWGolay
+  :alt: Donate
+
 """
 
 # isort: skip_file
