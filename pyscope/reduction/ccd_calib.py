@@ -535,8 +535,8 @@ def ccd_calib_cli(
             logger.info("Applying the flat frame...")
             cal_image = np.divide(cal_image, flat)
 
-        #logger.info("Flooring the calibrated image...")
-        #cal_image = np.floor(cal_image)
+        # logger.info("Flooring the calibrated image...")
+        # cal_image = np.floor(cal_image)
 
         logger.info(f"Adding pedestal of {pedestal}")
         hdr["PEDESTAL"] = pedestal

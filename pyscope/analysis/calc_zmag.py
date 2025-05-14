@@ -124,9 +124,15 @@ logger = logging.getLogger(__name__)
     default=False,
     help="""Write the ZMAG and ZMAGERR to the header.""",
 )
-@click.option("-p", "--plot", is_flag=True, default=False, help="""Plot the results.""")
 @click.option(
-    "-v", "--verbose", is_flag=True, default=False, help="""Print verbose output."""
+    "-p", "--plot", is_flag=True, default=False, help="""Plot the results."""
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="""Print verbose output.""",
 )
 @click.argument("images", type=click.Path(exists=True), nargs=-1)
 @click.version_option()
@@ -209,7 +215,9 @@ def calc_zmag_cli(
             if success:
                 logger.info("Solved.")
             else:
-                logger.error("Failed to solve, continuing to next image if present...")
+                logger.error(
+                    "Failed to solve, continuing to next image if present..."
+                )
                 continue
 
         # Get the source catalog
@@ -259,7 +267,9 @@ def calc_zmag_cli(
                         logger.debug("Match found:\n%s" % match)
                         break
             except:
-                logger.debug("No SDSS matches found, continuing to next source...")
+                logger.debug(
+                    "No SDSS matches found, continuing to next source..."
+                )
                 continue
 
         catalog.remove_rows(catalog["SDSS"] == None)
@@ -292,7 +302,8 @@ def calc_zmag_cli(
         mean_zmag_err = np.sqrt(np.sum(zmag_err**2)) / len(zmag)
 
         logger.info(
-            "Mean zero-point magnitude: %.3f +/- %.3f" % (mean_zmag, mean_zmag_err)
+            "Mean zero-point magnitude: %.3f +/- %.3f"
+            % (mean_zmag, mean_zmag_err)
         )
 
         if write:
@@ -327,7 +338,11 @@ def calc_zmag_cli(
 
             for source in catalog:
                 ax0.scatter(
-                    source["xcentroid"], source["ycentroid"], marker="o", s=5, color="r"
+                    source["xcentroid"],
+                    source["ycentroid"],
+                    marker="o",
+                    s=5,
+                    color="r",
                 )
                 ax0.text(
                     source["xcentroid"],
@@ -342,11 +357,20 @@ def calc_zmag_cli(
 
             # Right plot shows flux vs. magnitude
             ax1.errorbar(
-                mag, flux, yerr=flux_err, fmt="", linestyle="none", color="black"
+                mag,
+                flux,
+                yerr=flux_err,
+                fmt="",
+                linestyle="none",
+                color="black",
             )
             for i in range(len(mag)):
                 ax1.text(
-                    mag[i], flux[i], ("%.1f" % flux[i]), color="black", fontsize=12
+                    mag[i],
+                    flux[i],
+                    ("%.1f" % flux[i]),
+                    color="black",
+                    fontsize=12,
                 )
 
             model_mag = np.linspace(14, 24, 100)
