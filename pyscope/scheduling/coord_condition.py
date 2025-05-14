@@ -5,7 +5,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class CoordinateCondition(BoundaryCondition):
+class CoordinateCondition:
     def __init__(
         self,
         coord_type="altaz",

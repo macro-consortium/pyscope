@@ -5,7 +5,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class SNRCondition(BoundaryCondition):
+class SNRCondition:
     def __init__(
         self, min_snr=None, max_snr=None, score_type="boolean", inclusive=True
     ):
