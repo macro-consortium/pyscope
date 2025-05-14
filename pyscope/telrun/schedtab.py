@@ -3,7 +3,7 @@ import itertools
 import logging
 import os
 
-import astroplan
+# import astroplan
 import numpy as np
 from astropy import coordinates as coord
 from astropy import table

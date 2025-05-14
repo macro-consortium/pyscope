@@ -13,7 +13,7 @@ from io import StringIO
 from pathlib import Path, WindowsPath
 from tkinter import font
 
-import astroplan
+# import astroplan
 import numpy as np
 from astropy import coordinates as coord
 from astropy import table

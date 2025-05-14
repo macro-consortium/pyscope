@@ -4,7 +4,7 @@ import os
 import re
 import shlex
 
-import astroplan
+# import astroplan
 import numpy as np
 from astropy import coordinates as coord
 from astropy import time as astrotime

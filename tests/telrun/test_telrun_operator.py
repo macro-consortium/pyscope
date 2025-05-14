@@ -4,7 +4,7 @@ import pprint
 from pathlib import Path
 
 import pytest
-from astroplan import FixedTarget, ObservingBlock
+# from astroplan import FixedTarget, ObservingBlock
 from astropy import coordinates as coord
 from astropy import time
 from astropy import units as u

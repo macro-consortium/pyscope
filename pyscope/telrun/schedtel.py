@@ -5,14 +5,14 @@ import logging
 import os
 import zoneinfo
 
-import astroplan
+# import astroplan
 import click
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import timezonefinder
 import tqdm
-from astroplan import plots as astroplan_plots
+# from astroplan import plots as astroplan_plots
 from astropy import coordinates as coord
 from astropy import table
 from astropy import time as astrotime
