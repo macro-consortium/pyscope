@@ -313,8 +313,8 @@ def calib_images_cli(
         if flat_dark_frame:
             logger.debug(f"Flat dark: {flat_dark_frame}")
 
-        print(filt)
-        if filt == "HaGrism" or filt == "OGGrism":
+        # hack to catch grism images and apply dark, bias
+        if filt in ("lrg", "hrg", "OGGrism", "HaGrism"):
             if dark_frame is None or bias_frame is None:
                 logger.exception(
                     "calib-images: Grism image detected: No matching calibration frames found."
@@ -345,8 +345,8 @@ def calib_images_cli(
         if zmag:
             logger.info("Calculating zero-point magnitudes...")
             try:
-                calc_zmag.calc_zmag(images=(fname,))
-            except BaseException:
+                calc_zmag.calc_zmag(images=(fname,), write=True)
+            except:
                 logger.exception(f"calc-zmag failed with exception on {fname}")
 
     logger.info("Done!")

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @click.command(
     epilog="""Check out the documentation at
-                https://pyscope.readthedocs.io/ for more
+                https://pyscope.readthedocs.io/ forr more
                 information."""
 )
 @click.option(
@@ -171,6 +171,7 @@ def ccd_calib_cli(
     logger.info("Loading calibration frames...")
 
     camera_type = camera_type.lower()
+
     if camera_type == "ccd":
         if bias_frame is not None:
             logger.info(f"Loading bias frame: {bias_frame}")
@@ -534,8 +535,8 @@ def ccd_calib_cli(
             logger.info("Applying the flat frame...")
             cal_image = np.divide(cal_image, flat)
 
-        logger.info("Flooring the calibrated image...")
-        cal_image = np.floor(cal_image)
+        # logger.info("Flooring the calibrated image...")
+        # cal_image = np.floor(cal_image)
 
         logger.info(f"Adding pedestal of {pedestal}")
         hdr["PEDESTAL"] = pedestal
@@ -562,9 +563,9 @@ def ccd_calib_cli(
                     cal_image[:, badcol - 1] + cal_image[:, badcol + 1]
                 ) / 2
 
-        logger.info("Clipping to uint16 range...")
+        logger.info("Clipping to float32 in uint16 range...")
         cal_image = np.clip(cal_image, 0, 65535)
-        cal_image = cal_image.astype(np.uint16)
+        cal_image = cal_image.astype(np.float32)
 
         logger.info("Writing calibrated status to header...")
         hdr["CALSTAT"] = True

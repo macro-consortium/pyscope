@@ -106,25 +106,6 @@ class CalibrationBlock(_Block):
 
     """
 
-    start_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), init=True
-    )
-    """
-    The start time of the block. This parameter is typically set by the
-    `~pyscope.scheduling.Scheduler` when the block is scheduled but can be
-    manually set by the user for certain block types.
-    """
-
-    duration: Mapped[timedelta | None] = mapped_column(
-        Interval, default=timedelta(), init=True
-    )
-    """
-    The duration of the block. Typically computed by the
-    `~pyscope.scheduling.Scheduler` using the
-    `~pyscope.scheduling.TelrunModel`, it can also be manually set by the
-    user for certain block types.
-    """
-
     fields: Mapped[List[Field | None]] = relationship(
         secondary=field_cb_association_table, kw_only=True
     )

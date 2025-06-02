@@ -7,7 +7,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class HourAngleCondition(BoundaryCondition):
+class HourAngleCondition:
     def __init__(
         self,
         min_hour_angle=-6 * u.hourangle,

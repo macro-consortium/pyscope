@@ -1,6 +1,6 @@
 import logging
 
-import astroplan
+# import astroplan
 import click
 from astropy import coordinates as coord
 

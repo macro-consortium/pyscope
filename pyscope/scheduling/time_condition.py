@@ -5,7 +5,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class TimeCondition(BoundaryCondition):
+class TimeCondition:
     def __init__(
         self,
         time_type="local",  # local, utc, specified tz/location, or lst at location
