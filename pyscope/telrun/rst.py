@@ -4,7 +4,7 @@ import logging
 import os
 import zoneinfo
 
-import astroplan
+# import astroplan
 import click
 import numpy as np
 import prettytable
