@@ -10,7 +10,7 @@ markdown == 3.6
 matplotlib == 3.10.0
 numpy == 2.2.3
 oschmod == 0.3.12
-pandas == 2.2.3
+pandas == 2.3.2
 paramiko == 3.5.1
 photutils == 1.13.0
 prettytable == 3.14.0
