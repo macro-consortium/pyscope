@@ -547,9 +547,9 @@ def ccd_calib_cli(
                     cal_image[:, badcol - 1] + cal_image[:, badcol + 1]
                 ) / 2
 
-        #logger.info("Clipping to uint32 range...")
-        #cal_image = np.clip(cal_image, 0, 65535)
-        #cal_image = cal_image.astype(np.uint32)
+        logger.info("Clipping to float32 in uint16 range...")
+        cal_image = np.clip(cal_image, 0, 65535)
+        cal_image = cal_image.astype(np.float32)
 
         logger.info("Writing calibrated status to header...")
         hdr["CALSTAT"] = True

@@ -91,7 +91,8 @@ def avg_fits_cli(
     mode : `str`, default=`"0"`
         Averaging mode: `"0"` for median, `"1"` for mean.
     datatype : `str`, default=`"float32"`
-        Data type for the averaged image. Defaults to `"float32"` unless pre-normalizing, where `"float64"` is used.
+        Data type for the averaged image. Defaults to `"float32"`. 
+        When pre-normalizing, `"float32"` is used regardless of specified data type.
     outfile : `str`, optional
         Output path for the averaged image. Defaults to using the first input file name with `"_avg.fts"` appended.
     verbose : `int`, default=`0`
@@ -187,8 +188,8 @@ def avg_fits_cli(
         logger.info("Normalizing images...")
         images = images / np.mean(images, axis=(1, 2))[:, None, None]
         logger.info("Done!")
-        logger.info("pre_normalize is True so setting datatype to float64")
-        datatype = np.float64
+        logger.info("pre_normalize is True so setting datatype to float32")
+        datatype = np.float32
 
         logger.info("pre-normalized is True, removing pedestal keyword from header.")
         if "PEDESTAL" in first_hdr:

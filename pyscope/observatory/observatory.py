@@ -162,6 +162,7 @@ class Observatory:
             if self.camera_driver.lower() in ("maxim", "maximdl", "_maximcamera"):
                 logger.info("Using MaxIm DL as the camera driver")
                 self._maxim = _import_driver("Maxim")
+                logger.info("Connecting to camera via Maxim")
                 self._camera = self._maxim.camera
             else:
                 self._camera = _import_driver(
