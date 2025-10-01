@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Uuid
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -38,6 +38,16 @@ class Field(Base):
         The instrument configuration to use when observing the target. If
         `None`, the default configuration from the
         `~pyscope.scheduling.ObservingBlock` will be used.
+
+    collate : `bool`, default : `True`
+        If `config` has multiple configurations, then this field determines how
+        `niter` iterations are handled. If `collate` is set to `False`,
+        then `niter` iterations of the first configuration, the second, and so on
+        will be executed sequentially (e.g., 1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4).
+        If `collate` is set to `True` (default), then the first configuration will be
+        followed by the second, and so on until all configurations have been
+        executed once in order, then that process will repeat `niter` times 
+        (e.g., 1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4).
 
     niter : `int`, default : 1
         The number of iterations of this field to perform. This parameter is
@@ -108,6 +118,19 @@ class Field(Base):
         often useful to set the configuration on the ObservingBlock level
         and separate the configuration from the field.
 
+    """
+
+    collate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    """
+    If `config` has multiple configurations, then this field determines how
+    `niter` iterations are handled. If `collate` is set to `False`,
+    then `niter` iterations of the first configuration, the second, and so on
+    will be executed sequentially (e.g., 1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4).
+    If `collate` is set to `True` (default), then the first configuration will be
+    followed by the second, and so on until all configurations have been
+    executed once in order, then that process will repeat `niter` times 
+    (e.g., 1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4). This option is useful for
+    situations like, e.g., iterating over filters in a time series. 
     """
 
     niter: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

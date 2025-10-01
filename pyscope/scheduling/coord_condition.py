@@ -26,10 +26,10 @@ class CoordinateCondition:
 
         Parameters
         ----------
-        coord_type : `str`, default : "altaz", {"altaz", "radec", "galactic"}
+        coord_type : `str`, default : "altaz", {"altaz", "radec", "hourangle", "airmass"}
             The type of coordinate system to use. The options are "altaz" for altitude
-            and azimuth, "radec" for right ascension and declination, and "galactic" for
-            galactic latitude and longitude. The default is "altaz".
+            and azimuth, "radec" for right ascension and declination, and "hourangle" for
+            hour angle. The default is "altaz".
 
         coord_idx : `int`, default : 0, {0, 1}
             The index of the coordinate to use. The default is 0 for the first coordinate. This

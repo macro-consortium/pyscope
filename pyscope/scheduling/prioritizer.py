@@ -1,2 +1,0 @@
-class Prioritizer:
-    pass
