@@ -240,7 +240,7 @@ class ScheduleBlock(Base):
         DateTime(timezone=True), init=False
     )
     """
-    The earliest schedulable start time for a dynamic block. 
+    The earliest schedulable start time for a dynamic block.
     """
 
     latest_start: Mapped[datetime | None] = mapped_column(
@@ -424,4 +424,3 @@ class ScheduleBlock(Base):
         cls, value: DateTime
     ) -> List[Tuple[DateTime, DateTime]]:
         return [(cls.start_time, type_coerce(value - cls.duration, DateTime))]
-

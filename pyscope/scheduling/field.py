@@ -5,7 +5,15 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Uuid
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -46,7 +54,7 @@ class Field(Base):
         will be executed sequentially (e.g., 1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4).
         If `collate` is set to `True` (default), then the first configuration will be
         followed by the second, and so on until all configurations have been
-        executed once in order, then that process will repeat `niter` times 
+        executed once in order, then that process will repeat `niter` times
         (e.g., 1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4).
 
     niter : `int`, default : 1
@@ -120,7 +128,9 @@ class Field(Base):
 
     """
 
-    collate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    collate: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
     """
     If `config` has multiple configurations, then this field determines how
     `niter` iterations are handled. If `collate` is set to `False`,
@@ -128,9 +138,9 @@ class Field(Base):
     will be executed sequentially (e.g., 1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4).
     If `collate` is set to `True` (default), then the first configuration will be
     followed by the second, and so on until all configurations have been
-    executed once in order, then that process will repeat `niter` times 
+    executed once in order, then that process will repeat `niter` times
     (e.g., 1, 2, 3, 4,  1, 2, 3, 4,  1, 2, 3, 4). This option is useful for
-    situations like, e.g., iterating over filters in a time series. 
+    situations like, e.g., iterating over filters in a time series.
     """
 
     niter: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
