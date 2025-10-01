@@ -170,7 +170,7 @@ def calc_zmag_cli(
     )
     logger.info("Starting calc_zmag")
 
-    if isinstance(images, str):
+    if type(images) == str:
         images = [images]
 
     zmags = []
@@ -187,7 +187,7 @@ def calc_zmag_cli(
         data, hdr = fits.getdata(im), fits.getheader(im)
         try:
             exp = hdr["EXPTIME"]
-        except BaseException:
+        except:
             exp = hdr["EXPOSURE"]
         im_filt = hdr["FILTER"]
 
@@ -207,7 +207,7 @@ def calc_zmag_cli(
         try:
             w = wcs.WCS(hdr)
             sky = w.pixel_to_world(0, 0)
-        except BaseException:
+        except:
             logger.info(
                 "No WCS solution found. Attempting to solve with Astrometry.net..."
             )
@@ -266,13 +266,13 @@ def calc_zmag_cli(
                         source["SDSS"] = float(match[filt])
                         logger.debug("Match found:\n%s" % match)
                         break
-            except BaseException:
+            except:
                 logger.debug(
                     "No SDSS matches found, continuing to next source..."
                 )
                 continue
 
-        catalog.remove_rows(catalog["SDSS"] is None)
+        catalog.remove_rows(catalog["SDSS"] == None)
 
         logger.info("Found %d SDSS matches." % len(catalog))
 

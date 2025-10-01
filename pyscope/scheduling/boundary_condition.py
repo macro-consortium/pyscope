@@ -113,12 +113,10 @@ class BoundaryCondition(Base):
     See Also
     --------
     pyscope.scheduling.CoordinateCondition
-    pyscope.scheduling.HourAngleCondition
     pyscope.scheduling.AirmassCondition
     pyscope.scheduling.MoonCondition
-    pyscope.scheduling.SunCondition
+    pyscope.scheduling.TwilightCondition
     pyscope.scheduling.TimeCondition
-    pyscope.scheduling.SNRCondition
     """
 
     bc_func: InitVar[Callable] = None

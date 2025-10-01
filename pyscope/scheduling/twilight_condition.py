@@ -7,7 +7,7 @@ from .boundary_condition import BoundaryCondition
 logger = logging.getLogger(__name__)
 
 
-class SunCondition:
+class TwilightCondition:
     def __init__(self, **kwargs):
         """ """
         pass
